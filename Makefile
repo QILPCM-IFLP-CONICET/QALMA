@@ -57,7 +57,7 @@ conventions:
 
 
 install:
-	$(PYTHON) setup.py install
+	$(PIP) install -e .
 
 pytest:
 	QALMA_ALLTESTS=1 $(PYTHON) -m pytest $(PYTEST_OPTIONS) $(PYTEST_WORKERS) test
