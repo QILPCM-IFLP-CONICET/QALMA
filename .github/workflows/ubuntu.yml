@@ -28,4 +28,5 @@ jobs:
         pip install -e .
     - name: Test QALMA
       run: |
+        echo 'import qalma; print(qalma.__file__)' | python -
         QALMA_ALLTESTS=1 python -m pytest test
