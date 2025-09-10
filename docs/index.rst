@@ -14,12 +14,11 @@ A Python toolbox to generate quantum models from ALPS XML files, build operator 
    :maxdepth: 1
    :caption: Get Started
 	    
-   what-is-alps2qutippp
+   what-is-qalma
    installing
    quickstart
    guide/guide
    user/index
-   apidoc/index
    bugs
 
 

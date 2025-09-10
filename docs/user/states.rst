@@ -7,5 +7,12 @@ You can construct various quantum states, including Gibbs and mean-field approxi
    :members:
 
 Mean-field Gibbs:
-.. automodule:: qalma.operators.states.meanfield
+
+.. automodule:: qalma.meanfield
+   :members:
+
+
+Mean-field Projections:
+
+.. automodule:: qalma.projections
    :members:

@@ -1,11 +1,11 @@
 Quickstart
 ==========
 
-This quickstart guide shows how to get started with alps2qutipplus: building a quantum system, exploring its structure, manipulating operators, and simulating quantum evolution.
+This quickstart guide shows how to get started with QALMA: building a quantum system, exploring its structure, manipulating operators, and simulating quantum evolution.
 
 Prerequisites
 -------------
-You should have installed `alps2qutipplus`, `matplotlib`, `numpy`, and `qutip`.
+You should have installed `qalma`, `matplotlib`, `numpy`, and `qutip`.
 
 Importing Required Libraries
 ----------------------------
