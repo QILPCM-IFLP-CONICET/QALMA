@@ -60,7 +60,7 @@ def _commutator_term_worker(entries):
     return (op_1 * op_2 - op_2 * op_1).simplify()._set_system_()
 
 
-def commutator_alps2qutip_parallel(
+def commutator_qalma_parallel(
     op_1: Operator,
     op_2: Operator,
     use_threads: bool = USE_THREADS,
