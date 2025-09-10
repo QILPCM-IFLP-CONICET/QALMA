@@ -1,5 +1,6 @@
-import subprocess
 import os
+import subprocess
+
 
 def build_docs():
     docs_dir = os.path.dirname(os.path.abspath(__file__))
