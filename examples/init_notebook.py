@@ -18,10 +18,10 @@ from qalma.operators.quadratic import (
     build_quadratic_form_from_operator,
 )
 from qalma.operators.states import (
+    DensityOperatorMixin,
     GibbsDensityOperator,
     GibbsProductDensityOperator,
     ProductDensityOperator,
-    DensityOperatorMixin,
 )
 from qalma.settings import VERBOSITY_LEVEL
 
