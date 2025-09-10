@@ -3,7 +3,7 @@ requires = ["setuptools>=61.0"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "QALMA"
+name = "qalma"
 version = "1.0.0"
 authors = [
     { name="Juan Mauricio Matera", email="matera@fisica.unlp.edu.ar" }
@@ -16,6 +16,24 @@ dependencies = [
     "matplotlib",
     "qutip",
 ]
+classifiers = [
+    "Intended Audience :: Developers",
+    "Intended Audience :: Science/Research",
+    "Programming Language :: Python",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: Implementation :: PyPy",
+    "Topic :: Scientific/Engineering",
+    "Topic :: Scientific/Engineering :: Mathematics",
+    "Topic :: Scientific/Engineering :: Physics",
+]
+
+[tool.setuptools.package-data]
+"qalma" = [
+    "qalma/lib/*.xml",
+]
 
 [project.urls]
 Homepage = "http://www.fisica.unlp.edu.ar/Members/matera/english-version/mauricio-materas-personal-home-page"
+
+

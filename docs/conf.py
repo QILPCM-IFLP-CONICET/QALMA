@@ -7,7 +7,7 @@ sys.path.insert(0, os.path.abspath(".."))
 
 # -- Project information -----------------------------------------------------
 
-project = "alps2qutipplus"
+project = "QALMA"
 copyright = "2025, QILPCM-IFLP-CONICET"
 author = "QILPCM-IFLP-CONICET"
 release = "0.1.0"

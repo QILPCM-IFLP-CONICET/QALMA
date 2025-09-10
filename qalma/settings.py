@@ -18,6 +18,7 @@ import os.path as osp
 def get_srcdir():
     """Get the root directory of the source code"""
     filename = osp.normcase(osp.dirname(osp.abspath(__file__)))
+    print("__file__", __file__)
     return osp.realpath(filename)
 
 

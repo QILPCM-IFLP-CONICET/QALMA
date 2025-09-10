@@ -1,4 +1,3 @@
-
 from numbers import Number
 from typing import Iterable
 
@@ -18,10 +17,10 @@ from qalma.operators.quadratic import (
     build_quadratic_form_from_operator,
 )
 from qalma.operators.states import (
+    DensityOperatorMixin,
     GibbsDensityOperator,
     GibbsProductDensityOperator,
     ProductDensityOperator,
-    DensityOperatorMixin,
 )
 from qalma.settings import VERBOSITY_LEVEL
 
@@ -348,7 +347,6 @@ for key, val in PRODUCT_GIBBS_GENERATOR_TESTS.items():
 print("loaded")
 
 
-
 TEST_STATES = {"None": None}
 TEST_OPERATORS = {}
 TEST_OPERATORS_SQ = {}
@@ -377,10 +375,12 @@ if True:
             ),
             "sx_A*sx_B": SX_A * SX_B,
             "Hamiltonian": HAMILTONIAN,
-            "sx_A*sx_B*sz_C+ sx_A * sx_B": SX_A * SX_B * SZ_C + SX_A * SX_B,             
+            "sx_A*sx_B*sz_C+ sx_A * sx_B": SX_A * SX_B * SZ_C + SX_A * SX_B,
         }
     )
-    TEST_OPERATORS_SQ.update({key:(val*val).simplify() for key,val in TEST_OPERATORS.items()})
+    TEST_OPERATORS_SQ.update(
+        {key: (val * val).simplify() for key, val in TEST_OPERATORS.items()}
+    )
 
 
 def test_benchmark_nbody_projection(
@@ -391,4 +391,3 @@ def test_benchmark_nbody_projection(
     op_sq = TEST_OPERATORS_SQ[op_name]
     for i in range(1):
         res = projection_function(op_sq, nbody, sigma0)
-
