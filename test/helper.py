@@ -1,0 +1,391 @@
+"""
+Helper functions for pytests
+"""
+
+import logging
+import os
+from numbers import Number
+from typing import Iterable
+
+import numpy as np
+import qutip
+
+from qalma.model import SystemDescriptor, build_spin_chain
+from qalma.operators import (
+    OneBodyOperator,
+    Operator,
+    ProductOperator,
+    ScalarOperator,
+    SumOperator,
+)
+from qalma.operators.quadratic import (
+    QuadraticFormOperator,
+    build_quadratic_form_from_operator,
+)
+from qalma.operators.states import (
+    GibbsDensityOperator,
+    GibbsProductDensityOperator,
+    ProductDensityOperator,
+)
+from qalma.projections.symmetries import (
+    project_conserved_quantity,
+    project_parity_like,
+)
+from qalma.settings import VERBOSITY_LEVEL
+
+
+def sz_symmetry_projection(state):
+    return project_conserved_quantity(state, "Sz")
+
+
+def sz_parity_projection(state):
+    return project_parity_like(state, "Parity")
+
+
+EXPECTATION_VALUE_TOLERANCE = 10.0e-2  # 1.0e-3
+RELATIVE_ENTROPY_TOLERANCE = 8.5e-2  # 1.0e-6  # 8e-2  # 1.0e-6
+
+
+np.set_printoptions(
+    edgeitems=30, linewidth=100000, formatter=dict(float=lambda x: "%.3g" % x)
+)
+
+CHAIN_SIZE = int(os.environ.get("CHAIN_SIZE", 4))
+
+SYSTEM: SystemDescriptor = build_spin_chain(CHAIN_SIZE)
+SITES: tuple = tuple(s for s in SYSTEM.sites.keys())
+# Add Parity to the local operators
+SYSTEM.spec["model"].site_basis["0"]["operators"]["Parity"] = qutip.sigmaz()
+SYSTEM.spec["model"].site_basis["0"]["operators"]["ParityX"] = qutip.sigmax()
+
+
+GLOBAL_IDENTITY: ScalarOperator = ScalarOperator(1.0, SYSTEM)
+
+
+SX_A = SYSTEM.site_operator(f"Sx@{SITES[0]}")
+SX_B = SYSTEM.site_operator(f"Sx@{SITES[1]}")
+SX_AB = 0.7 * SX_A + 0.3 * SX_B
+
+
+SY_A = SYSTEM.site_operator(f"Sy@{SITES[0]}")
+SY_B = SYSTEM.site_operator(f"Sy@{SITES[1]}")
+
+assert isinstance(SX_A * SX_B + SY_A * SY_B, Operator)
+
+
+SPLUS_A = SYSTEM.site_operator(f"Splus@{SITES[0]}")
+SPLUS_B = SYSTEM.site_operator(f"Splus@{SITES[1]}")
+SMINUS_A = SYSTEM.site_operator(f"Sminus@{SITES[0]}")
+SMINUS_B = SYSTEM.site_operator(f"Sminus@{SITES[1]}")
+
+
+SZ_A = SYSTEM.site_operator(f"Sz@{SITES[0]}")
+SZ_B = SYSTEM.site_operator(f"Sz@{SITES[1]}")
+SZ_C = SYSTEM.site_operator(f"Sz@{SITES[2]}")
+SZ_AB = 0.7 * SZ_A + 0.3 * SZ_B
+
+
+SH_A = 0.25 * SX_A + 0.5 * SZ_A
+sh_B = 0.25 * SX_B + 0.5 * SZ_B
+SH_AB = 0.7 * SH_A + 0.3 * sh_B
+
+
+SZ_TOTAL: OneBodyOperator = SYSTEM.global_operator("Sz")
+assert isinstance(SZ_TOTAL, OneBodyOperator)
+
+SX_TOTAL: OneBodyOperator = sum(SYSTEM.site_operator("Sx", s) for s in SITES)
+SY_TOTAL: OneBodyOperator = sum(SYSTEM.site_operator("Sy", s) for s in SITES)
+HAMILTONIAN: SumOperator = SYSTEM.global_operator("Hamiltonian")
+
+# assert HAMILTONIAN is not None
+if HAMILTONIAN is None:
+    HAMILTONIAN = SY_TOTAL
+
+
+assert (SMINUS_A * SMINUS_B) is not None
+
+
+SPLUS0 = SYSTEM.site_operator(f"Splus@{SITES[0]}")
+SPLUS1 = SYSTEM.site_operator(f"Splus@{SITES[1]}")
+
+SPSP_HC = SumOperator(
+    (
+        SPLUS0 * SPLUS1,
+        (SPLUS0 * SPLUS1).dag(),
+    ),
+    SYSTEM,
+    True,
+)
+
+
+OPERATORS = {
+    "Identity": GLOBAL_IDENTITY,
+    "sz_total": SZ_TOTAL,
+    "sx_total": SX_TOTAL,
+    "sx_total_sq": SX_TOTAL * SX_TOTAL,
+    "sx+ 3j sz": SX_TOTAL + (3 * 1j) * SZ_TOTAL,
+    "splus*splus": SPLUS0 * SPLUS1,
+    "splus*splus+hc": SPSP_HC,
+    "hamiltonian": HAMILTONIAN,
+    "nonhermitician": HAMILTONIAN + (3 * 1j) * SZ_TOTAL,
+}
+
+
+SUBSYSTEMS = [
+    (SITES[0],),
+    (SITES[1],),
+    (SITES[2],),
+    (
+        SITES[0],
+        SITES[1],
+    ),
+    (
+        SITES[0],
+        SITES[2],
+    ),
+    (
+        SITES[2],
+        SITES[3],
+    ),
+]
+
+
+OBSERVABLE_CASES = {
+    "Identity": ScalarOperator(1.0, SYSTEM),
+    "sz_total": SZ_TOTAL,  # OneBodyOperator
+    "Sx_A": SX_A,  # LocalOperator
+    "sy_A": SY_A,  # Local Operator
+    "sz_B": SZ_B,  # Diagonal local operator
+    "sh_AB": SH_AB,  # ProductOperator
+    "exchange_AB": SX_A * SX_B + SY_A * SY_B,  # Sum operator
+    "hamiltonian": HAMILTONIAN,  # Sum operator, hermitician
+    "observable array": [[SH_AB, SH_A], [SZ_A, SX_A]],
+}
+
+
+OPERATOR_TYPE_CASES = {
+    "scalar, zero": ScalarOperator(0.0, SYSTEM),
+    "product, zero": ProductOperator({}, prefactor=0.0, system=SYSTEM),
+    "product, 2": ProductOperator({}, prefactor=2.0, system=SYSTEM),
+    "scalar, real": ScalarOperator(2.0, SYSTEM),
+    "scalar, complex": ScalarOperator(1.0 + 3j, SYSTEM),
+    "local operator, hermitician": SX_A,  # LocalOperator
+    "local operator, non hermitician": SX_A + SY_A * 1j,
+    "One body, diagonal": SZ_TOTAL,
+    "One body, hermitician": SX_TOTAL,
+    "One body, non hermitician": SX_TOTAL + SY_TOTAL * 1j,
+    "three body, hermitician": (SX_A * SY_B * SZ_C),
+    "three body, non hermitician": ((SMINUS_A * SMINUS_B + SY_A * SY_B) * SZ_TOTAL),
+    "product operator, hermitician": SH_AB,
+    "product operator, non hermitician": SMINUS_A * SPLUS_B,
+    "sum operator, hermitician": SX_A * SX_B + 2 * SY_A * SY_B,  # Sum operator
+    "sum operator, hermitician from non hermitician": SPLUS_A * SPLUS_B
+    + SMINUS_A * SMINUS_B,
+    "sum operator, anti-hermitician": SPLUS_A * SPLUS_B - SMINUS_A * SMINUS_B,
+    "sum local operators": SPLUS_A + SMINUS_A,
+    "sum local qutip operators": 2.0 * SPLUS_A.to_qutip_operator()
+    + SMINUS_A.to_qutip_operator() * 2.0,
+    "sum local qutip operator and local operator": (
+        2.0 * SPLUS_A.to_qutip_operator()
+        + SMINUS_A * 2.0
+        + SPLUS_B.to_qutip_operator() * 2
+        + 2 * SMINUS_B
+    ),
+    "sum two-body qutip operators": 0.25
+    * (SPLUS_A.to_qutip_operator() * SPLUS_B.to_qutip_operator())
+    + (SMINUS_A * SMINUS_B) * 0.25,
+    "qutip operator": HAMILTONIAN.to_qutip_operator(),
+    "hermitician quadratic operator": build_quadratic_form_from_operator(HAMILTONIAN),
+    "non hermitician quadratic operator": build_quadratic_form_from_operator(
+        HAMILTONIAN - SZ_TOTAL * 1j
+    ),
+    "single interaction term": build_quadratic_form_from_operator(SX_A * SX_B),
+}
+
+
+if os.environ.get("QALMA_ALLTESTS"):
+    OPERATOR_TYPE_CASES.update(
+        {
+            "product, 1": ProductOperator({}, prefactor=1.0, system=SYSTEM),
+            "qutip operator twice": 2 * (HAMILTONIAN.to_qutip_operator()),
+            "product operator, hermitician, twice": 2 * SH_AB,
+            "log unitary": build_quadratic_form_from_operator(HAMILTONIAN * 1j),
+        }
+    )
+
+
+TEST_CASES_STATES = {}
+
+TEST_CASES_STATES["fully mixed"] = ProductDensityOperator({}, system=SYSTEM)
+
+TEST_CASES_STATES["z semipolarized"] = ProductDensityOperator(
+    {name: 0.5 * qutip.qeye(2) + 0.25 * qutip.sigmaz() for name in SYSTEM.dimensions},
+    1.0,
+    system=SYSTEM,
+)
+
+TEST_CASES_STATES["x semipolarized"] = ProductDensityOperator(
+    {name: 0.5 * qutip.qeye(2) + 0.25 * qutip.sigmax() for name in SYSTEM.dimensions},
+    1.0,
+    system=SYSTEM,
+)
+
+
+TEST_CASES_STATES["first full polarized"] = ProductDensityOperator(
+    {SX_A.site: 0.5 * qutip.qeye(2) + 0.5 * qutip.sigmaz()}, 1.0, system=SYSTEM
+)
+
+TEST_CASES_STATES[
+    "mixture of first and second partially polarized"
+] = 0.5 * ProductDensityOperator(
+    {SX_A.site: 0.5 * qutip.qeye(2) + 0.25 * qutip.sigmaz()}, 1.0, system=SYSTEM
+) + 0.5 * ProductDensityOperator(
+    {SX_B.site: 0.5 * qutip.qeye(2) + 0.25 * qutip.sigmaz()}, 1.0, system=SYSTEM
+)
+
+
+TEST_CASES_STATES["gibbs_sz"] = GibbsProductDensityOperator(SZ_TOTAL, system=SYSTEM)
+
+TEST_CASES_STATES["gibbs_sz_as_product"] = GibbsProductDensityOperator(
+    SZ_TOTAL, system=SYSTEM
+).to_product_state()
+TEST_CASES_STATES["gibbs_sz_bar"] = GibbsProductDensityOperator(
+    SZ_TOTAL * (-1), system=SYSTEM
+)
+TEST_CASES_STATES["gibbs_H"] = GibbsDensityOperator(
+    HAMILTONIAN, system=SYSTEM, symmetry_projections=[sz_symmetry_projection]
+)
+TEST_CASES_STATES["mixture"] = (
+    0.6 * TEST_CASES_STATES["gibbs_H"]
+    + 0.3 * TEST_CASES_STATES["gibbs_sz"]
+    + 0.1 * TEST_CASES_STATES["gibbs_sz_bar"]
+)
+
+
+FULL_TEST_CASES = {}
+FULL_TEST_CASES.update(OPERATOR_TYPE_CASES)
+FULL_TEST_CASES.update(TEST_CASES_STATES)
+
+
+def alert(verbosity, *args):
+    """Print a message depending on the verbosity level"""
+    if verbosity < VERBOSITY_LEVEL:
+        print(*args)
+
+
+def check_equality(lhs, rhs, tolerance=1e-10):
+    """
+    Compare lhs and rhs and raise an assertion error if they are
+    different.
+    """
+    if isinstance(lhs, Number) and isinstance(rhs, Number):
+        assert abs(lhs - rhs) < tolerance, f"{lhs}!={rhs} + O({tolerance})"
+        return True
+
+    if isinstance(lhs, Operator) and isinstance(rhs, Operator):
+        assert check_operator_equality(lhs, rhs, tolerance)
+        return True
+
+    if isinstance(lhs, dict) and isinstance(rhs, dict):
+        assert len(lhs) == len(rhs)
+        assert all(key in rhs for key in lhs)
+        assert all(check_equality(lhs[key], rhs[key], tolerance) for key in lhs)
+        return True
+
+    if isinstance(lhs, np.ndarray) and isinstance(rhs, np.ndarray):
+        diff = abs(lhs - rhs)
+        assert (diff < tolerance).all(), f"{lhs} != {rhs}"
+        return True
+
+    if isinstance(lhs, Iterable) and isinstance(rhs, Iterable):
+        assert len(lhs) != len(rhs)
+        assert all(
+            check_equality(lhs_item, rhs_item, tolerance)
+            for lhs_item, rhs_item in zip(lhs, rhs)
+        )
+        return True
+
+    if isinstance(lhs, qutip.Qobj) and isinstance(rhs, qutip.Qobj):
+        diff = abs((lhs - rhs).full())
+        diff = np.max(diff)
+        assert diff < tolerance, f"diff ={diff} > tolerance={tolerance}"
+        return True
+
+    assert lhs == rhs
+    return True
+
+
+def check_operator_equality(op1, op2, tolerance=1.0e-9):
+    """check if two operators are numerically equal"""
+
+    if isinstance(op2, qutip.Qobj):
+        op1, op2 = op2, op1
+
+    if isinstance(op1, qutip.Qobj) and isinstance(op2, Operator):
+        op2 = op2.to_qutip()
+
+    op_diff = op1 - op2
+    distance = abs((op_diff.dag() * op_diff).tr()) ** 0.5
+    if distance > tolerance:
+        logging.warning(
+            f"distance {distance} larger than {tolerance} for comparison between {type(op1)} and {type(op2)}"
+        )
+        if isinstance(op1, qutip.Qobj):
+            print(type(op1), type(op2))
+            print(distance)
+            print(op1)
+            print(op2)
+    return distance < tolerance
+
+
+def expect_from_qutip(rho, obs):
+    """Compute expectation values or Qutip objects or iterables"""
+    if isinstance(obs, Operator):
+        return qutip.expect(rho, obs.to_qutip(tuple(obs.system.sites)))
+    if isinstance(obs, dict):
+        return {name: expect_from_qutip(rho, op) for name, op in obs.items()}
+    return np.array([expect_from_qutip(rho, op) for op in obs])
+
+
+def is_one_body_operator(operator) -> bool:
+    """Check if the operator is a one-body operator"""
+    if isinstance(operator, SumOperator):
+        return all(is_one_body_operator(term) for term in operator.terms)
+    if isinstance(operator, QuadraticFormOperator):
+        return False
+        # print("quadratic form!", operator.weights, operator.offset,operator.linear_term, operator.acts_over())
+        # if len(operator.weights)>0:
+        #    return False
+        # if operator.offset:
+        #    return False
+    return len(operator.acts_over()) < 2
+
+
+GIBBS_GENERATOR_TESTS = {
+    key: val for key, val in OPERATOR_TYPE_CASES.items() if val.isherm
+}
+
+PRODUCT_GIBBS_GENERATOR_TESTS = {
+    key: val for key, val in GIBBS_GENERATOR_TESTS.items() if is_one_body_operator(val)
+}
+
+GIBBS_SYMMETRY_PROJECTIONS = {
+    "sum operator, hermitician": (sz_parity_projection,),
+    "sum two-body qutip operators": (sz_parity_projection,),
+    "qutip operator": (sz_symmetry_projection,),
+    "hermitician quadratic operator": (sz_symmetry_projection,),
+}
+
+
+for key, val in GIBBS_GENERATOR_TESTS.items():
+    name = "Gibbs from " + key
+    TEST_CASES_STATES[name] = GibbsDensityOperator(
+        val, SYSTEM, symmetry_projections=GIBBS_SYMMETRY_PROJECTIONS.get(key, tuple())
+    )
+
+for key, val in PRODUCT_GIBBS_GENERATOR_TESTS.items():
+    name = "ProductGibbs from " + key
+    print("building", name)
+    TEST_CASES_STATES[name] = GibbsProductDensityOperator(val, SYSTEM)
+
+print("loaded")
