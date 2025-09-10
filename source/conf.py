@@ -6,7 +6,7 @@
 # -- Project information -----------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#project-information
 
-project = 'Alps2Qutip'
+project = 'QALMA'
 copyright = '2025, Juan Mauricio Matera y Tomás Pérez'
 author = 'Juan Mauricio Matera y Tomás Pérez'
 
