@@ -14,7 +14,7 @@ with L and M_a one-body operators, w_a certain weights and
 """
 
 # from numbers import Number
-from typing import Dict, List, Optional, cast
+from typing import Dict, List, cast
 
 import numpy as np
 from numpy.linalg import eigh
@@ -45,11 +45,11 @@ def build_local_basis(
     a list of two-body operators on each
     pair of sites
     """
-    basis_by_site:Dict[str, List[Qobj]] = {}
+    basis_by_site: Dict[str, List[Qobj]] = {}
     # First, collect the one-body factors
     for sites, terms_list in terms_by_block.items():
         assert len(sites) == 2, sites
-        product_terms:List[ProductOperator] = []
+        product_terms: List[ProductOperator] = []
         for term in terms_list:
             # If a term is a QutipOperator, decompose
             # it first as a sum of product operators
@@ -76,9 +76,9 @@ def orthonormal_hs_local_basis(local_generators_dict: LocalBasisDict) -> LocalBa
     build an orthonormalized basis of hermitian operators
     regarding the HS scalar product on each site.
     """
-    basis_dict:Dict[str, List[Qobj]] = {}
+    basis_dict: Dict[str, List[Qobj]] = {}
     for site, generators in local_generators_dict.items():
-        basis:List[Qobj] = []
+        basis: List[Qobj] = []
         # Now, go over each local basis:
         for generator in generators:
             # Split in hermitician and antihermitician parts:

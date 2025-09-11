@@ -66,7 +66,7 @@ class Operator:
     __mul__dispatch__: Dict[Tuple, Callable] = {}
 
     @staticmethod
-    def register_add_handler(key: Tuple|List[Tuple]):
+    def register_add_handler(key: Tuple | List[Tuple]):
         """Register a function to implement add"""
 
         def register_func(func):
@@ -88,7 +88,7 @@ class Operator:
         return register_func
 
     @staticmethod
-    def register_mul_handler(key: Tuple|List[Tuple]):
+    def register_mul_handler(key: Tuple | List[Tuple]):
         """Register a function to implement mul"""
 
         def register_func(func):

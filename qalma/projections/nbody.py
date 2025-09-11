@@ -132,7 +132,7 @@ def _project_qutip_operator_to_one_body(
         dimensions = {site: system.dimensions[site] for site in site_names}
         dimensions_factor = np.prod(list(dimensions.values()))
         meanvalue = operator_qutip.tr() / dimensions_factor
-        reduced_ops:List[Operators] = (
+        reduced_ops: List[Operator] = (
             [ScalarOperator((1 - block_size) * meanvalue, system)] if meanvalue else []
         )
         reduced_ops.extend(

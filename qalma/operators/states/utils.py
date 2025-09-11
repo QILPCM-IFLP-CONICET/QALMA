@@ -4,7 +4,7 @@ Utility functions for qalma.operators.states
 """
 
 from functools import reduce
-from typing import Any, Dict, Iterable, List, Optional, Union, cast
+from typing import Any, Dict, Iterable, List, Optional, Set, Union, cast
 
 import numpy as np
 from qutip import Qobj, tensor as qutip_tensor
@@ -47,9 +47,9 @@ def compute_expectation_values(
         target_obs = obs
         while hasattr(target_obs, "__getitem__"):
             if hasattr(target_obs, "values"):
-                target_obs =tuple(target_obs.values())
+                target_obs = tuple(target_obs.values())
             target_obs = target_obs[0]
-            if hasattr(target_obs,"system"):
+            if hasattr(target_obs, "system"):
                 break
         state = ProductDensityOperator({}, prefactor=1, system=target_obs.system)
     return state.expect(obs)
@@ -88,7 +88,7 @@ def collect_blocks_for_expect(obs_objs: Union[Operator, Iterable]) -> List[froze
             return collect_blocks_for_expect(obs_obj.terms)
         return [obs_obj.acts_over()]
     # tuple or list
-    block_set:Set[str] = set()
+    block_set: Set[str] = set()
     for elem in obs_objs:
         block_set.update(collect_blocks_for_expect(elem))
     return sorted(block_set, key=lambda x: -len(x))

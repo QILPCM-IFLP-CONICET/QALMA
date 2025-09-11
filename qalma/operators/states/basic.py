@@ -326,7 +326,9 @@ class ProductDensityOperator(DensityOperatorMixin, ProductOperator):
             return result
 
         if isinstance(obs, SumOperator):
-            return cast(NDArray, sum(cast(NDArray, self.expect(term)) for term in obs.terms))
+            return cast(
+                NDArray, sum(cast(NDArray, self.expect(term)) for term in obs.terms)
+            )
 
         if isinstance(obs, (tuple, list)):
             return np.array([self.expect(elem) for elem in obs])
