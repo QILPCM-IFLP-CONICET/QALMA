@@ -324,7 +324,7 @@ def next_name(dictionary: dict, s: int = 1, prefix: str = "") -> str:
 def replace_variable_type(val, e_type):
     """
     if `val` is a str representing an unevaluated
-    expression, replace occurences of `#` by
+    expression, replace occurrences of `#` by
     `e_type`.
     """
     if isinstance(val, str):
