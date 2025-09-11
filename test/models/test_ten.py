@@ -62,18 +62,16 @@ def build_ten_sites_lattice_file():
         lines = f.readlines()
         lines = lines[:-2] + [""]
 
-    fp = tempfile.NamedTemporaryFile(suffix=".xml", mode="w", delete_on_close=False)
-    fp.write("".join(lines))
-    fp.write(doble_five)
-    fp.write("</LATTICES>")
-    fp.close()
-    return fp
+    with tempfile.NamedTemporaryFile(suffix=".xml", mode="w", delete=False) as fp:
+        fp.write("".join(lines))
+        fp.write(doble_five)
+        fp.write("</LATTICES>")
+    return fp.name
 
 
 def test_complex_model():
-    fp = build_ten_sites_lattice_file()
     latt_descr = graph_from_alps_xml(
-        filename=fp.name, name="kagome-stripe-double", parms={"L": 2, "a": 1}
+        filename=build_ten_sites_lattice_file(), name="kagome-stripe-double", parms={"L": 2, "a": 1}
     )
     model_descr = model_from_alps_xml(name="spin")
     system = SystemDescriptor(latt_descr, model_descr, parms={"J3": -37.3})
