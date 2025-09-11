@@ -319,3 +319,14 @@ def next_name(dictionary: dict, s: int = 1, prefix: str = "") -> str:
     if name in dictionary:
         return next_name(dictionary, s + 1, prefix)
     return name
+
+
+def replace_variable_type(val, e_type):
+    """
+    if `val` is a str representing an unevaluated
+    expression, replace occurences of `#` by
+    `e_type`.
+    """
+    if isinstance(val, str):
+        return val.replace("#", f"{e_type}")
+    return val

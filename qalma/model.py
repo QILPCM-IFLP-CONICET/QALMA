@@ -10,7 +10,7 @@ from typing import Optional, Tuple
 from qalma.alpsmodels import ModelDescriptor
 from qalma.geometry import GraphDescriptor
 from qalma.settings import LATTICE_LIB_FILE, MODEL_LIB_FILE
-from qalma.utils import eval_expr
+from qalma.utils import eval_expr, replace_variable_type
 
 
 class SystemDescriptor:
@@ -435,7 +435,12 @@ class SystemDescriptor:
             operator_names = set(re.findall(r"\b([a-zA-Z_]+)\b@", s_expr))
 
             s_expr = s_expr.replace("@", "__")
-            s_parm = {key.replace("#", node_type): val for key, val in t_parm.items()}
+            s_parm = {
+                replace_variable_type(key, node_type): replace_variable_type(
+                    val, node_type
+                )
+                for key, val in t_parm.items()
+            }
             s_parm.update(
                 {
                     f"{name_op}_local": local_op
@@ -466,7 +471,10 @@ class SystemDescriptor:
         def process_edge(e_expr, bond, model, t_parm):
             edge_type, src, dst = bond
             e_parms = {
-                key.replace("#", f"{edge_type}"): val for key, val in t_parm.items()
+                replace_variable_type(key, edge_type): replace_variable_type(
+                    val, edge_type
+                )
+                for key, val in t_parm.items()
             }
             for op_idx in ([src, "src"], [dst, "dst"]):
                 e_parms.update(
@@ -539,7 +547,10 @@ class SystemDescriptor:
 
         def process_loop(loop_expr, loop_type, vertices_map, model, t_parm):
             loop_parms = {
-                key.replace("#", f"{loop_type}"): val for key, val in t_parm.items()
+                replace_variable_type(key, loop_type): replace_variable_type(
+                    val, loop_type
+                )
+                for key, val in t_parm.items()
             }
 
             for key, site in vertices_map.items():
