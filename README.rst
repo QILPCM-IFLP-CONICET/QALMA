@@ -13,5 +13,5 @@ License
 QALMA is released under the GNU General Public License Version 3 (GPL3).
 
 
--.. |Travis| image:: https://app.travis-ci.com/mmatera/QALMA.svg?token=bupiEbN7WaWofquHEzEt&branch=master
--.. _Travis: https://travis-ci.org/mmatera/qalma
+.. |Travis| image:: https://app.travis-ci.com/mmatera/QALMA.svg?token=bupiEbN7WaWofquHEzEt&branch=master
+.. _Travis: https://travis-ci.org/mmatera/qalma
