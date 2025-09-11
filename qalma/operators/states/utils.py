@@ -44,7 +44,14 @@ def compute_expectation_values(
     relative to the state `state`.
     """
     if state is None:
-        state = ProductDensityOperator({}, 1, obs.system)
+        target_obs = obs
+        while hasattr(target_obs, "__getitem__"):
+            if hasattr(target_obs, "values"):
+                target_obs =tuple(target_obs.values())
+            target_obs = target_obs[0]
+            if hasattr(target_obs,"system"):
+                break
+        state = ProductDensityOperator({}, prefactor=1, system=target_obs.system)
     return state.expect(obs)
 
 
@@ -65,7 +72,7 @@ def collect_blocks_for_expect(obs_objs: Union[Operator, Iterable]) -> List[froze
     Result
     ======
 
-    Tuple:
+    List:
     a list of `frozenset` objects, sorted from the larger to the smaller in size.
 
     """
@@ -75,16 +82,13 @@ def collect_blocks_for_expect(obs_objs: Union[Operator, Iterable]) -> List[froze
         obs_objs = obs_objs.as_sum_of_products()
 
     if isinstance(obs_objs, Operator):
-        obs_objs = obs_objs.simplify()
-        if isinstance(obs_objs, SumOperator):
-            return collect_blocks_for_expect(obs_objs.terms)
-
-        acts_over = obs_objs.acts_over()
-        if acts_over is None:
-            return []
-        return [acts_over]
+        obs_obj = obs_objs
+        obs_obj = obs_obj.simplify()
+        if isinstance(obs_obj, SumOperator):
+            return collect_blocks_for_expect(obs_obj.terms)
+        return [obs_obj.acts_over()]
     # tuple or list
-    block_set = set()
+    block_set:Set[str] = set()
     for elem in obs_objs:
         block_set.update(collect_blocks_for_expect(elem))
     return sorted(block_set, key=lambda x: -len(x))

@@ -38,6 +38,7 @@ BENCHMARK_FILE := bench_$(shell date +%Y%m%d)_$(shell git rev-parse --short HEAD
     docs\
     docs-clean\
     install \
+    mypy \
     pytest
 
 
@@ -100,3 +101,7 @@ benchmark-clean:
 
 benchmark-show:
 	python test/compare_benchmarks.py
+
+
+mypy:
+	mypy --install-types --ignore-missing-imports --non-interactive qalma

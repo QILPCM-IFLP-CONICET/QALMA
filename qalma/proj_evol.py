@@ -14,7 +14,7 @@ from qutip import (  # type: ignore[import-untyped]
 from qutip.core.qobj import Qobj  # type: ignore[import-untyped]
 
 from qalma.operators import Operator
-from qalma.operators.states import safe_exp_and_normalize
+from qalma.operators.states.utils import safe_exp_and_normalize
 from qalma.scalarprod import gram_matrix, orthogonalize_basis
 
 

@@ -124,7 +124,7 @@ def _project_qutip_operator_to_one_body(
     if block_size <= 1:
         return full_operator
     system = full_operator.system
-    block = sorted(site_names, key=lambda x: site_names[x])
+    block = tuple(sorted(site_names, key=lambda x: site_names[x]))
     operator_qutip = full_operator.to_qutip(block)
 
     if state is None:
@@ -132,7 +132,7 @@ def _project_qutip_operator_to_one_body(
         dimensions = {site: system.dimensions[site] for site in site_names}
         dimensions_factor = np.prod(list(dimensions.values()))
         meanvalue = operator_qutip.tr() / dimensions_factor
-        reduced_ops = (
+        reduced_ops:List[Operators] = (
             [ScalarOperator((1 - block_size) * meanvalue, system)] if meanvalue else []
         )
         reduced_ops.extend(

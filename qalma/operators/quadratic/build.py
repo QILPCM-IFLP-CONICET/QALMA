@@ -14,7 +14,7 @@ with L and M_a one-body operators, w_a certain weights and
 """
 
 # from numbers import Number
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, cast
 
 import numpy as np
 from numpy.linalg import eigh
@@ -45,11 +45,11 @@ def build_local_basis(
     a list of two-body operators on each
     pair of sites
     """
-    basis_by_site = {}
+    basis_by_site:Dict[str, List[Qobj]] = {}
     # First, collect the one-body factors
     for sites, terms_list in terms_by_block.items():
         assert len(sites) == 2, sites
-        product_terms = []
+        product_terms:List[ProductOperator] = []
         for term in terms_list:
             # If a term is a QutipOperator, decompose
             # it first as a sum of product operators
@@ -60,7 +60,7 @@ def build_local_basis(
                 else:
                     product_terms.append(term_)
             else:
-                product_terms.append(term)
+                product_terms.append(cast(ProductOperator, term))
 
         for term in product_terms:
             site1, site2 = sites
@@ -76,9 +76,9 @@ def orthonormal_hs_local_basis(local_generators_dict: LocalBasisDict) -> LocalBa
     build an orthonormalized basis of hermitian operators
     regarding the HS scalar product on each site.
     """
-    basis_dict = {}
+    basis_dict:Dict[str, List[Qobj]] = {}
     for site, generators in local_generators_dict.items():
-        basis = []
+        basis:List[Qobj] = []
         # Now, go over each local basis:
         for generator in generators:
             # Split in hermitician and antihermitician parts:
@@ -106,7 +106,7 @@ def orthonormal_hs_local_basis(local_generators_dict: LocalBasisDict) -> LocalBa
     return basis_dict
 
 
-def zero_expectation_value_basis(basis: LocalBasisDict, sigma_ref: Optional):
+def zero_expectation_value_basis(basis: LocalBasisDict, sigma_ref):
     """
     add an offset of each element of the local basis
     in a way that each operator have zero mean regarding
@@ -121,7 +121,7 @@ def zero_expectation_value_basis(basis: LocalBasisDict, sigma_ref: Optional):
     return new_basis
 
 
-def classify_terms(operator, sigma_ref: Optional):
+def classify_terms(operator, sigma_ref):
     """
     Decompose `operator` as list of terms
     associated to each pairs of sites,
@@ -383,7 +383,7 @@ def build_quadratic_form_from_operator(
     # Decompose the matrix in the eigenbasis, and build the generators
     e_vals, e_vecs = eigh(qf_array)
 
-    qf_basis = sorted(
+    qf_basis_list = sorted(
         [
             (
                 0.5 * e_val,
@@ -412,17 +412,17 @@ def build_quadratic_form_from_operator(
 
     # Normalize the generators in the spectral norm.
     spectral_norms = (
-        spectral_norm(weight_generator[1]) for weight_generator in qf_basis
+        spectral_norm(weight_generator[1]) for weight_generator in qf_basis_list
     )
-    qf_basis = tuple(
+    qf_basis_and_weight = tuple(
         (
             weight_generator[0] * sn**2,
             weight_generator[1] / sn,
         )
-        for sn, weight_generator in zip(spectral_norms, qf_basis)
+        for sn, weight_generator in zip(spectral_norms, qf_basis_list)
     )
-    weights = tuple((weight_generator[0] for weight_generator in qf_basis))
-    qf_basis = tuple((weight_generator[1] for weight_generator in qf_basis))
+    weights = tuple((weight_generator[0] for weight_generator in qf_basis_and_weight))
+    qf_basis = tuple((weight_generator[1] for weight_generator in qf_basis_and_weight))
 
     return QuadraticFormOperator(
         basis=qf_basis,

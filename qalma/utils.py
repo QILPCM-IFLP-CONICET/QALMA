@@ -6,8 +6,8 @@ import logging
 
 import numpy as np
 import qutip  # type: ignore[import-untyped]
-from matplotlib import pyplot as plt
 from matplotlib.patches import Circle, Ellipse
+from matplotlib.pyplot import Axes as PLTAxes
 from numpy.random import rand
 
 default_parms = {
@@ -55,7 +55,7 @@ def draw_ellipse_around_points(p1, p2, ax, b_ratio=0.15):
     ax.add_patch(ellipse)
 
 
-def draw_operator(op, axis: "plt.Axis") -> "plt.Axis":
+def draw_operator(op, axis: PLTAxes) -> PLTAxes:
     """
     Draw the operator op over the axis.
 
