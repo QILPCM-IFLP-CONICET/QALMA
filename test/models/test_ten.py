@@ -71,7 +71,9 @@ def build_ten_sites_lattice_file():
 
 def test_complex_model():
     latt_descr = graph_from_alps_xml(
-        filename=build_ten_sites_lattice_file(), name="kagome-stripe-double", parms={"L": 2, "a": 1}
+        filename=build_ten_sites_lattice_file(),
+        name="kagome-stripe-double",
+        parms={"L": 2, "a": 1},
     )
     model_descr = model_from_alps_xml(name="spin")
     system = SystemDescriptor(latt_descr, model_descr, parms={"J3": -37.3})
