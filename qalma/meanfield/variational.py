@@ -311,13 +311,10 @@ def variational_quadratic_mfa(
     )
 
     current_rel_entropy = None if sigma_0 is None else compute_rel_entropy(sigma_0, ham)
-
     if isinstance(ham, OneBodyOperator):
         return GibbsProductDensityOperator(ham)
 
     for _ in range(its):
-        changed = False
-        logging.info(f"  S_rel={current_rel_entropy}.")
         # We start by projecting the generator `ham` to the two-body sector
         # relative to `sigma_0`:
 
@@ -337,37 +334,26 @@ def variational_quadratic_mfa(
             )
 
         if current_rel_entropy is None:
-            changed = True
             sigma_0 = sigma_candidate
             current_rel_entropy = compute_rel_entropy(sigma_0, ham)
-            logging.info(f"  quadratic optimization-> S_rel={current_rel_entropy}.")
         else:
-            changed = True
             rel_s = compute_rel_entropy(sigma_candidate, ham)
             if rel_s < current_rel_entropy:
                 sigma_0 = sigma_candidate
                 current_rel_entropy = rel_s
-                logging.info(f"  quadratic optimization-> S_rel={current_rel_entropy}.")
 
         # Improve the solution by a self-consistent round
-        sigma_candidate, rel_s = self_consistent_mf(
+        sigma_0, rel_s = self_consistent_mf(
             ham,
             sigma_0,
             max_steps=max_self_consistent_steps,
             callback=callback_self_consistent_step,
         )
-        if rel_s < current_rel_entropy:
-            changed = True
-            logging.info(f"  self consistent attempt-> S_rel={current_rel_entropy}.")
-            sigma_0 = sigma_candidate
-            current_rel_entropy = rel_s
 
-        if ham_proj is ham or not changed:
+        # If the relative entropy have not improved, or
+        # the ham==ham_proj
+        if (current_rel_entropy - rel_s + QALMA_TOLERANCE) > 0 or ham_proj is ham:
             break
+        current_rel_entropy = rel_s
 
-    if hasattr(sigma_0, "to_product_state"):
-        sigma_0 = sigma_0.to_product_state()
-    logging.info(
-        f"  final value of relative entropy: {compute_rel_entropy(sigma_0,ham)} {type(sigma_0)}"
-    )
     return sigma_0
