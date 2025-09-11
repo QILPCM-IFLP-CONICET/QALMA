@@ -25,9 +25,6 @@ from qalma.operators.states.basic import (
     DensityOperatorMixin,
     ProductDensityOperator,
 )
-from qalma.operators.states.gibbs import (
-    GibbsProductDensityOperator,
-)
 from qalma.operators.states.utils import (
     acts_over_order,
     compute_operator_expectation_value,
@@ -70,7 +67,7 @@ def np_prod(a, initial=None):
 
 def _project_product_operator_to_one_body(
     full_operator: ProductOperator,
-    sigma_0: Optional[ProductDensityOperator | GibbsProductDensityOperator] = None,
+    sigma_0: Optional[ProductDensityOperator] = None,
 ):
     """
     Project a Product operator to the algebra of one-body operators,
@@ -106,7 +103,7 @@ def _project_product_operator_to_one_body(
 
 def _project_qutip_operator_to_one_body(
     full_operator: QutipOperator,
-    state: Optional[ProductDensityOperator | GibbsProductDensityOperator] = None,
+    state: Optional[ProductDensityOperator] = None,
 ):
     """
     Project `full_operator` over the one-body operator subspace,
@@ -149,8 +146,10 @@ def _project_qutip_operator_to_one_body(
     else:
         if hasattr(state, "to_product_state"):
             state = state.to_product_state()
-        meanvalue = state.expect(full_operator)
-        sites_op_state = state.sites_op
+        # At this point, it must be a product density operator
+        state_prod = cast(ProductDensityOperator, state)
+        meanvalue = state_prod.expect(full_operator)
+        sites_op_state = state_prod.sites_op
         sites_op_state = {key: sites_op_state[key] for key in block}
         reduced_ops = (
             [ScalarOperator((1 - block_size) * meanvalue, system)] if meanvalue else []
@@ -174,7 +173,7 @@ def _project_qutip_operator_to_one_body(
 
 
 def _project_product_operator_combinatorial(
-    full_operator: Operator,
+    full_operator: ProductOperator,
     nmax: int = 1,
     sigma: Optional[ProductDensityOperator] = None,
 ) -> Operator:
@@ -230,9 +229,9 @@ def _project_product_operator_combinatorial(
 
 
 def _project_product_operator_recursive(
-    full_operator: Operator,
+    full_operator: ProductOperator,
     m_max: int,
-    sigma_0: Optional[ProductDensityOperator | GibbsProductDensityOperator],
+    sigma_0: Optional[ProductDensityOperator],
 ) -> Operator:
     """
     # reduce op1 (x) op2 (x) op3 ...
@@ -269,12 +268,13 @@ def _project_product_operator_recursive(
 
     op_first = sites_op[first_site]
     weight_first = op_first
-    sigma_rest = sigma_0
+
     if sigma_0 is not None:
-        sigma_rest = sigma_rest.partial_trace(frozenset(rest))
+        sigma_rest = sigma_0.partial_trace(frozenset(rest))
         sigma_first = sigma_0.partial_trace(frozenset({first_site})).to_qutip()
         weight_first = op_first * sigma_first
     else:
+        sigma_rest = None
         weight_first = weight_first / op_first.dims[0][0]
 
     first_av = weight_first.tr()
@@ -407,7 +407,7 @@ def _project_qutip_operator_recursive(
 
 
 def project_quadraticform_operator_as_n_body_operator(
-    operator, nmax: Optional[int] = 1, sigma: Optional[ProductDensityOperator] = None
+    operator, nmax: int = 1, sigma: Optional[ProductDensityOperator] = None
 ) -> Operator:
     """
     Project a product operator to the manifold of n-body operators
@@ -431,7 +431,7 @@ def project_quadraticform_operator_as_n_body_operator(
 
 
 def one_body_from_qutip_operator(
-    operator: Union[Operator, Qobj], sigma0: Optional[DensityOperatorMixin] = None
+    operator: Union[Operator, Qobj], sigma0: Optional[ProductDensityOperator] = None
 ) -> Operator:
     """
     Decompose a qutip operator as a sum of an scalar term,
@@ -593,11 +593,12 @@ def _project_monomial(operator, nmax, sigma):
 def project_sum_operator(
     full_operator: Operator,
     nmax: int,
-    sigma: Optional[ProductDensityOperator | GibbsProductDensityOperator] = None,
+    sigma: Optional[ProductDensityOperator] = None,
 ) -> Operator:
     """
     Project a sum operator
     """
+    terms: List[Operator]
     system = full_operator.system
     terms_tuple: Tuple[Operator] = full_operator.flat().terms
 
@@ -631,7 +632,7 @@ def project_sum_operator(
             return True
         return False
 
-    non_dispatched_terms = tuple(
+    non_dispatched_terms: Tuple[Operator, ...] = tuple(
         term for term in terms_tuple if not dispatch_term(term)
     )
     if not non_dispatched_terms:
@@ -668,7 +669,7 @@ def project_sum_operator(
         (term for term in one_body_terms if not isinstance(term, ScalarOperator))
     )
 
-    terms: List[Operator] = list(block_terms.values())
+    terms = list(block_terms.values())
     if scalar != 0:
         terms.append(ScalarOperator(scalar, system))
     if proper_local_terms:

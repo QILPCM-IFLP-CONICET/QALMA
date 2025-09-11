@@ -3,7 +3,6 @@ Utility functions for qalma.operators.states
 
 """
 
-from functools import reduce
 from typing import Any, Dict, Iterable, List, Optional, Set, Union, cast
 
 import numpy as np
@@ -51,7 +50,7 @@ def compute_expectation_values(
             target_obs = target_obs[0]
             if hasattr(target_obs, "system"):
                 break
-        state = ProductDensityOperator({}, prefactor=1, system=target_obs.system)
+        state = ProductDensityOperator({}, system=cast(Operator, target_obs).system)
     return state.expect(obs)
 
 
@@ -88,7 +87,7 @@ def collect_blocks_for_expect(obs_objs: Union[Operator, Iterable]) -> List[froze
             return collect_blocks_for_expect(obs_obj.terms)
         return [obs_obj.acts_over()]
     # tuple or list
-    block_set: Set[str] = set()
+    block_set: Set[frozenset] = set()
     for elem in obs_objs:
         block_set.update(collect_blocks_for_expect(elem))
     return sorted(block_set, key=lambda x: -len(x))
@@ -130,32 +129,6 @@ def collect_local_states(
                 break
         local_states[obj_block] = parent_state.partial_trace(obj_block)
     return local_states
-
-
-def compute_operator_expectation_value__(
-    obs: Operator, sigma_state: Optional[DensityOperatorMixin]
-):
-    """ """
-    if sigma_state is not None:
-        return sigma_state.expect(obs)
-    if hasattr(obs, "sites_op"):
-        obs_sites_op = obs.sites_op
-        factors = (
-            qutip_op.tr() / qutip_op.dims[0][0] for qutip_op in obs_sites_op.values()
-        )
-        return reduce(lambda x, y: x * y, factors, obs.prefactor)
-
-    if hasattr(obs, "terms"):
-        return sum(
-            compute_operator_expectation_value(term, sigma_state) for term in obs.terms
-        )
-
-    # assert isinstance(obs, QutipOperator)
-    qutip_op = obs.operator
-    prefactor = reduce(
-        lambda x, y: x * y, (1.0 / d for d in qutip_op.dims[0]), obs.prefactor
-    )
-    return qutip_op.tr() * prefactor
 
 
 def k_by_site_from_operator(k: Operator) -> Dict[str, Operator]:
@@ -239,7 +212,7 @@ def k_by_site_from_operator(k: Operator) -> Dict[str, Operator]:
 def reduced_state_by_block(
     term: Operator,
     reduced_states_cache: Dict[Optional[frozenset], DensityOperatorMixin],
-):
+) -> Optional[DensityOperatorMixin]:
     acts_over = term.acts_over()
     result = reduced_states_cache.get(acts_over, None)
     if result is not None:

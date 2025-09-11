@@ -377,8 +377,8 @@ class HierarchicalOperatorBasis(OperatorBasis):
         # in the basis are linearly independent.
 
         if not self.operator_basis:
-            self.errors = np.arrow([])
-            self.gram = self.gram_inv = self.gen_matrix = self._hij = np.arrow([])
+            self.errors = np.array([])
+            self.gram = self.gram_inv = self.gen_matrix = self._hij = np.array([])
             return
 
         while self.operator_basis:
@@ -443,6 +443,10 @@ def append_basis(basis_1: OperatorBasis, basis_2: OperatorBasis | Iterable[Opera
         norms = norms + np.array([hj @ gj for hj, gj in zip(hij.T, basis.gen_matrix.T)])
         return norms
 
+    g11: NDArray
+    g22: NDArray
+    g11_inv: NDArray
+
     ops1 = basis_1.operator_basis
     basis_1_generator = basis_1.generator
     basis_1_hij = basis_1.gram @ basis_1.gen_matrix if basis_1_generator else None
@@ -472,7 +476,7 @@ def append_basis(basis_1: OperatorBasis, basis_2: OperatorBasis | Iterable[Opera
     n2 = len(ops2)
 
     if same_sp:
-        g22 = basis_2_gram
+        g22 = basis_2_gram if basis_2_gram is not None else gram_matrix(ops2, sp)
     else:
         g22 = gram_matrix(ops2, sp)
 
@@ -532,7 +536,7 @@ def append_basis(basis_1: OperatorBasis, basis_2: OperatorBasis | Iterable[Opera
         hij_block: Optional[NDArray],
         ops: Tuple[Operator, ...],
         gram_block: NDArray,
-        errors: Optional[NDArray],
+        errors: NDArray,
         n_block: int,
         reuse: bool,
         rows_it,

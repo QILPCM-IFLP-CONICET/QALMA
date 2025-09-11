@@ -23,7 +23,7 @@ def get_srcdir():
 
 
 ROOT_DIR = get_srcdir()
-FIGURES_DIR = f"{ROOT_DIR}/../doc/figures"
+FIGURES_DIR = f"{ROOT_DIR}/../docs/figures"
 LATTICE_LIB_FILE = f"{ROOT_DIR}/lib/lattices.xml"
 MODEL_LIB_FILE = f"{ROOT_DIR}/lib/models.xml"
 
