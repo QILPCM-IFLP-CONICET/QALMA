@@ -30,7 +30,7 @@ classifiers = [
 
 [tool.setuptools.package-data]
 "qalma" = [
-    "qalma/lib/*.xml",
+    "lib/*.xml",
 ]
 
 [project.urls]
