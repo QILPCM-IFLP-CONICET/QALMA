@@ -5,7 +5,7 @@ Density operator classes.
 import logging
 import pickle
 from numbers import Number
-from typing import Iterable, Optional, Tuple, Union, cast
+from typing import Iterable, Optional, Protocol, Tuple, Union, cast
 
 import numpy as np
 from numpy.typing import NDArray
@@ -224,6 +224,16 @@ class DensityOperatorMixin:
 
     def tr(self):
         return 1
+
+
+class DensityOperatorProtocol(Protocol):
+    prefactor: Number
+
+    def acts_over(self) -> frozenset: ...
+    def expect(
+        self, obs: Union[Operator, Iterable]
+    ) -> Union[np.ndarray, dict, Number]: ...
+    def partial_trace(self, sites: Union[frozenset, SystemDescriptor]): ...
 
 
 class ProductDensityOperator(DensityOperatorMixin, ProductOperator):

@@ -13,7 +13,7 @@ from qalma.operators import (
 )
 from qalma.operators.arithmetic import iterable_to_operator
 from qalma.operators.states.basic import (
-    DensityOperatorMixin,
+    DensityOperatorProtocol,
     ProductDensityOperator,
 )
 from qalma.operators.states.gibbs import GibbsDensityOperator
@@ -26,7 +26,7 @@ def project_boundary_term(term, sigma: ProductDensityOperator, sites: frozenset)
     Q_b acting on the sub-system associated to sigma.
     """
     acts_over = term.acts_over()
-    sites = {site for site in acts_over if site in sites}
+    sites = frozenset({site for site in acts_over if site in sites})
     environment = frozenset(site for site in acts_over if site not in sites)
     system = term.system
     if len(sites) == 0:
@@ -74,7 +74,7 @@ def project_boundary_term(term, sigma: ProductDensityOperator, sites: frozenset)
 
 def gibbs_meanfield_partial_trace(
     state: GibbsDensityOperator, sites: frozenset
-) -> DensityOperatorMixin:
+) -> DensityOperatorProtocol:
     """
     Build a self-consistent Mean Field approximation to the local state.
 
@@ -120,11 +120,11 @@ def gibbs_meanfield_partial_trace(
             state._meanfield = sigma_mf
 
         # Project the terms onto the algebra of the local subsystem
-        terms_boundary = (
+        terms_boundary_gen = (
             project_boundary_term(term, sigma_mf, sites) for term in terms_boundary
         )
         # Remove empty terms
-        terms_boundary = tuple(term for term in terms_boundary if term)
+        terms_boundary = [term for term in terms_boundary_gen if term]
         terms_in.extend(terms_boundary)
 
     k_in = iterable_to_operator(terms_in, system, isherm=True)

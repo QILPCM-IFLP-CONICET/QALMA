@@ -22,7 +22,7 @@ from qalma.operators.arithmetic import iterable_to_operator
 from qalma.operators.quadratic import QuadraticFormOperator
 from qalma.operators.qutip import QutipOperator
 from qalma.operators.states.basic import (
-    DensityOperatorMixin,
+    DensityOperatorProtocol,
     ProductDensityOperator,
 )
 from qalma.operators.states.utils import (
@@ -40,7 +40,7 @@ from qalma.settings import QALMA_TOLERANCE
 # Alias: the type of the functions that project operators to a n-body sector, relative to a
 # given reference state.
 ProjectingOperatorFunction = Callable[
-    [Operator, int, Optional[DensityOperatorMixin]], Operator
+    [Operator, int, Optional[DensityOperatorProtocol]], Operator
 ]
 
 
@@ -443,7 +443,7 @@ def one_body_from_qutip_operator(
     ----------
     operator : Union[Operator, qutip.Qobj]
         the operator to be decomposed.
-    sigma0 : DensityOperatorMixin, optional
+    sigma0 : DensityOperatorProtocol, optional
         A Density matrix. If None (default) it is assumed to be
         the maximally mixed state.
 

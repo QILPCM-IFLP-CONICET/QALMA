@@ -7,39 +7,9 @@
    viewBox="0 0 260.87918 114.3"
    version="1.1"
    id="svg5"
-   inkscape:version="1.1.2 (0a00cf5339, 2022-02-04)"
-   sodipodi:docname="logo.svg"
-   inkscape:export-filename="/home/mauricio/Projects/qalma/logo.png"
-   inkscape:export-xdpi="99.839996"
-   inkscape:export-ydpi="99.839996"
-   xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
-   xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"
    xmlns:xlink="http://www.w3.org/1999/xlink"
    xmlns="http://www.w3.org/2000/svg"
    xmlns:svg="http://www.w3.org/2000/svg">
-  <sodipodi:namedview
-     id="namedview7"
-     pagecolor="#ffffff"
-     bordercolor="#666666"
-     borderopacity="1.0"
-     inkscape:pageshadow="2"
-     inkscape:pageopacity="0.0"
-     inkscape:pagecheckerboard="0"
-     inkscape:document-units="mm"
-     showgrid="false"
-     fit-margin-top="0"
-     fit-margin-left="0"
-     fit-margin-right="0"
-     fit-margin-bottom="0"
-     inkscape:zoom="0.49999997"
-     inkscape:cx="440.00002"
-     inkscape:cy="216.00001"
-     inkscape:window-width="1586"
-     inkscape:window-height="802"
-     inkscape:window-x="0"
-     inkscape:window-y="28"
-     inkscape:window-maximized="1"
-     inkscape:current-layer="layer1" />
   <defs
      id="defs2">
     <rect
@@ -56,8 +26,6 @@
        id="rect2041" />
   </defs>
   <g
-     inkscape:label="Capa 1"
-     inkscape:groupmode="layer"
      id="layer1"
      transform="translate(-123.76353,-114.0375)">
     <image
@@ -79,27 +47,27 @@
        ry="4.2585745" />
     <text
        xml:space="preserve"
-       transform="matrix(0.34510286,0,0,0.34510286,113.00434,192.87115)"
+       transform="matrix(0.30071961,0,0,0.30071961,123.76409,185.09182)"
        id="text2039"
-       style="font-style:normal;font-variant:normal;font-weight:bold;font-stretch:normal;font-size:160px;line-height:1.25;font-family:Cantarell;-inkscape-font-specification:'Cantarell Bold';white-space:pre;shape-inside:url(#rect2041);fill:#0e3164;fill-opacity:1;stroke-width:0.766679"><tspan
+       style="font-style:normal;font-variant:normal;font-weight:bold;font-stretch:normal;font-size:160px;line-height:1.25;font-family:Cantarell;-inkscape-font-specification:'Cantarell Bold';white-space:pre;shape-inside:url(#rect2041);fill:#0e3164;fill-opacity:1;stroke-width:0.879833"><tspan
          x="294.8418"
          y="-62.636351"
-         id="tspan58015">QALM</tspan></text>
+         id="tspan3218">QALMA</tspan></text>
     <text
        xml:space="preserve"
-       transform="matrix(0.33411734,0,0,0.33411734,97.696291,25.984434)"
+       transform="matrix(0.33411734,0,0,0.33411734,96.10879,25.984434)"
        id="text21540"
        style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:40px;line-height:1.25;font-family:Cabin;-inkscape-font-specification:Cabin;white-space:pre;shape-inside:url(#rect21542);fill:#2e4460;fill-opacity:1;stroke-width:0.791887"><tspan
          x="364.25391"
          y="507.23439"
-         id="tspan58019"><tspan
+         id="tspan3222"><tspan
            style="font-weight:600;-inkscape-font-specification:'Cabin Semi-Bold'"
-           id="tspan58017">Quantum Algebra for Lattice 
+           id="tspan3220">Quantum Algebra for Lattice 
 </tspan></tspan><tspan
          x="364.25391"
          y="557.23439"
-         id="tspan58023"><tspan
+         id="tspan3226"><tspan
            style="font-weight:600;-inkscape-font-specification:'Cabin Semi-Bold'"
-           id="tspan58021">Modeling and Applications</tspan></tspan></text>
+           id="tspan3224">Modeling and Applications</tspan></tspan></text>
   </g>
 </svg>

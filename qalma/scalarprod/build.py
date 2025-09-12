@@ -11,7 +11,7 @@ from numpy.typing import NDArray
 
 from qalma.operators import Operator
 from qalma.operators.functions import anticommutator
-from qalma.operators.states import DensityOperatorMixin
+from qalma.operators.states import DensityOperatorProtocol
 
 #  ### Functions that build the scalar products ###
 
@@ -178,7 +178,7 @@ def fetch_kubo_int_scalar_product(sigma: Operator) -> Callable:
     return return_func
 
 
-def fetch_covar_scalar_product(sigma: DensityOperatorMixin) -> Callable:
+def fetch_covar_scalar_product(sigma: DensityOperatorProtocol) -> Callable:
     """
     Returns a scalar product function based on the covariance of a density
     operator.

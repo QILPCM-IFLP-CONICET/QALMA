@@ -8,7 +8,7 @@ from qalma.meanfield.self_consistent_projections import (
     self_consistent_project_meanfield,
 )
 from qalma.operators import Operator
-from qalma.operators.states import DensityOperatorMixin, ProductDensityOperator
+from qalma.operators.states import DensityOperatorProtocol, ProductDensityOperator
 from qalma.operators.states.gibbs import GibbsProductDensityOperator
 from qalma.projections import project_operator_to_m_body
 
@@ -30,7 +30,7 @@ def project_meanfield(
     maximally mixed state.
 
     """
-    sigma: DensityOperatorMixin = self_consistent_project_meanfield(
+    sigma: DensityOperatorProtocol = self_consistent_project_meanfield(
         k_op, sigma0, max_it, proj_func=proj_func
     )[1]
     result = proj_func(k_op, 1, sigma).simplify()
