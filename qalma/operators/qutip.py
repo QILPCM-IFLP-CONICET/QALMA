@@ -122,7 +122,7 @@ class QutipOperator(Operator):
             + repr(self.operator)
         )
 
-    def acts_over(self) -> set:
+    def acts_over(self) -> frozenset:
         """ """
         return frozenset(self.site_names.keys())
 
@@ -347,7 +347,7 @@ class QutipOperator(Operator):
             prefactor=self.prefactor,
         )
 
-    def to_qutip(self, block: Optional[Tuple[str]] = None):
+    def to_qutip(self, block: Optional[Tuple[str, ...]] = None):
         """
 
         Parameters

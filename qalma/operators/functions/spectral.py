@@ -61,7 +61,8 @@ def spectral_norm(operator: Operator) -> float:
     if operator.isherm:
         if isinstance(operator, OneBodyOperator):
             operator = operator.simplify()
-            return sum(spectral_norm(term) for term in operator.terms)
+            if hasattr(operator, "terms"):
+                return sum(spectral_norm(term) for term in operator.terms)
         return max(abs(eigenvalues(operator)))
     return max(eigenvalues(operator.dag() * operator)) ** 0.5
 
@@ -80,7 +81,10 @@ def relative_entropy(rho: Operator, sigma: Operator) -> float:
     log_rho = log_op(rho)
     log_sigma = log_op(sigma)
     delta_log = (log_rho - log_sigma).simplify()
-    result = real(rho.expect(delta_log))
+    if hasattr(rho, "expect"):
+        result = real(rho.expect(delta_log))
+    else:
+        result = real((rho * delta_log).tr())
     if result < 0:
         logging.warning(f"S(rho|sigma)={result}<0")
     return max(0, result)

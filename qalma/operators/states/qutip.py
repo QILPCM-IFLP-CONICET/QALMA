@@ -113,7 +113,7 @@ class QutipDensityOperator(DensityOperatorMixin, QutipOperator):
                 operand.to_qutip(), system, operand.site_names, operand.prefactor
             )
         if any(site not in self.system.sites for site in block_other):
-            state = QutipOperator(
+            state = QutipDensityOperator(
                 state.to_qutip(), system, state.site_names, state.prefactor
             )
 
@@ -196,7 +196,7 @@ class QutipDensityOperator(DensityOperatorMixin, QutipOperator):
                 operand.to_qutip(), system, operand.site_names, operand.prefactor
             )
         if any(site not in self.system.sites for site in block_other):
-            state = QutipOperator(
+            state = QutipDensityOperator(
                 state.to_qutip(), system, state.site_names, state.prefactor
             )
 
@@ -240,7 +240,7 @@ class QutipDensityOperator(DensityOperatorMixin, QutipOperator):
             prefactor=self.prefactor,
         )
 
-    def to_qutip(self, block: Optional[Tuple[str]] = None):
+    def to_qutip(self, block: Optional[Tuple[str, ...]] = None):
         self.normalize()
         # set the prefactor temporarily to 1, because it should
         # not be taken into account in the conversion of a state.

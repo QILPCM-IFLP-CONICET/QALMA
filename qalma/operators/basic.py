@@ -5,7 +5,7 @@ Different representations for operators
 import logging
 from functools import reduce
 from numbers import Number
-from typing import Callable, Dict, Optional, Tuple, Union
+from typing import Callable, Dict, List, Optional, Tuple, Union
 
 import numpy as np
 import qutip  # type: ignore[import-untyped]
@@ -66,7 +66,7 @@ class Operator:
     __mul__dispatch__: Dict[Tuple, Callable] = {}
 
     @staticmethod
-    def register_add_handler(key: Tuple):
+    def register_add_handler(key: Tuple | List[Tuple]):
         """Register a function to implement add"""
 
         def register_func(func):
@@ -88,7 +88,7 @@ class Operator:
         return register_func
 
     @staticmethod
-    def register_mul_handler(key: Tuple):
+    def register_mul_handler(key: Tuple | List[Tuple]):
         """Register a function to implement mul"""
 
         def register_func(func):
@@ -251,12 +251,12 @@ class Operator:
         result = f"${tex}_" + "{" + ",".join(acts_over) + "}$"
         return result
 
-    def acts_over(self) -> Optional[frozenset]:
+    def acts_over(self) -> frozenset:
         """
         Return the list of sites over which the operator acts nontrivially.
         If this cannot be determined, return None.
         """
-        return None
+        raise NotImplementedError
 
     def as_sum_of_products(self):
         """Decompose an operator as a sum of product operators"""
@@ -353,7 +353,7 @@ class Operator:
         """Returns a more efficient representation"""
         return self
 
-    def to_qutip(self, block: Optional[Tuple[str]] = None):
+    def to_qutip(self, block: Optional[Tuple[str, ...]] = None):
         """Convert to a Qutip object"""
         raise NotImplementedError
 
@@ -421,7 +421,7 @@ class LocalOperator(Operator):
     def __repr__(self):
         return f"Local Operator on site {self.site}:" f"\n {repr(self.operator.full())}"
 
-    def acts_over(self) -> Optional[frozenset]:
+    def acts_over(self) -> frozenset:
         return frozenset((self.site,))
 
     def dag(self):
@@ -518,7 +518,7 @@ class LocalOperator(Operator):
         value = operator[0, 0] * self.prefactor
         return ScalarOperator(value, self.system)
 
-    def to_qutip(self, block: Optional[tuple] = None):
+    def to_qutip(self, block: Optional[Tuple[str, ...]] = None):
         """Convert to a Qutip object"""
         site = self.site
         system = self.system
@@ -630,7 +630,7 @@ class ProductOperator(Operator):
                 factors_latex.append(f"{prefactor} *" + tex + "_{" + site + "}")
         return "$" + "\\otimes".join(factors_latex) + "$"
 
-    def acts_over(self) -> Optional[frozenset]:
+    def acts_over(self) -> frozenset:
         return frozenset(site for site in self.sites_op)
 
     def dag(self):
@@ -746,7 +746,7 @@ class ProductOperator(Operator):
         dimensions = self.dimensions
         if isinstance(sites, SystemDescriptor):
             subsystem = sites
-            sites = tuple(sites.sites.keys())
+            sites = frozenset(sites.sites.keys())
         else:
             subsystem = self.system.subsystem(sites)
 
@@ -801,7 +801,7 @@ class ProductOperator(Operator):
             return ProductOperator(nontrivial_factors, prefactor, self.system)
         return self
 
-    def to_qutip(self, block: Optional[Tuple[str]] = None):
+    def to_qutip(self, block: Optional[Tuple[str, ...]] = None):
         """
         return a qutip object acting over the sites listed in
         `block`.
@@ -813,7 +813,11 @@ class ProductOperator(Operator):
         sites = system.sites if system else {}
         # Ensure that block has the sites in the operator.
         if block is None:
-            block = sorted(tuple(sites) if system else self.acts_over())
+            if system is not None:
+                block = tuple(sorted(sites))
+            else:
+                block = tuple(sorted(self.acts_over()))
+
             if len(block) > 8:
                 logging.warning(
                     "Asking for a qutip representation of an operator over the full system"
@@ -892,7 +896,7 @@ class ScalarOperator(ProductOperator):
             + "}$"
         )
 
-    def acts_over(self) -> Optional[frozenset]:
+    def acts_over(self) -> frozenset:
         return frozenset()
 
     def dag(self):
@@ -940,7 +944,7 @@ class ScalarOperator(ProductOperator):
             return ScalarOperator(0, self.system)
         return self
 
-    def to_qutip(self, block: Optional[Tuple[str]] = None):
+    def to_qutip(self, block: Optional[Tuple[str, ...]] = None):
         """
         return a qutip object acting over the sites listed in
         `block`.
@@ -950,7 +954,7 @@ class ScalarOperator(ProductOperator):
         system = self.system
         sites = system.sites
         if block is None:
-            block = sorted(sites)
+            block = tuple(sorted(sites))
         elif len(block) == 0:
             return self.prefactor
 

@@ -2149,4 +2149,4 @@ def _(op_1: QuadraticFormOperator, op_2: Operator):
     -------
 
     """
-    return op_1.to_sum_operator() * op_2
+    return op_1.as_sum_of_products() * op_2

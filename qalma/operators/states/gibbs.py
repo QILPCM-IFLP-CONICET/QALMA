@@ -100,7 +100,7 @@ class GibbsDensityOperator(DensityOperatorMixin, Operator):
             return self * operand.inv()
         raise ValueError("Division of an operator by ", type(operand), " not defined.")
 
-    def acts_over(self) -> Optional[frozenset]:
+    def acts_over(self) -> frozenset:
         """
         Return a set with the name of the
         sites where the operator nontrivially acts
@@ -157,7 +157,7 @@ class GibbsDensityOperator(DensityOperatorMixin, Operator):
             rho_qutip, names=names, system=self.system, prefactor=prefactor
         )
 
-    def to_qutip(self, block: Optional[Tuple[str]] = None):
+    def to_qutip(self, block: Optional[Tuple[str, ...]] = None):
         system = self.system
         all_sites = tuple(system.sites)
         if block is None:
@@ -277,7 +277,7 @@ class GibbsProductDensityOperator(DensityOperatorMixin, Operator):
                 )
         return operand * self.to_product_state()
 
-    def acts_over(self) -> Optional[frozenset]:
+    def acts_over(self) -> frozenset:
         """
         Return a set with the names of the sites where
         the operator non-trivially acts over.
@@ -337,5 +337,5 @@ class GibbsProductDensityOperator(DensityOperatorMixin, Operator):
             normalize=True,
         )
 
-    def to_qutip(self, block: Optional[Tuple[str]] = None):
+    def to_qutip(self, block: Optional[Tuple[str, ...]] = None):
         return self.to_product_state().to_qutip(block)

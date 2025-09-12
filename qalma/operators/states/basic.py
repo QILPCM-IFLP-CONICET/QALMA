@@ -8,6 +8,7 @@ from numbers import Number
 from typing import Iterable, Optional, Tuple, Union, cast
 
 import numpy as np
+from numpy.typing import NDArray
 from qutip import (  # type: ignore[import-untyped]
     qeye as qutip_qeye,
     tensor as qutip_tensor,
@@ -142,7 +143,7 @@ class DensityOperatorMixin:
 
     def expect(
         self, obs_objs: Union[Operator, Iterable]
-    ) -> Union[np.ndarray, dict, Number]:
+    ) -> Union[NDArray, dict, Number]:
         """Compute the expectation value of an observable"""
         # TODO: expode that expectation values of operators just requires the
         # state where the operators acts.
@@ -325,7 +326,9 @@ class ProductDensityOperator(DensityOperatorMixin, ProductOperator):
             return result
 
         if isinstance(obs, SumOperator):
-            return sum(self.expect(term) for term in obs.terms)
+            return cast(
+                NDArray, sum(cast(NDArray, self.expect(term)) for term in obs.terms)
+            )
 
         if isinstance(obs, (tuple, list)):
             return np.array([self.expect(elem) for elem in obs])
@@ -373,7 +376,7 @@ class ProductDensityOperator(DensityOperatorMixin, ProductOperator):
             local_states, np.real(self.prefactor), subsystem, normalize=False
         )
 
-    def to_qutip(self, block: Optional[Tuple[str]] = None):
+    def to_qutip(self, block: Optional[Tuple[str, ...]] = None):
         prefactor = self.prefactor
         if prefactor == 0 or len(self.system.dimensions) == 0:
             return np.exp(-sum(np.log(dim) for dim in self.system.dimensions.values()))

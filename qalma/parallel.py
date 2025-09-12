@@ -126,12 +126,12 @@ def _project_monomial_worker(operator, nmax, sigma):
 
 
 def parallel_process_non_dispatched_terms(
-    terms: Tuple[Operator],
+    terms: Tuple[Operator, ...],
     nmax: int,
     sigma: Optional[ProductDensityOperator | GibbsProductDensityOperator] = None,
     use_threads=USE_THREADS,
     max_workers=MAX_WORKERS,
-) -> Operator:
+) -> Tuple[Operator, ...]:
     """
     Project each operator in `terms` to the nmax subspace, relative
     to the state `sigma`.

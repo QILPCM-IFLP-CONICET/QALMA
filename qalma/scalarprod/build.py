@@ -16,7 +16,7 @@ from qalma.operators.states import DensityOperatorMixin
 #  ### Functions that build the scalar products ###
 
 
-class CovariantScalarProductFunction(Callable):
+class CovariantScalarProductFunction:
     """
     A callable object that computes the Covariance scalar
     product of two operators, relative to a given

@@ -9,7 +9,7 @@ implemented though the class MixtureDensityOperator.
 import logging
 import pickle
 from numbers import Number
-from typing import Iterable, Optional, Tuple, Union, cast
+from typing import Iterable, Optional, Set, Tuple, Union, cast
 
 import numpy as np
 
@@ -128,16 +128,14 @@ class MixtureDensityOperator(DensityOperatorMixin, SumOperator):
             tuple((-a * term) * (-term.prefactor) for term in self.terms), self.system
         )
 
-    def acts_over(self) -> Optional[frozenset]:
+    def acts_over(self) -> frozenset:
         """
         Return a set with the name of the
         sites where the operator nontrivially acts
         """
-        sites: set = set()
+        sites: Set[str] = set()
         for term in self.terms:
             acts_over = cast(Operator, term).acts_over()
-            if acts_over is None:
-                return None
             sites.update(acts_over)
         return frozenset(sites)
 
@@ -181,7 +179,7 @@ class MixtureDensityOperator(DensityOperatorMixin, SumOperator):
         self.__dict__.update(state)
         self._set_system_(self.system)
 
-    def to_qutip(self, block: Optional[Tuple[str]] = None):
+    def to_qutip(self, block: Optional[Tuple[str, ...]] = None):
         """Produce a qutip compatible object"""
         if len(self.terms) == 0:
             return ScalarOperator(0, self.system).to_qutip()

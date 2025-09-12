@@ -17,16 +17,18 @@ from numbers import Number
 
 # from numbers import Number
 from time import time
-from typing import Callable, Optional, Tuple, Union
+from typing import Callable, Optional, Set, Tuple, Union, cast
 
 import numpy as np
 from numpy.random import random
+from numpy.typing import NDArray
 
 from qalma.model import SystemDescriptor
 from qalma.operators.arithmetic import OneBodyOperator, SumOperator
 from qalma.operators.basic import (
     LocalOperator,
     Operator,
+    ProductOperator,
     ScalarOperator,
 )
 from qalma.settings import QALMA_TOLERANCE
@@ -192,16 +194,16 @@ class QuadraticFormOperator(Operator):
             linear_term._set_system_(system)
         return self
 
-    def acts_over(self):
+    def acts_over(self) -> frozenset:
         """
         Set of sites over the state acts.
         """
-        result = frozenset()
+        result: Set[str] = set()
         for term in self.basis:
             try:
                 result = result.union(term.acts_over())
             except TypeError:
-                return None
+                return frozenset(self.system.sites)
 
         for term in (self.offset, self.linear_term):
             if term is None:
@@ -209,10 +211,12 @@ class QuadraticFormOperator(Operator):
             try:
                 result = result.union(term.acts_over())
             except TypeError:
-                return None
-        return result
+                return frozenset(self.system.sites)
+        return frozenset(result)
 
-    def as_sum_of_products(self, simplify: bool = True) -> SumOperator:
+    def as_sum_of_products(
+        self, simplify: bool = True
+    ) -> ProductOperator | LocalOperator | SumOperator:
         """Convert to a linear combination of two-body operators"""
         isherm = self._isherm
         isdiag = self.isdiagonal
@@ -304,7 +308,7 @@ class QuadraticFormOperator(Operator):
         self._isherm = isherm
         return isherm
 
-    def partial_trace(self, sites: Union[tuple, SystemDescriptor]):
+    def partial_trace(self, sites: Union[frozenset, SystemDescriptor]):
 
         if not isinstance(sites, SystemDescriptor):
             sites = self.system.subsystem(sites)
@@ -355,7 +359,7 @@ class QuadraticFormOperator(Operator):
         result._simplified = True
         return result
 
-    def to_qutip(self, block: Optional[Tuple[str]] = None):
+    def to_qutip(self, block: Optional[Tuple[str, ...]] = None):
         """
         return a qutip object acting over the sites listed in
         `block`.
@@ -406,7 +410,7 @@ def selfconsistent_meanfield_from_quadratic_form(
     operators = [2 * w * b for w, b in zip(weights, terms)]
     basis = [b for w, b in zip(weights, terms)]
 
-    phi = [2.0 * random() - 1.0]
+    phi: NDArray = np.array([2.0 * random() - 1.0])
 
     evolution: list = []
     timestamps: list = []
@@ -424,8 +428,8 @@ def selfconsistent_meanfield_from_quadratic_form(
         )
         k_exp = ((k_exp + k_exp.dag()).simplify()) * 0.5
         assert k_exp.isherm
-        rho = GibbsProductDensityOperator(k_exp, 1.0, system)
-        new_phi = -rho.expect(operators).conj()
+        rho = GibbsProductDensityOperator(k_exp, prefactor=1.0, system=system)
+        new_phi = -(cast(NDArray, rho.expect(operators)).conj())
         if isinstance(logdict, dict):
             evolution.append(new_phi)
             timestamps.append(time())
@@ -433,7 +437,7 @@ def selfconsistent_meanfield_from_quadratic_form(
         change = sum(
             abs(old_phi_i - new_phi_i) for old_phi_i, new_phi_i in zip(new_phi, phi)
         )
-        if change < 1.0e-10:
+        if change < 1e3 * QALMA_TOLERANCE:
             break
         phi = new_phi
 
@@ -445,11 +449,13 @@ def one_body_operator_hermitician_hs_sp(x_op: OneBodyOperator, y_op: OneBodyOper
     Hilbert Schmidt scalar product optimized for OneBodyOperators
     """
     result = 0
-    terms_x: Tuple[LocalOperator] = (
-        x_op.terms if isinstance(x_op, OneBodyOperator) else (x_op,)
+    terms_x: Tuple[ScalarOperator | LocalOperator] = cast(
+        Tuple[ScalarOperator | LocalOperator],
+        (x_op.terms if isinstance(x_op, OneBodyOperator) else (x_op,)),
     )
-    terms_y: Tuple[LocalOperator] = (
-        y_op.terms if isinstance(y_op, OneBodyOperator) else (y_op,)
+    terms_y: Tuple[ScalarOperator | LocalOperator] = cast(
+        Tuple[ScalarOperator | LocalOperator],
+        (y_op.terms if isinstance(y_op, OneBodyOperator) else (y_op,)),
     )
 
     for t_1 in terms_x:

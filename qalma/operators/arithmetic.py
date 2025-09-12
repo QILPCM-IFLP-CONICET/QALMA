@@ -5,7 +5,7 @@ Classes and functions for operator arithmetic.
 """
 
 import logging
-from typing import Iterable, Optional, Tuple, Union
+from typing import Iterable, Optional, Set, Tuple, Union
 
 import numpy as np
 
@@ -111,13 +111,11 @@ class SumOperator(Operator):
             term._set_system_(system)
         return self
 
-    def acts_over(self):
-        result = set()
+    def acts_over(self) -> frozenset:
+        result: Set[str] = set()
         system_size = len(self.system.sites)
         for term in self.terms:
             term_acts_over = term.acts_over()
-            if term_acts_over is None:
-                return None
             result = result.union(term_acts_over)
             if len(result) >= system_size:
                 break
@@ -160,7 +158,7 @@ class SumOperator(Operator):
     def isherm(self) -> bool:
         isherm = self._isherm
 
-        def aggresive_hermitician_test(non_hermitian_tuple: Tuple[Operator]):
+        def aggresive_hermitician_test(non_hermitian_tuple: Tuple[Operator, ...]):
             """Determine if the antihermitician part is zero"""
             # Here we assume that after simplify, the operator is a single term
             # (not a SumOperator), a OneBodyOperator, or a sum of a one-body operator
@@ -246,7 +244,7 @@ class SumOperator(Operator):
 
         return group_terms_by_blocks(self.flat().tidyup())
 
-    def to_qutip(self, block: Optional[Tuple[str]] = None):
+    def to_qutip(self, block: Optional[Tuple[str, ...]] = None):
         """Produce a qutip compatible object"""
         terms = self.terms
         system = self.system
