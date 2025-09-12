@@ -5,15 +5,16 @@ Be careful: just use this class for states of small systems.
 """
 
 import logging
-from typing import Optional, Tuple, Union
+from numbers import Number, Real
+from typing import Optional, Tuple, Union, cast
 
 import numpy as np
-from qutip import Qobj  # type: ignore[import-untyped]
+from qutip import Qobj, tensor as tensor_qutip  # type: ignore[import-untyped]
 
 from qalma.model import SystemDescriptor
 from qalma.operators.basic import Operator, ScalarOperator
 from qalma.operators.qutip import QutipOperator
-from qalma.operators.states.basic import DensityOperatorMixin
+from qalma.operators.states.basic import DensityOperatorMixin, DensityOperatorProtocol
 
 
 class QutipDensityOperator(DensityOperatorMixin, QutipOperator):
@@ -61,7 +62,7 @@ class QutipDensityOperator(DensityOperatorMixin, QutipOperator):
         block = tuple(sorted(self.system.sites))
         names = {name: pos for pos, name in enumerate(block)}
 
-        if isinstance(operand, DensityOperatorMixin):
+        if hasattr(operand, "expect"):
             p1 = self.prefactor
             p2 = operand.prefactor
             prefactor = p1 + p2
@@ -75,53 +76,13 @@ class QutipDensityOperator(DensityOperatorMixin, QutipOperator):
         return QutipOperator(result_qutip, self.system, names)
 
     def __mul__(self, operand) -> Operator:
-        if isinstance(operand, (int, float, np.float64)):
-            if operand >= 0:
-                return QutipDensityOperator(
-                    self.operator,
-                    self.system,
-                    self.site_names,
-                    self.prefactor * operand,
-                )
-            logging.warning(
-                f"Multiplying {operand} with a DensityOperator produces a generic operator."
-            )
-            return QutipOperator(
-                self.operator * (self.prefactor * operand),
-                self.system,
-            )
-        if isinstance(operand, (complex, np.complex128)):
-            logging.warning(
-                f"Multiplying {operand} with a DensityOperator produces a generic operator."
-            )
-            return QutipOperator(
-                self.operator * (self.prefactor * operand),
-                self.system,
-            )
-
-        block_self = tuple(self.site_names)
-        block_other = tuple(
-            (site for site in operand.acts_over() if site not in block_self)
-        )
-        block = block_self + block_other
-        system = self.system.union(operand.system)
-        state = self
-        # If one of the operators lives in a smaller system, extend it in a way that block
-        # is contained on the system of each operator.
-        if any(site not in operand.system.sites for site in block_self):
-            operand = QutipOperator(
-                operand.to_qutip(), system, operand.site_names, operand.prefactor
-            )
-        if any(site not in self.system.sites for site in block_other):
-            state = QutipDensityOperator(
-                state.to_qutip(), system, state.site_names, state.prefactor
-            )
-
-        op_qo = operand.to_qutip(block)
-        rho_qo = state.to_qutip(block)
-        return QutipOperator(
-            rho_qo * op_qo, names={s: i for i, s in enumerate(block)}, system=system
-        )
+        try:
+            return self.join_states(operand)
+        except ValueError:
+            pass
+        self.normalize()
+        op_b = QutipOperator(self.operator, names=self.site_names, system=self.system)
+        return op_b * operand
 
     def __neg__(self):
         logging.warning("Negate a DensityOperator leads to a regular operator.")
@@ -158,52 +119,63 @@ class QutipDensityOperator(DensityOperatorMixin, QutipOperator):
             return QutipDensityOperator(op_qo, self.system or op_qo.system)
         return QutipOperator(op_qo, self.system or op_qo.system)
 
-    def __rmul__(self, operand) -> Operator:
-        if isinstance(operand, (int, float, np.float64)):
-            if operand >= 0:
-                return QutipDensityOperator(
-                    self.operator,
-                    self.system,
-                    self.site_names,
-                    self.prefactor * operand,
-                )
-            logging.warning(
-                f"Multiplying {operand} with a DensityOperator produces a generic operator."
-            )
-            return QutipOperator(
-                self.operator * (self.prefactor * operand),
-                self.system,
-            )
-        if isinstance(operand, (complex, np.complex128)):
-            logging.warning(
-                f"Multiplying {operand} with a DensityOperator produces a generic operator."
-            )
-            return QutipOperator(
-                self.operator * (self.prefactor * operand),
-                self.system,
-            )
-        block_self = tuple(self.site_names)
-        block_other = tuple(
-            (site for site in operand.acts_over() if site not in block_self)
-        )
-        block = block_self + block_other
-        system = self.system.union(operand.system)
-        state = self
-        # If one of the operators lives in a smaller system, extend it in a way that block
-        # is contained on the system of each operator.
-        if any(site not in operand.system.sites for site in block_self):
-            operand = QutipOperator(
-                operand.to_qutip(), system, operand.site_names, operand.prefactor
-            )
-        if any(site not in self.system.sites for site in block_other):
-            state = QutipDensityOperator(
-                state.to_qutip(), system, state.site_names, state.prefactor
-            )
+    def __rmul__(self, operand):
+        try:
+            return self.join_states(operand)
+        except ValueError:
+            pass
+        self.normalize()
+        op_b = QutipOperator(self.operator, names=self.site_names, system=self.system)
+        return operand * op_b
 
-        op_qo = operand.to_qutip(block)
-        rho_qo = state.to_qutip(block)
-        return QutipOperator(
-            op_qo * rho_qo, names={s: i for i, s in enumerate(block)}, system=system
+    def join_states(self, other: DensityOperatorProtocol | Number):
+        """
+        Combine the states of two disjoint systems to produce the state
+        of the union of both systems.
+        """
+        if isinstance(other, Real):
+            if other < 0:
+                raise ValueError
+            return QutipDensityOperator(
+                self.operator,
+                system=self.system,
+                names=self.site_names,
+                prefactor=self.prefactor * other,
+            )
+        if isinstance(other, Number):
+            raise ValueError("operand is not a positive number")
+        rho: DensityOperatorProtocol = other
+        if not hasattr(rho, "expect"):
+            raise ValueError
+        if not rho.prefactor:
+            return QutipDensityOperator(
+                self.operator, system=self.system, names=self.site_names, prefactor=0
+            )
+        system_a = self.system
+        system_b = rho.system
+        if set(system_a.sites).intersection(system_b.sites):
+            raise ValueError("Systems have overlap")
+
+        system = system_a.union(system_b)
+        acts_over_b = rho.acts_over()
+        if len(acts_over_b) == 0:
+            return QutipDensityOperator(
+                self.operator,
+                system=self.system,
+                names=self.site_names,
+                prefactor=cast(Real, self.prefactor) * cast(Real, rho.prefactor),
+            )
+        acts_over_a = self.acts_over()
+        if len(acts_over_a) == 0:
+            return rho * self.prefactor
+
+        block_a = tuple(acts_over_a)
+        block_b = tuple(acts_over_b)
+        names = {site: pos for pos, site in enumerate(block_a + block_b)}
+        qutip_block = tensor_qutip(self.to_qutip(block_a), rho.to_qutip(block_b))
+        prefactor = self.prefactor * rho.prefactor
+        return QutipDensityOperator(
+            qutip_block, names=names, system=system, prefactor=prefactor
         )
 
     def logm(self):

@@ -6,6 +6,7 @@ Build variational approximations to a Gibbsian state.
 """
 
 import logging
+from numbers import Complex, Real
 from typing import Callable, Optional, Tuple, cast
 
 import numpy as np
@@ -42,7 +43,7 @@ def compute_rel_entropy(state: ProductDensityOperator, ham: Operator) -> float:
     """
     if state is None:
         state = ProductDensityOperator({}, system=ham.system)
-    return float(np.real(state.expect(ham + state.logm())))
+    return float(np.real(cast(Real | Complex, state.expect(ham + state.logm()))))
 
 
 def mf_quadratic_form_exponential(
@@ -197,7 +198,7 @@ def self_consistent_mf(
     ----------
     ham : Operator
         The generator of the exact state rho=exp(-ham).
-    sigma_ref : DensityOperatorMixin, optional
+    sigma_ref : DensityOperatorProtocol, optional
         The initial state to begin the self-consistent loop.
         The default is None. In that case, the initial state is
         the fully mixed state.
@@ -274,7 +275,7 @@ def variational_quadratic_mfa(
         optimization. If there are several generators of the quadratic form
         with the same weight, numfields is extended to include all of them.
         The default is 1.
-    sigma_ref : DensityOperatorMixin, optional
+    sigma_ref : DensityOperatorProtocol, optional
         The initial reference state to project `ham` to a quadratic form.
         The default is None.
     its : int, optional

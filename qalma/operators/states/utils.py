@@ -18,7 +18,7 @@ from qalma.operators.basic import (
 from qalma.operators.quadratic import QuadraticFormOperator
 from qalma.operators.qutip import QutipOperator
 from qalma.operators.states.basic import (
-    DensityOperatorMixin,
+    DensityOperatorProtocol,
     ProductDensityOperator,
 )
 from qalma.operators.states.qutip import QutipDensityOperator
@@ -36,7 +36,7 @@ def acts_over_order(elem):
 
 def compute_expectation_values(
     obs: Operator | Iterable[Operator] | Dict[Any, Operator],
-    state: Optional[DensityOperatorMixin],
+    state: Optional[DensityOperatorProtocol],
 ):
     """
     Compute the expectation value of an operator or operators in an iterable object,
@@ -95,7 +95,7 @@ def collect_blocks_for_expect(obs_objs: Union[Operator, Iterable]) -> List[froze
 
 def collect_local_states(
     obs_objs: Union[Operator, Iterable], global_state
-) -> Dict[frozenset, DensityOperatorMixin]:
+) -> Dict[frozenset, DensityOperatorProtocol]:
     """
     Build a dict of local states required to compute the expectation values of the observable
     or the observables contained in obs_objs.
@@ -109,7 +109,7 @@ def collect_local_states(
 
     Return
     ======
-    Dict[frozenset, DensityMatrixMixin]
+    Dict[frozenset, DensityOperatorProtocol]
 
     A dict of local states associated to the sites enumerated in the keys.
 
@@ -211,8 +211,8 @@ def k_by_site_from_operator(k: Operator) -> Dict[str, Operator]:
 
 def reduced_state_by_block(
     term: Operator,
-    reduced_states_cache: Dict[Optional[frozenset], DensityOperatorMixin],
-) -> Optional[DensityOperatorMixin]:
+    reduced_states_cache: Dict[Optional[frozenset], DensityOperatorProtocol],
+) -> Optional[DensityOperatorProtocol]:
     acts_over = term.acts_over()
     result = reduced_states_cache.get(acts_over, None)
     if result is not None:

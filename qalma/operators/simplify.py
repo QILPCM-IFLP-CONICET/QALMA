@@ -3,7 +3,7 @@
 Functions to simplify sums of operators
 """
 import logging
-from typing import Callable, Dict, List, Optional, Sequence
+from typing import Callable, Dict, List, Optional, Sequence, cast
 
 from qutip import Qobj, tensor
 
@@ -72,7 +72,7 @@ def collect_nbody_terms(operator: Operator) -> dict:
     """
     full_acts_over: frozenset
     terms_by_block: Dict[frozenset, List[Operator]] = {}
-    scalar_term = 0.0
+    scalar_term: complex = cast(complex, 0)
     system = operator.system
 
     if not isinstance(operator, SumOperator):
@@ -82,7 +82,7 @@ def collect_nbody_terms(operator: Operator) -> dict:
     for term in operator.terms:
         acts_over_key = term.acts_over()
         if not acts_over_key:
-            scalar_term += term.prefactor
+            scalar_term += cast(complex, term.prefactor)
         else:
             full_acts_over = full_acts_over.union(acts_over_key)
             terms_by_block.setdefault(acts_over_key, []).append(term)
