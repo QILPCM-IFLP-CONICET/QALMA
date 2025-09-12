@@ -6,7 +6,7 @@ Be careful: just use this class for states of small systems.
 
 import logging
 from numbers import Number, Real
-from typing import Optional, Tuple, Union
+from typing import Optional, Tuple, Union, cast
 
 import numpy as np
 from qutip import Qobj, tensor as tensor_qutip  # type: ignore[import-untyped]
@@ -62,7 +62,7 @@ class QutipDensityOperator(DensityOperatorMixin, QutipOperator):
         block = tuple(sorted(self.system.sites))
         names = {name: pos for pos, name in enumerate(block)}
 
-        if isinstance(operand, DensityOperatorMixin):
+        if hasattr(operand, "expect"):
             p1 = self.prefactor
             p2 = operand.prefactor
             prefactor = p1 + p2
@@ -163,7 +163,7 @@ class QutipDensityOperator(DensityOperatorMixin, QutipOperator):
                 self.operator,
                 system=self.system,
                 names=self.site_names,
-                prefactor=self.prefactor * rho.prefactor,
+                prefactor=cast(Real, self.prefactor) * cast(Real, rho.prefactor),
             )
         acts_over_a = self.acts_over()
         if len(acts_over_a) == 0:

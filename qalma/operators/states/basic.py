@@ -228,6 +228,7 @@ class DensityOperatorMixin:
 
 class DensityOperatorProtocol(Protocol):
     prefactor: Number
+    system: SystemDescriptor
 
     def acts_over(self) -> frozenset: ...
     def expect(

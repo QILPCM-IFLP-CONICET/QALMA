@@ -2,11 +2,13 @@
 Functions for operators.
 """
 
+from numbers import Complex, Real
+
 # from collections.abc import Iterable
 # from typing import Callable, List, Optional, Tuple
 from typing import Tuple
 
-from numpy import complex128, float64, imag, real
+from numpy import imag, real
 
 from qalma.operators.arithmetic import OneBodyOperator, SumOperator
 from qalma.operators.basic import (
@@ -23,22 +25,9 @@ def compute_dagger(operator):
     Compute the adjoint of an `operator.
     If `operator` is a number, return its complex conjugate.
     """
-    if isinstance(
-        operator,
-        (
-            int,
-            float,
-            float64,
-        ),
-    ):
+    if isinstance(operator, Real):
         return operator
-    if isinstance(
-        operator,
-        (
-            complex,
-            complex128,
-        ),
-    ):
+    if isinstance(operator, Complex):
         if operator.imag == 0:
             return operator.real
         return operator.conj()
