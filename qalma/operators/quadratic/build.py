@@ -99,8 +99,8 @@ def orthonormal_hs_local_basis(local_generators_dict: LocalBasisDict) -> LocalBa
                     (hcomponent * b_op).tr() * b_op for b_op in basis
                 )
                 hcomponent.isherm = True
-                normsq = (hcomponent * hcomponent).tr()
-                if abs(normsq) < QALMA_TOLERANCE:
+                normsq = abs((hcomponent * hcomponent).tr())
+                if normsq < QALMA_TOLERANCE:
                     continue
                 basis.append(hcomponent * normsq ** (-0.5))
         #
