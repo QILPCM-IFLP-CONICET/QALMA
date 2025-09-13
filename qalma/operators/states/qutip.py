@@ -101,10 +101,6 @@ class QutipDensityOperator(DensityOperatorMixin, QutipOperator):
                     self.operator * self.prefactor + operand,
                     self.system,
                 )
-            logging.warning(
-                f"Adding {
-                    operand} to a DensityOperator produces a generic operator."
-            )
             return QutipOperator(
                 self.operator * self.prefactor + operand,
                 self.system,
