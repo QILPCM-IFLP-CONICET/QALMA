@@ -453,7 +453,7 @@ class LocalOperator(Operator):
             return True
         if isinstance(operator, complex):
             return operator.imag == 0.0
-        return operator.isherm
+        return operator.tidyup(QALMA_TOLERANCE).isherm
 
     @property
     def isdiagonal(self) -> bool:
