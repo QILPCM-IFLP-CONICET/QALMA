@@ -94,7 +94,9 @@ def orthonormal_hs_local_basis(local_generators_dict: LocalBasisDict) -> LocalBa
             # If the norm is under the tolerance, discard the element.
             for hcomponent in components:
                 # Ensure that components are tagged as hermitician.
-                hcomponent = hcomponent - np.real(hcomponent.tr() / hcomponent.dims[0][0])
+                hcomponent = hcomponent - np.real(
+                    hcomponent.tr() / hcomponent.dims[0][0]
+                )
                 hcomponent = hcomponent - sum(
                     (hcomponent * b_op).tr() * b_op for b_op in basis
                 )
