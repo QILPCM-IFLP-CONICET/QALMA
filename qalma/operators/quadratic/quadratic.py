@@ -61,7 +61,8 @@ class QuadraticFormOperator(Operator):
         self._isherm = None
         assert isinstance(basis, tuple)
         assert isinstance(weights, tuple)
-        assert all(gen.isherm for gen in basis)  # TODO: REMOVE ME
+        for pos, gen in enumerate(basis):
+            assert gen.isherm, f"Operator at pos {pos} got {gen.isherm}\n{gen}"  # TODO: REMOVE ME
         assert (
             isinstance(linear_term, (OneBodyOperator, LocalOperator, ScalarOperator))
             or linear_term is None
