@@ -58,7 +58,7 @@ class Operator:
     """Base class for operators"""
 
     system: SystemDescriptor
-    prefactor: complex = 1.0
+    prefactor: Number = 1.0
 
     # TODO check if it is possible implementing this
     # with multimethods
@@ -558,7 +558,7 @@ class ProductOperator(Operator):
     def __init__(
         self,
         sites_operators: dict,
-        prefactor: complex = 1.0,
+        prefactor: Number = 1.0,
         system: Optional[SystemDescriptor] = None,
     ):
         assert system is not None

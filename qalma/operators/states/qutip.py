@@ -14,7 +14,10 @@ from qutip import Qobj, tensor as tensor_qutip  # type: ignore[import-untyped]
 from qalma.model import SystemDescriptor
 from qalma.operators.basic import Operator, ScalarOperator
 from qalma.operators.qutip import QutipOperator
-from qalma.operators.states.basic import DensityOperatorMixin, DensityOperatorProtocol
+from qalma.operators.states.basic import (
+    DensityOperatorMixin,
+    DensityOperatorProtocol,
+)
 
 
 class QutipDensityOperator(DensityOperatorMixin, QutipOperator):
@@ -42,7 +45,8 @@ class QutipDensityOperator(DensityOperatorMixin, QutipOperator):
                     self.system,
                 )
             logging.warning(
-                f"Adding {operand} to a DensityOperator produces a generic operator."
+                f"Adding {
+                    operand} to a DensityOperator produces a generic operator."
             )
             return QutipOperator(
                 self.operator * self.prefactor + operand,
@@ -50,7 +54,8 @@ class QutipDensityOperator(DensityOperatorMixin, QutipOperator):
             )
         if isinstance(operand, (complex, np.complex128)):
             logging.warning(
-                f"Adding {operand} to a DensityOperator produces a generic operator."
+                f"Adding {
+                    operand} to a DensityOperator produces a generic operator."
             )
             return QutipOperator(
                 self.operator * self.prefactor + operand,
@@ -97,7 +102,8 @@ class QutipDensityOperator(DensityOperatorMixin, QutipOperator):
                     self.system,
                 )
             logging.warning(
-                f"Adding {operand} to a DensityOperator produces a generic operator."
+                f"Adding {
+                    operand} to a DensityOperator produces a generic operator."
             )
             return QutipOperator(
                 self.operator * self.prefactor + operand,
@@ -105,7 +111,8 @@ class QutipDensityOperator(DensityOperatorMixin, QutipOperator):
             )
         if isinstance(operand, (complex, np.complex128)):
             logging.warning(
-                f"Adding {operand} to a DensityOperator produces a generic operator."
+                f"Adding {
+                    operand} to a DensityOperator produces a generic operator."
             )
             return QutipOperator(
                 self.operator * self.prefactor + operand,
@@ -189,6 +196,7 @@ class QutipDensityOperator(DensityOperatorMixin, QutipOperator):
         return QutipOperator(log_op, self.system, self.site_names)
 
     def normalize(self):
+        """Normalize the operator"""
         if self._normalized:
             return self
         qoperator = self.operator

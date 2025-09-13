@@ -114,7 +114,7 @@ def collect_local_states(
     A dict of local states associated to the sites enumerated in the keys.
 
     """
-    local_states = {}
+    local_states: Dict[frozenset, DensityOperatorProtocol] = {}
     block_objts = collect_blocks_for_expect(obs_objs)
     for obj_block in (frozenset(blk) for blk in block_objts):
         if obj_block in local_states:
@@ -211,16 +211,12 @@ def k_by_site_from_operator(k: Operator) -> Dict[str, Operator]:
 
 def reduced_state_by_block(
     term: Operator,
-    reduced_states_cache: Dict[Optional[frozenset], DensityOperatorProtocol],
+    reduced_states_cache: Dict[frozenset, DensityOperatorProtocol],
 ) -> Optional[DensityOperatorProtocol]:
     acts_over = term.acts_over()
     result = reduced_states_cache.get(acts_over, None)
     if result is not None:
         return result
-    if acts_over is None:
-        return None
-    # No cache
-    # return reduced_states_cache.get(None, None)
 
     size = len(acts_over)
     for block in sorted(
@@ -228,17 +224,17 @@ def reduced_state_by_block(
         key=lambda x: len(x),
     ):
         if acts_over.issubset(block):
-
             result = reduced_states_cache[block]
             if result is not None:
                 result = result.partial_trace(acts_over)
             reduced_states_cache[acts_over] = result
             return result
-    result = reduced_states_cache.get(None, None)
-    if result is not None:
-        result = result.partial_trace(acts_over)
-    reduced_states_cache[acts_over] = result
-    return result
+    # result = reduced_states_cache.get(None, None)
+    # if result is not None:
+    #    result = result.partial_trace(acts_over)
+    # reduced_states_cache[acts_over] = result
+    # return result
+    return None
 
 
 def safe_exp_and_normalize_localop(operator: LocalOperator):
