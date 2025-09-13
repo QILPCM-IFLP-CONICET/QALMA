@@ -33,6 +33,7 @@ class GibbsDensityOperator(DensityOperatorMixin, Operator):
 
     _free_energy: float
     normalized: bool
+    prefactor: Number
     k: Operator
 
     def __init__(
@@ -194,7 +195,7 @@ class GibbsProductDensityOperator(DensityOperatorMixin, Operator):
     """
 
     k_by_site: Dict[str, Operator]
-    prefactor: float
+    prefactor: Number
     free_energies: Dict[str, float]
     isherm: bool = True
 
