@@ -44,19 +44,11 @@ class QutipDensityOperator(DensityOperatorMixin, QutipOperator):
                     self.operator * self.prefactor + operand,
                     self.system,
                 )
-            logging.warning(
-                f"Adding {
-                    operand} to a DensityOperator produces a generic operator."
-            )
             return QutipOperator(
                 self.operator * self.prefactor + operand,
                 self.system,
             )
         if isinstance(operand, (complex, np.complex128)):
-            logging.warning(
-                f"Adding {
-                    operand} to a DensityOperator produces a generic operator."
-            )
             return QutipOperator(
                 self.operator * self.prefactor + operand,
                 self.system,
@@ -106,10 +98,6 @@ class QutipDensityOperator(DensityOperatorMixin, QutipOperator):
                 self.system,
             )
         if isinstance(operand, (complex, np.complex128)):
-            logging.warning(
-                f"Adding {
-                    operand} to a DensityOperator produces a generic operator."
-            )
             return QutipOperator(
                 self.operator * self.prefactor + operand,
                 self.system,
