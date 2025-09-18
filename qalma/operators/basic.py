@@ -4,7 +4,6 @@ Different representations for operators
 
 import logging
 from functools import reduce
-from numbers import Number
 from typing import Callable, Dict, List, Optional, Tuple, Union
 
 import numpy as np
@@ -58,7 +57,7 @@ class Operator:
     """Base class for operators"""
 
     system: SystemDescriptor
-    prefactor: Number = 1.0
+    prefactor: complex = 1.0
 
     # TODO check if it is possible implementing this
     # with multimethods
@@ -372,7 +371,7 @@ class Operator:
         return ScalarOperator(qobj, self.system)
 
     # pylint: disable=invalid-name
-    def tr(self):
+    def tr(self) -> complex:
         """The trace of the operator"""
         return self.partial_trace(frozenset()).prefactor
 
@@ -558,7 +557,7 @@ class ProductOperator(Operator):
     def __init__(
         self,
         sites_operators: dict,
-        prefactor: Number = 1.0,
+        prefactor: complex = 1.0,
         system: Optional[SystemDescriptor] = None,
     ):
         assert system is not None
@@ -969,12 +968,12 @@ class ScalarOperator(ProductOperator):
         return self
 
 
-def empty_op(op: Union[Number, Qobj, Operator]) -> bool:
+def empty_op(op: Union[complex, Qobj, Operator]) -> bool:
     """
     Check if op is an sparse operator without
     non-zero elements.
     """
-    if isinstance(op, Number):
+    if isinstance(op, complex):
         return op == 0
 
     if getattr(op, "prefactor", 1) == 0:
@@ -1048,7 +1047,7 @@ def find_arithmetic_implementation(
                 return None
 
     # Last resource: try if the operands are instances of one of the keys in the dispatch table.
-    # Required for example for keys of the form (Operator, Number).
+    # Required for example for keys of the form (Operator, complex).
 
     for key, func in dispatch_table.items():
         if isinstance(op1, key[0]) and isinstance(op2, key[1]):

@@ -44,6 +44,7 @@ class QutipOperator(Operator):
 
     """
 
+    prefactor: complex
     system: SystemDescriptor
     operator: Qobj
     site_names: dict
@@ -412,7 +413,7 @@ class QutipOperator(Operator):
             return operator_qutip
         return operator_qutip.permute(shuffle)
 
-    def tr(self):
+    def tr(self) -> complex:
         """Compute the trace"""
         prefactor = self.prefactor
         if prefactor == 0:
@@ -421,7 +422,7 @@ class QutipOperator(Operator):
         site_names: Dict[str, int] = self.site_names
         op_tr = self.operator.tr() if site_names else 1.0
         if op_tr == 0.0:
-            return op_tr
+            return 0.0
 
         system: SystemDescriptor = self.system
         dimensions: Dict[str, int] = system.dimensions

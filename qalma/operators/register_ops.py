@@ -104,7 +104,7 @@ def _(x_op: ScalarOperator, y_op: ScalarOperator):
 
 
 @Operator.register_add_handler([(ScalarOperator, t) for t in NUMERIC_TYPES])
-def _(x_op: ScalarOperator, y_value: Number):
+def _(x_op: ScalarOperator, y_value: complex) -> Operator:
     """
 
     Parameters
@@ -124,7 +124,7 @@ def _(x_op: ScalarOperator, y_value: Number):
 @Operator.register_mul_handler(
     [(ScalarOperator, num_type) for num_type in NUMERIC_TYPES]
 )
-def _(x_op: ScalarOperator, y_value: Number):
+def _(x_op: ScalarOperator, y_value: complex) -> Operator:
     """
 
     Parameters
@@ -144,7 +144,7 @@ def _(x_op: ScalarOperator, y_value: Number):
 @Operator.register_mul_handler(
     [(num_type, ScalarOperator) for num_type in NUMERIC_TYPES]
 )
-def _(y_value: Number, x_op: ScalarOperator):
+def _(y_value: complex, x_op: ScalarOperator):
     """
 
     Parameters
@@ -177,7 +177,7 @@ def _(y_value: Number, x_op: ScalarOperator):
         for num_type in NUMERIC_TYPES
     ]
 )
-def _(x_op: LocalOperator, y_val: Number):
+def _(x_op: LocalOperator, y_val: complex) -> Operator:
     """
 
     Parameters
@@ -200,7 +200,7 @@ def _(x_op: LocalOperator, y_val: Number):
         ScalarOperator,
     )
 )
-def _(x_op: LocalOperator, y_op: ScalarOperator):
+def _(x_op: LocalOperator, y_op: ScalarOperator) -> Operator:
     """
 
     Parameters
@@ -254,7 +254,7 @@ def _(x_op: LocalOperator, y_op: LocalOperator):
         for num_type in NUMERIC_TYPES
     ]
 )
-def _(x_op: LocalOperator, y_val: Number):
+def _(x_op: LocalOperator, y_val: complex):
     """
 
     Parameters
@@ -280,7 +280,7 @@ def _(x_op: LocalOperator, y_val: Number):
         for num_type in NUMERIC_TYPES
     ]
 )
-def _(y_val: Number, x_op: LocalOperator):
+def _(y_val: complex, x_op: LocalOperator):
     """
 
     Parameters
@@ -432,7 +432,7 @@ def _(x_op: ProductOperator, y_op: ProductOperator):
         for num_type in NUMERIC_TYPES
     ]
 )
-def _(x_op: ProductOperator, y_value: Number):
+def _(x_op: ProductOperator, y_value: complex) -> Operator:
     """
 
     Parameters
@@ -461,7 +461,7 @@ def _(x_op: ProductOperator, y_value: Number):
         for num_type in NUMERIC_TYPES
     ]
 )
-def _(y_value: Number, x_op: ProductOperator):
+def _(y_value: complex, x_op: ProductOperator):
     """
 
     Parameters
@@ -625,7 +625,7 @@ def _(y_op: LocalOperator, x_op: ProductOperator):
         for num_type in NUMERIC_TYPES
     ]
 )
-def _(x_op: SumOperator, y_value: Number):
+def _(x_op: SumOperator, y_value: complex):
     """
 
     Parameters
@@ -651,7 +651,7 @@ def _(x_op: SumOperator, y_value: Number):
         for num_type in NUMERIC_TYPES
     ]
 )
-def _(x_op: SumOperator, y_value: Number):
+def _(x_op: SumOperator, y_value: complex):
     """
 
     Parameters
@@ -684,7 +684,7 @@ def _(x_op: SumOperator, y_value: Number):
         for num_type in NUMERIC_TYPES
     ]
 )
-def _(y_value: Number, x_op: SumOperator):
+def _(y_value: complex, x_op: SumOperator):
     """
 
     Parameters
@@ -1064,7 +1064,7 @@ def _(x_op: OneBodyOperator, y_op: OneBodyOperator):
         for num_type in NUMERIC_TYPES
     ]
 )
-def _(x_op: OneBodyOperator, y_value: Number):
+def _(x_op: OneBodyOperator, y_value: complex):
     """
 
     Parameters
@@ -1150,7 +1150,7 @@ def _(x_op: OneBodyOperator, y_op: LocalOperator):
         for num_type in NUMERIC_TYPES
     ]
 )
-def _(x_op: OneBodyOperator, y_value: Number):
+def _(x_op: OneBodyOperator, y_value: complex):
     """
 
     Parameters
@@ -1180,7 +1180,7 @@ def _(x_op: OneBodyOperator, y_value: Number):
         for num_type in NUMERIC_TYPES
     ]
 )
-def _(y_value: Number, x_op: OneBodyOperator):
+def _(y_value: complex, x_op: OneBodyOperator):
     """
 
     Parameters
@@ -1308,7 +1308,7 @@ def _(x_op: ScalarOperator, y_op: LocalOperator):
         for num_type in NUMERIC_TYPES
     ]
 )
-def _(x_op: ProductOperator, y_value: Number):
+def _(x_op: ProductOperator, y_value: complex):
     """
 
     Parameters
@@ -1539,7 +1539,7 @@ def sum_qutip_operator_plus_operator(x_op: QutipOperator, y_op: QutipOperator):
         for num_type in NUMERIC_TYPES
     ]
 )
-def _(y_val: Number, x_op: QutipOperator):
+def _(y_val: complex, x_op: QutipOperator):
     """product of a number and a QutipOperator.
 
     Parameters
@@ -1570,7 +1570,7 @@ def _(y_val: Number, x_op: QutipOperator):
         for num_type in NUMERIC_TYPES
     ]
 )
-def sum_qutip_operator_plus_number(x_op: QutipOperator, y_val: Union[Number, Qobj]):
+def sum_qutip_operator_plus_number(x_op: QutipOperator, y_val: Union[complex, Qobj]):
     """Sum an operator and a number  or a Qobj
 
     Parameters
@@ -1603,7 +1603,7 @@ def sum_qutip_operator_plus_number(x_op: QutipOperator, y_val: Union[Number, Qob
         for num_type in NUMERIC_TYPES
     ]
 )
-def sum_qutip_operator_mul_number(x_op: QutipOperator, y_val: Union[Number, Qobj]):
+def sum_qutip_operator_mul_number(x_op: QutipOperator, y_val: Union[complex, Qobj]):
     """Sum an operator and a number  or a Qobj
 
     Parameters
@@ -1636,7 +1636,7 @@ def sum_qutip_operator_mul_number(x_op: QutipOperator, y_val: Union[Number, Qobj
         for num_type in NUMERIC_TYPES
     ]
 )
-def sum_qutip_operator_mul_number_back(y_val: Number, x_op: QutipOperator):
+def sum_qutip_operator_mul_number_back(y_val: complex, x_op: QutipOperator):
     """Sum an operator and a number  or a Qobj
 
     Parameters
@@ -1949,7 +1949,7 @@ def _(qf_operator: QuadraticFormOperator, op_other: Operator):
         for num_type in NUMERIC_TYPES
     ]
 )
-def _(value: Number, qf_operator: QuadraticFormOperator):
+def _(value: complex, qf_operator: QuadraticFormOperator):
     """
 
     Parameters
@@ -1983,7 +1983,7 @@ def _(value: Number, qf_operator: QuadraticFormOperator):
         for num_type in NUMERIC_TYPES
     ]
 )
-def _(qf_operator: QuadraticFormOperator, value: Number):
+def _(qf_operator: QuadraticFormOperator, value: complex):
     """
 
     Parameters
