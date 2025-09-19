@@ -218,7 +218,7 @@ def adaptative_projected_evolution_b(
     n_body: int = -1,
     tol=1e-3,
     update_basis_callback: Optional[Callable] = None,
-    extra_observables: Tuple = tuple(),
+    extra_observables: Tuple[Operator, ...] = tuple(),
 ) -> List[Operator]:
     """
     Compute the solution of the MaxEnt projected Schrödinger equation
@@ -351,6 +351,7 @@ def adaptative_projected_evolution_c(
     n_body: int = -1,
     tol=1e-3,
     update_basis_callback: Optional[Callable] = None,
+    extra_observables: Tuple[Operator, ...] = tuple(),
 ) -> List[Operator]:
     """
     Compute the solution of the MaxEnt projected Schrödinger equation
@@ -407,8 +408,12 @@ def adaptative_projected_evolution_c(
                 op_b, nmax=n_body, sigma=sigma
             ),
         )
+
+        rest_elements = extra_observables
         if k is not k_ref_new:
-            new_basis = new_basis + (k,)
+            rest_elements = rest_elements + (k,)
+        if rest_elements:
+            new_basis = rest_elements + new_basis
         return (
             new_basis,
             sigma,
