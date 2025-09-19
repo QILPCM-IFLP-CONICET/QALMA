@@ -11,7 +11,7 @@ from typing import Callable, List, Optional, Tuple
 import numpy as np
 
 from qalma.meanfield import (
-    self_consistent_project_meanfield,
+    variational_quadratic_mfa,
 )
 from qalma.operators import Operator
 from qalma.operators.states import GibbsProductDensityOperator
@@ -19,6 +19,12 @@ from qalma.projections import n_body_projection
 from qalma.scalarprod import HierarchicalOperatorBasis, fetch_covar_scalar_product
 
 # function used to safely and robustly map K-states to states
+
+
+def compute_mean_field_state(k, sigma, **kwargs):
+    sigma_result = variational_quadratic_mfa(k, 2, sigma)
+    generator = -sigma_result.logm()
+    return generator, sigma_result
 
 
 def occupation_factor(phi):
@@ -87,7 +93,7 @@ def adaptative_projected_evolution(
     """
 
     def update_basis(k, sigma):
-        k_ref_new, sigma = self_consistent_project_meanfield(
+        k_ref_new, sigma = compute_mean_field_state(
             k, sigma, proj_func=n_body_projection
         )
         return (
@@ -263,7 +269,7 @@ def adaptative_projected_evolution_b(
     """
 
     def update_basis(k, sigma):
-        k_ref_new, sigma = self_consistent_project_meanfield(
+        k_ref_new, sigma = compute_mean_field_state(
             k, sigma, proj_func=n_body_projection
         )
         new_basis = HierarchicalOperatorBasis(
@@ -396,7 +402,7 @@ def adaptative_projected_evolution_c(
     """
 
     def update_basis(k, sigma):
-        k_ref_new, sigma = self_consistent_project_meanfield(
+        k_ref_new, sigma = compute_mean_field_state(
             k, sigma, proj_func=n_body_projection
         )
         new_basis = HierarchicalOperatorBasis(
