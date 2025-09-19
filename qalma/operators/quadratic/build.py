@@ -100,11 +100,12 @@ def orthonormal_hs_local_basis(local_generators_dict: LocalBasisDict) -> LocalBa
                 hcomponent = hcomponent - sum(
                     (hcomponent * b_op).tr() * b_op for b_op in basis
                 )
-                hcomponent.isherm = True
-                normsq = (hcomponent * hcomponent).tr()
-                if abs(normsq) < QALMA_TOLERANCE:
+                normsq = abs((hcomponent * hcomponent).tr())
+                if normsq < QALMA_TOLERANCE:
                     continue
-                basis.append(hcomponent * normsq ** (-0.5))
+                hcomponent = hcomponent * abs(normsq ** (-0.5))
+                hcomponent.isherm = True
+                basis.append(hcomponent)
         #
         basis_dict[site] = basis
     return basis_dict
@@ -121,7 +122,10 @@ def zero_expectation_value_basis(basis: LocalBasisDict, sigma_ref):
     new_basis = {}
     for site, local_basis in basis.items():
         local_sigma = local_sigmas[site]
-        new_basis[site] = [elem - (elem * local_sigma).tr() for elem in basis[site]]
+        new_basis_site = [elem - (elem * local_sigma).tr() for elem in basis[site]]
+        for elem in new_basis_site:
+            elem.isherm = True
+        new_basis[site] = new_basis_site
     return new_basis
 
 
