@@ -46,7 +46,7 @@ BENCHMARK_FILE := bench_$(shell date +%Y%m%d)_$(shell git rev-parse --short HEAD
 all: develop check_pre_commit
 	$(PIP) install -e .[dev]
 
-check_pre_commit: conventions pytest
+check_pre_commit: conventions mypy pytest
 
 conventions:
 	ruff check --fix qalma

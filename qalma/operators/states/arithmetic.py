@@ -8,7 +8,6 @@ implemented though the class MixtureDensityOperator.
 
 import logging
 import pickle
-from numbers import Number
 from typing import Iterable, Optional, Set, Tuple, Union, cast
 
 import numpy as np
@@ -139,7 +138,9 @@ class MixtureDensityOperator(DensityOperatorMixin, SumOperator):
             sites.update(acts_over)
         return frozenset(sites)
 
-    def expect(self, obs: Union[Operator, Iterable]) -> Union[np.ndarray, dict, Number]:
+    def expect(
+        self, obs: Union[Operator, Iterable]
+    ) -> Union[np.ndarray, dict, complex]:
 
         def compute_results(curr_obs, sub_averages, prefactors):
             if isinstance(curr_obs, dict):

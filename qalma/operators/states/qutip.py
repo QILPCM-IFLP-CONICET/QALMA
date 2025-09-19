@@ -5,7 +5,7 @@ Be careful: just use this class for states of small systems.
 """
 
 import logging
-from numbers import Number, Real
+from numbers import Real
 from typing import Optional, Tuple, Union, cast
 
 import numpy as np
@@ -44,19 +44,11 @@ class QutipDensityOperator(DensityOperatorMixin, QutipOperator):
                     self.operator * self.prefactor + operand,
                     self.system,
                 )
-            logging.warning(
-                f"Adding {
-                    operand} to a DensityOperator produces a generic operator."
-            )
             return QutipOperator(
                 self.operator * self.prefactor + operand,
                 self.system,
             )
         if isinstance(operand, (complex, np.complex128)):
-            logging.warning(
-                f"Adding {
-                    operand} to a DensityOperator produces a generic operator."
-            )
             return QutipOperator(
                 self.operator * self.prefactor + operand,
                 self.system,
@@ -101,19 +93,11 @@ class QutipDensityOperator(DensityOperatorMixin, QutipOperator):
                     self.operator * self.prefactor + operand,
                     self.system,
                 )
-            logging.warning(
-                f"Adding {
-                    operand} to a DensityOperator produces a generic operator."
-            )
             return QutipOperator(
                 self.operator * self.prefactor + operand,
                 self.system,
             )
         if isinstance(operand, (complex, np.complex128)):
-            logging.warning(
-                f"Adding {
-                    operand} to a DensityOperator produces a generic operator."
-            )
             return QutipOperator(
                 self.operator * self.prefactor + operand,
                 self.system,
@@ -135,7 +119,7 @@ class QutipDensityOperator(DensityOperatorMixin, QutipOperator):
         op_b = QutipOperator(self.operator, names=self.site_names, system=self.system)
         return operand * op_b
 
-    def join_states(self, other: DensityOperatorProtocol | Number):
+    def join_states(self, other: DensityOperatorProtocol | complex):
         """
         Combine the states of two disjoint systems to produce the state
         of the union of both systems.
@@ -149,7 +133,7 @@ class QutipDensityOperator(DensityOperatorMixin, QutipOperator):
                 names=self.site_names,
                 prefactor=self.prefactor * other,
             )
-        if isinstance(other, Number):
+        if isinstance(other, complex):
             raise ValueError("operand is not a positive number")
         rho: DensityOperatorProtocol = other
         if not hasattr(rho, "expect"):

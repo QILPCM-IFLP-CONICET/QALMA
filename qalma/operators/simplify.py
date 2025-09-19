@@ -398,7 +398,7 @@ def rewrite_nbody_term_using_qutip(
     new_terms = (
         ProductOperator(
             dict(zip(block_sites, factors)),
-            1,
+            1.0,
             system,
         )
         for factors in factor_terms
