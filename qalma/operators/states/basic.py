@@ -4,7 +4,6 @@ Density operator classes.
 
 import logging
 import pickle
-from numbers import Number
 from typing import Iterable, Optional, Protocol, Tuple, Union, cast
 
 import numpy as np
@@ -80,7 +79,7 @@ class DensityOperatorMixin:
     ```
     """
 
-    prefactor: Number
+    prefactor: complex
     system: SystemDescriptor
 
     def __add__(self, operand):
@@ -150,7 +149,7 @@ class DensityOperatorMixin:
 
     def expect(
         self, obs_objs: Union[Operator, Iterable]
-    ) -> Union[NDArray, dict, Number]:
+    ) -> Union[NDArray, dict, complex]:
         """Compute the expectation value of an observable"""
         # TODO: expode that expectation values of operators just requires the
         # state where the operators acts.
@@ -243,14 +242,19 @@ class DensityOperatorProtocol(Protocol):
     Minimal interface of DensityOperators
     """
 
-    prefactor: Number
+    prefactor: complex
     system: SystemDescriptor
 
     def acts_over(self) -> frozenset: ...
 
+    def __add__(self, other): ...
+    def __radd__(self, other): ...
+    def __mul__(self, other): ...
+    def __rmul__(self, other): ...
+
     def expect(
         self, obs: Union[Operator, Iterable]
-    ) -> Union[np.ndarray, dict, Number]: ...
+    ) -> Union[np.ndarray, dict, complex]: ...
 
     def partial_trace(self, sites: Union[frozenset, SystemDescriptor]): ...
 
@@ -262,7 +266,7 @@ class DensityOperatorProtocol(Protocol):
 class ProductDensityOperator(DensityOperatorMixin, ProductOperator):
     """An uncorrelated density operator."""
 
-    prefactor: Number
+    prefactor: complex  # must be float
 
     def __init__(
         self,
@@ -343,7 +347,7 @@ class ProductDensityOperator(DensityOperatorMixin, ProductOperator):
 
     def expect(
         self, obs_objs: Union[Operator, Iterable]
-    ) -> Union[np.ndarray, dict, Number]:
+    ) -> Union[np.ndarray, dict, complex]:
         """
         Compute the expectation value of an operator or a sequence of operators
         """
@@ -360,7 +364,7 @@ class ProductDensityOperator(DensityOperatorMixin, ProductOperator):
             sites_obs = obs_prod.sites_op
             local_states = self.sites_op
             dimensions = self.system.dimensions
-            result: Number = cast(Number, obs_prod.prefactor)
+            result: complex = obs_prod.prefactor
 
             for site, obs_op in sites_obs.items():
                 if result == 0:
