@@ -282,7 +282,7 @@ def adaptative_projected_evolution_b(
             ),
         )
 
-        rest_elements = extra_observables
+        rest_elements = tuple(extra_observables)
         if k is not k_ref_new:
             rest_elements = rest_elements + (k_ref_new,)
         if rest_elements:
@@ -415,7 +415,7 @@ def adaptative_projected_evolution_c(
             ),
         )
 
-        rest_elements = extra_observables
+        rest_elements = tuple(extra_observables)
         if k is not k_ref_new:
             rest_elements = rest_elements + (k,)
         if rest_elements:

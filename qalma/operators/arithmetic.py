@@ -163,12 +163,9 @@ class SumOperator(Operator):
             # Here we assume that after simplify, the operator is a single term
             # (not a SumOperator), a OneBodyOperator, or a sum of a one-body operator
             # and terms acting over an specific block.
-            print(" aggressive approach for SumOperator.isherm")
             nh_sum = SumOperator(non_hermitian_tuple, self.system).simplify()
             if not hasattr(nh_sum, "terms"):
                 self._isherm = nh_sum.isherm
-                if self._isherm is False:
-                    print(f"  the unique nh term {nh_sum} is not hermitician.")
                 return self._isherm
             # Hermitician until the opposite is shown:
             isherm = True
@@ -180,12 +177,8 @@ class SumOperator(Operator):
                 if term_isherm is None:
                     # Last resource:
                     ah_part = term - term.dag()
-                    nh_size = abs((ah_part * ah_part).tr())
-                    term_isherm = nh_size < QALMA_TOLERANCE
-                    if term_isherm is False:
-                        print(f"  {term_isherm}  too large for hermitician")
+                    term_isherm = abs((ah_part * ah_part).tr()) < QALMA_TOLERANCE
                 if not term_isherm:
-                    print(f"   {term}\n    is not hermitician")
                     isherm = False
                     break
             self._isherm = isherm
@@ -202,8 +195,6 @@ class SumOperator(Operator):
             self._isherm = True
             return True
 
-        if isherm is False:
-            print("   was previously established that is not hermitician.")
         return bool(self._isherm)
 
     @property

@@ -447,12 +447,12 @@ class LocalOperator(Operator):
 
     @property
     def isherm(self) -> bool:
-        operator = self.operator.tidyup()
+        operator = self.operator
         if isinstance(operator, (float, int)):
             return True
         if isinstance(operator, complex):
             return operator.imag == 0.0
-        return operator.tidyup(QALMA_TOLERANCE).isherm
+        return operator.isherm
 
     @property
     def isdiagonal(self) -> bool:
