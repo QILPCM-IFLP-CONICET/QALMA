@@ -4,7 +4,7 @@ Functions used to run MaxEnt simulations.
 
 from __future__ import annotations
 
-from typing import Any, Callable, List
+from typing import Any, Callable, Dict, List, Optional
 
 import qutip
 from numpy.typing import ArrayLike
@@ -18,11 +18,15 @@ def qutip_me_solve(
     rho0: Operator,
     tlist: ArrayLike,
     *,
-    c_ops: list[Operator] | dict[Any, Operator] | Callable[[float, "Qobj"], Any] = None,
-    e_ops: list[Operator] | dict[Any, Operator] | Callable[[float, "Qobj"], Any] = None,
-    args: dict[str, Any] = None,
-    options: dict[str, Any] = None,
-) -> List[Operator]:
+    c_ops: Optional[
+        List[Operator] | dict[Any, Operator] | Callable[[float, "Qobj"], Any]
+    ] = None,
+    e_ops: Optional[
+        list[Operator] | dict[Any, Operator] | Callable[[float, "Qobj"], Any]
+    ] = None,
+    args: Optional[Dict[str, Any]] = None,
+    options: Optional[Dict[str, Any]] = None,
+) -> List[Operator] | Dict[Any, Any]:
     """
     Compute the solution of the Schrödinger equation using qutip.mesolve
 

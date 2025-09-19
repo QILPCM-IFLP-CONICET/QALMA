@@ -2,11 +2,13 @@
 Functions for operators.
 """
 
+from numbers import Complex, Real
+
 # from collections.abc import Iterable
 # from typing import Callable, List, Optional, Tuple
 from typing import Tuple
 
-from numpy import complex128, float64, imag, real
+from numpy import imag, real
 
 from qalma.operators.arithmetic import OneBodyOperator, SumOperator
 from qalma.operators.basic import (
@@ -23,9 +25,9 @@ def compute_dagger(operator):
     Compute the adjoint of an `operator.
     If `operator` is a number, return its complex conjugate.
     """
-    if isinstance(operator, (int, float, float64)):
+    if isinstance(operator, Real):
         return operator
-    if isinstance(operator, (complex, complex128)):
+    if isinstance(operator, Complex):
         if operator.imag == 0:
             return operator.real
         return operator.conj()
@@ -42,8 +44,9 @@ def hermitian_and_antihermitian_parts(operator: Operator) -> Tuple[Operator, Ope
     if operator.isherm:
         return operator, ScalarOperator(0, system)
 
+    operator = operator.simplify()
     if isinstance(operator, OneBodyOperator):
-        operator = operator.simplify()
+
         terms = [hermitian_and_antihermitian_parts(term) for term in operator.terms]
         herm_terms = tuple(term[0] for term in terms)
         antiherm_terms = tuple(term[1] for term in terms)
@@ -53,7 +56,6 @@ def hermitian_and_antihermitian_parts(operator: Operator) -> Tuple[Operator, Ope
         )
 
     if isinstance(operator, SumOperator):
-        operator = operator.simplify()
         terms = [hermitian_and_antihermitian_parts(term) for term in operator.terms]
         herm_terms = tuple(term[0] for term in terms)
         antiherm_terms = tuple(term[1] for term in terms)
@@ -67,17 +69,17 @@ def hermitian_and_antihermitian_parts(operator: Operator) -> Tuple[Operator, Ope
         basis = operator.basis
         system = operator.system
         offset = operator.offset
-        linear_terms = operator.linear_terms
+        linear_term = operator.linear_term
         if offset is None:
             real_offset, imag_offset = (None, None)
         else:
             real_offset, imag_offset = hermitian_and_antihermitian_parts(offset)
 
-        if linear_terms is None:
+        if linear_term is None:
             real_linear_term, imag_linear_term = (None, None)
         else:
             real_linear_term, imag_linear_term = hermitian_and_antihermitian_parts(
-                linear_terms
+                linear_term
             )
 
         weights_re, weights_im = tuple((real(w) for w in weights)), tuple(

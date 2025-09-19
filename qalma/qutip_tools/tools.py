@@ -5,7 +5,8 @@ Functions for basic interface with qutip objects.
 import logging
 from functools import reduce
 from itertools import combinations
-from typing import Iterable, Iterator, List, Optional, Tuple
+from numbers import Real
+from typing import Dict, Iterable, Iterator, List, Optional, Tuple
 
 import numpy as np
 from numpy import ndarray, zeros as np_zeros
@@ -680,7 +681,7 @@ def get_proper_spaces(spectrum: Iterable) -> List[List[int]]:
     Given a diagonal operator, find the proper spaces
     associated to each eigenvalue.
     """
-    sectors_dict = {}
+    sectors_dict: Dict[Real, List[int]] = {}
     for idx, sector in enumerate(spectrum):
         sectors_dict.setdefault(np.real(sector), []).append(idx)
     return list(sectors_dict.values())
@@ -752,12 +753,12 @@ def project_qutip_to_m_body(op_qutip: Qobj, m_max=2, local_sigmas=None) -> Qobj:
     if local_sigmas is None:
         local_sigmas = [1 / dim for dim in dimensions]
     for term in decompose:
-        term = [t.tidyup() for t in term]
+        term_tuple = tuple(t.tidyup() for t in term)
         local_exp_vals = [
-            (state * factor).tr() for state, factor in zip(local_sigmas, term)
+            (state * factor).tr() for state, factor in zip(local_sigmas, term_tuple)
         ]
         local_delta_op = [
-            factor - exp_val for factor, exp_val in zip(term, local_exp_vals)
+            factor - exp_val for factor, exp_val in zip(term_tuple, local_exp_vals)
         ]
         scalar_term += reduce(lambda x, y: x * y, local_exp_vals)
         for m in range(m_max):

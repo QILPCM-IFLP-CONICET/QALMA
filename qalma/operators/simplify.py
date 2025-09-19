@@ -3,9 +3,9 @@
 Functions to simplify sums of operators
 """
 import logging
-from typing import Callable, Optional, Sequence
+from typing import Callable, Dict, List, Optional, Sequence, cast
 
-from qutip import tensor
+from qutip import Qobj, tensor
 
 from qalma.model import SystemDescriptor
 from qalma.operators.arithmetic import OneBodyOperator, SumOperator
@@ -70,8 +70,9 @@ def collect_nbody_terms(operator: Operator) -> dict:
 
 
     """
-    terms_by_block = {}
-    scalar_term = 0.0
+    full_acts_over: frozenset
+    terms_by_block: Dict[frozenset, List[Operator]] = {}
+    scalar_term: complex = cast(complex, 0)
     system = operator.system
 
     if not isinstance(operator, SumOperator):
@@ -79,22 +80,12 @@ def collect_nbody_terms(operator: Operator) -> dict:
 
     full_acts_over = frozenset()
     for term in operator.terms:
-        acts_over = term.acts_over()
-        if acts_over is None:
-            acts_over_key = None
-            terms_by_block.setdefault(acts_over_key, []).append(term)
-            continue
-
-        acts_over_key = acts_over
-        assert isinstance(acts_over_key, frozenset)
+        acts_over_key = term.acts_over()
         if not acts_over_key:
-            scalar_term += term.prefactor
+            scalar_term += cast(complex, term.prefactor)
         else:
             full_acts_over = full_acts_over.union(acts_over_key)
             terms_by_block.setdefault(acts_over_key, []).append(term)
-
-    if None in terms_by_block:
-        terms_by_block.setdefault(full_acts_over, []).extend(terms_by_block.pop(None))
 
     # Add a scalar term
     if scalar_term:
@@ -273,12 +264,12 @@ def simplify_qutip_sums(sum_operator: SumOperator) -> Operator:
     if not isinstance(sum_operator, SumOperator):
         return sum_operator
 
-    changed = False
+    changed: bool = False
     isherm = sum_operator._isherm
     system = sum_operator.system
-    terms = []
-    qutip_terms = {}
-    product_terms = {}
+    terms: List[Operator] = []
+    qutip_terms: Dict[frozenset, List[QutipOperator]] = {}
+    product_terms: Dict[frozenset, List[ProductOperator]] = {}
 
     for term in sum_operator.terms:
         if isinstance(term, ProductOperator):
@@ -344,8 +335,8 @@ def rewrite_nbody_term_using_qutip(
     operator_list: list,
     block: tuple,
     system: SystemDescriptor,
-    isherm: bool = None,
-    isdiag: bool = None,
+    isherm: Optional[bool] = None,
+    isdiag: Optional[bool] = None,
 ) -> Operator:
     """Do the decomposition work using qutip
 
@@ -367,7 +358,7 @@ def rewrite_nbody_term_using_qutip(
 
     """
     block_sites = sorted(block)
-    sites_identity = {}
+    sites_identity: Dict[str, Qobj] = {}
 
     def op_or_identity(term, site):
         """
@@ -407,7 +398,7 @@ def rewrite_nbody_term_using_qutip(
     new_terms = (
         ProductOperator(
             dict(zip(block_sites, factors)),
-            1,
+            1.0,
             system,
         )
         for factors in factor_terms

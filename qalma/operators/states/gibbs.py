@@ -3,7 +3,6 @@ Classes to represent density operators as Gibbs states $rho=e^{-k}$.
 
 """
 
-from numbers import Number
 from typing import Callable, Dict, Iterable, Optional, Tuple, Union, cast
 
 import numpy as np
@@ -33,6 +32,7 @@ class GibbsDensityOperator(DensityOperatorMixin, Operator):
 
     _free_energy: float
     normalized: bool
+    prefactor: complex
     k: Operator
 
     def __init__(
@@ -42,7 +42,7 @@ class GibbsDensityOperator(DensityOperatorMixin, Operator):
         prefactor=1.0,
         normalized=False,
         meanfield=None,
-        symmetry_projections: Tuple[Callable] = tuple(),
+        symmetry_projections: Tuple[Callable, ...] = tuple(),
     ):
         self.symmetry_projections = symmetry_projections
         if prefactor == 0:
@@ -100,7 +100,7 @@ class GibbsDensityOperator(DensityOperatorMixin, Operator):
             return self * operand.inv()
         raise ValueError("Division of an operator by ", type(operand), " not defined.")
 
-    def acts_over(self) -> Optional[frozenset]:
+    def acts_over(self) -> frozenset:
         """
         Return a set with the name of the
         sites where the operator nontrivially acts
@@ -157,7 +157,7 @@ class GibbsDensityOperator(DensityOperatorMixin, Operator):
             rho_qutip, names=names, system=self.system, prefactor=prefactor
         )
 
-    def to_qutip(self, block: Optional[Tuple[str]] = None):
+    def to_qutip(self, block: Optional[Tuple[str, ...]] = None):
         system = self.system
         all_sites = tuple(system.sites)
         if block is None:
@@ -194,7 +194,7 @@ class GibbsProductDensityOperator(DensityOperatorMixin, Operator):
     """
 
     k_by_site: Dict[str, Operator]
-    prefactor: float
+    prefactor: complex
     free_energies: Dict[str, float]
     isherm: bool = True
 
@@ -202,14 +202,14 @@ class GibbsProductDensityOperator(DensityOperatorMixin, Operator):
         self,
         k: Union[Operator, dict],
         system: Optional[SystemDescriptor] = None,
-        prefactor: float = 1,
+        prefactor: complex = 1,
         normalized: bool = False,
     ):
         self_system: SystemDescriptor
         k_by_site: Dict[str, Operator]
         f_locals: Dict[str, float]
 
-        assert prefactor > 0.0
+        assert abs(np.imag(prefactor)) == 0 and np.real(prefactor) > 0
 
         self.prefactor = prefactor
         if isinstance(k, dict):
@@ -277,7 +277,7 @@ class GibbsProductDensityOperator(DensityOperatorMixin, Operator):
                 )
         return operand * self.to_product_state()
 
-    def acts_over(self) -> Optional[frozenset]:
+    def acts_over(self) -> frozenset:
         """
         Return a set with the names of the sites where
         the operator non-trivially acts over.
@@ -286,7 +286,7 @@ class GibbsProductDensityOperator(DensityOperatorMixin, Operator):
 
     def expect(
         self, obs_objs: Union[Operator, Iterable]
-    ) -> Union[np.ndarray, dict, Number]:
+    ) -> Union[np.ndarray, dict, complex]:
         return (self.to_product_state()).expect(obs_objs)
 
     @property
@@ -337,5 +337,5 @@ class GibbsProductDensityOperator(DensityOperatorMixin, Operator):
             normalize=True,
         )
 
-    def to_qutip(self, block: Optional[Tuple[str]] = None):
+    def to_qutip(self, block: Optional[Tuple[str, ...]] = None):
         return self.to_product_state().to_qutip(block)

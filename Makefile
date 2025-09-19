@@ -38,6 +38,7 @@ BENCHMARK_FILE := bench_$(shell date +%Y%m%d)_$(shell git rev-parse --short HEAD
     docs\
     docs-clean\
     install \
+    mypy \
     pytest
 
 
@@ -45,7 +46,7 @@ BENCHMARK_FILE := bench_$(shell date +%Y%m%d)_$(shell git rev-parse --short HEAD
 all: develop check_pre_commit
 	$(PIP) install -e .[dev]
 
-check_pre_commit: conventions pytest
+check_pre_commit: conventions mypy pytest
 
 conventions:
 	ruff check --fix qalma
@@ -100,3 +101,7 @@ benchmark-clean:
 
 benchmark-show:
 	python test/compare_benchmarks.py
+
+
+mypy:
+	mypy --install-types --ignore-missing-imports --non-interactive qalma

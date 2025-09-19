@@ -5,7 +5,7 @@ Parallel routines
 
 import logging
 from functools import partial
-from typing import Optional, Tuple
+from typing import Any, Dict, Optional, Tuple
 
 import qalma.settings as qalma_settings
 from qalma.operators import Operator
@@ -23,7 +23,7 @@ MAX_WORKERS = qalma_settings.PARALLEL_MAX_WORKERS
 USE_THREADS = qalma_settings.PARALLEL_USE_THREADS
 
 
-DISPATCH_PROJECTION_METHOD_PARALLEL = {}
+DISPATCH_PROJECTION_METHOD_PARALLEL: Dict[Any, Any] = {}
 
 
 if qalma_settings.USE_PARALLEL:
@@ -126,12 +126,12 @@ def _project_monomial_worker(operator, nmax, sigma):
 
 
 def parallel_process_non_dispatched_terms(
-    terms: Tuple[Operator],
+    terms: Tuple[Operator, ...],
     nmax: int,
     sigma: Optional[ProductDensityOperator | GibbsProductDensityOperator] = None,
     use_threads=USE_THREADS,
     max_workers=MAX_WORKERS,
-) -> Operator:
+) -> Tuple[Operator, ...]:
     """
     Project each operator in `terms` to the nmax subspace, relative
     to the state `sigma`.

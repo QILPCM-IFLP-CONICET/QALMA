@@ -23,7 +23,7 @@ def get_srcdir():
 
 
 ROOT_DIR = get_srcdir()
-FIGURES_DIR = f"{ROOT_DIR}/doc/figs"
+FIGURES_DIR = f"{ROOT_DIR}/../docs/figures"
 LATTICE_LIB_FILE = f"{ROOT_DIR}/lib/lattices.xml"
 MODEL_LIB_FILE = f"{ROOT_DIR}/lib/models.xml"
 
@@ -33,5 +33,5 @@ QALMA_INFER_ARITHMETICS = False
 QALMA_ALLOW_OVERWRITE_BINDINGS = False
 QALMA_TOLERANCE = 1.0e-14
 USE_PARALLEL = bool(os.environ.get("USE_PARALLEL", 0))
-PARALLEL_MAX_WORKERS = bool(os.environ.get("QALMA_MAX_WORKERS", 8))
+PARALLEL_MAX_WORKERS = int(os.environ.get("QALMA_MAX_WORKERS", 8))
 PARALLEL_USE_THREADS = False

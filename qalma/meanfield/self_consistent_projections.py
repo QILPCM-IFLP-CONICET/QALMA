@@ -8,7 +8,7 @@ from typing import Optional, Tuple, cast
 import numpy as np
 
 from qalma.operators import Operator
-from qalma.operators.states import DensityOperatorMixin, ProductDensityOperator
+from qalma.operators.states import DensityOperatorProtocol, ProductDensityOperator
 from qalma.operators.states.gibbs import GibbsProductDensityOperator
 from qalma.projections import (
     ProjectingOperatorFunction,
@@ -22,7 +22,7 @@ def self_consistent_project_meanfield(
     max_it: int = 100,
     tol: float = 1e-12,
     proj_func: Optional[ProjectingOperatorFunction] = n_body_projection,
-) -> Tuple[Operator, DensityOperatorMixin]:
+) -> Tuple[Operator, DensityOperatorProtocol]:
     """
     Iteratively computes the one-body component from a QuTip operator and state
     using a self-consistent Mean-Field Projection (MF).
@@ -47,7 +47,7 @@ def self_consistent_project_meanfield(
     -------
     k_one_body : Operator
         The projected one-body operator.
-    opt_sigma : DensityOperatorMixin
+    opt_sigma : DensityOperatorProtocol
         The optimized one-body density operator.
     """
     converged: bool

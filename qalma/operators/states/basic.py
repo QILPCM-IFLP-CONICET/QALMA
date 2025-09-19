@@ -4,10 +4,10 @@ Density operator classes.
 
 import logging
 import pickle
-from numbers import Number
-from typing import Iterable, Optional, Tuple, Union, cast
+from typing import Iterable, Optional, Protocol, Tuple, Union, cast
 
 import numpy as np
+from numpy.typing import NDArray
 from qutip import (  # type: ignore[import-untyped]
     qeye as qutip_qeye,
     tensor as qutip_tensor,
@@ -40,16 +40,20 @@ class DensityOperatorMixin:
 
     So, for example,
     ```
-    rho = .3 * ProductDensityOperator({"site1": qutip.qeye(2) + qutip.sigmax(), "site2": qutip.qeye(2)})
+    rho = .3 * ProductDensityOperator({"site1": qutip.qeye(2) + qutip.sigmax(),
+                                       "site2": qutip.qeye(2)})
     ```
     acts under operations with other operators like
     ```
-    rho = ProductOperator({"site1": .5*(qutip.qeye(2) + qutip.sigmax()), "site2": .5*qutip.qeye(2)})
+    rho = ProductOperator({"site1": .5*(qutip.qeye(2) + qutip.sigmax()),
+                           "site2": .5*qutip.qeye(2)})
     ```
 
     If now we introduce a `sigma` operator
     ```
-    sigma = .7 ProductDensityOperator({"site1": qutip.qeye(2), "site2": qutip.qeye(2) + qutip.sigmax()})
+    sigma = .7 ProductDensityOperator({"site1": qutip.qeye(2),
+                                       "site2": qutip.qeye(2) +
+                                       qutip.sigmax()})
     ```
     the mixture
     ```
@@ -66,7 +70,8 @@ class DensityOperatorMixin:
     (mix * A).tr() == .3 * (A * rho).tr() + .7 * (A* sigma)
     ```
 
-    Notice that algebraic operations does not check if the prefactors of all the terms adds to 1.
+    Notice that algebraic operations does not check if the prefactors
+    of all the terms adds to 1.
     To be sure about the normalization, use the method `expect`:
 
     ```
@@ -133,16 +138,18 @@ class DensityOperatorMixin:
         self.__dict__.update(state_dict)
 
     def dag(self) -> Operator:
+        """adjoint operator"""
         return cast(Operator, self)
 
     def eigenstates(self) -> list:
+        """Eigendecomposition"""
         if isinstance(self, Operator):
             return super().eigenstates()  # type:ignore[misc]
         raise NotImplementedError
 
     def expect(
         self, obs_objs: Union[Operator, Iterable]
-    ) -> Union[np.ndarray, dict, Number]:
+    ) -> Union[NDArray, dict, complex]:
         """Compute the expectation value of an observable"""
         # TODO: expode that expectation values of operators just requires the
         # state where the operators acts.
@@ -158,7 +165,8 @@ class DensityOperatorMixin:
             """
             Inner function to evaluate expectation values. This method keeps
             track of the states of the subsystems required in the evaluation,
-            which in typical cases is the most expensive part of the evaluation.
+            which in typical cases is the most expensive part of
+            the evaluation.
             """
             nonlocal local_states
 
@@ -182,10 +190,10 @@ class DensityOperatorMixin:
                 if hasattr(obs, "prefactor"):
                     return obs.prefactor
 
-            # if the argument matches with the argument of expect, it means that
-            # we already try with the implementation of the subclasses. Then, let's rely
-            # in the generic implementation: convert everything to qutip and evaluate
-            # the trace:
+            # if the argument matches with the argument of expect,
+            # it means that we already try with the implementation of the
+            # subclasses. Then, let's rely in the generic implementation:
+            # convert everything to qutip and evaluate the trace:
             local_state_acts_over = reduced_state_by_block(obs, local_states)
             if obs_objs is obs:
                 block = tuple(sorted(acts_over))
@@ -193,21 +201,24 @@ class DensityOperatorMixin:
                     local_state_acts_over.to_qutip(block) * obs.to_qutip(block)
                 ).tr()
 
-            # If obs comes from an internal call, then try to use the specific method
-            # of the subclass.
+            # If obs comes from an internal call, then try to use
+            # the specific method of the subclass.
             return local_state_acts_over.expect(obs)
 
         return do_evaluate_expect(obs_objs)
 
     @property
     def isherm(self):
+        """isherm property"""
         return True
 
     def simplify(self):
+        """Build an operator in a simplified representation"""
         # DensityOperator's are considered "simplified".
         return self
 
     def to_qutip_operator(self):
+        """QutipOperator representation"""
         from qalma.operators.states import QutipDensityOperator
 
         prefactor = getattr(self, "prefactor", 1.0)
@@ -222,11 +233,40 @@ class DensityOperatorMixin:
         )
 
     def tr(self):
+        """The trace of the operator"""
         return 1
+
+
+class DensityOperatorProtocol(Protocol):
+    """
+    Minimal interface of DensityOperators
+    """
+
+    prefactor: complex
+    system: SystemDescriptor
+
+    def acts_over(self) -> frozenset: ...
+
+    def __add__(self, other): ...
+    def __radd__(self, other): ...
+    def __mul__(self, other): ...
+    def __rmul__(self, other): ...
+
+    def expect(
+        self, obs: Union[Operator, Iterable]
+    ) -> Union[np.ndarray, dict, complex]: ...
+
+    def partial_trace(self, sites: Union[frozenset, SystemDescriptor]): ...
+
+    def to_qutip(self, block: Optional[Tuple[str, ...]] = None): ...
+
+    def to_qutip_operator(self): ...
 
 
 class ProductDensityOperator(DensityOperatorMixin, ProductOperator):
     """An uncorrelated density operator."""
+
+    prefactor: complex  # must be float
 
     def __init__(
         self,
@@ -278,7 +318,10 @@ class ProductDensityOperator(DensityOperatorMixin, ProductOperator):
                     self.sites_op, self.prefactor * a, self.system, False
                 )
             logging.warning(
-                "Multiplication of a non positive number by a density operator returns a regular operator."
+                (
+                    "Multiplication of a non positive number by a "
+                    "density operator returns a regular operator."
+                )
             )
             return ProductOperator(self.sites_op, 1, self.system) * a
         return ProductOperator(self.sites_op, 1, self.system) * a
@@ -294,26 +337,34 @@ class ProductDensityOperator(DensityOperatorMixin, ProductOperator):
                     self.sites_op, self.prefactor * a, self.system, False
                 )
             logging.warning(
-                "Multiplication of a non positive number by a density operator returns a regular operator."
+                (
+                    "Multiplication of a non positive number by "
+                    "a density operator returns a regular operator."
+                )
             )
             return ProductOperator(self.sites_op, 1, self.system) * a
         return a * ProductOperator(self.sites_op, 1, self.system)
 
-    def expect(self, obs: Union[Operator, Iterable]) -> Union[np.ndarray, dict, Number]:
-        """Compute the expectation value of an operator or a sequence of operators"""
-        if isinstance(obs, LocalOperator):
-            operator = obs.operator
-            site = obs.site
+    def expect(
+        self, obs_objs: Union[Operator, Iterable]
+    ) -> Union[np.ndarray, dict, complex]:
+        """
+        Compute the expectation value of an operator or a sequence of operators
+        """
+        if isinstance(obs_objs, LocalOperator):
+            operator = obs_objs.operator
+            site = obs_objs.site
             local_states = self.sites_op
             if site in local_states:
                 return (local_states[site] * operator).tr()
             return operator.tr() / self.system.dimensions[site]
 
-        if isinstance(obs, ProductOperator):
-            sites_obs = obs.sites_op
+        if isinstance(obs_objs, ProductOperator):
+            obs_prod = cast(ProductOperator, obs_objs)
+            sites_obs = obs_prod.sites_op
             local_states = self.sites_op
             dimensions = self.system.dimensions
-            result: Number = cast(Number, obs.prefactor)
+            result: complex = obs_prod.prefactor
 
             for site, obs_op in sites_obs.items():
                 if result == 0:
@@ -324,16 +375,19 @@ class ProductDensityOperator(DensityOperatorMixin, ProductOperator):
                     result *= obs_op.tr() / dimensions[site]
             return result
 
-        if isinstance(obs, SumOperator):
-            return sum(self.expect(term) for term in obs.terms)
+        if isinstance(obs_objs, SumOperator):
+            obs_sum: SumOperator = cast(SumOperator, obs_objs)
+            return cast(
+                NDArray, sum(cast(NDArray, self.expect(term)) for term in obs_sum.terms)
+            )
 
-        if isinstance(obs, (tuple, list)):
-            return np.array([self.expect(elem) for elem in obs])
+        if isinstance(obs_objs, (tuple, list)):
+            return np.array([self.expect(elem) for elem in obs_objs])
 
-        if isinstance(obs, dict):
-            return {key: self.expect(val) for key, val in obs.items()}
+        if isinstance(obs_objs, dict):
+            return {key: self.expect(val) for key, val in obs_objs.items()}
 
-        return super().expect(obs)
+        return super().expect(obs_objs)
 
     def logm(self):
         def log_qutip(loc_op):
@@ -373,7 +427,7 @@ class ProductDensityOperator(DensityOperatorMixin, ProductOperator):
             local_states, np.real(self.prefactor), subsystem, normalize=False
         )
 
-    def to_qutip(self, block: Optional[Tuple[str]] = None):
+    def to_qutip(self, block: Optional[Tuple[str, ...]] = None):
         prefactor = self.prefactor
         if prefactor == 0 or len(self.system.dimensions) == 0:
             return np.exp(-sum(np.log(dim) for dim in self.system.dimensions.values()))
