@@ -447,7 +447,7 @@ class LocalOperator(Operator):
 
     @property
     def isherm(self) -> bool:
-        operator = self.operator
+        operator = self.operator.tidyup()
         if isinstance(operator, (float, int)):
             return True
         if isinstance(operator, complex):
