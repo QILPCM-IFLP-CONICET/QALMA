@@ -243,7 +243,7 @@ def self_consistent_mf(
 
 def variational_quadratic_mfa(
     ham: Operator,
-    numfields: int = 1,
+    numfields: int = 6,
     sigma_ref: Optional[ProductDensityOperator] = None,
     **kwargs,
 ) -> ProductDensityOperator:

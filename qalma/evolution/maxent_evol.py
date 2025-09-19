@@ -22,7 +22,7 @@ from qalma.scalarprod import HierarchicalOperatorBasis, fetch_covar_scalar_produ
 
 
 def compute_mean_field_state(k, sigma, **kwargs):
-    sigma_result = variational_quadratic_mfa(k, 2, sigma)
+    sigma_result = variational_quadratic_mfa(k, sigma_ref=sigma)
     generator = -sigma_result.logm()
     return generator, sigma_result
 
