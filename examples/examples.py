@@ -10,7 +10,7 @@ from qalma.operators import (
     ScalarOperator,
     SumOperator,
 )
-from qalma.quadratic import build_quadratic_form_from_operator
+from qalma.operators.quadratic import build_quadratic_form_from_operator
 
 CHAIN_SIZE = 6
 

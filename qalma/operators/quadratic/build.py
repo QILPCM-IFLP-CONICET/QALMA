@@ -125,7 +125,7 @@ def zero_expectation_value_basis(basis: LocalBasisDict, sigma_ref):
         new_basis_site = [elem - (elem * local_sigma).tr() for elem in basis[site]]
         for elem in new_basis_site:
             elem.isherm = True
-        new_basis[site]=new_basis_site
+        new_basis[site] = new_basis_site
     return new_basis
 
 

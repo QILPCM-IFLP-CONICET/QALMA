@@ -18,8 +18,7 @@ import qutip
 
 from qalma.evolution import (
     adaptative_projected_evolution,
-    adaptative_projected_evolution_b,
-    adaptative_projected_evolution_c,
+    adaptative_projected_evolution_light,
     build_hierarchical_basis,
     fn_hij_tensor_with_errors,
     projected_evolution,
@@ -230,25 +229,15 @@ def test_adaptative():
     )
 
 
-def test_adaptative_b():
+def test_adaptative_light():
 
     t_span = np.linspace(0, 2, 10)
     k0 = SX_AB
     ham = 0.1 * HAMILTONIAN + SZ_TOTAL
     qutip_solution = qutip.mesolve(ham.to_qutip(), k0.to_qutip(), t_span).states
-    adapt_solution = adaptative_projected_evolution_b(ham, k0, t_span, 4, 2, tol=2.0)
-    compare_solutions(
-        adapt_solution, qutip_solution, t_span, order=0, coeff_bound=0.0, tol=2
+    adapt_solution = adaptative_projected_evolution_light(
+        ham, k0, t_span, 4, 2, tol=2.0
     )
-
-
-def test_adaptative_c():
-
-    t_span = np.linspace(0, 2, 10)
-    k0 = SX_AB
-    ham = 0.1 * HAMILTONIAN + SZ_TOTAL
-    qutip_solution = qutip.mesolve(ham.to_qutip(), k0.to_qutip(), t_span).states
-    adapt_solution = adaptative_projected_evolution_c(ham, k0, t_span, 4, 2, tol=2.0)
     compare_solutions(
         adapt_solution, qutip_solution, t_span, order=0, coeff_bound=0.0, tol=2
     )

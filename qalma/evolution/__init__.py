@@ -11,8 +11,7 @@ from qalma.evolution.hierarchical_basis import (
 )
 from qalma.evolution.maxent_evol import (
     adaptative_projected_evolution,
-    adaptative_projected_evolution_b,
-    adaptative_projected_evolution_c,
+    adaptative_projected_evolution_light,
     projected_evolution,
 )
 from qalma.evolution.qutip_solver import qutip_me_solve
@@ -24,8 +23,7 @@ from qalma.evolution.tools import (
 
 __all__ = [
     "adaptative_projected_evolution",
-    "adaptative_projected_evolution_b",
-    "adaptative_projected_evolution_c",
+    "adaptative_projected_evolution_light",
     "build_hierarchical_basis",
     "fn_hij_tensor",
     "fn_hij_tensor_with_errors",
