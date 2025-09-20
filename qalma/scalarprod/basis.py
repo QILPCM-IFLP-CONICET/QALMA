@@ -318,7 +318,6 @@ class HierarchicalOperatorBasis(OperatorBasis):
 
         self.sp = sp
         self.generator = generator.simplify()
-        print("building hierarchical basis of deep", deep)
         self._build_basis(seed, deep, n_body_projection)
         self.build_tensors()
         assert all(op.isherm for op in self.operator_basis)
