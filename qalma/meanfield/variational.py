@@ -21,7 +21,7 @@ from qalma.operators.quadratic import (
 from qalma.operators.states import ProductDensityOperator
 from qalma.operators.states.gibbs import GibbsProductDensityOperator
 from qalma.projections import n_body_projection
-from qalma.settings import QALMA_TOLERANCE
+from qalma.settings import DEFAULT_MAX_NUMBER_OF_FIELDS, QALMA_TOLERANCE
 
 
 def compute_rel_entropy(state: ProductDensityOperator, ham: Operator) -> float:
@@ -243,7 +243,7 @@ def self_consistent_mf(
 
 def variational_quadratic_mfa(
     ham: Operator,
-    numfields: int = 6,
+    numfields: int = DEFAULT_MAX_NUMBER_OF_FIELDS,
     sigma_ref: Optional[ProductDensityOperator] = None,
     **kwargs,
 ) -> ProductDensityOperator:

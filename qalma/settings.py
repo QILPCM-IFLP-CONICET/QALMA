@@ -37,4 +37,6 @@ PARALLEL_MAX_WORKERS = int(os.environ.get("QALMA_MAX_WORKERS", 8))
 PARALLEL_USE_THREADS = False
 
 
+# Mean field approximation parameters.
+DEFAULT_MAX_NUMBER_OF_FIELDS = 6
 MAXIMUM_GIBBS_EXACT_PARTIAL_TRACE = 8
