@@ -242,7 +242,7 @@ class SumOperator(Operator):
         if len(self.terms) == 1:
             return self.terms[0].simplify()
 
-        return group_terms_by_blocks(self.flat().tidyup())
+        return group_terms_by_blocks(self.flat())
 
     def to_qutip(self, block: Optional[Tuple[str, ...]] = None):
         """Produce a qutip compatible object"""
