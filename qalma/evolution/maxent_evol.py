@@ -209,7 +209,6 @@ def projected_evolution(ham, k0, t_span, order, n_body: int = -1) -> List[Operat
     sigma_0 = GibbsProductDensityOperator(k0)
     sp = fetch_covar_scalar_product(sigma_0)
 
-    print("build proyected evolution basis")
     basis = HierarchicalOperatorBasis(
         k0,
         ham,
@@ -219,8 +218,6 @@ def projected_evolution(ham, k0, t_span, order, n_body: int = -1) -> List[Operat
             op_b, nmax=n_body, sigma=sigma_0
         ),
     )
-    print("  basis", basis)
-    print("   computing the evolved state")
     phi_0 = basis.coefficient_expansion(k0)
     return [basis.operator_from_coefficients(basis.evolve(t, phi_0)[0]) for t in t_span]
 
