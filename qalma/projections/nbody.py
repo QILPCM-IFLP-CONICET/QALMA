@@ -688,7 +688,7 @@ def project_to_n_body_operator(
 
     ``operator`` can be a SumOperator or a Product Operator.
     """
-    if nmax<0:
+    if nmax < 0:
         return full_operator
 
     # Handle the trivial case
