@@ -326,7 +326,7 @@ class QutipOperator(Operator):
             return ScalarOperator(s_val * self.prefactor, self.system)
         # Otherwise, return a local operator:
         (site,) = names.keys()
-        operator = self.operator.tidyup() * self.prefactor
+        operator = self.operator * self.prefactor
         return LocalOperator(site, operator, self.system)
 
     def tidyup(self, atol=None):
