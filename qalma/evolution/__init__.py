@@ -11,8 +11,9 @@ from qalma.evolution.hierarchical_basis import (
 )
 from qalma.evolution.maxent_evol import (
     adaptative_projected_evolution,
-    adaptative_projected_evolution_light,
     projected_evolution,
+    update_basis,
+    update_basis_light,
 )
 from qalma.evolution.qutip_solver import qutip_me_solve
 from qalma.evolution.series_solver import series_evolution
@@ -34,4 +35,6 @@ __all__ = [
     "qutip_me_solve",
     "projected_evolution",
     "series_evolution",
+    "update_basis",
+    "update_basis_light",
 ]

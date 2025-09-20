@@ -18,11 +18,11 @@ import qutip
 
 from qalma.evolution import (
     adaptative_projected_evolution,
-    adaptative_projected_evolution_light,
     build_hierarchical_basis,
     fn_hij_tensor_with_errors,
     projected_evolution,
     series_evolution,
+    update_basis_light,
 )
 from qalma.operators.functions import commutator, spectral_norm
 from qalma.operators.states.gibbs import GibbsProductDensityOperator
@@ -235,8 +235,8 @@ def test_adaptative_light():
     k0 = SX_AB
     ham = 0.1 * HAMILTONIAN + SZ_TOTAL
     qutip_solution = qutip.mesolve(ham.to_qutip(), k0.to_qutip(), t_span).states
-    adapt_solution = adaptative_projected_evolution_light(
-        ham, k0, t_span, 4, 2, tol=2.0
+    adapt_solution = adaptative_projected_evolution(
+        ham, k0, t_span, 4, 2, tol=2.0, basis_update_callback=update_basis_light
     )
     compare_solutions(
         adapt_solution, qutip_solution, t_span, order=0, coeff_bound=0.0, tol=2
