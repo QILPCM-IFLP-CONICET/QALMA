@@ -10,7 +10,7 @@ from qalma.evolution.hierarchical_basis import (
     k_state_from_phi_basis,
 )
 from qalma.evolution.maxent_evol import (
-    adaptative_projected_evolution,
+    adaptive_projected_evolution,
     projected_evolution,
     update_basis,
     update_basis_light,
@@ -23,8 +23,7 @@ from qalma.evolution.tools import (
 )
 
 __all__ = [
-    "adaptative_projected_evolution",
-    "adaptative_projected_evolution_light",
+    "adaptive_projected_evolution",
     "build_hierarchical_basis",
     "fn_hij_tensor",
     "fn_hij_tensor_with_errors",

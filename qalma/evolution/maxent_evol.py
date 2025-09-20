@@ -106,7 +106,7 @@ def update_basis_light(k, sigma, ham, order, n_body, extra_observables):
     )
 
 
-def adaptative_projected_evolution(
+def adaptive_projected_evolution(
     ham,
     k0,
     t_span,
@@ -129,7 +129,7 @@ def adaptative_projected_evolution(
 
     k = sum phi_a(t) Q_a
 
-    chosen adaptatively along the evolution.
+    chosen adaptively along the evolution.
 
     Parameters
     ----------
