@@ -17,6 +17,7 @@ from qalma.operators.states.basic import (
     ProductDensityOperator,
 )
 from qalma.operators.states.gibbs import GibbsDensityOperator
+from qalma.settings import MAXIMUM_GIBBS_EXACT_PARTIAL_TRACE
 
 
 def project_boundary_term(term, sigma: ProductDensityOperator, sites: frozenset):
@@ -88,7 +89,7 @@ def gibbs_meanfield_partial_trace(
 
     # For states in small subsystems, just compute the partial trace
     # *exactly* by exponentiating the state.
-    if len(full_acts_over) <= 4:
+    if len(full_acts_over) <= MAXIMUM_GIBBS_EXACT_PARTIAL_TRACE:
         result = state.to_qutip_operator().partial_trace(sites)
         return result
 
