@@ -19,6 +19,12 @@ from qalma.scalarprod.utils import find_linearly_independent_rows
 from qalma.settings import QALMA_TOLERANCE
 
 
+def n_body_sector(operator: Operator):
+    if hasattr(operator, "terms"):
+        return max(n_body_sector(term) for term in operator.terms)
+    return len(operator.acts_over())
+
+
 class OperatorBasis:
     """
     Represent a basis of a subspace of the operator algebra with a
@@ -89,6 +95,14 @@ class OperatorBasis:
 
     def __radd__(self, other_basis):
         return prepend_basis(self, other_basis)
+
+    def __repr__(self):
+        result = f"Basis in the {max(n_body_sector(op) for op in self.operator_basis)}-body sector"
+        result += "\n" + f"  dimension: {len(self.operator_basis)}"
+        result += "\n" + f"  gram:\n {self.gram}\n"
+        result += "\n" + f"  gen matrix:\n {self.gen_matrix}\n"
+        result += "\n" + f"  errors: {self.errors}"
+        return result
 
     def build_tensors(
         self, generator: Optional[Operator] = None, sp: Optional[Callable] = None
@@ -304,6 +318,7 @@ class HierarchicalOperatorBasis(OperatorBasis):
 
         self.sp = sp
         self.generator = generator.simplify()
+        print("building hierarchical basis of deep", deep)
         self._build_basis(seed, deep, n_body_projection)
         self.build_tensors()
         assert all(op.isherm for op in self.operator_basis)
@@ -320,6 +335,7 @@ class HierarchicalOperatorBasis(OperatorBasis):
         errors = np.zeros((dimension,))
 
         for i in range(dimension):
+            # commutator of the previous element
             new_elem = commutator(elements[-1], generator)
             if not new_elem.isherm:
                 if isinstance(new_elem, SumOperator):
@@ -328,8 +344,9 @@ class HierarchicalOperatorBasis(OperatorBasis):
                     )
                 new_elem = new_elem.simplify()
 
+            # square norm of the commutator of the previous element
             comm_norm = np.abs(sp(new_elem, new_elem))
-            if np.abs(comm_norm) < 1e-12:
+            if np.abs(comm_norm) < QALMA_TOLERANCE**2:
                 logging.warning(
                     (
                         f"""A commutator got (almost) zero norm. deep->"""
@@ -341,8 +358,13 @@ class HierarchicalOperatorBasis(OperatorBasis):
                 elements.append(ScalarOperator(0, seed.system))
                 errors = errors[:dimension]
                 break
+            # Initially, self.errors stores the squared norms of the
+            # commutators.
             errors[i] = comm_norm
-            new_elem = projection_function(new_elem)
+            # The new element is the projection of the commutator
+            # of the previous element
+            if projection_function is not None:
+                new_elem = projection_function(new_elem)
             elements.append(new_elem)
 
         self.operator_basis = tuple(elements[:dimension])
