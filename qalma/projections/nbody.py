@@ -688,10 +688,12 @@ def project_to_n_body_operator(
 
     ``operator`` can be a SumOperator or a Product Operator.
     """
+    if nmax < 0:
+        return full_operator
 
-    system = full_operator.system
     # Handle the trivial case
     if nmax == 0:
+        system = full_operator.system
         return ScalarOperator(
             compute_operator_expectation_value(full_operator, sigma), system
         )
