@@ -11,7 +11,7 @@ from numpy.typing import NDArray
 from scipy.linalg import expm as linalg_expm
 
 from qalma.operators.arithmetic import SumOperator
-from qalma.operators.basic import Operator, ScalarOperator
+from qalma.operators.basic import Operator
 from qalma.operators.functions import commutator
 from qalma.scalarprod.build import fetch_HS_scalar_product
 from qalma.scalarprod.gram import gram_matrix, merge_gram_matrices
@@ -100,6 +100,7 @@ class OperatorBasis:
         result = f"Basis in the {max(n_body_sector(op) for op in self.operator_basis)}-body sector"
         result += "\n" + f"  dimension: {len(self.operator_basis)}"
         result += "\n" + f"  gram:\n {self.gram}\n"
+        result += "\n" + f"  hij:\n {self._hij}\n"
         result += "\n" + f"  gen matrix:\n {self.gen_matrix}\n"
         result += "\n" + f"  errors: {self.errors}"
         return result
@@ -226,6 +227,9 @@ class OperatorBasis:
             [sp(op, operator) for op in self.operator_basis]
         )
 
+    def operator_norm(self, operator: Operator):
+        return self.sp(operator, operator) ** 0.5
+
     def operator_from_coefficients(self, phi) -> Operator:
         """
         Build an operator from coefficients
@@ -326,13 +330,12 @@ class HierarchicalOperatorBasis(OperatorBasis):
         return OperatorBasis(self.operator_basis, self.generator, self.sp) + other
 
     def _build_basis(self, seed, deep, projection_function=None):
-
         elements = [seed.simplify()]
         dimension = deep + 1
         sp = self.sp
         generator = self.generator
         errors = np.zeros((dimension,))
-
+        closed = False
         for i in range(dimension):
             # commutator of the previous element
             new_elem = commutator(elements[-1], generator)
@@ -345,33 +348,44 @@ class HierarchicalOperatorBasis(OperatorBasis):
 
             # square norm of the commutator of the previous element
             comm_norm = np.abs(sp(new_elem, new_elem))
+            # Initially, self.errors stores the squared norms of the
+            # commutators.
+            errors[i] = comm_norm
+
             if np.abs(comm_norm) < QALMA_TOLERANCE**2:
+                closed = True
+                deep = dimension = i + 1
                 logging.warning(
                     (
                         f"""A commutator got (almost) zero norm. deep->"""
                         f"""{len(elements)}"""
                     )
                 )
-                dimension = len(elements)
-                deep = dimension - 1
-                elements.append(ScalarOperator(0, seed.system))
                 errors = errors[:dimension]
                 break
-            # Initially, self.errors stores the squared norms of the
-            # commutators.
-            errors[i] = comm_norm
             # The new element is the projection of the commutator
             # of the previous element
             if projection_function is not None:
                 new_elem = projection_function(new_elem)
             elements.append(new_elem)
 
-        self.operator_basis = tuple(elements[:dimension])
-
-        gram = gram_matrix(elements, sp)
-        self._hij = gram[:dimension, 1:]
-        self.gram = gram[:dimension, :dimension]
         self.errors = errors
+        gram = gram_matrix(elements, sp)
+        if closed:
+            self.operator_basis = tuple(elements)
+            self.gram = gram
+            hij = np.zeros(
+                (
+                    dimension,
+                    dimension,
+                )
+            )
+            hij[:, : dimension - 1] = gram[:dimension, 1:]
+            self._hij = hij
+        else:
+            self.operator_basis = tuple(elements[:dimension])
+            self._hij = gram[:dimension, 1:]
+            self.gram = gram[:dimension, :dimension]
 
     def build_tensors(
         self, generator: Optional[Operator] = None, sp: Optional[Callable] = None

@@ -11,6 +11,9 @@ from numpy.typing import ArrayLike
 from qutip import Qobj
 
 from qalma.operators import Operator, QutipOperator
+from qalma.operators.states import QutipDensityOperator
+
+from .simulation import Simulation
 
 
 def qutip_me_solve(
@@ -26,7 +29,7 @@ def qutip_me_solve(
     ] = None,
     args: Optional[Dict[str, Any]] = None,
     options: Optional[Dict[str, Any]] = None,
-) -> List[Operator] | Dict[Any, Any]:
+) -> Simulation:
     """
     Compute the solution of the Schrödinger equation using qutip.mesolve
 
@@ -90,10 +93,31 @@ def qutip_me_solve(
 
     Returns
     -------
-    List[Operator]
-        A list with the evolved operator on each time specified in t_list.
+    Simulation:
+       A simulation object storing the parameters and results of the simulation.
 
     """
+    system = None
+    if isinstance(H, Operator):
+        system = H.system
+        h_qutip = H.to_qutip()
+    else:
+        h_qutip = H
+
+    if isinstance(rho0, Operator):
+        StateOperatorClass = (
+            QutipDensityOperator if hasattr(rho0, "expect") else QutipOperator
+        )
+        if system is None:
+            system = rho0.system
+        rho0_qutip = rho0.to_qutip()
+    else:
+        # If rho0 is a Qobj, just return the Qutip output without changes.
+        def StateOperatorClass(x, **kwargs):
+            return x
+
+        rho0_qutip = rho0
+
     if e_ops is not None:
         if isinstance(e_ops, dict):
             e_ops = {
@@ -102,6 +126,13 @@ def qutip_me_solve(
             }
         elif isinstance(e_ops, (tuple, list)):
             e_ops = [val if isinstance(val, Qobj) else val.to_qutip() for val in e_ops]
+        elif hasattr(e_ops, "__call__"):
+            e_ops_qutip = e_ops
+
+            def e_ops_wrapper(t, rho):
+                return e_ops_qutip(t, StateOperatorClass(rho, system=system))
+
+            e_ops = e_ops_wrapper
 
     if c_ops is not None:
         if isinstance(c_ops, dict):
@@ -112,27 +143,20 @@ def qutip_me_solve(
         elif isinstance(c_ops, (tuple, list)):
             c_ops = [val if isinstance(val, Qobj) else val.to_qutip() for val in c_ops]
 
-    system = None
-    if isinstance(H, Operator):
-        system = H.system
-        H = H.to_qutip()
-    if isinstance(rho0, Operator):
-        rho0 = rho0.to_qutip()
-
     result = qutip.mesolve(
-        H,
-        rho0,
+        h_qutip,
+        rho0_qutip,
         tlist,
         c_ops=c_ops,
         e_ops=e_ops,
         options=options,
         args=args,
     )
-    if isinstance(e_ops, (tuple, list)):
-        return result.expect
-    if isinstance(e_ops, (dict)):
-        return {key: val for key, val in zip(e_ops.keys(), result.expect)}
 
-    if system is None:
-        return result.states
-    return [QutipOperator(state, system=system) for state in result.states]
+    return Simulation(
+        time_span=result.times,
+        stats=result.stats,
+        expect_ops=result.e_data,
+        states=[StateOperatorClass(state, system=system) for state in result.states],
+        parameters=result.options,
+    )
