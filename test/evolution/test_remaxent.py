@@ -208,7 +208,7 @@ def test_evolution():
     for order in range(1, 5):
         print("order: ", order)
         print(" * series solution")
-        as_series_solution = series_evolution(HAMILTONIAN, k0, t_span, order)
+        as_series_solution = series_evolution(HAMILTONIAN, k0, t_span, order).states
         compare_solutions(as_series_solution, qutip_solution, t_span, order, 0.5)
         projected_solution = projected_evolution(
             HAMILTONIAN, k0, t_span, order, n_body=order + 1

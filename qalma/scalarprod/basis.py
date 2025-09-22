@@ -227,6 +227,9 @@ class OperatorBasis:
             [sp(op, operator) for op in self.operator_basis]
         )
 
+    def operator_norm(self, operator: Operator):
+        return self.sp(operator, operator) ** 0.5
+
     def operator_from_coefficients(self, phi) -> Operator:
         """
         Build an operator from coefficients

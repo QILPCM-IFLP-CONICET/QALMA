@@ -63,7 +63,9 @@ def occupation_factor(phi: NDArray, threshold: float = 0.995) -> int:
     return len(phi)
 
 
-def update_basis(k, sigma, ham, order, n_body, extra_observables):
+def update_basis(
+    k, sigma, ham, order, n_body, extra_observables
+) -> Tuple[HierarchicalOperatorBasis, Operator, Operator]:
     k_ref_new, sigma = compute_mean_field_state(k, sigma)
     new_basis = HierarchicalOperatorBasis(
         k,
@@ -80,9 +82,15 @@ def update_basis(k, sigma, ham, order, n_body, extra_observables):
         rest_elements = rest_elements + (k_ref_new,)
     if rest_elements:
         new_basis = rest_elements + new_basis
+
+    k_ref_new = k_ref_new + sigma.expect(k - k_ref_new)
+    away = new_basis.operator_norm(k - k_ref_new)
+    print("new reference is ", away, " away from k")
+
     return (
         new_basis,
         sigma,
+        k_ref_new,
     )
 
 
@@ -103,6 +111,7 @@ def update_basis_light(k, sigma, ham, order, n_body, extra_observables):
     return (
         new_basis,
         sigma,
+        k_ref_new,
     )
 
 
@@ -116,7 +125,9 @@ def adaptive_projected_evolution(
     on_update_basis_callback: Optional[Callable] = None,
     extra_observables: Tuple[Operator, ...] = tuple(),
     include_one_body_projection: bool = False,
-    basis_update_callback: Callable[..., Tuple[OperatorBasis, Operator]] = update_basis,
+    basis_update_callback: Callable[
+        ..., Tuple[OperatorBasis, Operator, Operator]
+    ] = update_basis,
 ) -> List[Operator]:
     """
     Compute the solution of the MaxEnt projected Schrödinger equation
@@ -173,7 +184,7 @@ def adaptive_projected_evolution(
     logging.info(f"max_error_speed:{max_error_speed}")
 
     k_t = k0
-    basis, sigma_ref = basis_update_callback(
+    basis, sigma_ref, k_ref = basis_update_callback(
         k_t,
         GibbsProductDensityOperator({}, k_t.system),
         ham,
@@ -190,7 +201,9 @@ def adaptive_projected_evolution(
         delta_t = t - t_ref
         phi, error = basis.evolve(delta_t, phi_0)
         oc_factor = occupation_factor(phi)
-        if error > max_error_speed * delta_t:
+        away = basis.operator_norm((k_t - k_ref).simplify())
+        print("away:", away)
+        if error > max_error_speed * delta_t or 5 * away > tol:
             logging.info(
                 (
                     f"At time {t} the estimated error {error} "
@@ -198,7 +211,7 @@ def adaptive_projected_evolution(
                 )
             )
             start_basis_time = datetime.now()
-            basis, sigma_ref = basis_update_callback(
+            basis, sigma_ref, k_ref = basis_update_callback(
                 k_t, sigma_ref, ham, order, n_body, extra_observables
             )
             build_basis_time_cost = datetime.now() - start_basis_time
