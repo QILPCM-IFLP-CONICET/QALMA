@@ -22,7 +22,10 @@ from qalma.evolution.tools import (
     slice_times,
 )
 
+from .simulation import Simulation
+
 __all__ = [
+    "Simulation",
     "adaptive_projected_evolution",
     "build_hierarchical_basis",
     "fn_hij_tensor",
