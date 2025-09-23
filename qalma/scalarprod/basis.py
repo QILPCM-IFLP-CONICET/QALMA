@@ -389,14 +389,12 @@ class HierarchicalOperatorBasis(OperatorBasis):
             )
         )
         if closed:
-            print("closed algebra!", dimension, len(elements), deep)
             self.operator_basis = tuple(elements)
             self.gram = gram
             hij[:, : dimension - 1] = gram[:dimension, 1:]
             for j in range(dimension - 1):
                 hij[:, j] *= norms[j + 1]
         else:
-            print("open algebra", dimension, len(elements), deep)
             self.operator_basis = tuple(elements[:dimension])
             self.gram = gram[:dimension, :dimension]
             hij[:, :] = gram[:dimension, 1:]
