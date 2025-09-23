@@ -1,4 +1,5 @@
 import logging
+from typing import List
 
 from qutip import tensor as qutip_tensor
 
@@ -6,6 +7,7 @@ from qalma.meanfield import (
     variational_quadratic_mfa,
 )
 from qalma.operators import (
+    Operator,
     ProductOperator,
     QutipOperator,
     ScalarOperator,
@@ -80,6 +82,8 @@ def gibbs_meanfield_partial_trace(
     Build a self-consistent Mean Field approximation to the local state.
 
     """
+    terms_in: List[Operator]
+    terms_boundary: List[Operator]
     prefactor = state.prefactor
     generator = state.k
     full_acts_over = generator.acts_over()
@@ -105,9 +109,7 @@ def gibbs_meanfield_partial_trace(
     terms_in, terms_boundary = [], []
     for term in all_terms:
         term_acts_over = term.acts_over()
-        if term_acts_over is None:
-            terms_boundary.append(term_acts_over)
-        elif term_acts_over.issubset(sites):
+        if term_acts_over.issubset(sites):
             terms_in.append(term)
         elif term_acts_over.issubset(environment):
             continue
