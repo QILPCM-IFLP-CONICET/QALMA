@@ -212,7 +212,7 @@ def test_evolution():
         compare_solutions(as_series_solution, qutip_solution, t_span, order, 0.5)
         projected_solution = projected_evolution(
             HAMILTONIAN, k0, t_span, order, n_body=order + 1
-        )
+        ).states
         print(" * projected solution")
         compare_solutions(projected_solution, qutip_solution, t_span, order, 0.55)
 
@@ -223,7 +223,7 @@ def test_adaptive():
     k0 = SX_AB
     ham = 0.1 * HAMILTONIAN + SZ_TOTAL
     qutip_solution = qutip.mesolve(ham.to_qutip(), k0.to_qutip(), t_span).states
-    adapt_solution = adaptive_projected_evolution(ham, k0, t_span, 4, 2, tol=2.0)
+    adapt_solution = adaptive_projected_evolution(ham, k0, t_span, 4, 2, tol=2.0).states
     compare_solutions(
         adapt_solution, qutip_solution, t_span, order=0, coeff_bound=0.0, tol=2
     )
@@ -237,7 +237,7 @@ def test_adaptive_light():
     qutip_solution = qutip.mesolve(ham.to_qutip(), k0.to_qutip(), t_span).states
     adapt_solution = adaptive_projected_evolution(
         ham, k0, t_span, 4, 2, tol=2.0, basis_update_callback=update_basis_light
-    )
+    ).states
     compare_solutions(
         adapt_solution, qutip_solution, t_span, order=0, coeff_bound=0.0, tol=2
     )
