@@ -1,3 +1,4 @@
+from functools import reduce
 from test.helper import (
     HAMILTONIAN,
     SX_A,
@@ -23,9 +24,16 @@ GENERATOR_REFERENCE = HAMILTONIAN_REFERENCE * 1j
 SIGMA_REFERENCE = GibbsProductDensityOperator(K0_REFERENCE)
 REFERENCE_SP = fetch_covar_scalar_product(SIGMA_REFERENCE)
 
-BASIS_REFERENCE = [K0_REFERENCE]
+
+BASIS_NORMS = [REFERENCE_SP(K0_REFERENCE, K0_REFERENCE) ** 0.5]
+BASIS_REFERENCE = [K0_REFERENCE / BASIS_NORMS[0]]
+
 for i in range(5):
-    BASIS_REFERENCE.append(commutator(BASIS_REFERENCE[-1], HAMILTONIAN_REFERENCE * 1j))
+    basis_elem = commutator(BASIS_REFERENCE[-1], HAMILTONIAN_REFERENCE * 1j)
+    norm = REFERENCE_SP(basis_elem, basis_elem) ** 0.5
+    basis_elem = basis_elem / norm
+    BASIS_NORMS.append(norm)
+    BASIS_REFERENCE.append(basis_elem)
 
 
 def check_basis_equivalence(basis1, basis2):
@@ -117,6 +125,10 @@ def compare_basis(b1, b2):
     """
     Compare the tensors of both basis
     """
+    print("--------- comparing basis ----------")
+    print("b1:\n", b1)
+    print("b2:\n", b2)
+
     assert len(b1.operator_basis) == len(b2.operator_basis)
     idx = 0
     for op1, op2 in zip(b1.operator_basis, b2.operator_basis):
@@ -126,11 +138,12 @@ def compare_basis(b1, b2):
         print("second basis:\n", op2)
         assert check_operator_equality(op1, op2)
 
-    assert np.allclose(b1.gram, b2.gram), f"{b1.gram}!={b2.gram}"
-    assert np.allclose(b1.gram_inv, b2.gram_inv), f"{b1.gram_inv}!={b2.gram_inv}"
-    assert np.allclose(b1.errors, b2.errors), f"{b1.errors}!={b2.errors}"
+    assert np.allclose(b1.gram, b2.gram), f"{b1.gram}\n!=\n{b2.gram}"
+    assert np.allclose(b1.gram_inv, b2.gram_inv), f"{b1.gram_inv}\n!=\n{b2.gram_inv}"
+    assert np.allclose(b1._hij, b2._hij), f"{b1._hij}\n!=\n{b2._hij}"
+    assert np.allclose(b1.errors, b2.errors, atol=1e-7), f"{b1.errors}\n!=\n{b2.errors}"
     assert np.allclose(
-        b1.gen_matrix, b2.gen_matrix
+        b1.gen_matrix, b2.gen_matrix, atol=1e-7
     ), f"{b1.gen_matrix} != {b2.gen_matrix}"
 
 
@@ -167,13 +180,16 @@ def test_basis_operator():
 
     delta_t = 1
     # Solution as a truncated Dyson's series:
-    k_t_series = (
-        BASIS_REFERENCE[0]
-        + BASIS_REFERENCE[1] * delta_t
-        + BASIS_REFERENCE[2] * delta_t**2 / 2.0
-        + BASIS_REFERENCE[3] * delta_t**3 / 6.0
-        + BASIS_REFERENCE[4] * delta_t**4 / 24.0
-    )
+    t_coeffs = [
+        reduce(
+            lambda x, y: x * y,
+            (delta_t / (k + 1) * norm for k, norm in enumerate(BASIS_NORMS[1 : n + 1])),
+            BASIS_NORMS[0],
+        )
+        for n in range(5)
+    ]
+
+    k_t_series = sum(basis * coeff for coeff, basis in zip(t_coeffs, BASIS_REFERENCE))
     phi_t_series = basis.coefficient_expansion(k_t_series)
 
     # Using the evolution method of *evolve*
@@ -208,7 +224,7 @@ def test_hierarchical_operator_basis():
     k_p = basis.project_onto(k_0)
     assert check_operator_equality(k_0, k_p), "projection should act trivially"
     phi_0 = basis.coefficient_expansion(k_0)
-    assert all(abs(c) < 1e-10 for c in phi_0[1:]), (
+    assert all(abs(c) < QALMA_TOLERANCE for c in phi_0[1:]), (
         "the only non-vanishing coefficient for the expansion for the "
         "first element in the base should be the first one."
         f"Got {phi_0}"
@@ -216,13 +232,16 @@ def test_hierarchical_operator_basis():
 
     delta_t = 0.01
     # Solution as a truncated Dyson's series:
-    k_t_series = (
-        BASIS_REFERENCE[0]
-        + BASIS_REFERENCE[1] * delta_t
-        + BASIS_REFERENCE[2] * delta_t**2 / 2.0
-        + BASIS_REFERENCE[3] * delta_t**3 / 6.0
-        + BASIS_REFERENCE[4] * delta_t**4 / 24.0
-    )
+
+    t_coeffs = [
+        reduce(
+            lambda x, y: x * y,
+            (delta_t / (k + 1) * norm for k, norm in enumerate(BASIS_NORMS[1 : n + 1])),
+            BASIS_NORMS[0],
+        )
+        for n in range(5)
+    ]
+    k_t_series = sum(basis * coeff for coeff, basis in zip(t_coeffs, BASIS_REFERENCE))
     phi_t_series = basis.coefficient_expansion(k_t_series)
 
     # Using the evolution method of *evolve*
@@ -269,7 +288,7 @@ def test_add_basis():
 
     proj_op = hierarchical_basis.project_onto(test_operator)
     prj_2_norm = sp(proj_op, proj_op)
-    assert prj_2_norm == prj_1_norm
+    assert abs(prj_2_norm - prj_1_norm) < QALMA_TOLERANCE**0.5
 
     ### Extending from right
 

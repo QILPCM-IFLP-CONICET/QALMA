@@ -23,6 +23,8 @@ from qalma.scalarprod import (
     fetch_covar_scalar_product,
 )
 
+from .simulation import Simulation
+
 # function used to safely and robustly map K-states to states
 
 
@@ -128,7 +130,7 @@ def adaptive_projected_evolution(
     basis_update_callback: Callable[
         ..., Tuple[OperatorBasis, Operator, Operator]
     ] = update_basis,
-) -> List[Operator]:
+) -> Simulation:
     """
     Compute the solution of the MaxEnt projected Schrödinger equation
 
@@ -176,11 +178,14 @@ def adaptive_projected_evolution(
     -------
     List[Operator]:
         A list with the solution at times t_span
-
     """
-
+    last_t = t_ref = t_span[0]
     t_max = t_span[-1]
+    t_update_basis = [t_span[0]]
     max_error_speed = tol / t_max
+    tlist: List[float] = [t_ref]
+    errors: List[float] = []
+
     logging.info(f"max_error_speed:{max_error_speed}")
 
     k_t = k0
@@ -195,7 +200,6 @@ def adaptive_projected_evolution(
     phi_0 = basis.coefficient_expansion(k_t)
     logging.info(f"phi_0={phi_0}")
     result = [k_t]
-    last_t = t_ref = 0
 
     for t in t_span[1:]:
         delta_t = t - t_ref
@@ -239,15 +243,34 @@ def adaptive_projected_evolution(
                 logging.warning(
                     "tolerance goal cannot be reached within this subspace."
                 )
-                return result
+                break
+            t_update_basis.append(t)
         k_t = basis.operator_from_coefficients(phi)
         result.append(k_t)
+        errors.append(error)
+        tlist.append(t)
         last_t = t
 
-    return result
+    return Simulation(
+        parameters={
+            "n_body": n_body,
+            "order": order,
+            "tol": tol,
+            "include_one_body_projection": include_one_body_projection,
+            "basis_update_callback": basis_update_callback.__name__,
+        },
+        stats={
+            "method": "Static Projected Evolution",
+            "errors": errors,
+            "t_update_basis": t_update_basis,
+        },
+        time_span=tlist,
+        expect_ops={},
+        states=result,
+    )
 
 
-def projected_evolution(ham, k0, t_span, order, n_body: int = -1) -> List[Operator]:
+def projected_evolution(ham, k0, t_span, order, n_body: int = -1) -> Simulation:
     """
     Compute the solution of the MaxEnt projected Schrödinger equation
 
@@ -292,4 +315,17 @@ def projected_evolution(ham, k0, t_span, order, n_body: int = -1) -> List[Operat
         ),
     )
     phi_0 = basis.coefficient_expansion(k0)
-    return [basis.operator_from_coefficients(basis.evolve(t, phi_0)[0]) for t in t_span]
+    errors = []
+    states = []
+    for t in t_span:
+        phi, error = basis.evolve(t, phi_0)
+        errors.append(error)
+        states.append(basis.operator_from_coefficients(phi))
+
+    return Simulation(
+        parameters={"n_body": n_body, "order": order},
+        stats={"method": "Static Projected Evolution", "errors": errors},
+        time_span=t_span,
+        expect_ops={},
+        states=states,
+    )
