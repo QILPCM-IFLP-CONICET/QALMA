@@ -202,6 +202,7 @@ class OperatorBasis:
         for j, op_2 in enumerate(operator_basis):
             hij[:, j], errors[j] = build_j_coefficients(op_2)
 
+        self._hij = hij
         self.gen_matrix = self.gram_inv @ hij
         self.errors = errors
 
@@ -330,9 +331,13 @@ class HierarchicalOperatorBasis(OperatorBasis):
         return OperatorBasis(self.operator_basis, self.generator, self.sp) + other
 
     def _build_basis(self, seed, deep, projection_function=None):
-        elements = [seed.simplify()]
-        dimension = deep + 1
         sp = self.sp
+        seed = seed.simplify()
+        seed_norm = np.abs(sp(seed, seed)) ** 0.5
+        elements = [seed / seed_norm]
+        norms = [seed_norm]
+        dimension = deep + 1
+
         generator = self.generator
         errors = np.zeros((dimension,))
         closed = False
@@ -366,26 +371,37 @@ class HierarchicalOperatorBasis(OperatorBasis):
             # The new element is the projection of the commutator
             # of the previous element
             if projection_function is not None:
-                new_elem = projection_function(new_elem)
-            elements.append(new_elem)
+                new_elem_proj = projection_function(new_elem)
+                if new_elem_proj is not new_elem:
+                    new_elem = new_elem_proj
+                    comm_norm = np.abs(sp(new_elem, new_elem))
+
+            elem_norm = comm_norm**0.5
+            elements.append(new_elem / elem_norm)
+            norms.append(elem_norm)
 
         self.errors = errors
         gram = gram_matrix(elements, sp)
+        hij = np.zeros(
+            (
+                dimension,
+                dimension,
+            )
+        )
         if closed:
             self.operator_basis = tuple(elements)
             self.gram = gram
-            hij = np.zeros(
-                (
-                    dimension,
-                    dimension,
-                )
-            )
             hij[:, : dimension - 1] = gram[:dimension, 1:]
-            self._hij = hij
+            for j in range(dimension - 1):
+                hij[:, j] *= norms[j + 1]
         else:
             self.operator_basis = tuple(elements[:dimension])
-            self._hij = gram[:dimension, 1:]
             self.gram = gram[:dimension, :dimension]
+            hij[:, :] = gram[:dimension, 1:]
+            for j in range(dimension):
+                hij[:, j] *= norms[j + 1]
+
+        self._hij = hij
 
     def build_tensors(
         self, generator: Optional[Operator] = None, sp: Optional[Callable] = None
