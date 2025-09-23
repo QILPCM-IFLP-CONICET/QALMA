@@ -301,11 +301,9 @@ def variational_quadratic_mfa(
     sigma_candidate: ProductDensityOperator
     its: int = kwargs.get("its", 1)
     method: Optional[str] = kwargs.get("method", None)
-    callback_optimizer: Callable = kwargs.get("callback_optimizer", None)
+    callback_optimizer = kwargs.get("callback_optimizer", None)
     max_self_consistent_steps: int = kwargs.get("max_self_consistent_steps", 10)
-    callback_self_consistent_step: Callable = kwargs.get(
-        "callback_self_consistent_step", None
-    )
+    callback_self_consistent_step = kwargs.get("callback_self_consistent_step", None)
 
     if sigma_ref is not None and hasattr(sigma_ref, "to_product_state"):
         sigma_ref = sigma_ref.to_product_state()

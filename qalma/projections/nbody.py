@@ -128,7 +128,7 @@ def _project_qutip_operator_to_one_body(
         dimensions = system.dimensions
         dimensions = {site: system.dimensions[site] for site in site_names}
         dimensions_factor = np.prod(list(dimensions.values()))
-        meanvalue = operator_qutip.tr() / dimensions_factor
+        meanvalue: complex = operator_qutip.tr() / dimensions_factor
         reduced_ops: List[Operator] = (
             [ScalarOperator((1 - block_size) * meanvalue, system)] if meanvalue else []
         )
@@ -148,7 +148,7 @@ def _project_qutip_operator_to_one_body(
             state = state.to_product_state()
         # At this point, it must be a product density operator
         state_prod = cast(ProductDensityOperator, state)
-        meanvalue = state_prod.expect(full_operator)
+        meanvalue = cast(complex, state_prod.expect(full_operator))
         sites_op_state = state_prod.sites_op
         sites_op_state = {key: sites_op_state[key] for key in block}
         reduced_ops = (
