@@ -176,8 +176,8 @@ def adaptive_projected_evolution(
 
     Returns
     -------
-    List[Operator]:
-        A list with the solution at times t_span
+    Simulation:
+        A Simulation object storing the results of the simulation.
     """
     last_t = t_ref = t_span[0]
     t_max = t_span[-1]
@@ -298,8 +298,8 @@ def projected_evolution(ham, k0, t_span, order, n_body: int = -1) -> Simulation:
 
     Returns
     -------
-    List[Operator]:
-        A list with the solution at times t_span
+    Simulation:
+        A simulation object with the results of the simulation.
 
     """
     sigma_0 = GibbsProductDensityOperator(k0)
