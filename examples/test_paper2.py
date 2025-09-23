@@ -4,7 +4,7 @@ from qalma.evolution.maxent_evol import (
     adaptive_projected_evolution,
     projected_evolution,
 )
-from qalma.evolution import qutip_me_solve, series_solver
+from qalma.evolution import qutip_me_solve, series_evolution as series_solver
 import numpy as np
 import matplotlib.pyplot as plt
 from qalma.scalarprod.basis import HierarchicalOperatorBasis
@@ -42,7 +42,7 @@ BETA = .01
 
 L = 8
 JX=0.02890 # 1.75  -> vLR=1
-ALPHA = .1 #   jy=.9 jx
+ALPHA = .61 #   jy=.9 jx
 JY=(1-ALPHA)*JX
 PHI_0=[0,.25,.25,1]
 SYSTEM=build_system(geometry_name="chain lattice", model_name="spin",
@@ -106,7 +106,6 @@ def run_series(axis):
     series =[GibbsDensityOperator(k).to_qutip_operator() for k in series_solver(hamiltonian, k_0, ts, 30).states]
     print("Plot observables")
     series_expect = [np.real(rho.expect(SZ_TOTAL)) for rho in series]
-    axis.set_ylim(min(-max(series_expect), min(series_expect)), max(series_expect))
     axis.plot(ts, series_expect,label="series")
     print("   done")
 
@@ -150,7 +149,7 @@ def run_simulation_adaptive(basis_depth, n_body, tolerance, axis):
                     on_update_basis_callback=update_basis_callback,
                     include_one_body_projection=True,
                     extra_observables=TRACK_OBSERVABLES,
-                    )]
+                    ).states]
         #plt.scatter(ts[:len(max_ent)], [np.real(rho.expect(k_0)) for rho in max_ent], label=f"$\\ell={basis_depth}$, m={n_body}, tol={tolerance}")
         plt.scatter(ts[:len(max_ent)], [np.real(rho.expect(SZ_TOTAL)) for rho in max_ent], label=f"c->$\\ell={basis_depth}$, m={n_body}, tol={tolerance}")
         print("len:", len(max_ent))
@@ -186,6 +185,7 @@ def run_simulations():
     fig, axis = plt.subplots()
     run_projected(axis)
     run_series(axis)
+    run_simulation_adaptive(6,4,.025,axis)
     axis.legend()
     # axis.set_title(f"Max-Ent evolution, beta={BETA} tolerance={tolerance}")
     fig.savefig("output_ab.svg")
