@@ -1,4 +1,5 @@
 import logging
+import pickle
 from datetime import datetime
 
 import matplotlib.pyplot as plt
@@ -15,6 +16,7 @@ from qalma.operators.states import (
     GibbsDensityOperator,
     GibbsProductDensityOperator,
 )
+from qalma.projections import n_body_projection
 from qalma.scalarprod import fetch_covar_scalar_product
 from qalma.scalarprod.basis import HierarchicalOperatorBasis
 
@@ -35,11 +37,11 @@ np.set_printoptions(
 )
 
 # PARAMETERS
-ts = np.linspace(0, 128, 100)
+ts = np.linspace(0, 180, 100)
 BETA = 0.01
 
 
-L = 8
+L = 10
 JX = 0.02890  # 1.75  -> vLR=1
 ALPHA = 0.61  #   jy=.9 jx
 JY = (1 - ALPHA) * JX
@@ -146,8 +148,29 @@ def run_projected(axis):
 
     sigma_0 = GibbsProductDensityOperator(K0)
     sp = fetch_covar_scalar_product(sigma_0)
-    basis = HierarchicalOperatorBasis(k_0, HAMILTONIAN, 50, sp)
+
+    def projection_function(op_b):
+        return op_b
+        print("projection function")
+        new_op = n_body_projection(op_b, nmax=4, sigma=sigma_0)
+        if new_op is not op_b:
+            if hasattr(new_op, "terms"):
+                print("  projection has", len(new_op.terms))
+
+        return new_op
+
+    basis = (
+        HierarchicalOperatorBasis(
+            k_0,
+            HAMILTONIAN,
+            18,
+            sp,
+            n_body_projection=projection_function,
+        )
+        + TRACK_OBSERVABLES
+    )
     print("projecting using basis", basis)
+
     projected = [
         GibbsDensityOperator(basis.project_onto(k)).to_qutip_operator() for k in exact_k
     ]
@@ -157,7 +180,7 @@ def run_projected(axis):
     axis.set_ylim(min(-max(exact_expect), min(exact_expect)), max(exact_expect))
     axis.plot(ts, exact_expect, label="exact")
     projected_expect = [np.real(rho.expect(SZ_TOTAL)) for rho in projected]
-    axis.plot(ts, projected_expect, label="projected")
+    axis.plot(ts, projected_expect, ls="-.", label="projected")
     print("   done")
 
 
@@ -212,6 +235,7 @@ def run_simulation_projected(basis_depth, n_body, tolerance, axis):
         plt.scatter(
             ts[: len(max_ent)],
             [np.real(rho.expect(SZ_TOTAL)) for rho in max_ent],
+            ls="-.",
             label=f"proyected-> $\\ell={basis_depth}$, m={n_body}, tol={tolerance}",
         )
         print("len:", len(max_ent))
@@ -225,10 +249,10 @@ def run_simulations():
     fig, axis = plt.subplots()
     run_projected(axis)
     run_series(axis)
-    run_simulation_adaptive(6, 4, 0.025, axis)
+    # run_simulation_adaptive(6, 4, 0.025, axis)
     axis.legend()
     # axis.set_title(f"Max-Ent evolution, beta={BETA} tolerance={tolerance}")
-    fig.savefig("output_ab.svg")
+    fig.savefig("output_abcd.svg")
 
 
 if __name__ == "__main__":

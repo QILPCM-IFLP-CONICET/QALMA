@@ -4,9 +4,9 @@ Functions used to run MaxEnt simulations.
 
 from __future__ import annotations
 
-from math import factorial
+from functools import reduce
 
-from qalma.evolution.hierarchical_basis import build_hierarchical_basis
+from qalma.scalarprod.basis import HierarchicalOperatorBasis
 
 from .simulation import Simulation
 
@@ -42,13 +42,24 @@ def series_evolution(ham, k0, t_span, order) -> Simulation:
     """
     # TODO: implement me for time-dependent hamiltonians
     # and solve in the interaction picture
-    h_basis = build_hierarchical_basis(ham, k0, order)
-    states = [
-        sum((t) ** p * bb / factorial(p) for p, bb in enumerate(h_basis))
-        for t in t_span
-    ]
+
+    def compute_inst_k(t, basis, prefactor):
+        norms = [row[pos] for pos, row in enumerate(basis.gen_matrix[1:])]
+        t_coeffs = [
+            reduce(
+                lambda x, y: x * y,
+                (t / (k + 1) * norm for k, norm in enumerate(norms[:n])),
+                prefactor,
+            )
+            for n in range(len(basis.operator_basis))
+        ]
+        return basis.operator_from_coefficients(t_coeffs)
+
+    h_basis = HierarchicalOperatorBasis(k0, ham, order)
+    prefactor = h_basis.sp(h_basis.operator_basis[0], k0)
+    states = [compute_inst_k(t, h_basis, prefactor) for t in t_span]
     return Simulation(
-        parameters={"method": "series"},
+        parameters={"method": "series", "system": ham.system},
         stats={},
         time_span=list(t_span),
         states=states,
