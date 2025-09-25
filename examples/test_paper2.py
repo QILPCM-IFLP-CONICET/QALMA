@@ -41,7 +41,7 @@ ts = np.linspace(0, 180, 100)
 BETA = 0.01
 
 
-L = 6
+L = 5
 JX = 0.02890  # 1.75  -> vLR=1
 ALPHA = 0.61  #   jy=.9 jx
 JY = (1 - ALPHA) * JX
@@ -132,10 +132,12 @@ def run_series(axis):
     k_0 = K0 * BETA
     hamiltonian = HAMILTONIAN
     print("Start series:", datetime.now())
-    series = [
-        GibbsDensityOperator(k).to_qutip_operator()
-        for k in series_solver(hamiltonian, k_0, ts, 30).states
-    ]
+    series_sol = series_solver(hamiltonian, k_0, ts, 30)
+    series = [GibbsDensityOperator(k).to_qutip_operator() for k in series_sol.states]
+
+    with open(f"series_L={L}_beta={BETA}.pkl", "wb") as f:
+        pickle.dump(series_sol, f)
+
     print("Plot observables")
     series_expect = [np.real(rho.expect(SZ_TOTAL)) for rho in series]
     axis.plot(ts, series_expect, label="series")
@@ -146,7 +148,11 @@ def run_projected(axis):
     k_0 = K0 * BETA
     hamiltonian = HAMILTONIAN
     print("Start exact:", datetime.now())
-    exact_k = qutip_me_solve(hamiltonian, k_0, ts).states
+    exact_sol = qutip_me_solve(hamiltonian, k_0, ts)
+    with open(f"exact_L={L}_beta={BETA}.pkl", "wb") as f:
+        pickle.dump(exact_sol, f)
+
+    exact_k = exact_sol.states
     exact = [GibbsDensityOperator(k).to_qutip_operator() for k in exact_k]
 
     sigma_0 = GibbsProductDensityOperator(K0)
@@ -179,6 +185,14 @@ def run_projected(axis):
         projected.append(
             GibbsDensityOperator(basis.project_onto(k)).to_qutip_operator()
         )
+    with open(f"projected_exact_L={L}_beta={BETA}.pkl", "wb") as f:
+        pickle.dump(
+            {
+                "projected evolution": {t: k for t, k in zip(ts, exact_k)},
+                "system": HAMILTONIAN.system,
+            },
+            f,
+        )
 
     print("Plot observables", datetime.now())
     exact_expect = [np.real(rho.expect(SZ_TOTAL)) for rho in exact]
@@ -197,20 +211,22 @@ def run_simulation_adaptive(basis_depth, n_body, tolerance, axis):
         datetime.now(),
     )
     try:
-        max_ent = [
-            GibbsDensityOperator(k)
-            for k in adaptive_projected_evolution(
-                hamiltonian,
-                k_0,
-                ts,
-                basis_depth,
-                n_body,
-                tol=tolerance,
-                on_update_basis_callback=update_basis_callback,
-                include_one_body_projection=True,
-                extra_observables=TRACK_OBSERVABLES,
-            ).states
-        ]
+        adaptative_sol = adaptive_projected_evolution(
+            hamiltonian,
+            k_0,
+            ts,
+            basis_depth,
+            n_body,
+            tol=tolerance,
+            on_update_basis_callback=update_basis_callback,
+            include_one_body_projection=True,
+            extra_observables=TRACK_OBSERVABLES,
+        )
+        max_ent = [GibbsDensityOperator(k) for k in adaptative_sol.states]
+
+        with open(f"adaptative_L={L}_beta={BETA}.pkl", "wb") as f:
+            pickle.dump(adaptative_sol, f)
+
         # plt.scatter(ts[:len(max_ent)], [np.real(rho.expect(k_0)) for rho in max_ent], label=f"$\\ell={basis_depth}$, m={n_body}, tol={tolerance}")
         plt.scatter(
             ts[: len(max_ent)],

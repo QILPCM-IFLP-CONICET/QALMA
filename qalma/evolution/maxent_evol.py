@@ -265,9 +265,10 @@ def adaptive_projected_evolution(
             "away_from_ref": away_from_ref,
             "errors": errors,
             "update_times": update_times,
+            "system": ham.system,
         },
         stats={
-            "method": "Static Projected Evolution",
+            "method": "Adaptative Restricted Evolution",
             "errors": errors,
             "t_update_basis": t_update_basis,
         },
@@ -330,7 +331,7 @@ def projected_evolution(ham, k0, t_span, order, n_body: int = -1) -> Simulation:
         states.append(basis.operator_from_coefficients(phi))
 
     return Simulation(
-        parameters={"n_body": n_body, "order": order},
+        parameters={"n_body": n_body, "order": order, "system": ham.system},
         stats={"method": "Static Projected Evolution", "errors": errors},
         time_span=t_span,
         expect_ops={},
