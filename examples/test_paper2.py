@@ -41,7 +41,7 @@ ts = np.linspace(0, 180, 100)
 BETA = 0.01
 
 
-L = 10
+L = 6
 JX = 0.02890  # 1.75  -> vLR=1
 ALPHA = 0.61  #   jy=.9 jx
 JY = (1 - ALPHA) * JX
@@ -85,7 +85,10 @@ K0 = -RHO_0.logm()
 
 TRACK_OBSERVABLES = (
     SZ_TOTAL,
-)  # (SZ_TOTAL, SZ_TOTAL*SZ_TOTAL,HAMILTONIAN,HAMILTONIAN**2,)
+    SZ_TOTAL * SZ_TOTAL,
+    HAMILTONIAN,
+    HAMILTONIAN**2,
+)
 
 
 def run_exact(axis):
@@ -150,8 +153,7 @@ def run_projected(axis):
     sp = fetch_covar_scalar_product(sigma_0)
 
     def projection_function(op_b):
-        return op_b
-        print("projection function")
+        print("projection function", datetime.now())
         new_op = n_body_projection(op_b, nmax=4, sigma=sigma_0)
         if new_op is not op_b:
             if hasattr(new_op, "terms"):
@@ -163,19 +165,22 @@ def run_projected(axis):
         HierarchicalOperatorBasis(
             k_0,
             HAMILTONIAN,
-            18,
+            10,
             sp,
             n_body_projection=projection_function,
         )
         + TRACK_OBSERVABLES
     )
-    print("projecting using basis", basis)
+    print("projecting using basis", basis, datetime.now())
 
-    projected = [
-        GibbsDensityOperator(basis.project_onto(k)).to_qutip_operator() for k in exact_k
-    ]
+    projected = []
+    for t, k in zip(ts, exact_k):
+        print(f"projected K({t})")
+        projected.append(
+            GibbsDensityOperator(basis.project_onto(k)).to_qutip_operator()
+        )
 
-    print("Plot observables")
+    print("Plot observables", datetime.now())
     exact_expect = [np.real(rho.expect(SZ_TOTAL)) for rho in exact]
     axis.set_ylim(min(-max(exact_expect), min(exact_expect)), max(exact_expect))
     axis.plot(ts, exact_expect, label="exact")
@@ -249,10 +254,10 @@ def run_simulations():
     fig, axis = plt.subplots()
     run_projected(axis)
     run_series(axis)
-    # run_simulation_adaptive(6, 4, 0.025, axis)
+    run_simulation_adaptive(10, 4, 0.025, axis)
     axis.legend()
     # axis.set_title(f"Max-Ent evolution, beta={BETA} tolerance={tolerance}")
-    fig.savefig("output_abcd.svg")
+    fig.savefig("output_abcdp.svg")
 
 
 if __name__ == "__main__":
