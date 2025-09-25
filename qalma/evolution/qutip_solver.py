@@ -152,11 +152,13 @@ def qutip_me_solve(
         options=options,
         args=args,
     )
+    parameters = {**result.options}
+    parameters["system"] = system
 
     return Simulation(
         time_span=result.times,
         stats=result.stats,
         expect_ops=result.e_data,
         states=[StateOperatorClass(state, system=system) for state in result.states],
-        parameters=result.options,
+        parameters=parameters,
     )

@@ -185,6 +185,8 @@ def adaptive_projected_evolution(
     max_error_speed = tol / t_max
     tlist: List[float] = [t_ref]
     errors: List[float] = []
+    away_from_ref = []
+    update_times = []
 
     logging.info(f"max_error_speed:{max_error_speed}")
 
@@ -200,20 +202,22 @@ def adaptive_projected_evolution(
     phi_0 = basis.coefficient_expansion(k_t)
     logging.info(f"phi_0={phi_0}")
     result = [k_t]
-
+    away = basis.operator_norm((k_t - k_ref).simplify())
     for t in t_span[1:]:
         delta_t = t - t_ref
         phi, error = basis.evolve(delta_t, phi_0)
         oc_factor = occupation_factor(phi)
         away = basis.operator_norm((k_t - k_ref).simplify())
+        away_from_ref.append(away)
         print("away:", away)
-        if error > max_error_speed * delta_t or 5 * away > tol:
+        if error > max_error_speed * delta_t:  # or away > 5*tol:
             logging.info(
                 (
                     f"At time {t} the estimated error {error} "
                     f"is beyond the expected limit{max_error_speed * delta_t}. Updating basis."
                 )
             )
+            update_times.append(t)
             start_basis_time = datetime.now()
             basis, sigma_ref, k_ref = basis_update_callback(
                 k_t, sigma_ref, ham, order, n_body, extra_observables
@@ -258,6 +262,9 @@ def adaptive_projected_evolution(
             "tol": tol,
             "include_one_body_projection": include_one_body_projection,
             "basis_update_callback": basis_update_callback.__name__,
+            "away_from_ref": away_from_ref,
+            "errors": errors,
+            "update_times": update_times,
         },
         stats={
             "method": "Static Projected Evolution",
