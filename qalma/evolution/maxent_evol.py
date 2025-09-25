@@ -179,6 +179,7 @@ def adaptive_projected_evolution(
     Simulation:
         A Simulation object storing the results of the simulation.
     """
+    basis_costs: List[float] = []
     last_t = t_ref = t_span[0]
     t_max = t_span[-1]
     t_update_basis = [t_span[0]]
@@ -191,6 +192,7 @@ def adaptive_projected_evolution(
     logging.info(f"max_error_speed:{max_error_speed}")
 
     k_t = k0
+    start_basis_time = datetime.now()
     basis, sigma_ref, k_ref = basis_update_callback(
         k_t,
         GibbsProductDensityOperator({}, k_t.system),
@@ -199,6 +201,8 @@ def adaptive_projected_evolution(
         n_body,
         extra_observables,
     )
+    build_basis_time_cost = datetime.now() - start_basis_time
+    basis_costs.append(build_basis_time_cost.seconds)
     phi_0 = basis.coefficient_expansion(k_t)
     logging.info(f"phi_0={phi_0}")
     result = [k_t]
@@ -223,6 +227,8 @@ def adaptive_projected_evolution(
                 k_t, sigma_ref, ham, order, n_body, extra_observables
             )
             build_basis_time_cost = datetime.now() - start_basis_time
+            basis_costs.append(build_basis_time_cost.seconds)
+
             phi_0 = basis.coefficient_expansion(k_t)
             t_ref = last_t
             delta_t = t - t_ref
@@ -271,6 +277,7 @@ def adaptive_projected_evolution(
             "method": "Adaptative Restricted Evolution",
             "errors": errors,
             "t_update_basis": t_update_basis,
+            "basis_costs": basis_costs,
         },
         time_span=tlist,
         expect_ops={},
