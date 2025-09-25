@@ -55,8 +55,11 @@ def heisenberg_solve(
         phis = basis_expectation_values @ basis.evolve(t, fields_0)[0]
         result.append(phis)
 
+    options = {**options}
+    options["system"] = H.system
+    options["method"] = "Heisenberg solver"
     return Simulation(
-        parameters=options.copy(),
+        parameters=options,
         stats={},
         time_span=[t for t in tlist],
         expect_ops={key: val for key, val in zip(e_ops.keys(), np.array(result).T)},

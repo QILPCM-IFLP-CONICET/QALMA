@@ -87,6 +87,7 @@ class OperatorBasis:
             self.gram_inv = precomputed_tensors["gram_inv"]
             self.errors = precomputed_tensors["errors"]
             self.gen_matrix = precomputed_tensors["gen_matrix"]
+            self._hij = precomputed_tensors["hij"]
         else:
             self.build_tensors()
 
@@ -325,7 +326,9 @@ class HierarchicalOperatorBasis(OperatorBasis):
         self.generator = generator.simplify()
         self._build_basis(seed, deep, n_body_projection)
         self.build_tensors()
-        assert all(op.isherm for op in self.operator_basis)
+        assert all(
+            op.isherm for op in self.operator_basis
+        ), f"isherm: {[op.isherm for op in self.operator_basis]}"
 
     def __add__(self, other):
         return OperatorBasis(self.operator_basis, self.generator, self.sp) + other
