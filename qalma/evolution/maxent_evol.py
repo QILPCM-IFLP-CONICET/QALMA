@@ -189,6 +189,7 @@ def adaptive_projected_evolution(
     last_t = t_ref = t_span[0]
     states: List[Operator] = []
     tlist: List[float] = []
+    oc_factors: List[float] = []
     t_max = t_span[-1]
     t_update_basis: List[float] = []
     update_times: List[float] = []
@@ -208,6 +209,7 @@ def adaptive_projected_evolution(
         "errors": errors,
         "t_update_basis": t_update_basis,
         "basis_costs": basis_costs,
+        "occupation factor": oc_factors,
     }
     simulation = Simulation(
         parameters=parameters,
@@ -255,12 +257,18 @@ def adaptive_projected_evolution(
     phi_0 = basis.coefficient_expansion(k_t)
     logging.info(f"phi_0={phi_0}")
     call_on_success_evol(t_ref, k_t)
+
+    norm_k_ref = basis.operator_norm(k_ref)
     away = basis.operator_norm((k_t - k_ref).simplify())
+    oc_factor = occupation_factor(phi_0)
+
+    tlist.append(t_ref)
+    oc_factors.append(oc_factor)
+    away_from_ref.append(away)
     for t in t_span[1:]:
         delta_t = t - t_ref
         phi, error = basis.evolve(delta_t, phi_0)
-        oc_factor = occupation_factor(phi)
-        if error > max_error_speed * delta_t:
+        if error > max_error_speed * delta_t or away / norm_k_ref > 0.1:
             logging.info(
                 (
                     f"At time {t} the estimated error {error} "
@@ -278,6 +286,7 @@ def adaptive_projected_evolution(
             phi_0 = basis.coefficient_expansion(k_t)
             t_ref = last_t
             delta_t = t - t_ref
+            norm_k_ref = basis.operator_norm(k_ref)
             phi, error = basis.evolve(delta_t, phi_0)
 
             if on_update_basis_callback is not None:
@@ -308,6 +317,8 @@ def adaptive_projected_evolution(
         tlist.append(t)
         call_on_success_evol(t, k_t)
         errors.append(error)
+        oc_factor = occupation_factor(phi)
+        oc_factors.append(oc_factor)
         last_t = t
         # Dump the simulation state
         with open(checkpoint_name, "wb") as f:
