@@ -53,8 +53,10 @@ conventions:
 	ruff check --fix test
 	isort test
 	isort qalma
+	isort examples
 	black test
 	black qalma
+	black examples
 
 
 install:
