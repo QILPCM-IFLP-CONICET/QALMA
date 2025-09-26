@@ -5,8 +5,10 @@ Functions used to run MaxEnt simulations.
 from __future__ import annotations
 
 import logging
+import pickle
+import uuid
 from datetime import datetime
-from typing import Callable, List, Optional, Tuple
+from typing import Any, Callable, Dict, Iterable, List, Optional, Tuple, cast
 
 import numpy as np
 from numpy.typing import NDArray
@@ -15,7 +17,7 @@ from qalma.meanfield import (
     variational_quadratic_mfa,
 )
 from qalma.operators import Operator
-from qalma.operators.states import GibbsProductDensityOperator
+from qalma.operators.states import GibbsDensityOperator, GibbsProductDensityOperator
 from qalma.projections import n_body_projection
 from qalma.scalarprod import (
     HierarchicalOperatorBasis,
@@ -86,9 +88,6 @@ def update_basis(
         new_basis = rest_elements + new_basis
 
     k_ref_new = k_ref_new + sigma.expect(k - k_ref_new)
-    away = new_basis.operator_norm(k - k_ref_new)
-    print("new reference is ", away, " away from k")
-
     return (
         new_basis,
         sigma,
@@ -124,6 +123,8 @@ def adaptive_projected_evolution(
     order,
     n_body: int = -1,
     tol=1e-3,
+    *,
+    e_ops: Optional[Dict | List | Callable] = None,
     on_update_basis_callback: Optional[Callable] = None,
     extra_observables: Tuple[Operator, ...] = tuple(),
     include_one_body_projection: bool = False,
@@ -179,19 +180,64 @@ def adaptive_projected_evolution(
     Simulation:
         A Simulation object storing the results of the simulation.
     """
-    basis_costs: List[float] = []
-    last_t = t_ref = t_span[0]
-    t_max = t_span[-1]
-    t_update_basis = [t_span[0]]
-    max_error_speed = tol / t_max
-    tlist: List[float] = [t_ref]
-    errors: List[float] = []
-    away_from_ref = []
-    update_times = []
+    checkpoint_name = f"__adaptative_{order}_{n_body}_{uuid.uuid4()}.pkl"
 
-    logging.info(f"max_error_speed:{max_error_speed}")
+    away_from_ref: List[float] = []
+    basis_costs: List[float] = []
+    errors: List[float] = []
+    expect_ops: Dict[Any, Operator] = {}
+    last_t = t_ref = t_span[0]
+    states: List[Operator] = []
+    tlist: List[float] = []
+    t_max = t_span[-1]
+    t_update_basis: List[float] = []
+    update_times: List[float] = []
+    parameters: Dict[str, Any] = {
+        "n_body": n_body,
+        "order": order,
+        "tol": tol,
+        "include_one_body_projection": include_one_body_projection,
+        "basis_update_callback": basis_update_callback.__name__,
+        "away_from_ref": away_from_ref,
+        "errors": errors,
+        "update_times": update_times,
+        "system": ham.system,
+    }
+    stats: Dict[str, Any] = {
+        "method": "Adaptative Restricted Evolution",
+        "errors": errors,
+        "t_update_basis": t_update_basis,
+        "basis_costs": basis_costs,
+    }
+    simulation = Simulation(
+        parameters=parameters,
+        stats=stats,
+        time_span=tlist,
+        expect_ops=expect_ops,
+        states=states,
+    )
+
+    if e_ops is None:
+
+        def call_on_success_evol(t, k):
+            states.append(k)
+
+    elif hasattr(e_ops, "__call__"):
+        call_on_success_evol = cast(Callable, e_ops)
+    else:
+        if not isinstance(e_ops, dict):
+            e_ops = {pos: e_op for pos, e_op in enumerate(cast(Iterable, e_ops))}
+
+        def call_on_success_evol(t, k):
+            curr_e_ops = GibbsDensityOperator(k).expect(e_ops)
+            for key, val in curr_e_ops.items():
+                expect_ops.setdefault(key, []).append(val)
 
     k_t = k0
+    max_error_speed = tol / t_max
+    logging.info(f"max_error_speed:{max_error_speed}")
+
+    # Build the basis and store the time required to do that:
     start_basis_time = datetime.now()
     basis, sigma_ref, k_ref = basis_update_callback(
         k_t,
@@ -202,19 +248,19 @@ def adaptive_projected_evolution(
         extra_observables,
     )
     build_basis_time_cost = datetime.now() - start_basis_time
+    t_update_basis.append(t_span[0])
     basis_costs.append(build_basis_time_cost.seconds)
+
+    # Expand the generator in the basis
     phi_0 = basis.coefficient_expansion(k_t)
     logging.info(f"phi_0={phi_0}")
-    result = [k_t]
+    call_on_success_evol(t_ref, k_t)
     away = basis.operator_norm((k_t - k_ref).simplify())
     for t in t_span[1:]:
         delta_t = t - t_ref
         phi, error = basis.evolve(delta_t, phi_0)
         oc_factor = occupation_factor(phi)
-        away = basis.operator_norm((k_t - k_ref).simplify())
-        away_from_ref.append(away)
-        print("away:", away)
-        if error > max_error_speed * delta_t:  # or away > 5*tol:
+        if error > max_error_speed * delta_t:
             logging.info(
                 (
                     f"At time {t} the estimated error {error} "
@@ -255,34 +301,19 @@ def adaptive_projected_evolution(
                 )
                 break
             t_update_basis.append(t)
-        k_t = basis.operator_from_coefficients(phi)
-        result.append(k_t)
-        errors.append(error)
-        tlist.append(t)
-        last_t = t
 
-    return Simulation(
-        parameters={
-            "n_body": n_body,
-            "order": order,
-            "tol": tol,
-            "include_one_body_projection": include_one_body_projection,
-            "basis_update_callback": basis_update_callback.__name__,
-            "away_from_ref": away_from_ref,
-            "errors": errors,
-            "update_times": update_times,
-            "system": ham.system,
-        },
-        stats={
-            "method": "Adaptative Restricted Evolution",
-            "errors": errors,
-            "t_update_basis": t_update_basis,
-            "basis_costs": basis_costs,
-        },
-        time_span=tlist,
-        expect_ops={},
-        states=result,
-    )
+        away = basis.operator_norm((k_t - k_ref).simplify())
+        away_from_ref.append(away)
+        k_t = basis.operator_from_coefficients(phi)
+        tlist.append(t)
+        call_on_success_evol(t, k_t)
+        errors.append(error)
+        last_t = t
+        # Dump the simulation state
+        with open(checkpoint_name, "wb") as f:
+            pickle.dump(simulation, f)
+
+    return simulation
 
 
 def projected_evolution(ham, k0, t_span, order, n_body: int = -1) -> Simulation:
