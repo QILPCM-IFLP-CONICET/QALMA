@@ -41,7 +41,7 @@ ts = np.linspace(0, 180, 100)
 BETA = 0.01
 
 
-L = 5
+L = 8
 JX = 0.02890  # 1.75  -> vLR=1
 ALPHA = 0.61  #   jy=.9 jx
 JY = (1 - ALPHA) * JX
@@ -273,7 +273,7 @@ def run_simulations():
     run_simulation_adaptive(10, 4, 0.025, axis)
     axis.legend()
     # axis.set_title(f"Max-Ent evolution, beta={BETA} tolerance={tolerance}")
-    fig.savefig("output_abcdp.svg")
+    fig.savefig("output_abcdp_0.svg")
 
 
 if __name__ == "__main__":
