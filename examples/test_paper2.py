@@ -203,6 +203,7 @@ def run_projected(axis):
     print("   done")
 
 
+@profile
 def run_simulation_adaptive(basis_depth, n_body, tolerance, axis):
     k_0 = K0 * BETA
     hamiltonian = HAMILTONIAN
