@@ -352,9 +352,13 @@ class HierarchicalOperatorBasis(OperatorBasis):
                     new_elem = SumOperator(
                         new_elem.terms, system=new_elem.system, isherm=True
                     )
+                old_elem = new_elem
+                assert old_elem._isherm, "old elem should be herm"
                 new_elem = new_elem.simplify()
 
-            assert new_elem.isherm, "hermiticity lost"
+            assert (
+                new_elem.isherm
+            ), f"hermiticity lost {type(old_elem)}->{type(new_elem)}"
             # square norm of the commutator of the previous element
             comm_norm = np.abs(sp(new_elem, new_elem))
             # Initially, self.errors stores the squared norms of the
