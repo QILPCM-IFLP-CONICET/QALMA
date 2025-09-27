@@ -203,7 +203,6 @@ def run_projected(axis):
     print("   done")
 
 
-@profile
 def run_simulation_adaptive(basis_depth, n_body, tolerance, axis):
     k_0 = K0 * BETA
     hamiltonian = HAMILTONIAN
@@ -219,22 +218,22 @@ def run_simulation_adaptive(basis_depth, n_body, tolerance, axis):
             basis_depth,
             n_body,
             tol=tolerance,
+            e_ops=[SZ_TOTAL],
             on_update_basis_callback=update_basis_callback,
             include_one_body_projection=True,
             extra_observables=TRACK_OBSERVABLES,
         )
-        max_ent = [GibbsDensityOperator(k) for k in adaptative_sol.states]
 
-        with open(f"adaptative_L={L}_beta={BETA}.pkl", "wb") as f:
+        with open(f"adaptative3_L={L}_beta={BETA}.pkl", "wb") as f:
             pickle.dump(adaptative_sol, f)
 
         # plt.scatter(ts[:len(max_ent)], [np.real(rho.expect(k_0)) for rho in max_ent], label=f"$\\ell={basis_depth}$, m={n_body}, tol={tolerance}")
         plt.scatter(
-            ts[: len(max_ent)],
-            [np.real(rho.expect(SZ_TOTAL)) for rho in max_ent],
+            ts[: len(adaptative_sol.time_span)],
+            [np.real(ex_val) for ex_val in adaptative_sol.expect_ops[0]],
             label=f"c->$\\ell={basis_depth}$, m={n_body}, tol={tolerance}",
         )
-        print("len:", len(max_ent))
+        print("len:", len(adaptative_sol.time_span))
     except Exception as e:
         print("                   EXCEPTION ")
         print(type(e), e)
