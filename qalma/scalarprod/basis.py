@@ -352,8 +352,10 @@ class HierarchicalOperatorBasis(OperatorBasis):
                     new_elem = SumOperator(
                         new_elem.terms, system=new_elem.system, isherm=True
                     )
+                else:
+                    new_elem = SumOperator((new_elem,  new_elem.dag(),), system=new_elem.system, isherm=True)
                 old_elem = new_elem
-                assert old_elem._isherm, "old elem should be herm"
+                assert old_elem.isherm, f"old elem of type {type(new_elem)} should be herm"
                 new_elem = new_elem.simplify()
 
             assert (

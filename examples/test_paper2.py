@@ -270,7 +270,7 @@ def run_simulations():
     fig, axis = plt.subplots()
     run_projected(axis)
     run_series(axis)
-    run_simulation_adaptive(10, 4, 0.025, axis)
+    run_simulation_adaptive(3, 4, 0.025, axis)
     axis.legend()
     # axis.set_title(f"Max-Ent evolution, beta={BETA} tolerance={tolerance}")
     fig.savefig("output_abcdp.svg")
