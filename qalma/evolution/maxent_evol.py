@@ -269,7 +269,7 @@ def adaptive_projected_evolution(
     for t in t_span[1:]:
         delta_t = t - t_ref
         phi, error = basis.evolve(delta_t, phi_0)
-        if error > max_error_speed * delta_t or away / (tol+norm_k_ref) > tol:
+        if error > max_error_speed * delta_t or away / (tol + norm_k_ref) > tol:
             logging.info(
                 (
                     f"At time {t} the estimated error {error} "
