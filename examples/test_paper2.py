@@ -5,7 +5,11 @@ from datetime import datetime
 import matplotlib.pyplot as plt
 import numpy as np
 
-from qalma.evolution import qutip_me_solve, series_evolution as series_solver
+from qalma.evolution import (
+    Simulation,
+    qutip_me_solve,
+    series_evolution as series_solver,
+)
 from qalma.evolution.maxent_evol import (
     adaptive_projected_evolution,
     projected_evolution,
@@ -23,13 +27,27 @@ from qalma.scalarprod.basis import HierarchicalOperatorBasis
 logging.basicConfig(level=logging.INFO)
 
 
+
 def update_basis_callback(state):
     """
     Function called each time the basis is updated.
     """
-    print("  now:", datetime.now())
-    print("  Updating basis at t=", state["t"])
-    print("  rebuild the basis took ", state["basis time cost"])
+    print("  update basis:\n    now:", datetime.now())
+    print("    t=", state["t"], "t_ref=", state["t_ref"], "t_last", state["last_t"])
+    print(
+        "    Delta t=",
+        state["t"] - state["t_ref"],
+        "x speed",
+        state["max_error_speed"],
+        "=",
+        (state["t"] - state["t_ref"]) * state["max_error_speed"],
+    )
+    print("    basis time cost=", state["basis time cost"])
+    print("    curr_n_body=", state["curr_n_body"])
+    print("    len basis=", len(state["basis"].operator_basis))
+    print("    away from mean field", state["away"])
+    print("    evolution error", state["error"])
+    print("    basis.errors", state["basis"].errors)
 
 
 np.set_printoptions(
@@ -37,11 +55,14 @@ np.set_printoptions(
 )
 
 # PARAMETERS
-ts = np.linspace(0, 180, 100)
+ts = np.linspace(0, 200, 300)
 BETA = 0.01
+L = 7
+MAX_M=4
+ELL=2
+TOL=0.01
 
 
-L = 5
 JX = 0.02890  # 1.75  -> vLR=1
 ALPHA = 0.61  #   jy=.9 jx
 JY = (1 - ALPHA) * JX
@@ -160,7 +181,7 @@ def run_projected(axis):
 
     def projection_function(op_b):
         print("projection function", datetime.now())
-        new_op = n_body_projection(op_b, nmax=4, sigma=sigma_0)
+        new_op = n_body_projection(op_b, nmax=MAX_M, sigma=sigma_0)
         if new_op is not op_b:
             if hasattr(new_op, "terms"):
                 print("  projection has", len(new_op.terms))
@@ -185,14 +206,6 @@ def run_projected(axis):
         projected.append(
             GibbsDensityOperator(basis.project_onto(k)).to_qutip_operator()
         )
-    with open(f"projected_exact_L={L}_beta={BETA}.pkl", "wb") as f:
-        pickle.dump(
-            {
-                "projected evolution": {t: k for t, k in zip(ts, exact_k)},
-                "system": HAMILTONIAN.system,
-            },
-            f,
-        )
 
     print("Plot observables", datetime.now())
     exact_expect = [np.real(rho.expect(SZ_TOTAL)) for rho in exact]
@@ -200,6 +213,23 @@ def run_projected(axis):
     axis.plot(ts, exact_expect, label="exact")
     projected_expect = [np.real(rho.expect(SZ_TOTAL)) for rho in projected]
     axis.plot(ts, projected_expect, ls="-.", label="projected")
+
+    parameters = exact_sol.parameters.copy()
+    parameters["basis size"] = 10
+    parameters["n_body_projection"] = MAX_M
+    parameters["ell"] = 10
+    parameters["beta"] = BETA
+    with open(f"projected_exact_L={L}_beta={BETA}.pkl", "wb") as f:
+        pickle.dump(
+            Simulation(
+                parameters=parameters,
+                stats={},
+                time_span=exact_sol.time_span,
+                expect_ops={0: projected_expect},
+                states=[],
+            ),
+            f,
+        )
     print("   done")
 
 
@@ -207,7 +237,7 @@ def run_simulation_adaptive(basis_depth, n_body, tolerance, axis):
     k_0 = K0 * BETA
     hamiltonian = HAMILTONIAN
     print(
-        f"                   Start max ent L={basis_depth},m={n_body},tol={tolerance}:",
+        f"                   Start max ent ell={basis_depth},m={n_body},tol={tolerance}:",
         datetime.now(),
     )
     try:
@@ -224,8 +254,11 @@ def run_simulation_adaptive(basis_depth, n_body, tolerance, axis):
             extra_observables=TRACK_OBSERVABLES,
         )
 
-        with open(f"adaptative3_L={L}_beta={BETA}.pkl", "wb") as f:
+        with open(
+            f"adaptative3__L={L}_beta={BETA}_nbody={n_body}_deep={basis_depth}.pkl", "wb"
+        ) as f:
             pickle.dump(adaptative_sol, f)
+
 
         # plt.scatter(ts[:len(max_ent)], [np.real(rho.expect(k_0)) for rho in max_ent], label=f"$\\ell={basis_depth}$, m={n_body}, tol={tolerance}")
         plt.scatter(
@@ -244,7 +277,7 @@ def run_simulation_projected(basis_depth, n_body, tolerance, axis):
     k_0 = K0 * BETA
     hamiltonian = HAMILTONIAN
     print(
-        f"                   Start max ent L={basis_depth},m={n_body},tol={tolerance}:",
+        f"                   Start max ent ell={basis_depth},m={n_body},tol={tolerance}:",
         datetime.now(),
     )
     try:
@@ -270,7 +303,7 @@ def run_simulations():
     fig, axis = plt.subplots()
     run_projected(axis)
     run_series(axis)
-    run_simulation_adaptive(3, 4, 0.025, axis)
+    run_simulation_adaptive(ELL, MAX_M, TOL, axis)
     axis.legend()
     # axis.set_title(f"Max-Ent evolution, beta={BETA} tolerance={tolerance}")
     fig.savefig("output_abcdp.svg")

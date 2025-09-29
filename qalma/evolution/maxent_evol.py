@@ -16,7 +16,14 @@ from numpy.typing import NDArray
 from qalma.meanfield import (
     variational_quadratic_mfa,
 )
-from qalma.operators import Operator
+from qalma.operators import (
+    LocalOperator,
+    OneBodyOperator,
+    Operator,
+    QuadraticFormOperator,
+    ScalarOperator,
+    SumOperator,
+)
 from qalma.operators.states import GibbsDensityOperator, GibbsProductDensityOperator
 from qalma.projections import n_body_projection
 from qalma.scalarprod import (
@@ -34,6 +41,20 @@ def compute_mean_field_state(k, sigma, **kwargs):
     sigma_result = variational_quadratic_mfa(k, sigma_ref=sigma)
     generator = -sigma_result.logm()
     return generator, sigma_result
+
+
+def compute_n_body_sector(k: Operator):
+    if isinstance(k, SumOperator):
+        return max(compute_n_body_sector(term) for term in k.terms)
+    if isinstance(k, ScalarOperator):
+        return 0
+    if isinstance(k, (LocalOperator, OneBodyOperator)):
+        return 1
+    if isinstance(k, QuadraticFormOperator):
+        if k.offset is None:
+            return 2
+
+    return len(k.acts_over())
 
 
 def occupation_factor(phi: NDArray, threshold: float = 0.995) -> int:
@@ -80,7 +101,6 @@ def update_basis(
             op_b, nmax=n_body, sigma=sigma
         ),
     )
-
     rest_elements = tuple(extra_observables)
     if k is not k_ref_new:
         rest_elements = rest_elements + (k_ref_new,)
@@ -181,35 +201,34 @@ def adaptive_projected_evolution(
         A Simulation object storing the results of the simulation.
     """
     checkpoint_name = f"__adaptative_{order}_{n_body}_{uuid.uuid4()}.pkl"
+    t_0 = t_span[0]
 
-    away_from_ref: List[float] = []
-    basis_costs: List[float] = []
     errors: List[float] = []
     expect_ops: Dict[Any, Operator] = {}
-    last_t = t_ref = t_span[0]
-    states: List[Operator] = []
-    tlist: List[float] = []
+    local_evol_parms: Dict = {"t_ref": t_0, "last_t": t_0, "away": 0, "error": 0}
     oc_factors: List[float] = []
+    saturated_tolerance: bool = False
+    states: List[Operator] = []
     t_max = t_span[-1]
-    t_update_basis: List[float] = []
-    update_times: List[float] = []
+    tlist: List[float] = []
+
     parameters: Dict[str, Any] = {
         "n_body": n_body,
         "order": order,
         "tol": tol,
         "include_one_body_projection": include_one_body_projection,
         "basis_update_callback": basis_update_callback.__name__,
-        "away_from_ref": away_from_ref,
-        "errors": errors,
-        "update_times": update_times,
         "system": ham.system,
     }
     stats: Dict[str, Any] = {
         "method": "Adaptative Restricted Evolution",
         "errors": errors,
-        "t_update_basis": t_update_basis,
-        "basis_costs": basis_costs,
+        "t_update_basis": [],
+        "basis time costs": [],
         "occupation factor": oc_factors,
+        "away_from_ref": [],
+        "n_body_sector": [],
+        "update_times": [],
     }
     simulation = Simulation(
         parameters=parameters,
@@ -219,6 +238,7 @@ def adaptive_projected_evolution(
         states=states,
     )
 
+    ### Handle e_ops #####
     if e_ops is None:
 
         def call_on_success_evol(t, k):
@@ -235,91 +255,114 @@ def adaptive_projected_evolution(
             for key, val in curr_e_ops.items():
                 expect_ops.setdefault(key, []).append(val)
 
-    k_t = k0
-    max_error_speed = tol / t_max
-    logging.info(f"max_error_speed:{max_error_speed}")
+    ####  Basis update ########
+    def call_update_basis(local_evol_parms) -> bool:
+        k_t = local_evol_parms["k_t"]
+        start_basis_time = datetime.now()
+        basis, sigma_ref, k_ref = basis_update_callback(
+            k_t,
+            local_evol_parms["sigma_ref"],
+            ham,
+            order,
+            local_evol_parms["curr_n_body"],
+            extra_observables,
+        )
+        build_basis_time_cost = datetime.now() - start_basis_time
+        local_evol_parms["basis time cost"] = build_basis_time_cost.seconds
+        local_evol_parms["sigma_ref"] = sigma_ref
+        local_evol_parms["k_ref"] = k_ref
+        local_evol_parms["basis"] = basis
+        local_evol_parms["t_ref"] = local_evol_parms["last_t"]
+        local_evol_parms["phi_0"] = basis.coefficient_expansion(k_t)
 
-    # Build the basis and store the time required to do that:
-    start_basis_time = datetime.now()
-    basis, sigma_ref, k_ref = basis_update_callback(
-        k_t,
-        GibbsProductDensityOperator({}, k_t.system),
-        ham,
-        order,
-        n_body,
-        extra_observables,
+        if on_update_basis_callback is not None:
+            on_update_basis_callback(local_evol_parms)
+        return True
+
+    # Initialize
+    local_evol_parms["t"] = 0
+    local_evol_parms["k_t"] = k0
+    local_evol_parms["curr_n_body"] = compute_n_body_sector(k0)
+    local_evol_parms["sigma_ref"] = GibbsProductDensityOperator({}, k0.system)
+    local_evol_parms["max_error_speed"] = tol / t_max
+    tlist.append(local_evol_parms["t_ref"])
+    logging.info(f"max_error_speed:{local_evol_parms['max_error_speed']}")
+
+    # Create the first base
+    call_update_basis(local_evol_parms)
+    stats["update_times"].append(t)
+    stats["t_update_basis"].append(t_0)
+    stats["basis time costs"].append(local_evol_parms["basis time cost"])
+    stats["n_body_sector"].append(local_evol_parms["curr_n_body"])
+    # Perform tasks that follows to a success evolution:
+    call_on_success_evol(t_0, local_evol_parms["k_t"])
+    away = local_evol_parms["basis"].operator_norm(
+        (local_evol_parms["k_t"] - local_evol_parms["k_ref"]).simplify()
     )
-    build_basis_time_cost = datetime.now() - start_basis_time
-    t_update_basis.append(t_span[0])
-    basis_costs.append(build_basis_time_cost.seconds)
+    local_evol_parms["away"] = away
+    stats["away_from_ref"].append(away)
+    stats["occupation factor"].append(occupation_factor(local_evol_parms["phi_0"]))
 
-    # Expand the generator in the basis
-    phi_0 = basis.coefficient_expansion(k_t)
-    logging.info(f"phi_0={phi_0}")
-    call_on_success_evol(t_ref, k_t)
-
-    norm_k_ref = basis.operator_norm(k_ref)
-    away = basis.operator_norm((k_t - k_ref).simplify())
-    oc_factor = occupation_factor(phi_0)
-
-    tlist.append(t_ref)
-    oc_factors.append(oc_factor)
-    away_from_ref.append(away)
+    # Main loop
     for t in t_span[1:]:
-        delta_t = t - t_ref
-        phi, error = basis.evolve(delta_t, phi_0)
-        if error > max_error_speed * delta_t or away / norm_k_ref > 0.1:
-            logging.info(
-                (
-                    f"At time {t} the estimated error {error} "
-                    f"is beyond the expected limit{max_error_speed * delta_t}. Updating basis."
-                )
-            )
-            update_times.append(t)
-            start_basis_time = datetime.now()
-            basis, sigma_ref, k_ref = basis_update_callback(
-                k_t, sigma_ref, ham, order, n_body, extra_observables
-            )
-            build_basis_time_cost = datetime.now() - start_basis_time
-            basis_costs.append(build_basis_time_cost.seconds)
+        local_evol_parms["t"] = t
+        # If K_t is too far from K_ref, update the basis:
+        if away > tol:
+            logging.info("updating K_ref")
+            call_update_basis(local_evol_parms)
 
-            phi_0 = basis.coefficient_expansion(k_t)
-            t_ref = last_t
-            delta_t = t - t_ref
-            norm_k_ref = basis.operator_norm(k_ref)
-            phi, error = basis.evolve(delta_t, phi_0)
+        delta_t = t - local_evol_parms["t_ref"]
+        phi, error = local_evol_parms["basis"].evolve(
+            delta_t, local_evol_parms["phi_0"]
+        )
 
-            if on_update_basis_callback is not None:
-                on_update_basis_callback(
-                    state={
-                        "phi_0": phi_0,
-                        "phi": phi,
-                        "error": error,
-                        "delta_t": delta_t,
-                        "t_ref": t_ref,
-                        "t": t,
-                        "basis": basis,
-                        "K_t": k_t,
-                        "basis time cost": build_basis_time_cost,
-                        "oc_factor": oc_factor,
-                    }
-                )
-            if error > max_error_speed * delta_t:
-                logging.warning(
-                    "tolerance goal cannot be reached within this subspace."
-                )
+        # If the error is growing faster that the acceptable rate,
+        # try to enlarge the n-body sector:
+        while error > local_evol_parms["max_error_speed"] * delta_t:
+            local_evol_parms["error"] = error
+            call_update_basis(local_evol_parms)
+            delta_t = t - local_evol_parms["t_ref"]
+            phi, error = local_evol_parms["basis"].evolve(
+                delta_t, local_evol_parms["phi_0"]
+            )
+
+            if error <= local_evol_parms["max_error_speed"] * delta_t:
+                stats["update_times"].append(t)
+                stats["t_update_basis"].append(t)
+                stats["basis time costs"].append(local_evol_parms["basis time cost"])
+                stats["n_body_sector"].append(local_evol_parms["curr_n_body"])
                 break
-            t_update_basis.append(t)
+            if n_body > local_evol_parms["curr_n_body"]:
+                local_evol_parms["curr_n_body"] += 1
+                logging.warning(
+                    f"tolerance goal cannot be reached within this subspace. Try in {local_evol_parms['curr_n_body']} sector."
+                )
+                continue
+            #
+            saturated_tolerance = True
+            logging.warning(f"tolerance goal cannot be reached within {n_body} sector.")
+            break
 
-        away = basis.operator_norm((k_t - k_ref).simplify())
-        away_from_ref.append(away)
-        k_t = basis.operator_from_coefficients(phi)
+        if saturated_tolerance:
+            logging.warning("tolerance goal cannot be reached within this subspace.")
+            break
+
         tlist.append(t)
-        call_on_success_evol(t, k_t)
-        errors.append(error)
-        oc_factor = occupation_factor(phi)
-        oc_factors.append(oc_factor)
-        last_t = t
+        local_evol_parms["last_t"] = t
+        local_evol_parms["k_t"] = local_evol_parms["basis"].operator_from_coefficients(
+            phi
+        )
+        stats["errors"].append(error)
+        local_evol_parms["error"] = error
+        call_on_success_evol(t, local_evol_parms["k_t"])
+        stats["n_body_sector"].append(local_evol_parms["curr_n_body"])
+        stats["occupation factor"].append(occupation_factor(phi))
+        away = local_evol_parms["basis"].operator_norm(
+            (local_evol_parms["k_t"] - local_evol_parms["k_ref"]).simplify()
+        )
+        local_evol_parms["away"] = away
+        stats["away_from_ref"].append(away)
+
         # Dump the simulation state
         with open(checkpoint_name, "wb") as f:
             pickle.dump(simulation, f)
