@@ -38,7 +38,7 @@ LocalBasisDict = Dict[str, List[Qobj]]
 
 
 def build_local_basis(
-    terms_by_block: Dict[frozenset, List[Operator]]
+    terms_by_block: Dict[frozenset, List[Operator]],
 ) -> LocalBasisDict:
     """
     Build a local basis of operators from
