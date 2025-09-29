@@ -344,6 +344,7 @@ class HierarchicalOperatorBasis(OperatorBasis):
         generator = self.generator
         errors = np.zeros((dimension,))
         closed = False
+        tol_sq = QALMA_TOLERANCE**2
         for i in range(dimension):
             # commutator of the previous element
             new_elem = commutator(elements[-1], generator)
@@ -375,8 +376,16 @@ class HierarchicalOperatorBasis(OperatorBasis):
             # Initially, self.errors stores the squared norms of the
             # commutators.
             errors[i] = comm_norm
+            # The new element is the projection of the commutator
+            # of the previous element
+            if projection_function is not None and comm_norm >= tol_sq:
+                new_elem_proj = projection_function(new_elem)
+                if new_elem_proj is not new_elem:
+                    new_elem = new_elem_proj
+                    comm_norm = np.abs(sp(new_elem, new_elem))
+                    assert new_elem.isherm, "hermiticity lost"
 
-            if np.abs(comm_norm) < QALMA_TOLERANCE**2:
+            if np.abs(comm_norm) < tol_sq:
                 closed = True
                 deep = dimension = i + 1
                 logging.warning(
@@ -387,14 +396,6 @@ class HierarchicalOperatorBasis(OperatorBasis):
                 )
                 errors = errors[:dimension]
                 break
-            # The new element is the projection of the commutator
-            # of the previous element
-            if projection_function is not None:
-                new_elem_proj = projection_function(new_elem)
-                if new_elem_proj is not new_elem:
-                    new_elem = new_elem_proj
-                    comm_norm = np.abs(sp(new_elem, new_elem))
-                    assert new_elem.isherm, "hermiticity lost"
 
             elem_norm = comm_norm**0.5
             new_elem = new_elem / elem_norm
@@ -481,12 +482,13 @@ class HierarchicalOperatorBasis(OperatorBasis):
         l_inv = inv(l_gram)
         self.gram_inv = l_inv.T @ l_inv
 
-        for j, row in enumerate(hij):
+        for j, row in enumerate(hij.T):
             proj_coeffs = l_inv @ row
             norm_par = proj_coeffs @ proj_coeffs
             errors[j] = (max(errors[j] - norm_par, 0)) ** 0.5
 
         self.errors = errors
+
         self.gen_matrix = self.gram_inv @ hij
 
 
