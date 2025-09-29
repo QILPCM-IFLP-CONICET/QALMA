@@ -41,7 +41,7 @@ ts = np.linspace(0, 180, 100)
 BETA = 0.01
 
 
-L = 8
+L = 5
 JX = 0.02890  # 1.75  -> vLR=1
 ALPHA = 0.61  #   jy=.9 jx
 JY = (1 - ALPHA) * JX
@@ -203,7 +203,6 @@ def run_projected(axis):
     print("   done")
 
 
-@profile
 def run_simulation_adaptive(basis_depth, n_body, tolerance, axis):
     k_0 = K0 * BETA
     hamiltonian = HAMILTONIAN
@@ -219,22 +218,22 @@ def run_simulation_adaptive(basis_depth, n_body, tolerance, axis):
             basis_depth,
             n_body,
             tol=tolerance,
+            e_ops=[SZ_TOTAL],
             on_update_basis_callback=update_basis_callback,
             include_one_body_projection=True,
             extra_observables=TRACK_OBSERVABLES,
         )
-        max_ent = [GibbsDensityOperator(k) for k in adaptative_sol.states]
 
-        with open(f"adaptative_L={L}_beta={BETA}.pkl", "wb") as f:
+        with open(f"adaptative3_L={L}_beta={BETA}.pkl", "wb") as f:
             pickle.dump(adaptative_sol, f)
 
         # plt.scatter(ts[:len(max_ent)], [np.real(rho.expect(k_0)) for rho in max_ent], label=f"$\\ell={basis_depth}$, m={n_body}, tol={tolerance}")
         plt.scatter(
-            ts[: len(max_ent)],
-            [np.real(rho.expect(SZ_TOTAL)) for rho in max_ent],
+            ts[: len(adaptative_sol.time_span)],
+            [np.real(ex_val) for ex_val in adaptative_sol.expect_ops[0]],
             label=f"c->$\\ell={basis_depth}$, m={n_body}, tol={tolerance}",
         )
-        print("len:", len(max_ent))
+        print("len:", len(adaptative_sol.time_span))
     except Exception as e:
         print("                   EXCEPTION ")
         print(type(e), e)
@@ -271,10 +270,10 @@ def run_simulations():
     fig, axis = plt.subplots()
     run_projected(axis)
     run_series(axis)
-    run_simulation_adaptive(10, 4, 0.025, axis)
+    run_simulation_adaptive(3, 4, 0.025, axis)
     axis.legend()
     # axis.set_title(f"Max-Ent evolution, beta={BETA} tolerance={tolerance}")
-    fig.savefig("output_abcdp_0.svg")
+    fig.savefig("output_abcdp.svg")
 
 
 if __name__ == "__main__":
