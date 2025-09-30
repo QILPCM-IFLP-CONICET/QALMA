@@ -329,8 +329,8 @@ def set_parameters():
 def run_simulations():
     fig, axis = plt.subplots()
     run_projected(axis)
-    #run_series(axis)
-    #run_simulation_adaptive(ELL, MAX_M, TOL, axis)
+    run_series(axis)
+    run_simulation_adaptive(ELL, MAX_M, TOL, axis)
     axis.legend()
     # axis.set_title(f"Max-Ent evolution, beta={BETA} tolerance={tolerance}")
     fig.savefig(f"output_{UUID_CALL}.svg")

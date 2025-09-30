@@ -35,7 +35,7 @@ for filename in sys.argv[1:]:
     plt.plot(
         data.time_span[: len(data.expect_ops[0])],
         [np.real(x) for x in data.expect_ops[0]],
-        label=filename,
+        label=filename[:20],
     )
 
 plt.legend()
