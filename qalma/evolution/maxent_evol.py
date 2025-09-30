@@ -290,7 +290,7 @@ def adaptive_projected_evolution(
 
     # Create the first base
     call_update_basis(local_evol_parms)
-    stats["update_times"].append(t)
+    stats["update_times"].append(t_0)
     stats["t_update_basis"].append(t_0)
     stats["basis time costs"].append(local_evol_parms["basis time cost"])
     stats["n_body_sector"].append(local_evol_parms["curr_n_body"])

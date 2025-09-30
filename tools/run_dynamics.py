@@ -1,10 +1,11 @@
+#!/usr/bin/env python
 import logging
 import pickle
 from datetime import datetime
-
+import argparse
 import matplotlib.pyplot as plt
 import numpy as np
-
+import uuid
 from qalma.evolution import (
     Simulation,
     qutip_me_solve,
@@ -25,6 +26,8 @@ from qalma.scalarprod import fetch_covar_scalar_product
 from qalma.scalarprod.basis import HierarchicalOperatorBasis
 
 logging.basicConfig(level=logging.INFO)
+
+UUID_CALL = f"{uuid.uuid4()}"
 
 
 
@@ -55,61 +58,56 @@ np.set_printoptions(
 )
 
 # PARAMETERS
-ts = np.linspace(0, 200, 300)
-BETA = 0.01
-L = 7
-MAX_M=4
-ELL=2
-TOL=0.01
-
+TIME_SPAN = np.linspace(0, 300, 500)
 
 JX = 0.02890  # 1.75  -> vLR=1
 ALPHA = 0.61  #   jy=.9 jx
 JY = (1 - ALPHA) * JX
 PHI_0 = [0, 0.25, 0.25, 1]
-SYSTEM = build_system(
-    geometry_name="chain lattice",
-    model_name="spin",
-    **{"L": L, "Jz": 0, "Jxy": JX, "Alpha": ALPHA},
-)
-HAMILTONIAN = SYSTEM.global_operator("Hamiltonian").simplify()
-SZ_TOTAL = SYSTEM.global_operator("Sz")
-
-SITES = tuple(SYSTEM.sites.keys())
-# Other operators
-GLOBAL_IDENTITY = ScalarOperator(1.0, SYSTEM)
 
 
-SX_A = SYSTEM.site_operator(f"Sx@{SITES[0]}")
-SX_B = SYSTEM.site_operator(f"Sx@{SITES[1]}")
-SX_AB = 0.7 * SX_A + 0.3 * SX_B
+
+def build_system_objects(args):
+    global L, SYSTEM, HAMILTONIAN, SZ_TOTAL, SITES, GLOBAL_IDENTITY, K0, TRACK_OBSERVABLES
+    SYSTEM = build_system(
+        geometry_name="chain lattice",
+        model_name="spin",
+        **{"L": L, "Jz": 0, "Jxy": JX, "Alpha": ALPHA},
+    )
+    HAMILTONIAN = SYSTEM.global_operator("Hamiltonian").simplify()
+    SZ_TOTAL = SYSTEM.global_operator("Sz")
+
+    SITES = tuple(SYSTEM.sites.keys())
+    # Other operators
+    GLOBAL_IDENTITY = ScalarOperator(1.0, SYSTEM)
+
+    SX_A = SYSTEM.site_operator(f"Sx@{SITES[0]}")
+    SY_A = SYSTEM.site_operator(f"Sy@{SITES[0]}")
+    SZ_A = SYSTEM.site_operator(f"Sz@{SITES[0]}")
+    K0 = SX_A * PHI_0[1] + SY_A * PHI_0[2] + SZ_A * PHI_0[3]
+    RHO_0 = GibbsProductDensityOperator(K0)
+    K0 = -RHO_0.logm()
+
+    track_list = args.track
+    if track_list.lower()=="none":
+        track_list=""
+    elif track_list.lower()=="all":
+        track_list="SZ_TOTAL,SZ_TOTAL_SQ,H,H_SQ"
+    track_observables = []
+    for obs_t in track_list.split(","):
+        if obs_t.strip()=="SZ_TOTAL":
+             track_observables.append(SZ_TOTAL)
+        elif obs_t.strip()=="SZ_TOTAL":
+             track_observables.append(SZ_TOTAL)
+        elif obs_t.strip()=="SZ_TOTAL_SQ":
+             track_observables.append(SZ_TOTAL**2)
+        elif obs_t.strip()=="H":
+             track_observables.append(HAMILTONIAN)
+        elif obs_t.strip()=="H_SQ":
+             track_observables.append(HAMILTONIAN*HAMILTONIAN)
+    TRACK_OBSERVABLES=tuple(track_observables)
 
 
-SY_A = SYSTEM.site_operator(f"Sy@{SITES[0]}")
-SY_B = SYSTEM.site_operator(f"Sy@{SITES[1]}")
-
-SPLUS_A = SYSTEM.site_operator(f"Splus@{SITES[0]}")
-SPLUS_B = SYSTEM.site_operator(f"Splus@{SITES[1]}")
-SMINUS_A = SYSTEM.site_operator(f"Sminus@{SITES[0]}")
-SMINUS_B = SYSTEM.site_operator(f"Sminus@{SITES[1]}")
-
-
-SZ_A = SYSTEM.site_operator(f"Sz@{SITES[0]}")
-SZ_B = SYSTEM.site_operator(f"Sz@{SITES[1]}")
-SZ_C = SYSTEM.site_operator(f"Sz@{SITES[2]}")
-SZ_AB = 0.7 * SZ_A + 0.3 * SZ_B
-
-K0 = SX_A * PHI_0[1] + SY_A * PHI_0[2] + SZ_A * PHI_0[3]
-RHO_0 = GibbsProductDensityOperator(K0)
-K0 = -RHO_0.logm()
-
-
-TRACK_OBSERVABLES = (
-    SZ_TOTAL,
-    SZ_TOTAL * SZ_TOTAL,
-    HAMILTONIAN,
-    HAMILTONIAN**2,
-)
 
 
 def run_exact(axis):
@@ -118,15 +116,15 @@ def run_exact(axis):
     print("Start exact:", datetime.now())
     exact = [
         GibbsDensityOperator(k).to_qutip_operator()
-        for k in qutip_me_solve(hamiltonian, k_0, ts)
+        for k in qutip_me_solve(hamiltonian, k_0, TIME_SPAN)
     ]
     print("Plot observables")
     exact_expect = [np.real(rho.expect(SZ_TOTAL)) for rho in exact]
     axis.set_ylim(min(-max(exact_expect), min(exact_expect)), max(exact_expect))
     axis.plot(ts, exact_expect, label="exact")
     axis.plot(
-        ts,
-        [exact_expect[0] * np.cos(1.4142 * BETA * JX * ALPHA * t) for t in ts],
+        TIME_SPAN,
+        [exact_expect[0] * np.cos(1.4142 * BETA * JX * ALPHA * t) for t in TIME_SPAN],
         label="2nd order Ehrenfest",
         ls="-.",
     )
@@ -141,7 +139,7 @@ def run_exact(axis):
                 / (1 + 3 * ALPHA**2)
                 * (np.cos(JX * BETA * t * (1 + 3 * ALPHA**2) ** 0.5) - 1)
             )
-            for t in ts
+            for t in TIME_SPAN
         ],
         label="3nd order Ehrenfest",
         ls="-.",
@@ -153,15 +151,15 @@ def run_series(axis):
     k_0 = K0 * BETA
     hamiltonian = HAMILTONIAN
     print("Start series:", datetime.now())
-    series_sol = series_solver(hamiltonian, k_0, ts, 30)
+    series_sol = series_solver(hamiltonian, k_0, TIME_SPAN, 30)
     series = [GibbsDensityOperator(k).to_qutip_operator() for k in series_sol.states]
 
-    with open(f"series_L={L}_beta={BETA}.pkl", "wb") as f:
+    with open(f"series_L={L}_beta={BETA}_{UUID_CALL}.pkl", "wb") as f:
         pickle.dump(series_sol, f)
 
     print("Plot observables")
     series_expect = [np.real(rho.expect(SZ_TOTAL)) for rho in series]
-    axis.plot(ts, series_expect, label="series")
+    axis.plot(TIME_SPAN, series_expect, label="series")
     print("   done")
 
 
@@ -169,8 +167,8 @@ def run_projected(axis):
     k_0 = K0 * BETA
     hamiltonian = HAMILTONIAN
     print("Start exact:", datetime.now())
-    exact_sol = qutip_me_solve(hamiltonian, k_0, ts)
-    with open(f"exact_L={L}_beta={BETA}.pkl", "wb") as f:
+    exact_sol = qutip_me_solve(hamiltonian, k_0, TIME_SPAN)
+    with open(f"exact_L={L}_beta={BETA}_{UUID_CALL}.pkl", "wb") as f:
         pickle.dump(exact_sol, f)
 
     exact_k = exact_sol.states
@@ -192,7 +190,7 @@ def run_projected(axis):
         HierarchicalOperatorBasis(
             k_0,
             HAMILTONIAN,
-            10,
+            ELL,
             sp,
             n_body_projection=projection_function,
         )
@@ -201,7 +199,7 @@ def run_projected(axis):
     print("projecting using basis", basis, datetime.now())
 
     projected = []
-    for t, k in zip(ts, exact_k):
+    for t, k in zip(TIME_SPAN, exact_k):
         print(f"projected K({t})")
         projected.append(
             GibbsDensityOperator(basis.project_onto(k)).to_qutip_operator()
@@ -210,20 +208,20 @@ def run_projected(axis):
     print("Plot observables", datetime.now())
     exact_expect = [np.real(rho.expect(SZ_TOTAL)) for rho in exact]
     axis.set_ylim(min(-max(exact_expect), min(exact_expect)), max(exact_expect))
-    axis.plot(ts, exact_expect, label="exact")
+    axis.plot(TIME_SPAN, exact_expect, label="exact")
     projected_expect = [np.real(rho.expect(SZ_TOTAL)) for rho in projected]
-    axis.plot(ts, projected_expect, ls="-.", label="projected")
+    axis.plot(TIME_SPAN, projected_expect, ls="-.", label="projected")
 
     parameters = exact_sol.parameters.copy()
     parameters["basis size"] = 10
     parameters["n_body_projection"] = MAX_M
     parameters["ell"] = 10
     parameters["beta"] = BETA
-    with open(f"projected_exact_L={L}_beta={BETA}.pkl", "wb") as f:
+    with open(f"projected_exact_L={L}_beta={BETA}_{UUID_CALL}.pkl", "wb") as f:
         pickle.dump(
             Simulation(
                 parameters=parameters,
-                stats={},
+                stats={"errors":basis.errors},
                 time_span=exact_sol.time_span,
                 expect_ops={0: projected_expect},
                 states=[],
@@ -244,7 +242,7 @@ def run_simulation_adaptive(basis_depth, n_body, tolerance, axis):
         adaptative_sol = adaptive_projected_evolution(
             hamiltonian,
             k_0,
-            ts,
+            TIME_SPAN,
             basis_depth,
             n_body,
             tol=tolerance,
@@ -255,14 +253,14 @@ def run_simulation_adaptive(basis_depth, n_body, tolerance, axis):
         )
 
         with open(
-            f"adaptative3__L={L}_beta={BETA}_nbody={n_body}_deep={basis_depth}.pkl", "wb"
+            f"adaptative3__L={L}_beta={BETA}_nbody={n_body}_deep={basis_depth}_{UUID_CALL}.pkl",
+            "wb",
         ) as f:
             pickle.dump(adaptative_sol, f)
 
-
         # plt.scatter(ts[:len(max_ent)], [np.real(rho.expect(k_0)) for rho in max_ent], label=f"$\\ell={basis_depth}$, m={n_body}, tol={tolerance}")
         plt.scatter(
-            ts[: len(adaptative_sol.time_span)],
+            TIME_SPAN[: len(adaptative_sol.time_span)],
             [np.real(ex_val) for ex_val in adaptative_sol.expect_ops[0]],
             label=f"c->$\\ell={basis_depth}$, m={n_body}, tol={tolerance}",
         )
@@ -283,7 +281,7 @@ def run_simulation_projected(basis_depth, n_body, tolerance, axis):
     try:
         max_ent = [
             GibbsDensityOperator(k)
-            for k in projected_evolution(hamiltonian, k_0, ts, 100, 100)
+            for k in projected_evolution(hamiltonian, k_0, TIME_SPAN, 100, 100)
         ]
         # plt.scatter(ts[:len(max_ent)], [np.real(rho.expect(k_0)) for rho in max_ent], label=f"$\\ell={basis_depth}$, m={n_body}, tol={tolerance}")
         plt.scatter(
@@ -299,15 +297,45 @@ def run_simulation_projected(basis_depth, n_body, tolerance, axis):
         raise
 
 
+
+
+def set_parameters():
+    global BETA, L, MAX_M, ELL, TOL
+
+    argparser = argparse.ArgumentParser(
+        prog="run_dynamics",
+        usage="%(prog)s [options] [FILE]",
+        add_help=False,
+        description="Simulate the dynamics of a spin chain with different approaches.",
+        epilog="""Just with experimental porpouse.""",
+    )
+    argparser.add_argument("--length", "-L", type=int, default=4)
+    argparser.add_argument("--beta", type=float, default=.001)
+    argparser.add_argument("--n_body", "-M", type=int, default=4)
+    argparser.add_argument("--deep", "-D", type=int, default=2)
+    argparser.add_argument("--tol", type=float, default=.001)
+    argparser.add_argument("--track", type=str, default="None")
+
+    args, ns= argparser.parse_known_args()
+    print("ns",ns)
+    print(type(args), args)
+    L = args.length
+    TOL = args.tol
+    ELL = args.deep
+    BETA = args.beta
+    MAX_M = args.n_body
+    build_system_objects(args)
+
 def run_simulations():
     fig, axis = plt.subplots()
     run_projected(axis)
-    run_series(axis)
-    run_simulation_adaptive(ELL, MAX_M, TOL, axis)
+    #run_series(axis)
+    #run_simulation_adaptive(ELL, MAX_M, TOL, axis)
     axis.legend()
     # axis.set_title(f"Max-Ent evolution, beta={BETA} tolerance={tolerance}")
-    fig.savefig("output_abcdp.svg")
+    fig.savefig(f"output_{UUID_CALL}.svg")
 
 
 if __name__ == "__main__":
+    set_parameters()
     run_simulations()
