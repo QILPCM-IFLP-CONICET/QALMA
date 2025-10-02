@@ -202,10 +202,16 @@ def adaptive_projected_evolution(
     """
     checkpoint_name = f"__adaptative_{order}_{n_body}_{uuid.uuid4()}.pkl"
     t_0 = t_span[0]
-
+    error = 0
     errors: List[float] = []
     expect_ops: Dict[Any, Operator] = {}
-    local_evol_parms: Dict = {"t_ref": t_0, "last_t": t_0, "away": 0, "error": 0}
+    local_evol_parms: Dict = {
+        "t_ref": t_0,
+        "last_t": t_0,
+        "away": 0,
+        "error": 0,
+        "cummulated error": 0,
+    }
     oc_factors: List[float] = []
     saturated_tolerance: bool = False
     states: List[Operator] = []
@@ -223,12 +229,11 @@ def adaptive_projected_evolution(
     stats: Dict[str, Any] = {
         "method": "Adaptative Restricted Evolution",
         "errors": errors,
-        "t_update_basis": [],
         "basis time costs": [],
         "occupation factor": oc_factors,
         "away_from_ref": [],
         "n_body_sector": [],
-        "update_times": [],
+        "basis update times": [],
     }
     simulation = Simulation(
         parameters=parameters,
@@ -268,7 +273,9 @@ def adaptive_projected_evolution(
             extra_observables,
         )
         build_basis_time_cost = datetime.now() - start_basis_time
-        local_evol_parms["basis time cost"] = build_basis_time_cost.seconds
+        local_evol_parms["basis time cost"] = (
+            build_basis_time_cost.seconds + 1e-6 * build_basis_time_cost.microseconds
+        )
         local_evol_parms["sigma_ref"] = sigma_ref
         local_evol_parms["k_ref"] = k_ref
         local_evol_parms["basis"] = basis
@@ -284,14 +291,13 @@ def adaptive_projected_evolution(
     local_evol_parms["k_t"] = k0
     local_evol_parms["curr_n_body"] = compute_n_body_sector(k0)
     local_evol_parms["sigma_ref"] = GibbsProductDensityOperator({}, k0.system)
-    local_evol_parms["max_error_speed"] = tol / t_max
+    local_evol_parms["max_error_speed"] = tol / (t_max - t_0)
     tlist.append(local_evol_parms["t_ref"])
     logging.info(f"max_error_speed:{local_evol_parms['max_error_speed']}")
 
     # Create the first base
     call_update_basis(local_evol_parms)
-    stats["update_times"].append(t_0)
-    stats["t_update_basis"].append(t_0)
+    stats["basis update times"].append(t_0)
     stats["basis time costs"].append(local_evol_parms["basis time cost"])
     stats["n_body_sector"].append(local_evol_parms["curr_n_body"])
     # Perform tasks that follows to a success evolution:
@@ -300,16 +306,25 @@ def adaptive_projected_evolution(
         (local_evol_parms["k_t"] - local_evol_parms["k_ref"]).simplify()
     )
     local_evol_parms["away"] = away
+    stats["errors"].append(0)
     stats["away_from_ref"].append(away)
     stats["occupation factor"].append(occupation_factor(local_evol_parms["phi_0"]))
 
     # Main loop
     for t in t_span[1:]:
         local_evol_parms["t"] = t
+        last_error = error
         # If K_t is too far from K_ref, update the basis:
         if away > tol:
             logging.info("updating K_ref")
             call_update_basis(local_evol_parms)
+            local_evol_parms["cummulated error"] += last_error
+            last_error = 0
+            local_evol_parms["max_error_speed"] = (
+                tol - local_evol_parms["cummulated error"]
+            ) / (t_max - local_evol_parms["t_ref"])
+            stats["basis update times"].append(t)
+            stats["basis time costs"].append(local_evol_parms["basis time cost"])
 
         delta_t = t - local_evol_parms["t_ref"]
         phi, error = local_evol_parms["basis"].evolve(
@@ -319,6 +334,7 @@ def adaptive_projected_evolution(
         # If the error is growing faster that the acceptable rate,
         # try to enlarge the n-body sector:
         while error > local_evol_parms["max_error_speed"] * delta_t:
+            logging.info("Error max speed saturated. Enlarge the basis.")
             local_evol_parms["error"] = error
             call_update_basis(local_evol_parms)
             delta_t = t - local_evol_parms["t_ref"]
@@ -327,10 +343,13 @@ def adaptive_projected_evolution(
             )
 
             if error <= local_evol_parms["max_error_speed"] * delta_t:
-                stats["update_times"].append(t)
-                stats["t_update_basis"].append(t)
+                # Compute the cummulated error until the last successful basis change
+                local_evol_parms["cummulated error"] += last_error
+                local_evol_parms["max_error_speed"] = (
+                    tol - local_evol_parms["cummulated error"]
+                ) / (t_max - local_evol_parms["t_ref"])
+                stats["basis update times"].append(t)
                 stats["basis time costs"].append(local_evol_parms["basis time cost"])
-                stats["n_body_sector"].append(local_evol_parms["curr_n_body"])
                 break
             if n_body > local_evol_parms["curr_n_body"]:
                 local_evol_parms["curr_n_body"] += 1
@@ -352,7 +371,7 @@ def adaptive_projected_evolution(
         local_evol_parms["k_t"] = local_evol_parms["basis"].operator_from_coefficients(
             phi
         )
-        stats["errors"].append(error)
+        stats["errors"].append(error + local_evol_parms["cummulated error"])
         local_evol_parms["error"] = error
         call_on_success_evol(t, local_evol_parms["k_t"])
         stats["n_body_sector"].append(local_evol_parms["curr_n_body"])

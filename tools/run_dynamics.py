@@ -49,7 +49,7 @@ def update_basis_callback(state):
     print("    curr_n_body=", state["curr_n_body"])
     print("    len basis=", len(state["basis"].operator_basis))
     print("    away from mean field", state["away"])
-    print("    evolution error", state["error"])
+    print("    cummulated error", state["cummulated error"])
     print("    basis.errors", state["basis"].errors)
 
 
@@ -60,15 +60,16 @@ np.set_printoptions(
 # PARAMETERS
 TIME_SPAN = np.linspace(0, 300, 500)
 
-JX = 0.02890  # 1.75  -> vLR=1
+
 ALPHA = 0.61  #   jy=.9 jx
+JX = 0.165673/(1-ALPHA)**.5  # 1.75  -> vLR=1
 JY = (1 - ALPHA) * JX
 PHI_0 = [0, 0.25, 0.25, 1]
 
 
 
 def build_system_objects(args):
-    global L, SYSTEM, HAMILTONIAN, SZ_TOTAL, SITES, GLOBAL_IDENTITY, K0, TRACK_OBSERVABLES
+    global L, SYSTEM, HAMILTONIAN, SZ_TOTAL, HALF_LEN_COMM,SITES, GLOBAL_IDENTITY, K0, TRACK_OBSERVABLES
     SYSTEM = build_system(
         geometry_name="chain lattice",
         model_name="spin",
@@ -300,7 +301,7 @@ def run_simulation_projected(basis_depth, n_body, tolerance, axis):
 
 
 def set_parameters():
-    global BETA, L, MAX_M, ELL, TOL
+    global BETA, FULL, L, MAX_M, ELL, TOL
 
     argparser = argparse.ArgumentParser(
         prog="run_dynamics",
@@ -309,12 +310,19 @@ def set_parameters():
         description="Simulate the dynamics of a spin chain with different approaches.",
         epilog="""Just with experimental porpouse.""",
     )
-    argparser.add_argument("--length", "-L", type=int, default=4)
-    argparser.add_argument("--beta", type=float, default=.001)
-    argparser.add_argument("--n_body", "-M", type=int, default=4)
-    argparser.add_argument("--deep", "-D", type=int, default=2)
-    argparser.add_argument("--tol", type=float, default=.001)
-    argparser.add_argument("--track", type=str, default="None")
+    argparser.add_argument("--full", help="compute exact and projected dynamics too.", action="store_true")
+    argparser.add_argument("--length", "-L", type=int, default=4, help="length of the spin chain")
+    argparser.add_argument("--beta", type=float, default=.001, help="inverse temperature")
+    argparser.add_argument("--n_body", "-M", type=int, default=4, help="max n_body sector")
+    argparser.add_argument("--deep", "-D", type=int, default=2, help="deep of the Hiearchical basis/order the perturbative series.")
+    argparser.add_argument("--tol", type=float, default=.001, help="tolerance")
+    argparser.add_argument("--track", type=str, default="None",
+                           help=("track observables. One or a comma separated list with elements in"
+                                 "`SZ_TOTAL`\n`SZ_TOTAL_SQ`\n `H`\n`H_SQ`. Special keywords are "
+                                 "`None`: (default)->no track observables and \n`All`: Track all the observables."))
+    argparser.add_argument(
+        "--help", "-help", "-h", help="show this help message and exit", action="help"
+    )
 
     args, ns= argparser.parse_known_args()
     print("ns",ns)
@@ -324,12 +332,14 @@ def set_parameters():
     ELL = args.deep
     BETA = args.beta
     MAX_M = args.n_body
+    FULL = args.full
     build_system_objects(args)
 
 def run_simulations():
     fig, axis = plt.subplots()
-    run_projected(axis)
-    run_series(axis)
+    if FULL:
+        run_projected(axis)
+        run_series(axis)
     run_simulation_adaptive(ELL, MAX_M, TOL, axis)
     axis.legend()
     # axis.set_title(f"Max-Ent evolution, beta={BETA} tolerance={tolerance}")

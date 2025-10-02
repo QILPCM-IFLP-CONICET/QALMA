@@ -78,7 +78,7 @@ class OperatorBasis:
         if n_body_projection is not None:
             operators = tuple((n_body_projection(op_b) for op_b in operators))
 
-        assert all(op_b.isherm for op_b in operators)
+        assert all(op_b.isherm for op_b in operators), f"[(type(x), x.acts_over8), relative_non_hermitician_part(x),) for x in op_b]"
         self.operator_basis = operators
 
         if precomputed_tensors is not None:
@@ -328,7 +328,7 @@ class HierarchicalOperatorBasis(OperatorBasis):
         self.build_tensors()
         assert all(
             op.isherm for op in self.operator_basis
-        ), f"isherm: {[op.isherm for op in self.operator_basis]}"
+        ), f"isherm: {[[type(op), op.acts_over(), relative_non_hermitician_part(op)] for op in self.operator_basis]}"
 
     def __add__(self, other):
         return OperatorBasis(self.operator_basis, self.generator, self.sp) + other
@@ -747,3 +747,13 @@ def do_compute_cross_gram_matrix(sp, ops1, ops2, dtype=np.float128):
         for j_idx, o2 in enumerate(ops2):
             g12[i_idx, j_idx] = np.real(sp(o1, o2))
     return g12
+
+
+
+
+
+def relative_non_hermitician_part(x):
+    if x.isherm:
+        return True
+    err = x.dag()-x
+    return abs((err * err).tr())**.5/ ((x*x).tr())**.5
