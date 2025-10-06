@@ -58,11 +58,11 @@ np.set_printoptions(
 )
 
 # PARAMETERS
-TIME_SPAN = np.linspace(0, 300, 500)
+TIME_SPAN = np.linspace(0, 8, 500)
 
 
 ALPHA = 0.61  #   jy=.9 jx
-JX = 0.165673/(1-ALPHA)**.5  # 1.75  -> vLR=1
+JX = 0.662743/(1-ALPHA)**.5  # 1.75  -> vLR=1
 JY = (1 - ALPHA) * JX
 PHI_0 = [0, 0.25, 0.25, 1]
 
