@@ -51,12 +51,15 @@ check_pre_commit: conventions mypy pytest
 conventions:
 	ruff check --fix qalma
 	ruff check --fix test
-	isort test
-	isort qalma
+	ruff check --fix tools
 	isort examples
-	black test
-	black qalma
+	isort qalma
+	isort test
+	isort tools
 	black examples
+	black qalma
+	black test
+	black tools
 
 
 install:

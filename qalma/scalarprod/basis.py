@@ -78,7 +78,9 @@ class OperatorBasis:
         if n_body_projection is not None:
             operators = tuple((n_body_projection(op_b) for op_b in operators))
 
-        assert all(op_b.isherm for op_b in operators), f"[(type(x), x.acts_over8), relative_non_hermitician_part(x),) for x in op_b]"
+        assert all(
+            op_b.isherm for op_b in operators
+        ), "[(type(x), x.acts_over8), relative_non_hermitician_part(x),) for x in op_b]"
         self.operator_basis = operators
 
         if precomputed_tensors is not None:
@@ -749,11 +751,8 @@ def do_compute_cross_gram_matrix(sp, ops1, ops2, dtype=np.float128):
     return g12
 
 
-
-
-
 def relative_non_hermitician_part(x):
     if x.isherm:
         return True
-    err = x.dag()-x
-    return abs((err * err).tr())**.5/ ((x*x).tr())**.5
+    err = x.dag() - x
+    return abs((err * err).tr()) ** 0.5 / ((x * x).tr()) ** 0.5
