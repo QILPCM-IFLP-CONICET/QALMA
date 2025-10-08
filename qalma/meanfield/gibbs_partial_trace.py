@@ -6,6 +6,7 @@ from qutip import tensor as qutip_tensor
 from qalma.meanfield import (
     variational_quadratic_mfa,
 )
+from qalma.model import SystemDescriptor
 from qalma.operators import (
     Operator,
     ProductOperator,
@@ -84,27 +85,63 @@ def gibbs_meanfield_partial_trace(
     """
     terms_in: List[Operator]
     terms_boundary: List[Operator]
+    prefactor: complex
+    generator: Operator
+    full_acts_over: frozenset
+    environment: frozenset
+    system: SystemDescriptor
+    subsystem: SystemDescriptor
+
+    # For states in small subsystems, just compute the partial trace
+    # *exactly* by exponentiating the state.
+    if len(state.system.sites) <= MAXIMUM_GIBBS_EXACT_PARTIAL_TRACE:
+        result = state.to_qutip_operator().partial_trace(sites)
+        return result
+
     prefactor = state.prefactor
     generator = state.k
     full_acts_over = generator.acts_over()
     environment = frozenset(site for site in full_acts_over if site not in sites)
     system = state.k.system
     subsystem = system.subsystem(sites)
-
-    # For states in small subsystems, just compute the partial trace
-    # *exactly* by exponentiating the state.
-    if len(full_acts_over) <= MAXIMUM_GIBBS_EXACT_PARTIAL_TRACE:
-        result = state.to_qutip_operator().partial_trace(sites)
-        return result
-
     sigma_mf = state._meanfield
-    if not environment:
-        result = GibbsDensityOperator(
+
+    # Trivial cases:
+    if len(environment) == 0:
+        return GibbsDensityOperator(
             generator, system=subsystem, prefactor=prefactor, meanfield=sigma_mf
         )
-        return result
+    if len(full_acts_over) == len(environment):
+        return GibbsDensityOperator(
+            ScalarOperator(0.0, system), system=subsystem, prefactor=prefactor
+        )
+    # Shortcut for density operators acting on a small subblock:
+    # construct the state of the subblock, compute the partial trace,
+    # and get back the generator:
+    if len(full_acts_over) <= MAXIMUM_GIBBS_EXACT_PARTIAL_TRACE:
+        sites_in_superblock = frozenset(
+            site for site in full_acts_over if site in sites
+        )
+        sigma_superblock = (
+            GibbsDensityOperator(
+                generator,
+                system=system.subsystem(full_acts_over),
+                prefactor=1,
+                meanfield=sigma_mf,
+            )
+            .to_qutip_operator()
+            .partial_trace(sites_in_superblock)
+        )
+        k_reduced = -sigma_superblock.logm()
+        # k_reduced is associated to the state of the subsystem.
+        # We need to reset it to the global system:
+        k_reduced._set_system_(system)
+        # Notice that sybsystem can still be "large", so we return a GibbsDensityOperator:
+        return GibbsDensityOperator(k_reduced, system=subsystem, prefactor=prefactor)
 
-    generator = state.k.flat()
+    # Decompose generator in terms inside (subsystem), terms outside (environment) and
+    # boundary (interaction)
+    generator = generator.flat()
     all_terms = generator.terms if isinstance(generator, SumOperator) else [generator]
     terms_in, terms_boundary = [], []
     for term in all_terms:
@@ -136,10 +173,9 @@ def gibbs_meanfield_partial_trace(
         k_in, subsystem, prefactor=prefactor
     ).to_qutip_operator()
 
-    for symm in state.symmetry_projections:
-        result_new = symm(result)
-        # assert (
-        #    (result_new - result).tidyup().is_zero
-        # ), f"result is not invariant under {symm}."
-        result = result_new
+    # If there were non-trivial terms in the boundary,
+    # restore symmetries:
+    if terms_boundary:
+        for symm in state.symmetry_projections:
+            result = symm(result)
     return result
