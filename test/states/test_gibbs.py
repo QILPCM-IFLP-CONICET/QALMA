@@ -15,6 +15,7 @@ from test.helper import (
 import numpy as np
 import pytest
 
+from qalma.model import build_system
 from qalma.operators import (
     LocalOperator,
     ProductOperator,
@@ -32,6 +33,15 @@ from qalma.operators.states.utils import safe_exp_and_normalize
 from qalma.settings import QALMA_TOLERANCE
 
 # from qalma.settings import VERBOSITY_LEVEL
+
+
+LARGE_SYSTEM = build_system(
+    geometry_name="square lattice",
+    model="spin",
+    **{"L": 3, "Jz": 1, "Jxy": 1, "ALPHA": 0.2},
+)
+SZ_00 = LARGE_SYSTEM.site_operator("Sz", "1[0, 0]")
+SZ_01 = LARGE_SYSTEM.site_operator("Sz", "1[0, 1]")
 
 
 def do_test_expect(rho, sigma_dict):
@@ -175,3 +185,52 @@ def do_test_log(rho):
     assert abs(ln_z) < QALMA_TOLERANCE**0.5
     check_operator_equality(rho_qutip, rho_g)
     return rho_g
+
+
+def test_large_gibbs_pt_1():
+    rho = GibbsDensityOperator(SZ_00, system=LARGE_SYSTEM)
+    rho_qutip = rho.to_qutip_operator()
+    rho_00 = rho.partial_trace(frozenset(["1[0, 0]"]))
+    rho_01 = rho.partial_trace(frozenset(["1[0, 1]"]))
+    rho_00_01 = rho.partial_trace(frozenset(["1[0, 0]", "1[0, 1]"]))
+
+    rho_00_qutip = rho_qutip.partial_trace(frozenset(["1[0, 0]"]))
+    rho_01_qutip = rho_qutip.partial_trace(frozenset(["1[0, 1]"]))
+    rho_00_01_qutip = rho_qutip.partial_trace(frozenset(["1[0, 0]", "1[0, 1]"]))
+
+    assert len(rho_00.acts_over()) == 1, "Partial trace on 00 acts over 00."
+    assert len(rho_01.acts_over()) == 0, "Partial trace on 01 is the identity."
+    assert len(rho_00_01.acts_over()) == 1, "Partial trace on 00 and 01 acts over 00."
+
+    check_operator_equality(rho_00_qutip, rho_00)
+    check_operator_equality(rho_01_qutip, rho_01)
+    check_operator_equality(rho_00_01_qutip, rho_00_01)
+
+
+def test_large_gibbs_pt_2():
+    rho = GibbsDensityOperator(SZ_00 * SZ_01, system=LARGE_SYSTEM)
+    rho_qutip = rho.to_qutip_operator()
+    rho_00 = rho.partial_trace(frozenset(["1[0, 0]"]))
+    rho_01 = rho.partial_trace(frozenset(["1[1, 0]"]))
+    rho_00_10 = rho.partial_trace(frozenset(["1[0, 0]", "1[1, 0]"]))
+    rho_00_01 = rho.partial_trace(frozenset(["1[0, 0]", "1[0, 1]"]))
+
+    rho_00_qutip = rho_qutip.partial_trace(frozenset(["1[0, 0]"]))
+    rho_01_qutip = rho_qutip.partial_trace(frozenset(["1[1, 0]"]))
+    rho_00_10_qutip = rho_qutip.partial_trace(frozenset(["1[0, 0]", "1[1, 0]"]))
+    rho_00_01_qutip = rho_qutip.partial_trace(frozenset(["1[0, 0]", "1[0, 1]"]))
+
+    assert len(rho_00.acts_over()) == 1, "Partial trace on 00 acts over 00."
+    assert len(rho_01.acts_over()) == 0, "Partial trace on 01 is the identity."
+    assert (
+        len(rho_00_01.acts_over()) == 2
+    ), "Partial trace on 00 and 01 acts over 00 and 01."
+    assert len(rho_00_10.acts_over()) == 1, "Partial trace on 00 and 01 acts over 00."
+    check_operator_equality(rho_00_qutip, rho_00)
+    check_operator_equality(rho_01_qutip, rho_01)
+    check_operator_equality(rho_00_01_qutip, rho_00_01)
+
+    print("rho_00_10", rho_00_10.acts_over())
+    print("rho_00_10_qutip", rho_00_10_qutip, rho_00_10_qutip.site_names)
+
+    check_operator_equality(rho_00_10_qutip, rho_00_10)
