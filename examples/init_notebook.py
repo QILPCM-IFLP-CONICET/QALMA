@@ -17,7 +17,6 @@ from qalma.operators.quadratic import (
     build_quadratic_form_from_operator,
 )
 from qalma.operators.states import (
-    DensityOperatorMixin,
     GibbsDensityOperator,
     GibbsProductDensityOperator,
     ProductDensityOperator,
@@ -391,3 +390,4 @@ def test_benchmark_nbody_projection(
     op_sq = TEST_OPERATORS_SQ[op_name]
     for i in range(1):
         res = projection_function(op_sq, nbody, sigma0)
+        assert res is not None
