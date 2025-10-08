@@ -1,11 +1,13 @@
 #!/usr/bin/env python
+import argparse
 import logging
 import pickle
+import uuid
 from datetime import datetime
-import argparse
+
 import matplotlib.pyplot as plt
 import numpy as np
-import uuid
+
 from qalma.evolution import (
     Simulation,
     qutip_me_solve,
@@ -28,7 +30,6 @@ from qalma.scalarprod.basis import HierarchicalOperatorBasis
 logging.basicConfig(level=logging.INFO)
 
 UUID_CALL = f"{uuid.uuid4()}"
-
 
 
 def update_basis_callback(state):
@@ -62,14 +63,13 @@ TIME_SPAN = np.linspace(0, 8, 500)
 
 
 ALPHA = 0.61  #   jy=.9 jx
-JX = 0.662743/(1-ALPHA)**.5  # 1.75  -> vLR=1
+JX = 0.662743 / (1 - ALPHA) ** 0.5  # 1.75  -> vLR=1
 JY = (1 - ALPHA) * JX
 PHI_0 = [0, 0.25, 0.25, 1]
 
 
-
 def build_system_objects(args):
-    global L, SYSTEM, HAMILTONIAN, SZ_TOTAL, HALF_LEN_COMM,SITES, GLOBAL_IDENTITY, K0, TRACK_OBSERVABLES
+    global L, SYSTEM, HAMILTONIAN, SZ_TOTAL, HALF_LEN_COMM, SITES, GLOBAL_IDENTITY, K0, TRACK_OBSERVABLES
     SYSTEM = build_system(
         geometry_name="chain lattice",
         model_name="spin",
@@ -90,25 +90,23 @@ def build_system_objects(args):
     K0 = -RHO_0.logm()
 
     track_list = args.track
-    if track_list.lower()=="none":
-        track_list=""
-    elif track_list.lower()=="all":
-        track_list="SZ_TOTAL,SZ_TOTAL_SQ,H,H_SQ"
+    if track_list.lower() == "none":
+        track_list = ""
+    elif track_list.lower() == "all":
+        track_list = "SZ_TOTAL,SZ_TOTAL_SQ,H,H_SQ"
     track_observables = []
     for obs_t in track_list.split(","):
-        if obs_t.strip()=="SZ_TOTAL":
-             track_observables.append(SZ_TOTAL)
-        elif obs_t.strip()=="SZ_TOTAL":
-             track_observables.append(SZ_TOTAL)
-        elif obs_t.strip()=="SZ_TOTAL_SQ":
-             track_observables.append(SZ_TOTAL**2)
-        elif obs_t.strip()=="H":
-             track_observables.append(HAMILTONIAN)
-        elif obs_t.strip()=="H_SQ":
-             track_observables.append(HAMILTONIAN*HAMILTONIAN)
-    TRACK_OBSERVABLES=tuple(track_observables)
-
-
+        if obs_t.strip() == "SZ_TOTAL":
+            track_observables.append(SZ_TOTAL)
+        elif obs_t.strip() == "SZ_TOTAL":
+            track_observables.append(SZ_TOTAL)
+        elif obs_t.strip() == "SZ_TOTAL_SQ":
+            track_observables.append(SZ_TOTAL**2)
+        elif obs_t.strip() == "H":
+            track_observables.append(HAMILTONIAN)
+        elif obs_t.strip() == "H_SQ":
+            track_observables.append(HAMILTONIAN * HAMILTONIAN)
+    TRACK_OBSERVABLES = tuple(track_observables)
 
 
 def run_exact(axis):
@@ -122,7 +120,7 @@ def run_exact(axis):
     print("Plot observables")
     exact_expect = [np.real(rho.expect(SZ_TOTAL)) for rho in exact]
     axis.set_ylim(min(-max(exact_expect), min(exact_expect)), max(exact_expect))
-    axis.plot(ts, exact_expect, label="exact")
+    axis.plot(TIME_SPAN, exact_expect, label="exact")
     axis.plot(
         TIME_SPAN,
         [exact_expect[0] * np.cos(1.4142 * BETA * JX * ALPHA * t) for t in TIME_SPAN],
@@ -130,7 +128,7 @@ def run_exact(axis):
         ls="-.",
     )
     axis.plot(
-        ts,
+        TIME_SPAN,
         [
             exact_expect[0]
             * (
@@ -222,7 +220,7 @@ def run_projected(axis):
         pickle.dump(
             Simulation(
                 parameters=parameters,
-                stats={"errors":basis.errors},
+                stats={"errors": basis.errors},
                 time_span=exact_sol.time_span,
                 expect_ops={0: projected_expect},
                 states=[],
@@ -286,7 +284,7 @@ def run_simulation_projected(basis_depth, n_body, tolerance, axis):
         ]
         # plt.scatter(ts[:len(max_ent)], [np.real(rho.expect(k_0)) for rho in max_ent], label=f"$\\ell={basis_depth}$, m={n_body}, tol={tolerance}")
         plt.scatter(
-            ts[: len(max_ent)],
+            TIME_SPAN[: len(max_ent)],
             [np.real(rho.expect(SZ_TOTAL)) for rho in max_ent],
             ls="-.",
             label=f"proyected-> $\\ell={basis_depth}$, m={n_body}, tol={tolerance}",
@@ -296,8 +294,6 @@ def run_simulation_projected(basis_depth, n_body, tolerance, axis):
         print("                   EXCEPTION ")
         print(type(e), e)
         raise
-
-
 
 
 def set_parameters():
@@ -310,22 +306,42 @@ def set_parameters():
         description="Simulate the dynamics of a spin chain with different approaches.",
         epilog="""Just with experimental porpouse.""",
     )
-    argparser.add_argument("--full", help="compute exact and projected dynamics too.", action="store_true")
-    argparser.add_argument("--length", "-L", type=int, default=4, help="length of the spin chain")
-    argparser.add_argument("--beta", type=float, default=.001, help="inverse temperature")
-    argparser.add_argument("--n_body", "-M", type=int, default=4, help="max n_body sector")
-    argparser.add_argument("--deep", "-D", type=int, default=2, help="deep of the Hiearchical basis/order the perturbative series.")
-    argparser.add_argument("--tol", type=float, default=.001, help="tolerance")
-    argparser.add_argument("--track", type=str, default="None",
-                           help=("track observables. One or a comma separated list with elements in"
-                                 "`SZ_TOTAL`\n`SZ_TOTAL_SQ`\n `H`\n`H_SQ`. Special keywords are "
-                                 "`None`: (default)->no track observables and \n`All`: Track all the observables."))
+    argparser.add_argument(
+        "--full", help="compute exact and projected dynamics too.", action="store_true"
+    )
+    argparser.add_argument(
+        "--length", "-L", type=int, default=4, help="length of the spin chain"
+    )
+    argparser.add_argument(
+        "--beta", type=float, default=0.001, help="inverse temperature"
+    )
+    argparser.add_argument(
+        "--n_body", "-M", type=int, default=4, help="max n_body sector"
+    )
+    argparser.add_argument(
+        "--deep",
+        "-D",
+        type=int,
+        default=2,
+        help="deep of the Hiearchical basis/order the perturbative series.",
+    )
+    argparser.add_argument("--tol", type=float, default=0.001, help="tolerance")
+    argparser.add_argument(
+        "--track",
+        type=str,
+        default="None",
+        help=(
+            "track observables. One or a comma separated list with elements in"
+            "`SZ_TOTAL`\n`SZ_TOTAL_SQ`\n `H`\n`H_SQ`. Special keywords are "
+            "`None`: (default)->no track observables and \n`All`: Track all the observables."
+        ),
+    )
     argparser.add_argument(
         "--help", "-help", "-h", help="show this help message and exit", action="help"
     )
 
-    args, ns= argparser.parse_known_args()
-    print("ns",ns)
+    args, ns = argparser.parse_known_args()
+    print("ns", ns)
     print(type(args), args)
     L = args.length
     TOL = args.tol
@@ -334,6 +350,7 @@ def set_parameters():
     MAX_M = args.n_body
     FULL = args.full
     build_system_objects(args)
+
 
 def run_simulations():
     fig, axis = plt.subplots()
