@@ -3,7 +3,7 @@ Bindings for overloading Arithmetic Operations with Operators and Numbers.
 """
 
 from numbers import Number
-from typing import Union
+from typing import Dict, Union
 
 import numpy as np
 from qutip import Qobj
@@ -933,21 +933,28 @@ def _(x_op: SumOperator, y_op: SumOperator):
     -------
 
     """
+    isherm = (x_op is y_op and x_op._isherm) or None
     system = x_op.system.union(y_op.system)
+    block_terms: Dict[frozenset, Operator] = {}
+    for x_term in x_op.flat().terms:
+        if x_term.is_zero:
+            continue
+        for y_term in y_op.flat().terms:
+            if y_term.is_zero:
+                continue
+            xy_term = x_term * y_term
+            xy_acts_over = xy_term.acts_over()
+            if xy_acts_over in block_terms:
+                xy_term = (block_terms[xy_acts_over] + xy_term).simplify()
+            block_terms[xy_acts_over] = xy_term
 
-    terms = tuple(
-        factor_x * factor_y for factor_x in x_op.terms for factor_y in y_op.terms
-    )
+    terms = tuple(block_terms.values())
+
     if len(terms) == 0:
         return ScalarOperator(0, system)
     if len(terms) == 1:
         return terms[0]
-
-    isherm = (x_op is y_op and x_op._isherm) or None
-    if all(
-        acts_over and len(acts_over) < 2
-        for acts_over in (term.acts_over() for term in terms)
-    ):
+    if all(acts_over and len(acts_over) < 2 for acts_over in block_terms):
         return OneBodyOperator(terms, system, False, isherm=isherm)
     return SumOperator(terms, system, isherm=isherm)
 

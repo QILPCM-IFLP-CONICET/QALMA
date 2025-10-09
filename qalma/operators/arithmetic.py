@@ -218,6 +218,12 @@ class SumOperator(Operator):
             self._isherm = True
         return result
 
+    def n_body_sector(self) -> int:
+        return max(term.n_body_sector() for term in self.terms)
+
+    def num_terms(self) -> int:
+        return len(self.terms)
+
     def partial_trace(self, sites: Union[frozenset, SystemDescriptor]):
         """Compute the partial trace"""
         if not isinstance(sites, SystemDescriptor):

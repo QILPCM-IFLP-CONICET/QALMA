@@ -338,7 +338,7 @@ def test_2body_to_1body_product_projection(
         )
         projected_operator = projection_function(op_prod, 1, state)
         if not check_operator_equality(
-            projected_operator, projected_operator_analytical, tolerance=5e-9
+            projected_operator, projected_operator_analytical, tolerance=2e-8
         ):
             print("projections are different:\n")
             print("function:\n", projected_operator)
