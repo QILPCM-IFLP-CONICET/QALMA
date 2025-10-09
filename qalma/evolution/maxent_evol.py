@@ -17,12 +17,7 @@ from qalma.meanfield import (
     variational_quadratic_mfa,
 )
 from qalma.operators import (
-    LocalOperator,
-    OneBodyOperator,
     Operator,
-    QuadraticFormOperator,
-    ScalarOperator,
-    SumOperator,
 )
 from qalma.operators.states import GibbsDensityOperator, GibbsProductDensityOperator
 from qalma.projections import n_body_projection
@@ -44,17 +39,7 @@ def compute_mean_field_state(k, sigma, **kwargs):
 
 
 def compute_n_body_sector(k: Operator):
-    if isinstance(k, SumOperator):
-        return max(compute_n_body_sector(term) for term in k.terms)
-    if isinstance(k, ScalarOperator):
-        return 0
-    if isinstance(k, (LocalOperator, OneBodyOperator)):
-        return 1
-    if isinstance(k, QuadraticFormOperator):
-        if k.offset is None:
-            return 2
-
-    return len(k.acts_over())
+    return k.n_body_sector()
 
 
 def occupation_factor(phi: NDArray, threshold: float = 0.995) -> int:
@@ -78,6 +63,8 @@ def occupation_factor(phi: NDArray, threshold: float = 0.995) -> int:
     num of terms in the partial sum which reach the threshold.
 
     """
+    if len(phi) < 2:
+        return 0
     partial_sums = np.array(
         [sum(np.abs(phi[:i]) ** 2) ** 0.5 for i in range(1, len(phi))]
     )
@@ -89,9 +76,14 @@ def occupation_factor(phi: NDArray, threshold: float = 0.995) -> int:
 
 
 def update_basis(
-    k, sigma, ham, order, n_body, extra_observables
+    k, sigma, ham, order, n_body, extra_observables, k_ref=None
 ) -> Tuple[HierarchicalOperatorBasis, Operator, Operator]:
-    k_ref_new, sigma = compute_mean_field_state(k, sigma)
+    if k_ref is None:
+        k_ref_new, sigma = compute_mean_field_state(k, sigma)
+        k_ref_new = k_ref_new + sigma.expect(k - k_ref_new)
+    else:
+        k_ref_new = k_ref
+
     new_basis = HierarchicalOperatorBasis(
         k,
         ham,
@@ -99,7 +91,7 @@ def update_basis(
         fetch_covar_scalar_product(sigma),
         n_body_projection=lambda op_b: n_body_projection(
             op_b, nmax=n_body, sigma=sigma
-        ),
+        ).simplify(),
     )
     rest_elements = tuple(extra_observables)
     if k is not k_ref_new:
@@ -107,7 +99,6 @@ def update_basis(
     if rest_elements:
         new_basis = rest_elements + new_basis
 
-    k_ref_new = k_ref_new + sigma.expect(k - k_ref_new)
     return (
         new_basis,
         sigma,
@@ -115,8 +106,13 @@ def update_basis(
     )
 
 
-def update_basis_light(k, sigma, ham, order, n_body, extra_observables):
-    k_ref_new, sigma = compute_mean_field_state(k, sigma)
+def update_basis_light(k, sigma, ham, order, n_body, extra_observables, k_ref=None):
+    if k_ref is None:
+        k_ref_new, sigma = compute_mean_field_state(k, sigma)
+        k_ref_new = k_ref_new + sigma.expect(k - k_ref_new)
+    else:
+        k_ref_new = k_ref
+
     new_basis = HierarchicalOperatorBasis(
         k_ref_new,
         ham,
@@ -211,6 +207,7 @@ def adaptive_projected_evolution(
         "away": 0,
         "error": 0,
         "cummulated error": 0,
+        "k_ref": None,
     }
     oc_factors: List[float] = []
     saturated_tolerance: bool = False
@@ -262,7 +259,7 @@ def adaptive_projected_evolution(
 
     ####  Basis update ########
     def call_update_basis(local_evol_parms) -> bool:
-        k_t = local_evol_parms["k_t"]
+        k_t = local_evol_parms["k_t"].simplify()
         start_basis_time = datetime.now()
         basis, sigma_ref, k_ref = basis_update_callback(
             k_t,
@@ -271,6 +268,7 @@ def adaptive_projected_evolution(
             order,
             local_evol_parms["curr_n_body"],
             extra_observables,
+            k_ref=local_evol_parms["k_ref"],
         )
         build_basis_time_cost = datetime.now() - start_basis_time
         local_evol_parms["basis time cost"] = (
@@ -289,7 +287,7 @@ def adaptive_projected_evolution(
     # Initialize
     local_evol_parms["t"] = 0
     local_evol_parms["k_t"] = k0
-    local_evol_parms["curr_n_body"] = compute_n_body_sector(k0)
+    local_evol_parms["curr_n_body"] = 4  # compute_n_body_sector(k0)
     local_evol_parms["sigma_ref"] = GibbsProductDensityOperator({}, k0.system)
     local_evol_parms["max_error_speed"] = tol / (t_max - t_0)
     tlist.append(local_evol_parms["t_ref"])
@@ -317,6 +315,7 @@ def adaptive_projected_evolution(
         # If K_t is too far from K_ref, update the basis:
         if away > tol:
             logging.info("updating K_ref")
+            local_evol_parms["k_ref"] = None
             call_update_basis(local_evol_parms)
             local_evol_parms["cummulated error"] += last_error
             last_error = 0
