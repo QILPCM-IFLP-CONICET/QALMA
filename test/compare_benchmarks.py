@@ -77,7 +77,7 @@ def load_benchmark(filename):
 if __name__ == "__main__":
 
     if len(sys.argv) == 1:
-        main_hash = get_commit_hash("main")
+        main_hash = get_commit_hash("master")
         current_hash = get_commit_hash("HEAD")
 
         results = []
