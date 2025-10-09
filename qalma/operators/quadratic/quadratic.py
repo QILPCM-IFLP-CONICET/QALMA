@@ -311,6 +311,19 @@ class QuadraticFormOperator(Operator):
         self._isherm = isherm
         return isherm
 
+    def n_body_sector(self) -> int:
+        if self.offset is None:
+            return 2
+        return max(2, self.offset.n_body_sector())
+
+    def num_terms(self) -> int:
+        num_terms = len(self.weights)
+        if self.linear_term:
+            num_terms += self.linear_term.num_terms()
+        if self.offset:
+            num_terms += self.offset.num_terms()
+        return num_terms
+
     def partial_trace(self, sites: Union[frozenset, SystemDescriptor]):
 
         if not isinstance(sites, SystemDescriptor):

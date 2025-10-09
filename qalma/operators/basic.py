@@ -321,6 +321,12 @@ class Operator:
         """Logarithm of the operator"""
         return self.to_qutip_operator().logm()
 
+    def n_body_sector(self) -> int:
+        return len(self.acts_over())
+
+    def num_terms(self) -> int:
+        return 1
+
     def norm(self, ord: Optional[int | str | float] = None):
         """The norm of the operator"""
 
