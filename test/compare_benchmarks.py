@@ -104,7 +104,7 @@ if __name__ == "__main__":
                         print(line)
             else:
                 if not ref_file:
-                    print(f"{bench_set} not found for {main_hash}.")
+                    print(f"{bench_set} not found for {master_hash}.")
                 if not new_file:
                     print(f"{bench_set} not found for {current_hash}.")
                 continue
