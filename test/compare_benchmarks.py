@@ -77,7 +77,7 @@ def load_benchmark(filename):
 if __name__ == "__main__":
 
     if len(sys.argv) == 1:
-        main_hash = get_commit_hash("master")
+        master_hash = get_commit_hash("master")
         current_hash = get_commit_hash("HEAD")
 
         results = []
@@ -88,7 +88,7 @@ if __name__ == "__main__":
             "expect",
         ):
             print("\n", 60 * "-")
-            ref_file = get_latest_bench_file("main", bench_set)
+            ref_file = get_latest_bench_file(master_hash, bench_set)
             new_file = get_latest_bench_file(current_hash, bench_set)
 
             if ref_file and new_file:
@@ -104,7 +104,7 @@ if __name__ == "__main__":
                         print(line)
             else:
                 if not ref_file:
-                    print(f"{bench_set} not found for {main_hash}.")
+                    print(f"{bench_set} not found for {master_hash}.")
                 if not new_file:
                     print(f"{bench_set} not found for {current_hash}.")
                 continue

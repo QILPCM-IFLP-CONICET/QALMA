@@ -35,6 +35,7 @@ class SystemDescriptor:
         model: ModelDescriptor,
         parms: Optional[dict] = None,
         sites=None,
+        _load_operators=True,
     ):
         if parms is None:
             parms = {}
@@ -69,8 +70,9 @@ class SystemDescriptor:
             "global_operators": {},
         }
         self._subsystems_cache = {}
-        self._load_site_operators()
-        self._load_global_ops()
+        if _load_operators:
+            self._load_site_operators()
+            self._load_global_ops()
 
     def __eq__(self, other):
         # To be the equal, two SystemDescriptors
@@ -139,7 +141,7 @@ class SystemDescriptor:
         parms = self.spec["parms"].copy()
         model = self.spec["model"]
         graph = self.spec["graph"].subgraph(sites)
-        result = SystemDescriptor(graph, model, parms)
+        result = SystemDescriptor(graph, model, parms, _load_operators=False)
         return self._subsystems_cache.setdefault(sites, result)
 
     def _load_site_operators(self):
