@@ -11,9 +11,43 @@ from numpy.typing import NDArray
 
 from qalma.operators import Operator
 from qalma.operators.functions import anticommutator
-from qalma.operators.states import DensityOperatorProtocol
+from qalma.operators.states import DensityOperatorProtocol, ProductDensityOperator
 
 #  ### Functions that build the scalar products ###
+
+
+def compute_cov_sp_herm(rho, op1, op2):
+    result = 0.0
+    if op1 is op2:
+        op1 = op1.simplify()
+        terms_1 = op1.terms if hasattr(op1, "terms") else [op1]
+        for i, t1 in enumerate(terms_1):
+            for j, t2 in enumerate(terms_1):
+                if j > i:
+                    continue
+                if i == j:
+                    result += 0.5 * np.real(rho.expect(t1.dag() * t2 + t2 * t1.dag()))
+                else:
+                    if t1.acts_over().intersection(t2.acts_over()):
+                        contrib = np.real(rho.expect(t1.dag() * t2 + t2 * t1.dag()))
+                    else:
+                        contrib = 2 * np.real(np.conj(rho.expect(t1)) * rho.expect(t2))
+                    result += contrib
+        return result
+
+    op1 = op1.simplify()
+    op2 = op2.simplify()
+    terms_1 = op1.terms if hasattr(op1, "terms") else [op1]
+    terms_2 = op2.terms if hasattr(op2, "terms") else [op2]
+    for i, t1 in enumerate(terms_1):
+        for j, t2 in enumerate(terms_2):
+            if i == j or t1.acts_over().intersection(t2.acts_over()):
+                contrib = 0.5 * np.real(rho.expect(t1.dag() * t2 + t2 * t1.dag()))
+            else:
+                contrib = np.real(np.conj(rho.expect(t1)) * rho.expect(t2))
+            result += contrib
+
+    return result
 
 
 class CovariantScalarProductFunction:
@@ -24,10 +58,13 @@ class CovariantScalarProductFunction:
     """
 
     def __init__(self, state):
-
+        if hasattr(state, "to_product_state"):
+            state = state.to_product_state()
         self.sigma = state
 
     def __call__(self, op1, op2):
+        if isinstance(self.sigma, ProductDensityOperator) and op1.isherm and op2.isherm:
+            return compute_cov_sp_herm(self.sigma, op1, op2)
         sigma = self.sigma
         if op1 is op2:
             op1 = op1.simplify()
@@ -50,8 +87,7 @@ class CovariantScalarProductFunction:
             op1_dag = op1.dag()
         if op1_dag is op2:
             return sigma.expect((op1_dag * op2).simplify())
-        else:
-            return 0.5 * sigma.expect(anticommutator(op1_dag, op2).simplify())
+        return 0.5 * sigma.expect(anticommutator(op1_dag, op2).simplify())
 
     def compute_cross_gram_matrix(
         self, basis_1: Tuple[Operator, ...], basis_2: Tuple[Operator, ...]
