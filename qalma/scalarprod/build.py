@@ -17,6 +17,10 @@ from qalma.operators.states import DensityOperatorProtocol, ProductDensityOperat
 
 
 def compute_cov_sp_herm(rho, op1, op2):
+    """
+    Efficiently computes the covariant scalar product for Hermitian operators
+    op1 and op2 when the state rho is a ProductDensityOperator.
+    """    
     result = 0.0
     if op1 is op2:
         op1 = op1.simplify()
@@ -33,7 +37,7 @@ def compute_cov_sp_herm(rho, op1, op2):
                     else:
                         contrib = 2 * np.real(np.conj(rho.expect(t1)) * rho.expect(t2))
                     result += contrib
-        return result
+        return np.abs(result)
 
     op1 = op1.simplify()
     op2 = op2.simplify()
