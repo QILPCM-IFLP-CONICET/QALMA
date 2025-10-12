@@ -3,7 +3,7 @@ Functions to fetch specific scalar product functions.
 """
 
 # from datetime import datetime
-from typing import Callable, Tuple
+from typing import Callable, Dict, Tuple, cast
 
 import numpy as np
 from numpy import real
@@ -11,7 +11,7 @@ from numpy.typing import NDArray
 
 from qalma.operators import Operator
 from qalma.operators.functions import anticommutator
-from qalma.operators.states import DensityOperatorProtocol
+from qalma.operators.states import DensityOperatorProtocol, ProductDensityOperator
 
 #  ### Functions that build the scalar products ###
 
@@ -24,11 +24,15 @@ class CovariantScalarProductFunction:
     """
 
     def __init__(self, state):
-
+        if hasattr(state, "to_product_state"):
+            state = state.to_product_state()
         self.sigma = state
 
     def __call__(self, op1, op2):
         sigma = self.sigma
+        if isinstance(sigma, ProductDensityOperator):  # and op1.isherm and op2.isherm:
+            return compute_cov_sp_prod(self.sigma, op1, op2)
+
         if op1 is op2:
             op1 = op1.simplify()
             op1_herm = op1.isherm
@@ -50,8 +54,7 @@ class CovariantScalarProductFunction:
             op1_dag = op1.dag()
         if op1_dag is op2:
             return sigma.expect((op1_dag * op2).simplify())
-        else:
-            return 0.5 * sigma.expect(anticommutator(op1_dag, op2).simplify())
+        return 0.5 * sigma.expect(anticommutator(op1_dag, op2).simplify())
 
     def compute_cross_gram_matrix(
         self, basis_1: Tuple[Operator, ...], basis_2: Tuple[Operator, ...]
@@ -204,3 +207,70 @@ def fetch_HS_scalar_product() -> Callable:
     Build a HS scalar product function
     """
     return lambda op1, op2: (op1.dag() * op2).tr()
+
+
+def compute_cov_sp_prod(
+    rho: ProductDensityOperator, op1: Operator, op2: Operator
+) -> complex:
+    """
+    Efficiently computes the covariant scalar product for Hermitian operators
+    op1 and op2 when the state rho is a ProductDensityOperator.
+    """
+    result = 0.0
+    av_1: Dict[int, complex] = {}
+    av_2: Dict[int, complex] = {}
+    if op1 is op2:
+        op1 = op1.simplify()
+        terms_1 = op1.terms if hasattr(op1, "terms") else [op1]
+        for i, t1 in enumerate(terms_1):
+            for j, t2 in enumerate(terms_1):
+                if j > i:
+                    continue
+                if i == j:
+                    result += 0.5 * cast(
+                        float,
+                        np.real(
+                            cast(complex, rho.expect(t1.dag() * t2 + t2 * t1.dag()))
+                        ),
+                    )
+                else:
+                    if t1.acts_over().intersection(t2.acts_over()):
+                        contrib = cast(
+                            float,
+                            np.real(
+                                cast(complex, rho.expect(t1.dag() * t2 + t2 * t1.dag()))
+                            ),
+                        )
+                    else:
+                        if i not in av_1:
+                            av_1[i] = cast(complex, rho.expect(t1))
+                        if j not in av_1:
+                            av_1[j] = cast(complex, rho.expect(t2))
+
+                        contrib = 2.0 * cast(
+                            float,
+                            np.real(np.conj(av_1[i]) * av_1[j]),
+                        )
+                    result += contrib
+        return np.abs(result)
+
+    op1 = op1.simplify()
+    op2 = op2.simplify()
+    terms_1 = op1.terms if hasattr(op1, "terms") else [op1]
+    terms_2 = op2.terms if hasattr(op2, "terms") else [op2]
+    for i, t1 in enumerate(terms_1):
+        for j, t2 in enumerate(terms_2):
+            if i == j or t1.acts_over().intersection(t2.acts_over()):
+                contrib = 0.5 * np.real(
+                    cast(complex, rho.expect(t1.dag() * t2 + t2 * t1.dag()))
+                )
+            else:
+                if i not in av_1:
+                    av_1[i] = cast(complex, rho.expect(t1))
+                if j not in av_2:
+                    av_2[j] = cast(complex, rho.expect(t2))
+
+                contrib = np.real(np.conj(av_1[i]) * av_2[j])
+            result += contrib
+
+    return result
