@@ -20,7 +20,7 @@ def compute_cov_sp_herm(rho, op1, op2):
     """
     Efficiently computes the covariant scalar product for Hermitian operators
     op1 and op2 when the state rho is a ProductDensityOperator.
-    """    
+    """
     result = 0.0
     if op1 is op2:
         op1 = op1.simplify()
