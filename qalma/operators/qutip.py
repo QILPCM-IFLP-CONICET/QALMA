@@ -360,7 +360,6 @@ class QutipOperator(Operator):
                 prefactor=prefactor,
             )
 
-        print("With state")
         env_tuple = tuple(environment)
         sites_tuple = tuple(sites)
         qop = self.to_qutip(sites_tuple + env_tuple)

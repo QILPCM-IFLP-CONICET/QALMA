@@ -209,6 +209,55 @@ def fetch_HS_scalar_product() -> Callable:
     return lambda op1, op2: (op1.dag() * op2).tr()
 
 
+def compute_cov_sp_sqnorm(rho: ProductDensityOperator, op1: Operator) -> complex:
+    """
+    Efficiently computes the squared norm associated to the  covariant scalar
+    product for Hermitian operators op1 and op2 when the state rho is
+    a ProductDensityOperator.
+    """
+    result = 0.0
+    av_1: Dict[int, complex] = {}
+    op1 = op1.simplify()
+    terms_1 = op1.terms if hasattr(op1, "terms") else [op1]
+    for i, t1 in enumerate(terms_1):
+        for j, t2 in enumerate(terms_1):
+            if j > i:
+                continue
+            if i == j:
+                result += 0.5 * cast(
+                    float,
+                    np.real(cast(complex, rho.expect(t1.dag() * t2 + t2 * t1.dag()))),
+                )
+            else:
+                overlap = t1.acts_over().intersection(t2.acts_over())
+                if overlap:
+                    t1_red = t1.reduce(overlap, rho)
+                    t2_red = t2.reduce(overlap, rho)
+                    contrib = cast(
+                        float,
+                        np.real(
+                            cast(
+                                complex,
+                                rho.expect(
+                                    t1_red.dag() * t2_red + t2_red * t1_red.dag()
+                                ),
+                            )
+                        ),
+                    )
+                else:
+                    if i not in av_1:
+                        av_1[i] = cast(complex, rho.expect(t1))
+                    if j not in av_1:
+                        av_1[j] = cast(complex, rho.expect(t2))
+
+                    contrib = 2.0 * cast(
+                        float,
+                        np.real(np.conj(av_1[i]) * av_1[j]),
+                    )
+                result += contrib
+    return np.abs(result)
+
+
 def compute_cov_sp_prod(
     rho: ProductDensityOperator, op1: Operator, op2: Operator
 ) -> complex:
@@ -216,43 +265,11 @@ def compute_cov_sp_prod(
     Efficiently computes the covariant scalar product for Hermitian operators
     op1 and op2 when the state rho is a ProductDensityOperator.
     """
-    result = 0.0
+    result: complex = 0.0
     av_1: Dict[int, complex] = {}
     av_2: Dict[int, complex] = {}
     if op1 is op2:
-        op1 = op1.simplify()
-        terms_1 = op1.terms if hasattr(op1, "terms") else [op1]
-        for i, t1 in enumerate(terms_1):
-            for j, t2 in enumerate(terms_1):
-                if j > i:
-                    continue
-                if i == j:
-                    result += 0.5 * cast(
-                        float,
-                        np.real(
-                            cast(complex, rho.expect(t1.dag() * t2 + t2 * t1.dag()))
-                        ),
-                    )
-                else:
-                    if t1.acts_over().intersection(t2.acts_over()):
-                        contrib = cast(
-                            float,
-                            np.real(
-                                cast(complex, rho.expect(t1.dag() * t2 + t2 * t1.dag()))
-                            ),
-                        )
-                    else:
-                        if i not in av_1:
-                            av_1[i] = cast(complex, rho.expect(t1))
-                        if j not in av_1:
-                            av_1[j] = cast(complex, rho.expect(t2))
-
-                        contrib = 2.0 * cast(
-                            float,
-                            np.real(np.conj(av_1[i]) * av_1[j]),
-                        )
-                    result += contrib
-        return np.abs(result)
+        return compute_cov_sp_sqnorm(rho, op1)
 
     op1 = op1.simplify()
     op2 = op2.simplify()
@@ -261,16 +278,23 @@ def compute_cov_sp_prod(
     for i, t1 in enumerate(terms_1):
         for j, t2 in enumerate(terms_2):
             if i == j or t1.acts_over().intersection(t2.acts_over()):
-                contrib = 0.5 * np.real(
-                    cast(complex, rho.expect(t1.dag() * t2 + t2 * t1.dag()))
-                )
-            else:
-                if i not in av_1:
-                    av_1[i] = cast(complex, rho.expect(t1))
-                if j not in av_2:
-                    av_2[j] = cast(complex, rho.expect(t2))
+                contrib = 0.5 * cast(complex, rho.expect(t1.dag() * t2 + t2 * t1.dag()))
 
-                contrib = np.real(np.conj(av_1[i]) * av_2[j])
+            else:
+                overlap = t1.acts_over().intersection(t2.acts_over())
+                if not overlap:
+                    if i not in av_1:
+                        av_1[i] = cast(complex, rho.expect(t1))
+                    if j not in av_2:
+                        av_2[j] = cast(complex, rho.expect(t2))
+                    contrib = np.real(np.conj(av_1[i]) * av_2[j])
+                else:
+                    t1_red = t1.reduce(overlap, rho)
+                    t2_red = t2.reduce(overlap, rho)
+                    contrib = 0.5 * cast(
+                        complex,
+                        rho.expect(t1_red.dag() * t2_red + t2_red * t1_red.dag()),
+                    )
             result += contrib
 
-    return result
+    return np.real(result)
