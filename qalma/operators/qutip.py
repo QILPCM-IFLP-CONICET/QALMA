@@ -5,7 +5,7 @@ Qutip representation of an operator.
 
 import logging
 from functools import reduce
-from typing import Dict, List, Optional, Tuple, Union
+from typing import Dict, Iterable, List, Optional, Tuple, Union
 
 from numpy import imag, log as np_log
 from qutip import Qobj, qeye, tensor  # type: ignore[import-untyped]
@@ -301,6 +301,78 @@ class QutipOperator(Operator):
             subsystem,
             names=new_site_names,
             prefactor=new_prefactor,
+        )
+
+    def reduce(self, sites: Iterable, state=None) -> Operator:
+        """
+        Partial trace of the product of the operator and the density operator
+        acting on the subsystem which is traced out.
+        If the state is not provided, the result is the partial trace, divided
+        by the dimension of the subsystem traced out.
+
+        Parameters
+        ==========
+        sites: Iterable
+
+        state: Optional[DensityOperatorProtocol]
+               The state relative to which make the reduction.
+
+        Return
+        ======
+
+        The reduced operator.
+
+        """
+        system = self.system
+        prefactor = self.prefactor
+        if prefactor == 0:
+            return ScalarOperator(0, system)
+
+        acts_over = self.acts_over()
+        sites = acts_over.intersection(sites)
+        environment = acts_over - sites
+        if not environment:
+            return self
+        if not sites:
+            if state is None:
+                prefactor = self.tr()
+                dimensions = system.dimensions
+                prefactor /= reduce(
+                    lambda x, y: x * y, (dimensions[site] for site in environment), 1.0
+                )
+                return ScalarOperator(prefactor, system)
+            return ScalarOperator(state.expect(self), system)
+
+        if state is None:
+            # Is state is not provided, just compute the partial trace
+            # on the block, and divide by the dimension of the environment.
+            dims = system.dimensions
+            site_list = sorted(sites)
+            site_names = self.site_names
+            qop = self.operator.ptrace([site_names[site] for site in site_list])
+            for site in environment:
+                prefactor /= dims[site]
+
+            return QutipOperator(
+                qop,
+                system,
+                names={site: i for i, site in enumerate(site_list)},
+                prefactor=prefactor,
+            )
+
+        print("With state")
+        env_tuple = tuple(environment)
+        sites_tuple = tuple(sites)
+        qop = self.to_qutip(sites_tuple + env_tuple)
+        state_qutip = state.partial_trace(environment).to_qutip(env_tuple)
+        state_qutip = tensor(
+            *(system.site_identity(site) for site in sites_tuple), state_qutip
+        )
+        qop = (qop * state_qutip).ptrace([i for i in range(len(sites_tuple))])
+        return QutipOperator(
+            qop,
+            system,
+            names={site: i for i, site in enumerate(sites_tuple)},
         )
 
     def simplify(self):

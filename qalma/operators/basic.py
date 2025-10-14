@@ -4,7 +4,7 @@ Different representations for operators
 
 import logging
 from functools import reduce
-from typing import Callable, Dict, List, Optional, Tuple, Union
+from typing import Callable, Dict, Iterable, List, Optional, Tuple, Union
 
 import numpy as np
 import qutip  # type: ignore[import-untyped]
@@ -336,6 +336,28 @@ class Operator:
         """Partial trace over sites not listed in `sites`"""
         raise NotImplementedError
 
+    def reduce(self, sites: Iterable, state=None):
+        """
+        Partial trace of the product of the operator and the density operator
+        acting on the subsystem which is traced out.
+        If the state is not provided, the result is the partial trace, divided
+        by the dimension of the subsystem traced out.
+
+        Parameters
+        ==========
+        sites: Iterable
+
+        state: Optional[DensityOperatorProtocol]
+               The state relative to which make the reduction.
+
+        Return
+        ======
+
+        The reduced operator.
+
+        """
+        raise NotImplementedError
+
     def _set_system_(self, system=None):
         """
         Change the system associated to the operator,
@@ -494,7 +516,6 @@ class LocalOperator(Operator):
 
     def partial_trace(self, sites: Union[frozenset, SystemDescriptor]):
         system = self.system
-        assert system is not None
         dimensions = system.dimensions
         subsystem = (
             sites if isinstance(sites, SystemDescriptor) else system.subsystem(sites)
@@ -514,6 +535,37 @@ class LocalOperator(Operator):
         if site not in local_sites:
             return ScalarOperator(local_op.tr() * prefactor, subsystem)
         return LocalOperator(site, local_op * prefactor, subsystem)
+
+    def reduce(self, sites: Iterable, state=None) -> Operator:
+        """
+        Partial trace of the product of the operator and the density operator
+        acting on the subsystem which is traced out.
+        If the state is not provided, the result is the partial trace, divided
+        by the dimension of the subsystem traced out.
+
+        Parameters
+        ==========
+        sites: Iterable
+
+        state: Optional[DensityOperatorProtocol]
+               The state relative to which make the reduction.
+
+        Return
+        ======
+
+        The reduced operator.
+
+        """
+        scalar_val: complex
+        site = self.site
+        if site in sites:
+            return self
+        system = self.system
+        if state is not None:
+            scalar_val = state.expect(self)
+        else:
+            scalar_val = self.operator.tr() / system.dimensions[site]
+        return ScalarOperator(scalar_val, system)
 
     def simplify(self):
         # TODO: reduce multiples of the identity to ScalarOperators
@@ -771,6 +823,80 @@ class ProductOperator(Operator):
             return ScalarOperator(prefactor, subsystem)
         return ProductOperator(sites_op, prefactor, subsystem)
 
+    def reduce(self, sites: Iterable, state=None) -> Operator:
+        """
+        Partial trace of the product of the operator and the density operator
+        acting on the subsystem which is traced out.
+        If the state is not provided, the result is the partial trace, divided
+        by the dimension of the subsystem traced out.
+
+        Parameters
+        ==========
+        sites: Iterable
+
+        state: Optional[DensityOperatorProtocol]
+               The state relative to which make the reduction.
+
+        Return
+        ======
+
+        The reduced operator.
+
+        """
+        acts_over = self.acts_over()
+        prefactor = self.prefactor
+        sites = acts_over.intersection(sites)
+        environment = acts_over - sites
+        if not environment:
+            return self
+        system = self.system
+        if not sites:
+            if state is None:
+                value = self.tr()
+                dimensions = system.dimensions
+                value /= reduce(
+                    lambda x, y: x * y, (dimensions[site] for site in acts_over)
+                )
+                return ScalarOperator(value, system)
+            return ScalarOperator(state.expect(self), system)
+
+        system = self.system
+        # Special cases:
+        if state is None:
+            dimensions = self.system.dimensions
+            sites_op = self.sites_op
+
+            for site in environment:
+                prefactor *= sites_op[site].tr() / dimensions[site]
+            return ProductOperator(
+                {site: sites_op[site] for site in sites}, prefactor, system
+            )
+        # ProductDensityOperator:
+        if hasattr(state, "terms"):
+            return self.to_qutip_operator().reduce(sites, state)
+
+        if hasattr(state, "to_product_state"):
+            state = state.to_product_state()
+        if isinstance(state, ProductOperator):
+            state_by_site = state.sites_op
+            sites_op = self.sites_op
+            for site in environment:
+                prefactor *= (sites_op[site] * state_by_site[site]).tr()
+            return ProductOperator(
+                {site: sites_op[site] for site in sites}, prefactor, system
+            )
+
+        # General case:
+        env_tuple = tuple(environment)
+        state = state.partial_trace(environment).to_qutip(env_tuple)
+        sites_ops = self.sites_op
+        prefactor *= (
+            state * qutip.tensor([self.sites_op[site] for site in env_tuple])
+        ).tr()
+        sites_op = {site: op_q for site, op_q in sites_ops.items() if site in sites}
+        result = ProductOperator(sites_op, prefactor, system)
+        return result
+
     def simplify(self) -> Operator:
         """
         Simplifies a product operator
@@ -937,6 +1063,28 @@ class ScalarOperator(ProductOperator):
                 result *= dim_factor
 
         return result
+
+    def reduce(self, sites: Iterable, state=None) -> Operator:
+        """
+        Partial trace of the product of the operator and the density operator
+        acting on the subsystem which is traced out.
+        If the state is not provided, the result is the partial trace, divided
+        by the dimension of the subsystem traced out.
+
+        Parameters
+        ==========
+        sites: Iterable
+
+        state: Optional[DensityOperatorProtocol]
+               The state relative to which make the reduction.
+
+        Return
+        ======
+
+        The reduced operator.
+
+        """
+        return self
 
     def simplify(self):
         """simplify a scalar operator"""
