@@ -17,7 +17,7 @@ from numbers import Number
 
 # from numbers import Number
 from time import time
-from typing import Callable, Optional, Set, Tuple, Union, cast
+from typing import Callable, Iterable, Optional, Set, Tuple, Union, cast
 
 import numpy as np
 from numpy.random import random
@@ -362,6 +362,30 @@ class QuadraticFormOperator(Operator):
             terms,
             sites,
         ).simplify()
+
+    def reduce(self, sites: Iterable, state=None) -> Operator:
+        """
+        Partial trace of the product of the operator and the density operator
+        acting on the subsystem which is traced out.
+        If the state is not provided, the result is the partial trace, divided
+        by the dimension of the subsystem traced out.
+
+        Parameters
+        ==========
+        sites: Iterable
+
+        state: Optional[DensityOperatorProtocol]
+               The state relative to which make the reduction.
+
+        Return
+        ======
+
+        The reduced operator.
+
+        """
+        # An alternative would be to build a new QuadraticOperator
+        # by reducing the quadratic terms.
+        return self.as_sum_of_products().reduce(sites, state)
 
     def simplify(self):
         """

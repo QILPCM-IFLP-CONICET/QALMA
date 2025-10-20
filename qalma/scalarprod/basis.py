@@ -19,7 +19,23 @@ from qalma.scalarprod.utils import find_linearly_independent_rows
 from qalma.settings import QALMA_TOLERANCE
 
 
-def n_body_sector(operator: Operator):
+def n_body_sector(operator: Operator) -> int:
+    """
+    Determine the maximum number of sites over which any
+    term of the operator acts over.
+
+    Parameters
+    ----------
+    operator : Operator
+        Operator.
+
+    Returns
+    -------
+    int
+        the maximum number of sites over which any product term of operator
+        acts over.
+
+    """
     if hasattr(operator, "terms"):
         return max(n_body_sector(term) for term in operator.terms)
     return len(operator.acts_over())
@@ -100,7 +116,9 @@ class OperatorBasis:
         return prepend_basis(self, other_basis)
 
     def __repr__(self):
-        result = f"Basis in the {max(n_body_sector(op) for op in self.operator_basis)}-body sector"
+        result = "Basis in the "
+        result += f"{max(n_body_sector(op) for op in self.operator_basis)}"
+        result += "-body sector"
         result += "\n" + f"  dimension: {len(self.operator_basis)}"
         result += "\n" + f"  gram:\n {self.gram}\n"
         result += "\n" + f"  hij:\n {self._hij}\n"
@@ -232,6 +250,7 @@ class OperatorBasis:
         )
 
     def operator_norm(self, operator: Operator):
+        """The induced norm of operator"""
         return self.sp(operator, operator) ** 0.5
 
     def operator_from_coefficients(self, phi) -> Operator:
@@ -476,7 +495,9 @@ class HierarchicalOperatorBasis(OperatorBasis):
             self._hij = self._hij[:-1, :-1]
             self.errors = self.errors[:-1]
             if not self.operator_basis:
-                raise ValueError(f"The seed operator {seed} seems to have zero norm.")
+                raise ValueError(
+                    "The seed operator " f"{seed} seems to have zero norm."
+                )
 
         hij = self._hij
         errors = self.errors
@@ -708,9 +729,13 @@ def append_basis(basis_1: OperatorBasis, basis_2: OperatorBasis | Iterable[Opera
         operators,
         generator,
         sp,
-        precomputed_tensors=dict(
-            gram=gram, gram_inv=gram_inv, errors=errors, gen_matrix=genij, hij=hij
-        ),
+        precomputed_tensors={
+            "gram": gram,
+            "gram_inv": gram_inv,
+            "errors": errors,
+            "gen_matrix": genij,
+            "hij": hij,
+        },
     )
 
 
@@ -729,7 +754,8 @@ def prepend_basis(
         basis_2 = OperatorBasis(tuple(basis_2), generator=None, sp=basis_1.sp)
 
     # Append basis_1 to basis_2
-    return append_basis(basis_2, basis_1)
+    basis_2, basis_1 = basis_1, basis_2
+    return append_basis(basis_1, basis_2)
 
 
 def do_compute_cross_gram_matrix(sp, ops1, ops2, dtype=np.float128):

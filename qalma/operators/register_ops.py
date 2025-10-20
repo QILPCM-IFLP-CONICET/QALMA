@@ -1797,6 +1797,12 @@ def mul_qutip_operator_qutip_operator(x_op: QutipOperator, y_op: QutipOperator):
     names_set = set(x_names)
     names_set.update(y_names)
     block = tuple(sorted(names_set))
+
+    if x_op.system is not system:
+        x_op = QutipOperator(x_op.operator, system, x_op.site_names, x_op.prefactor)
+    if y_op.system is not system:
+        y_op = QutipOperator(y_op.operator, system, y_op.site_names, y_op.prefactor)
+
     operator_qutip = x_op.to_qutip(block) * y_op.to_qutip(block)
     return QutipOperator(
         operator_qutip,
