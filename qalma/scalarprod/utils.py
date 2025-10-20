@@ -1,3 +1,7 @@
+"""
+Util functions used in scalar product related functions.
+"""
+
 from typing import Tuple
 
 import numpy as np

@@ -42,9 +42,11 @@ class CovariantScalarProductFunction:
         if op1 is op2:
             op1 = op1.simplify()
             op1_herm = op1.isherm
-            if op1_herm:
-                return abs(sigma.expect(op1 * op1))
-            return abs(0.5 * sigma.expect(anticommutator(op1.dag(), op1).simplify()))
+            return (
+                abs(sigma.expect(op1 * op1))
+                if op1_herm
+                else abs(0.5 * sigma.expect(anticommutator(op1.dag(), op1).simplify()))
+            )
 
         op1 = op1.simplify()
         op1_herm = op1.isherm
@@ -189,6 +191,20 @@ def compute_cov_sp_sqnorm(rho: ProductDensityOperator, op1: Operator) -> complex
     Efficiently computes the squared norm associated to the  covariant scalar
     product for Hermitian operators op1 and op2 when the state rho is
     a ProductDensityOperator.
+
+
+    Parameters
+    ----------
+    rho : ProductDensityOperator
+        State defining the scalar product.
+    op1 : Operator
+        operator.
+
+    Returns
+    -------
+    complex
+        covar-induced norm.
+
     """
     result = 0.0
     av_1: Dict[int, complex] = {}
@@ -248,10 +264,8 @@ def compute_cov_sp_prod(
 
     op1 = op1.simplify()
     op2 = op2.simplify()
-    terms_1 = op1.terms if hasattr(op1, "terms") else [op1]
-    terms_2 = op2.terms if hasattr(op2, "terms") else [op2]
-    for i, t1 in enumerate(terms_1):
-        for j, t2 in enumerate(terms_2):
+    for i, t1 in enumerate(op1.terms if hasattr(op1, "terms") else [op1]):
+        for j, t2 in enumerate(op2.terms if hasattr(op2, "terms") else [op2]):
             if i == j:
                 contrib = 0.5 * cast(complex, rho.expect(t1.dag() * t2 + t2 * t1.dag()))
             else:
@@ -286,6 +300,23 @@ def compute_cov_mix_sp(rho, op1: Operator, op2: Operator) -> complex:
 
 
 def compute_cov_sqnorm(rho: ProductDensityOperator, op1: Operator) -> complex:
+    """
+    Compute the square of the covar operator norm of `op1` asssociated
+    to the state `rho`.
+
+    Parameters
+    ----------
+    rho : ProductDensityOperator
+        The state.
+    op1 : Operator
+        operator.
+
+    Returns
+    -------
+    complex
+        the covar-induced operator norm.
+
+    """
     if op1.isherm:
         return _compute_cov_prod_normsq_h(rho, op1)
     return _compute_cov_prod_sp_hg(rho, op1.dag(), op1)
@@ -307,7 +338,8 @@ def compute_cov_prod_sp(
             return result
         return _compute_cov_prod_sp_hg(rho, op1, op2)
     if op2.isherm:
-        return np.conj(_compute_cov_prod_sp_hg(rho, op2, op1))
+        op1, op2 = op2, op1
+        return np.conj(_compute_cov_prod_sp_hg(rho, op1, op2))
     return _compute_cov_prod_sp_hg(rho, op1.dag(), op2)
 
 
