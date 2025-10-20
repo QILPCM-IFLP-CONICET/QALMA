@@ -116,7 +116,7 @@ class OperatorBasis:
     def __repr__(self):
         result = "Basis in the "
         result += f"{max(n_body_sector(op) for op in self.operator_basis)}"
-        result +="-body sector"
+        result += "-body sector"
         result += "\n" + f"  dimension: {len(self.operator_basis)}"
         result += "\n" + f"  gram:\n {self.gram}\n"
         result += "\n" + f"  hij:\n {self._hij}\n"
@@ -494,8 +494,7 @@ class HierarchicalOperatorBasis(OperatorBasis):
             self.errors = self.errors[:-1]
             if not self.operator_basis:
                 raise ValueError(
-                    "The seed operator "
-                    f"{seed} seems to have zero norm."
+                    "The seed operator " f"{seed} seems to have zero norm."
                 )
 
         hij = self._hij
