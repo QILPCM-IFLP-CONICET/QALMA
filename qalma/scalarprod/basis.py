@@ -114,8 +114,9 @@ class OperatorBasis:
         return prepend_basis(self, other_basis)
 
     def __repr__(self):
-        result = f"Basis in the {max(n_body_sector(op)
-                                     for op in self.operator_basis)}-body sector"
+        result = "Basis in the "
+        result += f"{max(n_body_sector(op) for op in self.operator_basis)}"
+        result +="-body sector"
         result += "\n" + f"  dimension: {len(self.operator_basis)}"
         result += "\n" + f"  gram:\n {self.gram}\n"
         result += "\n" + f"  hij:\n {self._hij}\n"
@@ -493,8 +494,8 @@ class HierarchicalOperatorBasis(OperatorBasis):
             self.errors = self.errors[:-1]
             if not self.operator_basis:
                 raise ValueError(
-                    f"The seed operator {
-                                 seed} seems to have zero norm."
+                    "The seed operator "
+                    f"{seed} seems to have zero norm."
                 )
 
         hij = self._hij
