@@ -1,3 +1,10 @@
+"""
+Gibbs partial trace
+
+This module implement functions to approximate the partial trace
+of a Gibbs state.
+"""
+
 import logging
 from typing import List
 
