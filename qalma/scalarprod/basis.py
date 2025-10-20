@@ -149,6 +149,7 @@ class OperatorBasis:
                     1e-3 * min(row[i] for i, row in enumerate(gram)),
                 )
                 l_gram = cholesky(gram)
+                print("lgram:", l_gram)
                 if all(abs(row[i]) > threshold for i, row in enumerate(l_gram)):
                     break
             except LinAlgError:
