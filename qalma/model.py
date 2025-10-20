@@ -109,6 +109,10 @@ class SystemDescriptor:
         self._serialized = pickle.dumps(state)
         return self._serialized
 
+    def __iter__(self):
+        for site in self.sites:
+            yield site
+
     def __setstate__(self, state):
         state_dict = pickle.loads(state)
         state_dict["operators"] = {

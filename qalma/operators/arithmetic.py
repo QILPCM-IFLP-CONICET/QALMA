@@ -239,6 +239,29 @@ class SumOperator(Operator):
             simplified=self._simplified,
         )
 
+    def reduce(self, sites: Iterable, state=None):
+        """
+        Partial trace of the product of the operator and the density operator
+        acting on the subsystem which is traced out.
+        If the state is not provided, the result is the partial trace, divided
+        by the dimension of the subsystem traced out.
+
+        Parameters
+        ==========
+        sites: Iterable
+
+        state: Optional[DensityOperatorProtocol]
+               The state relative to which make the reduction.
+
+        Return
+        ======
+
+        The reduced operator.
+
+        """
+        new_terms = (term.reduce(sites, state) for term in self.terms)
+        return iterable_to_operator(new_terms, self.system, isherm=self._isherm)
+
     def simplify(self):
         """Simplify the operator"""
         from qalma.operators.simplify import group_terms_by_blocks

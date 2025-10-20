@@ -39,7 +39,8 @@ BENCHMARK_FILE := bench_$(shell date +%Y%m%d)_$(shell git rev-parse --short HEAD
     docs-clean\
     install \
     mypy \
-    pytest
+    pytest \
+    pytest-ll
 
 
 
@@ -67,6 +68,9 @@ install:
 
 pytest:
 	QALMA_ALLTESTS=1 $(PYTHON) -m pytest $(PYTEST_OPTIONS) $(PYTEST_WORKERS) test
+
+pytest-ll:
+	QALMA_HEAVY_LOWLEVELTESTS=1 QALMA_ALLTESTS=1 $(PYTHON) -m pytest $(PYTEST_OPTIONS) $(PYTEST_WORKERS) test
 
 cprofile:
 	QALMA_ALLTESTS=1 $(PYTHON) -m cProfile -o output.stats -m pytest $(PYTEST_OPTIONS) $(PYTEST_WORKERS) test
