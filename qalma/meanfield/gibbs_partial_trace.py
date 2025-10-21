@@ -143,7 +143,7 @@ def gibbs_meanfield_partial_trace(
         # k_reduced is associated to the state of the subsystem.
         # We need to reset it to the global system:
         k_reduced._set_system_(system)
-        # Notice that sybsystem can still be "large", so we return a GibbsDensityOperator:
+        # Notice that subsystem can still be "large", so we return a GibbsDensityOperator:
         return GibbsDensityOperator(k_reduced, system=subsystem, prefactor=prefactor)
 
     # Decompose generator in terms inside (subsystem), terms outside (environment) and

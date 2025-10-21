@@ -327,7 +327,7 @@ class Operator:
 
     def n_body_sector(self) -> int:
         """
-        The maximium number of factors of any term in
+        The maximum number of factors of any term in
         a product state decomposition.
         """
         return len(self.acts_over())
