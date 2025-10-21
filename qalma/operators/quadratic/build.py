@@ -120,7 +120,7 @@ def zero_expectation_value_basis(basis: LocalBasisDict, sigma_ref):
     local_sigmas = sigma_ref.sites_op
 
     new_basis = {}
-    for site, local_basis in basis.items():
+    for site, _ in basis.items():
         local_sigma = local_sigmas[site]
         new_basis_site = [elem - (elem * local_sigma).tr() for elem in basis[site]]
         for elem in new_basis_site:
@@ -218,7 +218,7 @@ def classify_terms(operator, sigma_ref):
             offset_terms.append(operator)
         terms_by_block, linear_terms, _ = classify_terms(two_body_part, sigma_ref)
         return terms_by_block, linear_terms, offset_terms
-    elif len(acts_over) < 2:
+    if len(acts_over) < 2:
         return terms_by_block, [operator], offset_terms
 
     # operator acts exactly on two sites
@@ -234,6 +234,9 @@ def classify_terms(operator, sigma_ref):
 
 
 def build_quadratic_form_matrix(terms_by_block, local_basis: LocalBasisDict):
+    """
+    Build the matrix associated to the quadratic form in a given basis.
+    """
     sizes = {site: len(local_base) for site, local_base in local_basis.items()}
     sorted_sites = sorted(sizes)
     positions = {
@@ -397,17 +400,15 @@ def build_quadratic_form_from_operator(
                 0.5 * e_val,
                 OneBodyOperator(
                     tuple(
-                        [
-                            LocalOperator(
-                                site,
-                                sum(
-                                    local_op * e_vec[mu + local_basis_offsets[site]]
-                                    for mu, local_op in enumerate(local_base)
-                                ),
-                                system,
-                            )
-                            for site, local_base in local_basis.items()
-                        ]
+                        LocalOperator(
+                            site,
+                            sum(
+                                local_op * e_vec[mu + local_basis_offsets[site]]
+                                for mu, local_op in enumerate(local_base)
+                            ),
+                            system,
+                        )
+                        for site, local_base in local_basis.items()
                     ),
                     system,
                 ),

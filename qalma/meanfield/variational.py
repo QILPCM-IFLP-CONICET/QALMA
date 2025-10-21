@@ -116,12 +116,12 @@ def mf_quadratic_form_exponential(
     logging.info("using %s generators", len(generators))
     if len(generators) == 0:
         logging.info(
-            ("No 2-body terms found. " "Using the linear term as reference state.")
+            ("No 2-body terms found. Using the linear term as reference state.")
         )
         if k0:
             return GibbsProductDensityOperator(k0).to_product_state()
-        else:
-            return ProductDensityOperator({}, system=qf_op.system)
+
+        return ProductDensityOperator({}, system=qf_op.system)
 
     # Now, optimize the relative entropy over states of the form
     # sigma = exp(-k0 - sum_a phi_a Q_a)
@@ -236,7 +236,11 @@ def self_consistent_mf(
         sigma_ref = sigma_sc
 
     if converged is False:
-        msg = f"self consistent mean field failed to converge after {curr_step} iterations. Last Delta S_rel= {np.real(new_rel_entropy - rel_entropy)}."
+        msg = (
+            "self consistent mean field failed to converge after "
+            f"{curr_step} iterations. "
+            "Last Delta S_rel= {np.real(new_rel_entropy - rel_entropy)}."
+        )
         logging.warning(msg)
     return cast(ProductDensityOperator, sigma_ref), rel_entropy
 

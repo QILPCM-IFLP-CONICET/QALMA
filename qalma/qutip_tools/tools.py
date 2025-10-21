@@ -17,7 +17,9 @@ from qutip import (  # type: ignore[import-untyped]
     qeye,
     tensor as qutip_tensor,
 )
-from scipy.linalg import norm as scipy_norm, svd  # type: ignore[import-untyped]
+
+# type: ignore[import-untyped]
+from scipy.linalg import norm as scipy_norm, svd
 from scipy.sparse.linalg import ArpackNoConvergence
 
 if int(qutip_version[0]) < 5:
@@ -122,7 +124,7 @@ else:
 
         def do_dia_5_2(data_dia):
             data = data_dia.as_scipy()
-            dim_i, dim_j = data.shape
+            dim_i, _ = data.shape
             for offset, diag_data in zip(data.offsets, data.data):
                 if offset < 0:
                     for j_pos, value in enumerate(diag_data):
@@ -148,13 +150,10 @@ else:
         if hasattr(data, "num_diag"):
             # For 5.0 and 5.1
             if int(qutip_version[2]) < 2:
-                for item in do_dia_5_0(data):
-                    yield item
+                yield from do_dia_5_0(data)
             # For 5.2
             else:
-                for item in do_dia_5_2(data):
-                    yield item
-            return
+                yield from do_dia_5_2(data)
         elif hasattr(data, "as_scipy"):
             data = data.as_scipy()
             if hasattr(data, "tocoo"):
@@ -165,16 +164,13 @@ else:
                 # Fallback: try nonzero and data.data
                 try:
                     i_ind, j_ind = data.nonzero()
-                    for idx in range(len(i_ind)):
-                        yield (i_ind[idx], j_ind[idx], data.data[idx])
+                    for idx, i_val in enumerate(i_ind):
+                        yield (i_val, j_ind[idx], data.data[idx])
                 except Exception:
                     # Last resort: try dense
-                    for item in do_dense():
-                        yield item
-                    return
+                    yield from do_dense()
         else:
-            for item in do_dense():
-                yield item
+            yield from do_dense()
 
     def data_get_coeff(data, i_idx, j_idx):
         """
@@ -305,8 +301,8 @@ def data_has_nan(data) -> bool:
     """
     Check if data has `nan` entries
     """
-    for i, j, val in data_element_iterator(data):
-        if not (val == val):
+    for _, _, val in data_element_iterator(data):
+        if not val == val:
             return True
     return False
 
@@ -331,6 +327,7 @@ def is_scalar_op(op: Qobj) -> bool:
 
 
 def isnan_qutip(op: Qobj) -> bool:
+    """Is nan for qutip objects"""
     return data_has_nan(op.data)
 
 
@@ -395,7 +392,7 @@ def norm(
     See scipy.linalg.norm
     """
     try:
-        scipy_norm(op)
+        return scipy_norm(op)
     except TypeError:
         # Version Qutip 5.2 does not support Qutip as ufunc. Handle
         # specific cases
@@ -404,9 +401,9 @@ def norm(
     data = op.data
     if op.isbra or op.isket:
         return scipy_norm(data.to_array(), ord, axis, keepdims, check_finite)
-    if op.isoper:
-        data = op.data
-        return scipy_norm(data.to_array(), ord, axis, keepdims, check_finite)
+    assert op.isoper, "op is not valid."
+    data = op.data
+    return scipy_norm(data.to_array(), ord, axis, keepdims, check_finite)
 
 
 def reshape_qutip_data(data, dims, bs=1) -> ndarray:
@@ -633,7 +630,7 @@ def decompose_qutip_operator(operator: Qobj, tol: float = 1e-10) -> List[Tuple]:
         return []
 
     if len(dims) < 3:
-        return [(op_1, op_2) for op_1, op_2 in zip(ops_1, ops_2)]
+        return list(zip(ops_1, ops_2))
     ops_2_factors = [decompose_qutip_operator(op2, tol) for op2 in ops_2]
     result = [
         (op1,) + tuple((op_2 for op_2 in factors))
@@ -664,7 +661,7 @@ def decompose_qutip_operator_hermitician(
         return []
 
     if len(dims) < 3:
-        return [(op_1, op_2) for op_1, op_2 in zip(ops_1, ops_2)]
+        return list(zip(ops_1, ops_2))
     ops_2_factors = [decompose_qutip_operator_hermitician(op2, tol) for op2 in ops_2]
     result = [
         (op1,) + tuple((op_2 for op_2 in factors))
@@ -736,7 +733,9 @@ def reduce_to_proper_spaces(operator: Qobj, observable: Qobj) -> Qobj:
     )
 
 
-def project_qutip_to_m_body(op_qutip: Qobj, m_max=2, local_sigmas=None) -> Qobj:
+def project_qutip_to_m_body(
+    op_qutip: Qobj, m_max: int = 2, local_sigmas: Optional[list] = None
+) -> Qobj:
     """
     Project a qutip operator onto a m_max - body operators sub-algebra
     relative to the local states `local_sigmas`.
@@ -808,10 +807,11 @@ def safe_exp_and_normalize(operator: Qobj) -> Tuple[Qobj, float]:
         )
     except ArpackNoConvergence as err_arpack:
         logging.warning(
-            f"Convergence failed. try with {type(err_arpack.eigenvalues)}-> {err_arpack.eigenvalues}"
+            "Convergence failed. try with "
+            f"{type(err_arpack.eigenvalues)}-> {err_arpack.eigenvalues}"
         )
         k_0 = (
-            max([np.real(x) for x in err_arpack.eigenvalues])
+            max(np.real(x) for x in err_arpack.eigenvalues)
             if err_arpack.eigenvalues
             else 0.0
         )

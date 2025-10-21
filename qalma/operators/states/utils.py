@@ -3,7 +3,7 @@ Utility functions for qalma.operators.states
 
 """
 
-from typing import Any, Dict, Iterable, List, Optional, Set, Union, cast
+from typing import Any, Dict, Iterable, List, Optional, Set, Tuple, Union, cast
 
 import numpy as np
 from qutip import Qobj, tensor as qutip_tensor
@@ -28,6 +28,10 @@ from qalma.qutip_tools.tools import (
 
 
 def acts_over_order(elem):
+    """
+    Return the number of sites where the
+    operator `elem` acts over.
+    """
     elem_acts_over = elem.acts_over()
     if elem_acts_over is None:
         return 0
@@ -167,7 +171,7 @@ def k_by_site_from_operator(k: Operator) -> Dict[str, Operator]:
             site = next(iter(system.dimensions))
             return {site: prefactor * system.site_identity(site)}
         if prefactor == 1.0:
-            return {site: op for site, op in sites_op.items()}
+            return dict(sites_op.items())
         return {site: op * prefactor for site, op in sites_op.items()}
     if isinstance(k, SumOperator):
         result = {}
@@ -213,6 +217,11 @@ def reduced_state_by_block(
     term: Operator,
     reduced_states_cache: Dict[frozenset, DensityOperatorProtocol],
 ) -> Optional[DensityOperatorProtocol]:
+    """
+    Compute the reduced DensityOperator for the block where
+    `term` acts over, and store it in a cache
+    `reduced_states_cache`.
+    """
     acts_over = term.acts_over()
     result = reduced_states_cache.get(acts_over, None)
     if result is not None:
@@ -221,7 +230,7 @@ def reduced_state_by_block(
     size = len(acts_over)
     for block in sorted(
         [block for block in reduced_states_cache if block and len(block) > size],
-        key=lambda x: len(x),
+        key=len,
     ):
         if acts_over.issubset(block):
             result = reduced_states_cache[block]
@@ -238,6 +247,9 @@ def reduced_state_by_block(
 
 
 def safe_exp_and_normalize_localop(operator: LocalOperator):
+    """
+    Exponentiate a local operator avoiding overflows.
+    """
     system = operator.system
     site = operator.site
     loc_rho, log_z = safe_exp_and_normalize_qobj(operator.operator)
@@ -267,7 +279,12 @@ def safe_exp_and_normalize_localop(operator: LocalOperator):
     )
 
 
-def safe_exp_and_normalize_sumop(operator: SumOperator):
+def safe_exp_and_normalize_sumop(
+    operator: SumOperator,
+) -> Tuple[DensityOperatorProtocol, float]:
+    """
+    Exponentiate a sum operator avoiding overflows.
+    """
     logz: float
     operator = operator.simplify()
     if not isinstance(operator, SumOperator):
@@ -282,7 +299,7 @@ def safe_exp_and_normalize_sumop(operator: SumOperator):
     acts_over_terms: List[frozenset] = cast(List[frozenset], acts_over_terms_or_none)
 
     system = operator.system
-    local_generators: Dict[str, Qobj] = dict()
+    local_generators: Dict[str, Qobj] = {}
     logz = 0
     for acts_over, term in zip(acts_over_terms, terms):
         if len(acts_over) == 0:
@@ -316,12 +333,20 @@ def safe_exp_and_normalize_sumop(operator: SumOperator):
     )
 
 
-def safe_exp_and_normalize_qutip_operator(operator):
-
+def safe_exp_and_normalize_qutip_operator(
+    operator,
+) -> Tuple[DensityOperatorProtocol, float]:
+    """
+    Exponentiate a qutip operator avoiding overflows.
+    """
+    ln_z: float
     system = operator.system
     if isinstance(operator, ScalarOperator):
         ln_z = sum((np.log(dim) for dim in system.dimensions.values()))
-        return (ScalarOperator(np.exp(-ln_z), system), ln_z + operator.prefactor)
+        return (
+            ProductDensityOperator({}, system=system),
+            cast(float, ln_z + operator.prefactor),
+        )
 
     site_names = operator.site_names
     block = tuple(sorted(site_names, key=lambda x: site_names[x]))
