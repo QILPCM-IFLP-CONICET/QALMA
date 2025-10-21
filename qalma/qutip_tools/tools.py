@@ -314,11 +314,36 @@ def data_is_scalar(data) -> bool:
     return scalar_value(data) is not None
 
 
+def empty_op(op) -> bool:
+    """
+    Check if op is an sparse operator without
+    non-zero elements.
+    """
+    if isinstance(op, complex):
+        return op == 0
+
+    if getattr(op, "prefactor", 1) == 0:
+        return True
+
+    if hasattr(op, "data"):
+        return data_is_zero(op.data)
+
+    if hasattr(op, "operator"):
+        return empty_op(op.operator)
+    if any(empty_op(factor) for factor in getattr(op, "sites_op", {}).values()):
+        return True
+    return False
+
+
 def hermitician_part(op: Qobj, tol=None) -> Qobj:
     """Returns the hermitician part of the operator `op`"""
     if op.isherm:
         return op
     return (op + op.dag()).tidyup(tol) * 0.5
+
+
+def is_diagonal_op(op: Qobj) -> bool:
+    return data_is_diagonal(op.data)
 
 
 def is_scalar_op(op: Qobj) -> bool:

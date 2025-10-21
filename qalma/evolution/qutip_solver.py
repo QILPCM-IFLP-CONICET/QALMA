@@ -17,7 +17,7 @@ from .simulation import Simulation
 
 
 def qutip_me_solve(
-    H: Operator,
+    H: Operator,  # pylint: disable=invalid-name
     rho0: Operator,
     tlist: ArrayLike,
     *,
@@ -105,7 +105,7 @@ def qutip_me_solve(
         h_qutip = H
 
     if isinstance(rho0, Operator):
-        StateOperatorClass = (
+        state_operator_class = (
             QutipDensityOperator if hasattr(rho0, "expect") else QutipOperator
         )
         if system is None:
@@ -113,7 +113,7 @@ def qutip_me_solve(
         rho0_qutip = rho0.to_qutip()
     else:
         # If rho0 is a Qobj, just return the Qutip output without changes.
-        def StateOperatorClass(x, **kwargs):
+        def state_operator_class(x, **_kwargs):
             return x
 
         rho0_qutip = rho0
@@ -130,7 +130,7 @@ def qutip_me_solve(
             e_ops_qutip = e_ops
 
             def e_ops_wrapper(t, rho):
-                return e_ops_qutip(t, StateOperatorClass(rho, system=system))
+                return e_ops_qutip(t, state_operator_class(rho, system=system))
 
             e_ops = e_ops_wrapper
 
@@ -159,6 +159,6 @@ def qutip_me_solve(
         time_span=result.times,
         stats=result.stats,
         expect_ops=result.e_data,
-        states=[StateOperatorClass(state, system=system) for state in result.states],
+        states=[state_operator_class(state, system=system) for state in result.states],
         parameters=parameters,
     )

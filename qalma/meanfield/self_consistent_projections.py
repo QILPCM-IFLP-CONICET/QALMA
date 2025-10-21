@@ -106,11 +106,13 @@ def self_consistent_project_meanfield(
 
     if converged:
         logging.debug(
-            f"  convergence achieved after {it} iterations with SR = {rel_s}."
+            "  convergence achieved after %d iterations with SR = %.6f.", it, rel_s
         )
     else:
         logging.debug(
-            f"  rel_s_new {rel_s_new} is much worst than the optimal {rel_s}. Give up."
+            "  rel_s_new %.6f is much worst than the optimal %.6f. Give up.",
+            rel_s_new,
+            rel_s,
         )
 
     return k_one_body, sigma_opt

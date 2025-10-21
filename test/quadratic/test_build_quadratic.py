@@ -11,7 +11,7 @@ from test.helper import (
 
 import pytest
 
-from qalma.operators.basic import ProductOperator
+from qalma.operators.product import ProductOperator
 from qalma.operators.quadratic.build import (
     build_quadratic_form_from_operator,
     classify_terms,

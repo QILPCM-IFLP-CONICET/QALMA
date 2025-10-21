@@ -12,6 +12,8 @@ from qalma.operators.arithmetic import OneBodyOperator
 from qalma.operators.basic import (
     LocalOperator,
     Operator,
+)
+from qalma.operators.product import (
     ProductOperator,
     ScalarOperator,
 )
@@ -86,5 +88,5 @@ def relative_entropy(rho: Operator, sigma: Operator) -> float:
     else:
         result = real((rho * delta_log).tr())
     if result < 0:
-        logging.warning(f"S(rho|sigma)={result}<0")
+        logging.warning("S(rho|sigma)=%.4f<0", result)
     return max(0, result)

@@ -149,7 +149,7 @@ def model_from_alps_xml(filename=MODEL_LIB_FILE, name="spin", parms=None):
                 break
         return operators
 
-    def process_bond_operators(operators: dict, parms: dict):
+    def process_bond_operators(operators: dict, _parms: dict):
         for node in models.findall("./BONDOPERATOR"):
             descriptor = node.attrib
             name = descriptor["name"]
@@ -312,7 +312,7 @@ def model_from_alps_xml(filename=MODEL_LIB_FILE, name="spin", parms=None):
                     terms.append((dst, src, coeff, fermionic))
 
             if any(t[-1] for t in terms) and not all(t[-1] for t in terms):
-                logging.warning(f"wrong fermionic parity {name}: {terms} ")
+                logging.warning("Wrong fermionic parity %s: %s.", name, terms)
                 continue
             operators[name] = sum(
                 coeff * qutip.projection(dim, src, dst)
@@ -433,7 +433,7 @@ class ModelDescriptor:
         return True
 
 
-def qutip_model_from_dims(dims, local_ops=None, global_ops=None, model_name="qutip"):
+def qutip_model_from_dims(dims, model_name="qutip"):
     """
     Produce a basic model descriptor from the dimensions
     """

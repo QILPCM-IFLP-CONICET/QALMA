@@ -357,7 +357,7 @@ def variational_quadratic_mfa(
         )
         if rel_s < current_rel_entropy:
             changed = True
-            logging.info(f"  self consistent attempt-> S_rel={current_rel_entropy}.")
+            logging.info("  self consistent attempt-> S_rel=%.6f.", current_rel_entropy)
             sigma_ref = sigma_candidate
             current_rel_entropy = rel_s
 
