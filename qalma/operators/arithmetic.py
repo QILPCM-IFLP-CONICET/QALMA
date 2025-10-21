@@ -13,6 +13,8 @@ from qalma.model import SystemDescriptor
 from qalma.operators.basic import (
     LocalOperator,
     Operator,
+)
+from qalma.operators.product import (
     ProductOperator,
     ScalarOperator,
 )

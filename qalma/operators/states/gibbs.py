@@ -13,6 +13,8 @@ from qalma.operators.arithmetic import OneBodyOperator
 from qalma.operators.basic import (
     LocalOperator,
     Operator,
+)
+from qalma.operators.product import (
     ScalarOperator,
     is_diagonal_op,
 )

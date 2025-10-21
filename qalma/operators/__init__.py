@@ -8,6 +8,8 @@ from qalma.operators.arithmetic import OneBodyOperator, SumOperator
 from qalma.operators.basic import (
     LocalOperator,
     Operator,
+)
+from qalma.operators.product import (
     ProductOperator,
     ScalarOperator,
 )

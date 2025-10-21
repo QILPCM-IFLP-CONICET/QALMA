@@ -207,7 +207,8 @@ def operator_to_wolfram(operator) -> str:
     representing the operator.
     """
     from qalma.operators.arithmetic import SumOperator
-    from qalma.operators.basic import LocalOperator, Operator, ProductOperator
+    from qalma.operators.basic import LocalOperator, Operator
+    from qalma.operators.product import ProductOperator
     from qalma.operators.qutip import Qobj
 
     def get_site_identity(site_name):
