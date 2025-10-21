@@ -1,5 +1,5 @@
 """
-Utility module
+Utility functions used in Operator classes.
 """
 
 import logging

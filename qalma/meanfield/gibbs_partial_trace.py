@@ -78,7 +78,8 @@ def project_boundary_term(term, sigma: ProductDensityOperator, sites: frozenset)
         term = term.as_sum_of_products()
         return project_boundary_term(term, sigma, sites)
     logging.warning(
-        f"boundary term is not Product or Qutip ({type(term)}). Converting to QutipOperator"
+        "boundary term is not Product or Qutip (%s). Converting to QutipOperator",
+        type(term),
     )
     return project_boundary_term(term.to_qutip_operator(), sigma, sites)
 
@@ -111,6 +112,7 @@ def gibbs_meanfield_partial_trace(
     environment = frozenset(site for site in full_acts_over if site not in sites)
     system = state.k.system
     subsystem = system.subsystem(sites)
+    # pylint: disable=protected-access
     sigma_mf = state._meanfield
 
     # Trivial cases:
@@ -142,6 +144,7 @@ def gibbs_meanfield_partial_trace(
         k_reduced = -sigma_superblock.logm()
         # k_reduced is associated to the state of the subsystem.
         # We need to reset it to the global system:
+        # pylint: disable=protected-access
         k_reduced._set_system_(system)
         # Notice that subsystem can still be "large", so we return a GibbsDensityOperator:
         return GibbsDensityOperator(k_reduced, system=subsystem, prefactor=prefactor)
@@ -164,6 +167,7 @@ def gibbs_meanfield_partial_trace(
         # If there are boundary terms, project them
         if sigma_mf is None:
             sigma_mf = variational_quadratic_mfa(generator)
+            # pylint: disable=protected-access
             state._meanfield = sigma_mf
 
         # Project the terms onto the algebra of the local subsystem
