@@ -262,12 +262,14 @@ class SumOperator(Operator):
 
     def simplify(self):
         """Simplify the operator"""
-        from qalma.operators.simplify import group_terms_by_blocks
 
         if self._simplified:
             return self
         if len(self.terms) == 1:
             return self.terms[0].simplify()
+
+        # pylint: disable=import-outside-toplevel
+        from qalma.operators.simplify import group_terms_by_blocks
 
         return group_terms_by_blocks(self.flat())
 

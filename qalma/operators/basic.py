@@ -12,9 +12,9 @@ from qutip import Qobj
 
 from qalma.model import SystemDescriptor
 from qalma.qutip_tools.tools import (
-    data_is_diagonal,
-    data_is_scalar,
-    data_is_zero,
+    empty_op,
+    is_diagonal_op,
+    is_scalar_op,
     norm,
 )
 from qalma.settings import (
@@ -395,6 +395,7 @@ class Operator:
 
     def to_qutip_operator(self):
         """Produce a Qutip representation of the operator"""
+        # pylint: disable=import-outside-toplevel
         from qalma.operators.qutip import QutipOperator
 
         block = tuple(sorted(self.acts_over()))
@@ -1129,58 +1130,6 @@ class ScalarOperator(ProductOperator):
         For ScalarOperators, just return self.
         """
         return self
-
-
-def empty_op(op: Union[complex, Qobj, Operator]) -> bool:
-    """
-    Check if op is an sparse operator without
-    non-zero elements.
-    """
-    if isinstance(op, complex):
-        return op == 0
-
-    if getattr(op, "prefactor", 1) == 0:
-        return True
-
-    if hasattr(op, "data"):
-        return data_is_zero(op.data)
-
-    if hasattr(op, "operator"):
-        return empty_op(op.operator)
-    if any(empty_op(factor) for factor in getattr(op, "sites_op", {}).values()):
-        return True
-    return False
-
-
-def is_diagonal_op(op: Union[Qobj, Operator]) -> bool:
-    """Check if op is a diagonal operator"""
-    if not hasattr(op, "data"):
-        if isinstance(op, ScalarOperator):
-            return True
-        if hasattr(op, "operator"):
-            return is_diagonal_op(op.operator)
-        if hasattr(op, "sites_op"):
-            if op.prefactor == 0:
-                return True
-            return all(is_diagonal_op(op_l) for op_l in op.sites_op.values())
-        raise TypeError(f"Operator of type {type(op)} is not allowed.")
-    return data_is_diagonal(op.data)
-
-
-def is_scalar_op(op: Qobj) -> bool:
-    """
-    Check if the operator is a
-    multiple of the identity
-    """
-    if not hasattr(op, "data"):
-        if isinstance(op, ScalarOperator):
-            return True
-        if hasattr(op, "operator"):
-            return is_scalar_op(op.operator)
-        if hasattr(op, "sites_op"):
-            return all(is_scalar_op(site_op) for site_op in op.sites_op.values())
-        raise TypeError(f"Operator of type {type(op)} is not allowed.")
-    return data_is_scalar(op.data)
 
 
 def find_arithmetic_implementation(

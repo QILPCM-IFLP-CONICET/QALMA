@@ -140,7 +140,6 @@ def classify_terms(operator, sigma_ref):
     have zero trace. Otherwise, operators have zero expectation
     value relative to sigma_ref.
     """
-    from qalma.projections import n_body_projection
 
     local_sigmas = (
         sigma_ref.sites_op
@@ -208,6 +207,9 @@ def classify_terms(operator, sigma_ref):
 
     acts_over = operator.acts_over()
     if acts_over is None or len(acts_over) > 2:
+        # pylint: disable=import-outside-toplevel
+        from qalma.projections import n_body_projection
+
         two_body_part = n_body_projection(operator, 2, sigma_ref)
         if isinstance(operator, QutipOperator):
             operator = (operator - two_body_part).to_qutip_operator()
@@ -279,10 +281,6 @@ def build_quadratic_form_from_operator(
     """
     Build a QuadraticFormOperator from `operator`
     """
-    # Required for `assert` test below
-    # from qalma.operators.states.basic import (
-    #    ProductDensityOperator,
-    # )
 
     def force_hermitic_t(t):
         if t is None:
