@@ -77,9 +77,10 @@ class Operator:
             for curr_key in keys:
                 if curr_key in Operator.__add__dispatch__:
                     if not QALMA_ALLOW_OVERWRITE_BINDINGS:
-                        assert (
-                            curr_key not in Operator.__add__dispatch__
-                        ), f"{curr_key} already registered in in {Operator.__add__dispatch__[curr_key].__code__}."
+                        assert curr_key not in Operator.__add__dispatch__, (
+                            f"{curr_key} already registered in "
+                            f"{Operator.__add__dispatch__[curr_key].__code__}."
+                        )
                 # print(f"registering add operation for {curr_key} with {func} {func.__code__}")
                 Operator.__add__dispatch__[curr_key] = func
             return func
@@ -99,10 +100,10 @@ class Operator:
             for curr_key in keys:
                 if curr_key in Operator.__mul__dispatch__:
                     if not QALMA_ALLOW_OVERWRITE_BINDINGS:
-                        assert (
-                            curr_key not in Operator.__mul__dispatch__
-                        ), f"{curr_key} already registered in in {Operator.__mul__dispatch__[curr_key].__code__}."
-                # print(f"registering add operation for {curr_key} with {func} {func.__code__}")
+                        assert curr_key not in Operator.__mul__dispatch__, (
+                            f"{curr_key} already registered in "
+                            f"{Operator.__mul__dispatch__[curr_key].__code__}."
+                        )
                 Operator.__mul__dispatch__[curr_key] = func
             return func
 
@@ -133,8 +134,8 @@ class Operator:
             return func(term, self)
         try:
             return term.__radd__(self)
-        except TypeError:
-            raise TypeError(f"{type(self)} cannot be added with  {type(term)}")
+        except TypeError as exc:
+            raise TypeError(f"{type(self)} cannot be added with  {type(term)}") from exc
 
     def __mul__(self, factor):
         # Use multiple dispatch to determine how to multiply
@@ -150,8 +151,10 @@ class Operator:
 
         try:
             return factor.__rmul__(self)
-        except TypeError:
-            raise TypeError(f"{type(self)} cannot be multiplied with  {type(factor)}")
+        except TypeError as exc:
+            raise TypeError(
+                f"{type(self)} cannot be multiplied with  {type(factor)}"
+            ) from exc
 
     def __neg__(self):
         return -(self.to_qutip_operator())
@@ -299,7 +302,8 @@ class Operator:
 
         # Import here to avoid circular dependency
         # pylint: disable=import-outside-toplevel
-        from scipy.sparse.linalg import ArpackError  # type: ignore[import-untyped]
+        # type: ignore[import-untyped]
+        from scipy.sparse.linalg import ArpackError
 
         from qalma.operators.functions import eigenvalues
         from qalma.operators.qutip import QutipOperator
@@ -322,9 +326,14 @@ class Operator:
         return self.to_qutip_operator().logm()
 
     def n_body_sector(self) -> int:
+        """
+        The maximum number of factors of any term in
+        a product state decomposition.
+        """
         return len(self.acts_over())
 
     def num_terms(self) -> int:
+        """Number of terms that spans the operator"""
         return 1
 
     def norm(self, ord: Optional[int | str | float] = None):
@@ -1200,7 +1209,8 @@ def find_arithmetic_implementation(
                 logging.warning("try with %s", func.__code__)
                 return None
 
-    # Last resource: try if the operands are instances of one of the keys in the dispatch table.
+    # Last resource: try if the operands are instances of one of the keys
+    # in the dispatch table.
     # Required for example for keys of the form (Operator, complex).
 
     for key, func in dispatch_table.items():

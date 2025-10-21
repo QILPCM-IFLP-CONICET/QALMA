@@ -1,3 +1,10 @@
+"""
+Operator State package
+
+This package contains classes and functions to represent and manipulate
+quantum states.
+"""
+
 import qalma.operators.states.register_ops as _register_ops
 from qalma.operators.states.arithmetic import MixtureDensityOperator
 from qalma.operators.states.basic import (

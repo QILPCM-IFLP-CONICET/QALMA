@@ -48,8 +48,6 @@ class SumOperator(Operator):
                 else:
                     system = system.union(term.system)
 
-        # sites=tuple(system.dimensions.keys())
-        # assert all(sites==tuple(t.system.dimensions.keys()) for t in term_tuple if t.system), f"{system.dimensions.keys()} and {tuple((tuple(t.system.dimensions.keys()) for t in term_tuple if t.system))}"
         self.system = system
         self._isherm = isherm
         self._isdiagonal = isdiag
@@ -464,7 +462,7 @@ class OneBodyOperator(SumOperator):
             terms = [ScalarOperator(scalar_term_value, system)]
 
         # Reduce the local terms
-        for site, local_terms in terms_by_subsystem.items():
+        for _, local_terms in terms_by_subsystem.items():
             if len(local_terms) > 1:
                 terms.append(sum(local_terms))
             else:

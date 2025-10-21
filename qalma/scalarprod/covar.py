@@ -301,7 +301,7 @@ def compute_cov_mix_sp(rho, op1: Operator, op2: Operator) -> complex:
 
 def compute_cov_sqnorm(rho: ProductDensityOperator, op1: Operator) -> complex:
     """
-    Compute the square of the covar operator norm of `op1` asssociated
+    Compute the square of the covar operator norm of `op1` associated
     to the state `rho`.
 
     Parameters

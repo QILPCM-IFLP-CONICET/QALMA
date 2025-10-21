@@ -139,7 +139,7 @@ class MixtureDensityOperator(DensityOperatorMixin, SumOperator):
         return frozenset(sites)
 
     def expect(
-        self, obs: Union[Operator, Iterable]
+        self, obs_objs: Union[Operator, Iterable]
     ) -> Union[np.ndarray, dict, complex]:
 
         def compute_results(curr_obs, sub_averages, prefactors):
@@ -161,10 +161,10 @@ class MixtureDensityOperator(DensityOperatorMixin, SumOperator):
             )
 
         averages = tuple(
-            cast(DensityOperatorMixin, term).expect(obs) for term in self.terms
+            cast(DensityOperatorMixin, term).expect(obs_objs) for term in self.terms
         )
         prefactors = tuple(term.prefactor for term in self.terms)
-        return compute_results(obs, averages, prefactors)
+        return compute_results(obs_objs, averages, prefactors)
 
     def partial_trace(self, sites: Union[frozenset, SystemDescriptor]):
         new_terms = tuple(cast(Operator, t).partial_trace(sites) for t in self.terms)
