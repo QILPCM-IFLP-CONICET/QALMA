@@ -389,10 +389,14 @@ def safe_exp_and_normalize(operator):
         return safe_exp_and_normalize_localop(operator)
     if isinstance(operator, SumOperator):
         return safe_exp_and_normalize_sumop(operator)
+    if isinstance(operator, Operator):
+        operator = operator.to_qutip_operator()
     if isinstance(operator, QutipOperator):
         return safe_exp_and_normalize_qutip_operator(operator)
-    if isinstance(operator, Operator):
-        return safe_exp_and_normalize_qutip_operator(operator.to_qutip_operator())
+    if isinstance(operator, ProductOperator):
+        system = operator.system
+        ln_z = sum((np.log(dim) for dim in system.dimensions.values()))
+        return (ScalarOperator(np.exp(-ln_z), system), ln_z + operator.prefactor)
 
     # assume Qobj or any other class with a compatible interface.
     return safe_exp_and_normalize_qobj(operator)

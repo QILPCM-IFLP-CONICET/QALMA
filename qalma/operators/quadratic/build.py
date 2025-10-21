@@ -239,36 +239,18 @@ def build_quadratic_form_matrix(terms_by_block, local_basis: LocalBasisDict):
     """
     Build the matrix associated to the quadratic form in a given basis.
     """
-    sizes = {site: len(local_base) for site, local_base in local_basis.items()}
-    sorted_sites = sorted(sizes)
-    positions = {
-        site: sum(sizes[site_] for site_ in sorted_sites[:pos])
-        for pos, site in enumerate(sorted_sites)
-    }
-    full_size = sum(sizes.values())
+    positions, full_size = build_positions_and_full_size(local_basis)
+
     result_array = np.zeros(
         (
             full_size,
             full_size,
         )
     )
+
     for block, terms in terms_by_block.items():
-        site1, site2 = block
-        position_1 = positions[site1]
-        position_2 = positions[site2]
-        basis1 = local_basis[site1]
-        basis2 = local_basis[site2]
-        for term in terms:
-            prefactor = term.prefactor
-            op1, op2 = (term.sites_op[site] for site in block)
-            for mu, b1 in enumerate(basis1):
-                for nu, b2 in enumerate(basis2):
-                    i = position_1 + mu
-                    j = position_2 + nu
-                    result_array[i, j] += np.real(
-                        prefactor * (op1 * b1).tr() * (op2 * b2).tr()
-                    )
-                    result_array[j, i] = result_array[i, j]
+        fill_array_from_block(result_array, local_basis, positions, block, terms)
+
     return result_array, positions
 
 
@@ -281,23 +263,6 @@ def build_quadratic_form_from_operator(
     """
     Build a QuadraticFormOperator from `operator`
     """
-
-    def force_hermitic_t(t):
-        if t is None:
-            return t
-        if not t.isherm:
-            t = (t + t.dag()).simplify()
-            t = t * 0.5
-        return t
-
-    def spectral_norm(ob_op):
-        if isinstance(ob_op, ScalarOperator):
-            return ob_op.prefactor
-        if isinstance(ob_op, OneBodyOperator):
-            return sum(spectral_norm(term) for term in ob_op.simplify().terms)
-        if isinstance(ob_op, LocalOperator):
-            return max((ob_op.operator**2).eigenenergies()) ** 0.5
-        raise TypeError(f"spectral_norm can not be computed for {type(ob_op)}")
 
     if simplify:
         operator = operator.simplify()
@@ -347,25 +312,19 @@ def build_quadratic_form_from_operator(
     # For non-hermitician, convert the hermitician
     # and the anti-hermitician parts, and sum both.
     if not isherm:
-        real_part = (
+        return sum(
             build_quadratic_form_from_operator(
-                operator + operator.dag(),
+                op,
                 simplify=True,
                 isherm=True,
                 sigma_ref=sigma_ref,
             )
-            * 0.5
-        )
-        imag_part = (
-            build_quadratic_form_from_operator(
-                operator.dag() * 1j - operator * 1j,
-                simplify=True,
-                isherm=True,
-                sigma_ref=sigma_ref,
+            * w
+            for op, w in (
+                (operator.dag() + operator, 0.5),
+                (operator.dag() * 1j - operator * 1j, 0.5j),
             )
-            * 0.5j
         )
-        return real_part + imag_part
 
     # Process hermitician operators
     # Classify terms
@@ -389,10 +348,54 @@ def build_quadratic_form_from_operator(
     if sigma_ref is not None:
         local_basis = zero_expectation_value_basis(local_basis, sigma_ref)
 
-    # Decompose the matrix in the eigenbasis, and build the generators
+    weights, qf_basis = basis_and_weights(
+        decompose_matrix(qf_array, local_basis, local_basis_offsets, system)
+    )
+
+    return QuadraticFormOperator(
+        basis=qf_basis,
+        weights=weights,
+        system=operator.system,
+        linear_term=linear_term,
+        offset=offset,
+    )
+
+
+def basis_and_weights(qf_basis_list):
+    """build basis and weights"""
+
+    def spectral_norm(ob_op):
+        if isinstance(ob_op, ScalarOperator):
+            return ob_op.prefactor
+        if isinstance(ob_op, OneBodyOperator):
+            return sum(spectral_norm(term) for term in ob_op.simplify().terms)
+        if isinstance(ob_op, LocalOperator):
+            return max((ob_op.operator**2).eigenenergies()) ** 0.5
+        raise TypeError(f"spectral_norm can not be computed for {type(ob_op)}")
+
+    spectral_norms = (
+        spectral_norm(weight_generator[1]) for weight_generator in qf_basis_list
+    )
+    qf_basis_and_weight = tuple(
+        (
+            weight_generator[0] * sn**2,
+            weight_generator[1] / sn,
+        )
+        for sn, weight_generator in zip(spectral_norms, qf_basis_list)
+    )
+    return (
+        tuple((weight_generator[0] for weight_generator in qf_basis_and_weight)),
+        tuple((weight_generator[1] for weight_generator in qf_basis_and_weight)),
+    )
+
+
+def decompose_matrix(qf_array, local_basis, local_basis_offsets, system):
+    """
+    Decompose the array into
+    """
     e_vals, e_vecs = eigh(qf_array)
 
-    qf_basis_list = sorted(
+    return sorted(
         [
             (
                 0.5 * e_val,
@@ -417,24 +420,48 @@ def build_quadratic_form_from_operator(
         key=lambda x: x[0],
     )
 
-    # Normalize the generators in the spectral norm.
-    spectral_norms = (
-        spectral_norm(weight_generator[1]) for weight_generator in qf_basis_list
-    )
-    qf_basis_and_weight = tuple(
-        (
-            weight_generator[0] * sn**2,
-            weight_generator[1] / sn,
-        )
-        for sn, weight_generator in zip(spectral_norms, qf_basis_list)
-    )
-    weights = tuple((weight_generator[0] for weight_generator in qf_basis_and_weight))
-    qf_basis = tuple((weight_generator[1] for weight_generator in qf_basis_and_weight))
 
-    return QuadraticFormOperator(
-        basis=qf_basis,
-        weights=weights,
-        system=operator.system,
-        linear_term=linear_term,
-        offset=offset,
+def force_hermitic_t(t):
+    """
+    Force `t` to be hermitician
+    """
+    if t is None:
+        return t
+    if not t.isherm:
+        t = (t + t.dag()).simplify()
+        t = t * 0.5
+    return t
+
+
+def build_positions_and_full_size(local_basis):
+    """
+    Build the positions
+    """
+    sizes = {site: len(local_base) for site, local_base in local_basis.items()}
+    sorted_sites = sorted(sizes)
+    return (
+        {
+            site: sum(sizes[site_] for site_ in sorted_sites[:pos])
+            for pos, site in enumerate(sorted_sites)
+        },
+        sum(sizes.values()),
     )
+
+
+def fill_array_from_block(result_array, local_basis, positions, block, terms):
+    """
+    Full result_array with the coefficients obtained from the local basis.
+    """
+    site1, site2 = block
+    position_1 = positions[site1]
+    position_2 = positions[site2]
+    for term in terms:
+        op1, op2 = (term.sites_op[site] for site in block)
+        for mu, b1 in enumerate(local_basis[site1]):
+            for nu, b2 in enumerate(local_basis[site2]):
+                i = position_1 + mu
+                j = position_2 + nu
+                result_array[i, j] += np.real(
+                    term.prefactor * (op1 * b1).tr() * (op2 * b2).tr()
+                )
+                result_array[j, i] = result_array[i, j]

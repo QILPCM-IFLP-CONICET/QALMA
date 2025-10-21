@@ -185,6 +185,7 @@ class QuadraticFormOperator(Operator):
         )
 
     def _set_system_(self, system=None):
+        # pylint: disable=protected-access
         self.system = system
         for basis_elem in self.basis:
             basis_elem._set_system_(system)
@@ -251,6 +252,7 @@ class QuadraticFormOperator(Operator):
         return result
 
     def dag(self):
+        # pylint: disable=protected-access
         linear_term = self.linear_term
         linear_term = None if linear_term is None else linear_term.dag()
         offset = self.offset
@@ -392,6 +394,7 @@ class QuadraticFormOperator(Operator):
         Simplify the operator.
         Build a new representation with a smaller basis.
         """
+        # pylint: disable=protected-access
         if self._simplified:
             return self
 

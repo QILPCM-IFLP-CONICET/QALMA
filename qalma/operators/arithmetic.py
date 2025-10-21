@@ -94,6 +94,7 @@ class SumOperator(Operator):
 
     def _repr_latex_(self):
         """LaTeX Representation"""
+        # pylint: disable=protected-access
         terms = self.terms
         if len(terms) > 6:
             result = " + ".join(term._repr_latex_()[1:-1] for term in terms[:3])
@@ -106,6 +107,7 @@ class SumOperator(Operator):
     def _set_system_(self, system=None):
         self.system = system
         for term in self.terms:
+            # pylint: disable=protected-access
             term._set_system_(system)
         return self
 
@@ -397,7 +399,7 @@ class OneBodyOperator(SumOperator):
             if hasattr(operator_qt, "expm"):
                 sites_op[term.site] = operator_qt.expm()
             else:
-                logging.warning(f"{type(operator_qt)} evaluated as a number")
+                logging.warning("%s evaluated as a number", type(operator_qt))
                 sites_op[term.site] = np.exp(operator_qt)
 
         prefactor = np.exp(ln_prefactor)

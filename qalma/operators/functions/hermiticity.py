@@ -38,6 +38,7 @@ def hermitian_and_antihermitian_parts(operator: Operator) -> Tuple[Operator, Ope
     """Decompose an operator Q as A + i B with
     A and B self-adjoint operators
     """
+    # pylint: disable=import-outside-toplevel
     from qalma.operators.quadratic import QuadraticFormOperator
 
     system = operator.system

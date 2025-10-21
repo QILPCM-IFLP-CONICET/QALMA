@@ -19,41 +19,13 @@ from qalma.qutip_tools.tools import (
 )
 from qalma.settings import (
     QALMA_ALLOW_OVERWRITE_BINDINGS,
-    QALMA_INFER_ARITHMETICS,
     QALMA_TOLERANCE,
 )
 
-
-def check_multiplication(a, b, result, func=None) -> bool:
-    """
-    Check the result of the multiplication
-    """
-    if isinstance(a, Qobj) and isinstance(b, Qobj):
-        return True
-    if isinstance(a, Operator):
-        a_qutip = a.to_qutip()
-    else:
-        a_qutip = a
-    if isinstance(b, Operator):
-        b_qutip = b.to_qutip()
-    else:
-        b_qutip = b
-    q_trace = (a_qutip * b_qutip).tr()
-    tr_val = result.tr()
-    if func is None:
-        where = ""
-    elif isinstance(func, str):
-        where = func
-    else:
-        where = f"{func}@{func.__module__}:{func.__code__.co_firstlineno}"
-    assert abs(q_trace - tr_val) < QALMA_TOLERANCE, (
-        f"{type(a)}*{type(b)}->{type(result)} ({where}) "
-        "failed: traces are different  {tr}!={q_trace}"
-    )
-    return True
+from .utils import find_arithmetic_implementation
 
 
-class Operator:
+class Operator:  # pylint: disable=too-many-public-methods
     """Base class for operators"""
 
     system: SystemDescriptor
@@ -413,7 +385,7 @@ class Operator:
         """The trace of the operator"""
         return self.partial_trace(frozenset()).prefactor
 
-    def tidyup(self, atol=None):
+    def tidyup(self, _atol=None):
         """remove tiny elements of the operator"""
         return self
 
@@ -681,6 +653,7 @@ class ProductOperator(Operator):
         """latex representation"""
         factors_latex = []
         for site, qutip_op in self.sites_op.items():
+            # pylint: disable=protected-access
             tex = qutip_op._repr_latex_().replace("$$", "$")
             parts = tex.split("$")
             if len(parts) == 3:
@@ -892,19 +865,19 @@ class ProductOperator(Operator):
             sites_op = self.sites_op
             for site in environment:
                 prefactor *= (sites_op[site] * state_by_site[site]).tr()
-            return ProductOperator(
+            result = ProductOperator(
                 {site: sites_op[site] for site in sites}, prefactor, system
             )
-
-        # General case:
-        env_tuple = tuple(environment)
-        state = state.partial_trace(environment).to_qutip(env_tuple)
-        sites_ops = self.sites_op
-        prefactor *= (
-            state * qutip.tensor([self.sites_op[site] for site in env_tuple])
-        ).tr()
-        sites_op = {site: op_q for site, op_q in sites_ops.items() if site in sites}
-        result = ProductOperator(sites_op, prefactor, system)
+        else:
+            # General case:
+            env_tuple = tuple(environment)
+            state = state.partial_trace(environment).to_qutip(env_tuple)
+            sites_ops = self.sites_op
+            prefactor *= (
+                state * qutip.tensor([self.sites_op[site] for site in env_tuple])
+            ).tr()
+            sites_op = {site: op_q for site, op_q in sites_ops.items() if site in sites}
+            result = ProductOperator(sites_op, prefactor, system)
         return result
 
     def simplify(self) -> Operator:
@@ -1130,44 +1103,3 @@ class ScalarOperator(ProductOperator):
         For ScalarOperators, just return self.
         """
         return self
-
-
-def find_arithmetic_implementation(
-    op1, op2, dispatch_table: dict
-) -> Optional[Callable]:
-    """
-    Find the function that implements the operation
-    op1 [operation] op2 in the dispatch table
-    dispatch.
-    If the combination of types is not already in the dispatch table,
-    store it.
-    """
-
-    type_op1, type_op2 = type(op1), type(op2)
-    op1_parent_classes = type_op1.__mro__
-    op2_parent_classes = type_op2.__mro__
-    # Go over the combinations of parent classes
-    for lhf in op1_parent_classes:
-        for rhf in op2_parent_classes:
-            key = (lhf, rhf)
-            if key in dispatch_table:
-                func = dispatch_table[key]
-                if QALMA_INFER_ARITHMETICS:
-                    dispatch_table[(type_op1, type_op2)] = func
-                    return func
-                logging.warning("try with %s", func.__code__)
-                return None
-
-    # Last resource: try if the operands are instances of one of the keys
-    # in the dispatch table.
-    # Required for example for keys of the form (Operator, complex).
-
-    for key, func in dispatch_table.items():
-        if isinstance(op1, key[0]) and isinstance(op2, key[1]):
-            func = dispatch_table[key]
-            if QALMA_INFER_ARITHMETICS:
-                dispatch_table[(type_op1, type_op2)] = func
-                return func
-            logging.warning("try with %s", func.__code__)
-            return None
-    return None
