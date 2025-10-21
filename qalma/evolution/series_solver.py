@@ -64,7 +64,8 @@ def series_evolution(
         ]
         return basis.operator_from_coefficients(t_coeffs)
 
-    def compute_and_store_expect(t, rho_t):
+    def compute_and_store_expect(_, rho_t):
+        """Compute expectation values and store them"""
         for key, val in rho_t.expect(e_ops_dict).items():
             expect_ops.setdefault(key, []).append(val)
 
@@ -73,9 +74,7 @@ def series_evolution(
             process_state = e_ops
         else:
             if not isinstance(e_ops, dict):
-                e_ops_dict = {
-                    pos: e_op for pos, e_op in enumerate(cast(Iterable, e_ops))
-                }
+                e_ops_dict = dict(enumerate(cast(Iterable, e_ops)))
             else:
                 e_ops_dict = e_ops
             process_state = compute_and_store_expect
