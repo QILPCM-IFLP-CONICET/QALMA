@@ -607,23 +607,23 @@ def append_basis(basis_1: OperatorBasis, basis_2: OperatorBasis | Iterable[Opera
             operators,
             generator,
             sp,
-            precomputed_tensors=dict(
-                gram=gram,
-                gram_inv=gram_inv,
-                errors=np.zeros((n,)),
-                gen_matrix=np.zeros(
+            precomputed_tensors= {
+                "gram":gram,
+                "gram_inv":gram_inv,
+                "errors":np.zeros((n,)),
+                "gen_matrix":np.zeros(
                     (
                         n,
                         n,
                     )
                 ),
-                hij=np.zeros(
+                "hij":np.zeros(
                     (
                         n,
                         n,
                     )
                 ),
-            ),
+            },
         )
 
     # Build gen_matrix and errors

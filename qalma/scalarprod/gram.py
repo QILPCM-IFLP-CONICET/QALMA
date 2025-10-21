@@ -35,16 +35,24 @@ else:
 # ### Generic functions depending on the SP ###
 def _sp_worker(pair, basis, sp):
     """
-    Compute the real-valued part of the scalar product between two SumOperators belonging to some basis,
-    provided these are hermitian.
+    Compute the real-valued part of the scalar product between
+    two SumOperators belonging to some basis, provided these
+    are hermitian.
 
-    Parameters:
-        pair (tuple): A tuple (i, j) indicating indices in the basis list.
-        basis (list): A list of operator objects forming a basis.
-        sp (callable): A scalar product function sp(op1, op2) -> real.
+    Parameters
+    ==========
+    pair: tuple
+        A tuple (i, j) indicating indices in the basis list.
+    basis: list 
+        A list of operator objects forming a basis. 
+    sp: callable
+        A scalar product function sp(op1, op2) -> real.
 
-    Returns:
-        tuple: A tuple (i, j, val) where val is the real part of sp(basis[i], basis[j]).
+    Return
+    ======
+    tuple: 
+        A tuple (i, j, val) where val is the real part of
+        sp(basis[i], basis[j]).
     """
     try:
         i, j = pair
