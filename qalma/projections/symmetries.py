@@ -1,3 +1,7 @@
+"""
+Functions that implement symmetry projections for states and operators.
+"""
+
 from functools import reduce
 
 from qalma.operators import ScalarOperator
@@ -48,10 +52,10 @@ def project_conserved_quantity(state, op_name: str):
         conserved = reduce(
             lambda x, y: x + y, (system.site_operator(op_name, site) for site in block)
         )
-    except TypeError:
+    except TypeError as exc:
         raise ValueError(
             f"{op_name} is not a valid local operator name for some sites."
-        )
+        ) from exc
 
     return QutipDensityOperator(
         reduce_to_proper_spaces(rho_qutip.operator, conserved.to_qutip(block)),

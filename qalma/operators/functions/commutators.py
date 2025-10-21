@@ -74,7 +74,7 @@ def anticommutator_qalma_serial(op_1: Operator, op_2: Operator) -> Operator:
         if acts_over_2 is not None:
             if len(acts_over_2) == 0:
                 return op_1 * (op_2 * 2)
-            elif len(acts_over_1.intersection(acts_over_2)) == 0:
+            if len(acts_over_1.intersection(acts_over_2)) == 0:
                 return (op_1 * op_2).simplify() * 2
     return (op_1 * op_2 + op_2 * op_1).simplify()
 

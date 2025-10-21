@@ -151,7 +151,7 @@ class DensityOperatorMixin:
         self, obs_objs: Union[Operator, Iterable]
     ) -> Union[NDArray, dict, complex]:
         """Compute the expectation value of an observable"""
-        # TODO: expode that expectation values of operators just requires the
+        # TODO: explode that expectation values of operators just requires the
         # state where the operators acts.
         from qalma.operators.states.utils import (
             collect_local_states,
@@ -245,22 +245,34 @@ class DensityOperatorProtocol(Protocol):
     prefactor: complex
     system: SystemDescriptor
 
-    def acts_over(self) -> frozenset: ...
+    def acts_over(self) -> frozenset:
+        """Return a list of sites over which this operator acts"""
 
-    def __add__(self, other): ...
-    def __radd__(self, other): ...
-    def __mul__(self, other): ...
-    def __rmul__(self, other): ...
+    def __add__(self, other):
+        """add method"""
+
+    def __radd__(self, other):
+        """radd method"""
+
+    def __mul__(self, other):
+        """mul method"""
+
+    def __rmul__(self, other):
+        """rmul method"""
 
     def expect(
         self, obs: Union[Operator, Iterable]
-    ) -> Union[np.ndarray, dict, complex]: ...
+    ) -> Union[np.ndarray, dict, complex]:
+        """Compute expectation values"""
 
-    def partial_trace(self, sites: Union[frozenset, SystemDescriptor]): ...
+    def partial_trace(self, sites: Union[frozenset, SystemDescriptor]):
+        """compute the partial trace"""
 
-    def to_qutip(self, block: Optional[Tuple[str, ...]] = None): ...
+    def to_qutip(self, block: Optional[Tuple[str, ...]] = None):
+        """Return a Qobj representation acting over block."""
 
-    def to_qutip_operator(self): ...
+    def to_qutip_operator(self):
+        """Convert to QutipOperator representation"""
 
 
 class ProductDensityOperator(DensityOperatorMixin, ProductOperator):

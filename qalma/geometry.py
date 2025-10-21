@@ -70,7 +70,7 @@ def graph_from_alps_xml(
         check if the site has a periodic image.
         If it has, return it. Otherwise return None.
         """
-        new_coords = [c for c in coords]
+        new_coords = list(coords)
         for d_int, extent in enumerate(extents):
             if 0 <= coords[d_int] < extent:
                 continue
@@ -573,6 +573,10 @@ class GraphDescriptor:
         return self.union(other)
 
     def contains(self, other):
+        """
+        Return True if all the sites in other
+        belongs to the graph.
+        """
         if self is other:
             return True
         other_nodes = other.nodes
