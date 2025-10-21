@@ -957,16 +957,10 @@ class ProductOperator(Operator):
         If the operator is scalar, returns a ScalarOperator.
         Otherwise, returns a QutipOperator.
         """
-        from qalma.operators.qutip import QutipOperator
-
         prefactor = self.prefactor
-        sites_op = self.sites_op
-        if not prefactor or len(sites_op) == 0:
+        if not (prefactor and self.sites_op):
             return ScalarOperator(prefactor, self.system)
-        names = {
-            name: pos for pos, name in enumerate(sorted(site for site in sites_op))
-        }
-        return QutipOperator(self.to_qutip(tuple()), names=names, system=self.system)
+        return super().to_qutip_operator()
 
     def tr(self):
         result = self.partial_trace(frozenset())
