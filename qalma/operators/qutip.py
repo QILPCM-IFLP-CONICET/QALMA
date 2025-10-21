@@ -124,7 +124,7 @@ class QutipOperator(Operator):
         )
 
     def acts_over(self) -> frozenset:
-        """ """
+        """list the sites where the operator acts over"""
         return frozenset(self.site_names.keys())
 
     def as_sum_of_products(self):
@@ -168,7 +168,7 @@ class QutipOperator(Operator):
         return SumOperator(terms, self.system, isherm=isherm)
 
     def dag(self):
-        """ """
+        """Hermitician adjoint operator"""
         prefactor = self.prefactor
         operator = self.operator
         if isinstance(prefactor, complex):
@@ -184,11 +184,11 @@ class QutipOperator(Operator):
         )
 
     def eigenenergies(self):
-        """ """
+        """Spectrum of the operator."""
         return self.operator.eigenenergies() * self.prefactor
 
     def eigenstates(self):
-        """ """
+        """Eigendecomposition"""
         evals, evecs = self.operator.eigenstates()
         return evals * self.prefactor, evecs
 
@@ -204,12 +204,12 @@ class QutipOperator(Operator):
 
     @property
     def isherm(self) -> bool:
-        """ """
+        """True if operator is hermitician."""
         isherm = self.operator.isherm
         if imag(self.prefactor) == 0.0:
             return isherm
         # herm operator with complex prefactor
-        elif isherm:
+        if isherm:
             return False
         # should this be cached?
         return (self.operator * self.prefactor).isherm
@@ -225,7 +225,7 @@ class QutipOperator(Operator):
         return not (self.prefactor) or empty_op(self.operator)
 
     def logm(self):
-        """ """
+        """logarithm of the operator"""
         operator = self.operator
         evals, evecs = operator.eigenstates()
         evals = evals * self.prefactor
@@ -367,7 +367,7 @@ class QutipOperator(Operator):
         state_qutip = tensor(
             *(system.site_identity(site) for site in sites_tuple), state_qutip
         )
-        qop = (qop * state_qutip).ptrace([i for i in range(len(sites_tuple))])
+        qop = (qop * state_qutip).ptrace(list(range(len(sites_tuple))))
         return QutipOperator(
             qop,
             system,

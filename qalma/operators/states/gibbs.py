@@ -146,6 +146,10 @@ class GibbsDensityOperator(DensityOperatorMixin, Operator):
             sites = frozenset(sites.sites)
         return gibbs_meanfield_partial_trace(self, sites)
 
+    def reduce(self, sites, state=None):
+        """Alias of partial trace"""
+        return self.partial_trace(sites)
+
     def to_qutip_operator(self):
         from qalma.operators.states import QutipDensityOperator
 
@@ -324,6 +328,10 @@ class GibbsProductDensityOperator(DensityOperatorMixin, Operator):
             self.prefactor,
             True,
         )
+
+    def reduce(self, sites, state=None):
+        """Alias of partial trace"""
+        return self.partial_trace(sites)
 
     def to_product_state(self):
         """Convert the operator in a productstate"""

@@ -55,9 +55,11 @@ class QutipDensityOperator(DensityOperatorMixin, QutipOperator):
             )
 
         # TODO: check me again
-        assert (
-            operand.system is self.system
-        ), f"\nself({type(self)}).system:\n{self.system}\n and operand({type(operand)}).system:\n{operand.system}\n are not the same."
+        assert operand.system is self.system, (
+            f"\nself({type(self)}).system:\n{self.system}\n "
+            f"and operand({type(operand)}).system:\n{operand.system}\n "
+            "are not the same."
+        )
         block = tuple(sorted(self.system.sites))
         names = {name: pos for pos, name in enumerate(block)}
 
