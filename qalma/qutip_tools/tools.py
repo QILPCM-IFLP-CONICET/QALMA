@@ -807,8 +807,8 @@ def safe_exp_and_normalize(operator: Qobj) -> Tuple[Qobj, float]:
         )
     except ArpackNoConvergence as err_arpack:
         logging.warning(
-            f"Convergence failed. try with {
-                type(err_arpack.eigenvalues)}-> {err_arpack.eigenvalues}"
+            "Convergence failed. try with "
+            f"{type(err_arpack.eigenvalues)}-> {err_arpack.eigenvalues}"
         )
         k_0 = (
             max(np.real(x) for x in err_arpack.eigenvalues)

@@ -646,10 +646,7 @@ class ProductOperator(Operator):
             prefactor = 0
             self.sites_op = {}
         self.prefactor = prefactor
-        assert isinstance(
-            prefactor, (int, float, complex)
-        ), f"{
-            type(prefactor)}"
+        assert isinstance(prefactor, (int, float, complex)), f"{type(prefactor)}"
         self.system = system
         if system is not None:
             self.size = len(system.sites)

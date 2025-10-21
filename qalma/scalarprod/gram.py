@@ -43,14 +43,14 @@ def _sp_worker(pair, basis, sp):
     ==========
     pair: tuple
         A tuple (i, j) indicating indices in the basis list.
-    basis: list 
-        A list of operator objects forming a basis. 
+    basis: list
+        A list of operator objects forming a basis.
     sp: callable
         A scalar product function sp(op1, op2) -> real.
 
     Return
     ======
-    tuple: 
+    tuple:
         A tuple (i, j, val) where val is the real part of
         sp(basis[i], basis[j]).
     """
