@@ -16,6 +16,8 @@ from qalma.operators.arithmetic import (
 from qalma.operators.basic import (
     LocalOperator,
     Operator,
+)
+from qalma.operators.product import (
     ProductOperator,
     ScalarOperator,
 )
@@ -1721,7 +1723,9 @@ def _(
     -------
 
     """
-    return x_op.to_qutip_operator() * y_qutip_op
+    if x_op.acts_over():
+        return x_op.to_qutip_operator() * y_qutip_op
+    return y_qutip_op * x_op.prefactor
 
 
 @Operator.register_mul_handler(
@@ -1751,7 +1755,9 @@ def _(x_qutip_op: QutipOperator, y_op: Operator):
     -------
 
     """
-    return x_qutip_op * y_op.to_qutip_operator()
+    if y_op.acts_over():
+        return x_qutip_op * y_op.to_qutip_operator()
+    return x_qutip_op * y_op.prefactor
 
 
 @Operator.register_mul_handler(

@@ -59,7 +59,7 @@ def _sp_worker(pair, basis, sp):
         val = float(np.real(sp(basis[i], basis[j])))
         return (i, j, val)
     except Exception as exc_val:
-        logging.error(f"Error computing Gram's matrix entry ({i},{j}):{exc_val}")
+        logging.error("Error computing Gram's matrix entry (%d, %d):%s", i, j, exc_val)
         return (i, j, np.nan)
 
 

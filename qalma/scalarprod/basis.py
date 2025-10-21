@@ -175,8 +175,9 @@ class OperatorBasis:
             logging.warning(
                 (
                     "using a non-independent set of operators. "
-                    f"Reduce it to a linearly independent set {li_indx}..."
-                )
+                    "Reduce it to a linearly independent set %s..."
+                ),
+                li_indx,
             )
 
             operator_basis_it = (operator_basis[i] for i in li_indx)
@@ -408,10 +409,7 @@ class HierarchicalOperatorBasis(OperatorBasis):
                 closed = True
                 deep = dimension = i + 1
                 logging.warning(
-                    (
-                        f"""A commutator got (almost) zero norm. deep->"""
-                        f"""{len(elements)}"""
-                    )
+                    """A commutator got (almost) zero norm. deep->%d""", len(elements)
                 )
                 errors = errors[:dimension]
                 break

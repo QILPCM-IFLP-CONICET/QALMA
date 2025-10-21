@@ -36,7 +36,7 @@ from .helper import (
 )
 
 np.set_printoptions(
-    edgeitems=30, linewidth=100000, formatter=dict(float=lambda x: "%.3g" % x)
+    edgeitems=30, linewidth=100000, formatter={"float": lambda x: "%.3g" % x}
 )
 
 

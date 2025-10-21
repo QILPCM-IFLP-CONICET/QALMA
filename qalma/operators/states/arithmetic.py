@@ -16,6 +16,8 @@ from qalma.model import SystemDescriptor
 from qalma.operators.arithmetic import SumOperator
 from qalma.operators.basic import (
     Operator,
+)
+from qalma.operators.product import (
     ScalarOperator,
 )
 from qalma.operators.states.basic import (

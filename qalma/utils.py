@@ -150,7 +150,7 @@ def eval_expr(expr: str, parms: dict):
                 if val != result:
                     changed = True
             except RecursionError:
-                logging.warning(f"A recursion error happens evaluating `{val}`.")
+                logging.warning("A recursion error happens evaluating `%s`.", val)
                 raise
         if not changed:
             break
@@ -161,7 +161,7 @@ def eval_expr(expr: str, parms: dict):
     except NameError:
         pass
     except TypeError as exc:
-        logging.warning(f"Type Error. Undefined variables in [{exc}] in {expr}.")
+        logging.warning("Type Error. Undefined variables in [%s] in %s.", exc, expr)
         return None
     except SyntaxError:
         logging.error(
@@ -206,8 +206,10 @@ def operator_to_wolfram(operator) -> str:
     Produce a string with a Wolfram Mathematica expression
     representing the operator.
     """
+    # pylint: disable=import-outside-toplevel
     from qalma.operators.arithmetic import SumOperator
-    from qalma.operators.basic import LocalOperator, Operator, ProductOperator
+    from qalma.operators.basic import LocalOperator, Operator
+    from qalma.operators.product import ProductOperator
     from qalma.operators.qutip import Qobj
 
     def get_site_identity(site_name):
