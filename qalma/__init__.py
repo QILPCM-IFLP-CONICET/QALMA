@@ -6,11 +6,8 @@ Created on Tue Sep 12 19:07:05 2023
 @author: mauricio
 """
 
-import qalma.geometry as geometry
-import qalma.model as model
-import qalma.operators as operators
 import qalma.restricted_maxent_toolkit
-import qalma.utils as utils
+from qalma import geometry, model, operators, utils
 from qalma.alpsmodels import list_models_in_alps_xml, model_from_alps_xml
 from qalma.geometry import graph_from_alps_xml, list_geometries_in_alps_xml
 from qalma.model import build_system

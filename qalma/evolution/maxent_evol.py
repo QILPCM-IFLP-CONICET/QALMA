@@ -18,6 +18,7 @@ from qalma.meanfield import (
 )
 from qalma.operators import (
     Operator,
+    iterable_to_operator,
 )
 from qalma.operators.states import GibbsDensityOperator, GibbsProductDensityOperator
 from qalma.projections import n_body_projection
@@ -25,6 +26,7 @@ from qalma.scalarprod import (
     HierarchicalOperatorBasis,
     OperatorBasis,
     fetch_covar_scalar_product,
+    trim_terms_by_tolerance,
 )
 
 from .simulation import Simulation
@@ -89,15 +91,13 @@ def update_basis(
         ham,
         order,
         fetch_covar_scalar_product(sigma),
-        n_body_projection=lambda op_b: n_body_projection(
-            op_b, nmax=n_body, sigma=sigma
-        ).simplify(),
+        n_body_projection=trim_and_project_function(sigma, n_body, tol=1e-6),
     )
     rest_elements = tuple(extra_observables)
     if k is not k_ref_new:
         rest_elements = rest_elements + (k_ref_new,)
     if rest_elements:
-        new_basis = rest_elements + new_basis
+        new_basis = new_basis + rest_elements
 
     return (
         new_basis,
@@ -447,3 +447,23 @@ def projected_evolution(ham, k0, t_span, order, n_body: int = -1) -> Simulation:
         expect_ops={},
         states=states,
     )
+
+
+def trim_and_project_function(sigma, n_body, tol=1e-6):
+
+    def trim_and_project(op_b):
+        print(
+            "   trim and project ",
+            op_b.num_terms(),
+            "in the ",
+            op_b.n_body_sector(),
+            " sector upto tol=",
+            tol,
+        )
+        op_b = op_b.simplify()
+        op_b = n_body_projection(op_b, nmax=n_body, sigma=sigma).simplify()
+        terms = op_b.terms if hasattr(op_b, "terms") else [op_b]
+        terms, _ = trim_terms_by_tolerance(sigma, terms, tol)
+        return iterable_to_operator(terms, op_b.system, isherm=True).simplify()
+
+    return trim_and_project

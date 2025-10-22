@@ -2,22 +2,30 @@
 Functions for operators.
 """
 
+from itertools import chain
 from numbers import Complex, Real
 
 # from collections.abc import Iterable
 # from typing import Callable, List, Optional, Tuple
-from typing import Tuple
+from typing import Tuple, cast
 
 from numpy import imag, real
 
-from qalma.operators.arithmetic import OneBodyOperator, SumOperator
+from qalma.operators.arithmetic import (
+    OneBodyOperator,
+    SumOperator,
+    iterable_to_operator,
+)
 from qalma.operators.basic import (
     LocalOperator,
     Operator,
+)
+from qalma.operators.product import (
     ProductOperator,
     ScalarOperator,
 )
 from qalma.operators.qutip import QutipOperator
+from qalma.operators.simplify import group_terms_by_blocks
 
 
 def compute_dagger(operator):
@@ -34,10 +42,36 @@ def compute_dagger(operator):
     return operator.dag()
 
 
+def hermitian_part(operator: Operator) -> Operator:
+    r"""Compute (A+A^\dagger)/2"""
+    if operator.isherm:
+        return operator
+
+    if isinstance(operator, SumOperator):
+        operator = group_terms_by_blocks(operator)
+        herm_terms = []
+        other_terms = []
+        for term in cast(SumOperator, operator).terms:
+            if term.isherm:
+                herm_terms.append(term)
+            else:
+                other_terms.append(term)
+        other_terms = [hermitian_part(term) for term in other_terms if term]
+        return iterable_to_operator(
+            chain(herm_terms, other_terms), operator.system, isherm=True
+        ).simplify()
+
+    if len(operator.acts_over()) > 1:
+        operator = operator.to_qutip_operator()
+
+    return (operator + operator.dag()) * 0.5
+
+
 def hermitian_and_antihermitian_parts(operator: Operator) -> Tuple[Operator, Operator]:
     """Decompose an operator Q as A + i B with
     A and B self-adjoint operators
     """
+    # pylint: disable=import-outside-toplevel
     from qalma.operators.quadratic import QuadraticFormOperator
 
     system = operator.system

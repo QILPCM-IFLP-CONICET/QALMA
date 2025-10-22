@@ -11,15 +11,17 @@ from qalma.model import SystemDescriptor
 from qalma.operators.arithmetic import OneBodyOperator, SumOperator
 from qalma.operators.basic import (
     Operator,
+)
+from qalma.operators.product import (
     ProductOperator,
     ScalarOperator,
-    empty_op,
 )
 from qalma.operators.qutip import QutipOperator
 from qalma.qutip_tools.tools import (
     data_is_diagonal,
     decompose_qutip_operator,
     decompose_qutip_operator_hermitician,
+    empty_op,
 )
 
 
@@ -122,8 +124,9 @@ def group_terms_by_blocks(operator: Operator, fn: Optional[Callable] = None):
 
     Returns
     -------
-
-
+    Operator
+       A monomial operator or a sum operator, with terms acting
+       in different blocks.
     """
 
     if (

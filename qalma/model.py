@@ -60,7 +60,7 @@ class SystemDescriptor:
                         f"Model <<{model.name}>> does not provide the specification "
                         f"for site of type <<{ex.args[0]}>> used in nodes of <<{graph.name}>>."
                     )
-                )
+                ) from ex
 
         self.dimensions = {name: site["dimension"] for name, site in self.sites.items()}
         self.operators = {
@@ -79,8 +79,8 @@ class SystemDescriptor:
         # should have the same values in the
         # `spec` attribute:
         assert isinstance(other, SystemDescriptor)
-        for key in self.spec:
-            if other.spec[key] != self.spec[key]:
+        for key, my_spec in self.spec.items():
+            if other.spec[key] != my_spec:
                 return False
         return True
 
@@ -110,8 +110,7 @@ class SystemDescriptor:
         return self._serialized
 
     def __iter__(self):
-        for site in self.sites:
-            yield site
+        yield from self.sites
 
     def __setstate__(self, state):
         state_dict = pickle.loads(state)
@@ -192,6 +191,9 @@ class SystemDescriptor:
         return "System \textbf{" + self.name + "}"
 
     def contains(self, system):
+        """
+        Check if the object contains `system` as a subsystem.
+        """
         if self is system:
             return True
         block = frozenset(system.sites)
@@ -395,7 +397,7 @@ class SystemDescriptor:
         #    self.bond_operators[(name, src, dst,)] = None
         return None
 
-    def loop_operator(self, name: str, loop: Tuple[str], skip=None):  # -> "Operator":
+    def loop_operator(self, name: str, loop: Tuple[str], _skip=None):  # -> "Operator":
         """Loop operator by name and sites"""
         result_op = self.operators["global_operators"].get(
             (
@@ -551,7 +553,7 @@ class SystemDescriptor:
         # pylint: disable=import-outside-toplevel
         from qalma.operators import ScalarOperator, SumOperator
 
-        def process_loop(loop_expr, loop_type, vertices_map, model, t_parm):
+        def process_loop(loop_expr, loop_type, vertices_map, _model, t_parm):
             loop_parms = {
                 replace_variable_type(key, loop_type): replace_variable_type(
                     val, loop_type
@@ -588,9 +590,7 @@ class SystemDescriptor:
             loop_expr = expr.replace("#", loop_type)
             operator_names = set(re.findall(r"\b([a-zA-Z_]+)\b@", loop_expr))
             for vertices in loops:
-                vertices_site_map = {
-                    indx: site for indx, site in zip(index_names, vertices)
-                }
+                vertices_site_map = dict(zip(index_names, vertices))
                 term_op = process_loop(
                     loop_expr, loop_type, vertices_site_map, model, t_parm
                 )
@@ -619,7 +619,7 @@ class SystemDescriptor:
         # Build the global_operator from the descriptor
         op_descr = self.spec["model"].global_ops.get(name, None)
         if op_descr is None:
-            logging.warning(f"{op_descr} not defined.")
+            logging.warning("%s not defined.", op_descr)
             return None
 
         graph = self.spec["graph"]
@@ -634,7 +634,7 @@ class SystemDescriptor:
             )
             site_terms = tuple(term for term in site_terms if term)
         except ValueError as exc:
-            logging.debug(f"{exc.args} Aborting evaluation of {name}.")
+            logging.debug("%s aborting evaluation of %s.", exc.args, name)
             model.global_ops.pop(name)
             return None
 
@@ -647,7 +647,7 @@ class SystemDescriptor:
             bond_terms = tuple(term for term in bond_terms if term)
 
         except ValueError as exc:
-            logging.debug(f"{exc.args} Aborting evaluation of {name}.")
+            logging.debug("%s aborting evaluation of %s.", exc.args, name)
             model.global_ops.pop(name)
             return None
 
@@ -660,7 +660,7 @@ class SystemDescriptor:
             loop_terms = tuple(term for term in loop_terms if term)
 
         except ValueError as exc:
-            logging.debug(f"{exc.args} Aborting evaluation of {name}.")
+            logging.debug("%s Aborting evaluation of %s.", exc.args, name)
             model.global_ops.pop(name)
             return None
 
@@ -702,7 +702,7 @@ def build_system(
     # pylint: disable=import-outside-toplevel
     from qalma.geometry import graph_from_alps_xml
 
-    logging.info(f"loading model {model_name} over graph {geometry_name}")
+    logging.info("loading model %s over graph %s.", model_name, geometry_name)
 
     parms = {"L": 4, "J": 1, "a": 1}
     parms.update(kwargs)

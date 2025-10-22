@@ -19,28 +19,6 @@ from qalma.scalarprod.utils import find_linearly_independent_rows
 from qalma.settings import QALMA_TOLERANCE
 
 
-def n_body_sector(operator: Operator) -> int:
-    """
-    Determine the maximum number of sites over which any
-    term of the operator acts over.
-
-    Parameters
-    ----------
-    operator : Operator
-        Operator.
-
-    Returns
-    -------
-    int
-        the maximum number of sites over which any product term of operator
-        acts over.
-
-    """
-    if hasattr(operator, "terms"):
-        return max(n_body_sector(term) for term in operator.terms)
-    return len(operator.acts_over())
-
-
 class OperatorBasis:
     """
     Represent a basis of a subspace of the operator algebra with a
@@ -117,13 +95,16 @@ class OperatorBasis:
 
     def __repr__(self):
         result = "Basis in the "
-        result += f"{max(n_body_sector(op) for op in self.operator_basis)}"
+        result += f"{max(op.n_body_sector() for op in self.operator_basis)}"
         result += "-body sector"
         result += "\n" + f"  dimension: {len(self.operator_basis)}"
         result += "\n" + f"  gram:\n {self.gram}\n"
-        result += "\n" + f"  hij:\n {self._hij}\n"
-        result += "\n" + f"  gen matrix:\n {self.gen_matrix}\n"
-        result += "\n" + f"  errors: {self.errors}"
+        if hasattr(self, "_hij"):
+            result += "\n" + f"  hij:\n {self._hij}\n"
+        if hasattr(self, "gen_matrix"):
+            result += "\n" + f"  gen matrix:\n {self.gen_matrix}\n"
+        if hasattr(self, "errors"):
+            result += "\n" + f"  errors: {self.errors}"
         return result
 
     def build_tensors(
@@ -177,8 +158,9 @@ class OperatorBasis:
             logging.warning(
                 (
                     "using a non-independent set of operators. "
-                    f"Reduce it to a linearly independent set {li_indx}..."
-                )
+                    "Reduce it to a linearly independent set %s..."
+                ),
+                li_indx,
             )
 
             operator_basis_it = (operator_basis[i] for i in li_indx)
@@ -352,7 +334,21 @@ class HierarchicalOperatorBasis(OperatorBasis):
         ), f"isherm: {[[type(op), op.acts_over(), relative_non_hermitician_part(op)] for op in self.operator_basis]}"
 
     def __add__(self, other):
-        return OperatorBasis(self.operator_basis, self.generator, self.sp) + other
+        return (
+            OperatorBasis(
+                self.operator_basis,
+                self.generator,
+                self.sp,
+                precomputed_tensors={
+                    "gram": self.gram,
+                    "gram_inv": self.gram_inv,
+                    "errors": self.errors,
+                    "gen_matrix": self.gen_matrix,
+                    "hij": self._hij,
+                },
+            )
+            + other
+        )
 
     def _build_basis(self, seed, deep, projection_function=None):
         sp = self.sp
@@ -410,10 +406,7 @@ class HierarchicalOperatorBasis(OperatorBasis):
                 closed = True
                 deep = dimension = i + 1
                 logging.warning(
-                    (
-                        f"""A commutator got (almost) zero norm. deep->"""
-                        f"""{len(elements)}"""
-                    )
+                    """A commutator got (almost) zero norm. deep->%d""", len(elements)
                 )
                 errors = errors[:dimension]
                 break
@@ -751,7 +744,9 @@ def prepend_basis(
     if basis_2 is basis_1 or not basis_2:
         return basis_1
     if not isinstance(basis_2, OperatorBasis):
-        basis_2 = OperatorBasis(tuple(basis_2), generator=None, sp=basis_1.sp)
+        basis_2 = OperatorBasis(
+            tuple(basis_2), generator=basis_1.generator, sp=basis_1.sp
+        )
 
     # Append basis_1 to basis_2
     basis_2, basis_1 = basis_1, basis_2

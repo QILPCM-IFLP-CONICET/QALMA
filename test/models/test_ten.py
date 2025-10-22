@@ -70,6 +70,11 @@ def build_ten_sites_lattice_file():
 
 
 def test_complex_model():
+    """
+    Test a complex model having ten sites.
+    The test creates a graph using XML language and then loads
+    it to generate a system.
+    """
     latt_descr = graph_from_alps_xml(
         filename=build_ten_sites_lattice_file(),
         name="kagome-stripe-double",

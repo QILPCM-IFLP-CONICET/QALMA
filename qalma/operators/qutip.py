@@ -16,14 +16,16 @@ from qalma.model import SystemDescriptor
 from qalma.operators.basic import (
     LocalOperator,
     Operator,
+)
+from qalma.operators.product import (
     ProductOperator,
     ScalarOperator,
-    empty_op,
-    is_diagonal_op,
 )
 from qalma.qutip_tools.tools import (
     decompose_qutip_operator,
     decompose_qutip_operator_hermitician,
+    empty_op,
+    is_diagonal_op,
     scalar_value,
 )
 
