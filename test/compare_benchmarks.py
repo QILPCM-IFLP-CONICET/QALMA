@@ -93,7 +93,7 @@ if __name__ == "__main__":
 
             if ref_file and new_file:
                 # Do your comparison as before
-                print(f"    Comparing {ref_file} (main) to {new_file} (current branch)")
+                print(f"    Comparing {ref_file} (master) to {new_file} (current branch)")
                 ref_bench = load_benchmark(ref_file)
                 new_bench = load_benchmark(new_file)
                 results = compare_benchmarks(ref_bench, new_bench)
