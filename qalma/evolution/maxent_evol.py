@@ -97,7 +97,7 @@ def update_basis(
     if k is not k_ref_new:
         rest_elements = rest_elements + (k_ref_new,)
     if rest_elements:
-        new_basis = rest_elements + new_basis
+        new_basis = new_basis + rest_elements
 
     return (
         new_basis,
