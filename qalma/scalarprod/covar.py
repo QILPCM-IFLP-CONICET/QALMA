@@ -461,6 +461,7 @@ def _compute_cov_prod_normsq_h(
     """
     result: float = 0.0
     av_1: Dict[int, complex] = {}
+    reduced_cache: Dict[int, Operator] = {}
     op1 = op1.simplify()
     terms_1 = op1.terms if hasattr(op1, "terms") else [op1]
     terms_1, norms_sq = trim_terms_by_tolerance(rho, terms_1, tol)
@@ -483,8 +484,16 @@ def _compute_cov_prod_normsq_h(
             else:
                 overlap = t1.acts_over().intersection(t2.acts_over())
                 if overlap:
-                    t1_red = t1.reduce(overlap, rho)
-                    t2_red = t2.reduce(overlap, rho)
+                    key = (i, overlap)
+                    if key in reduced_cache:
+                        t1_red = reduced_cache[key]
+                    else:
+                        t1_red = reduced_cache[key] = t1.reduce(overlap, rho)
+                    key = (j, overlap)
+                    if key in reduced_cache:
+                        t2_red = reduced_cache[key]
+                    else:
+                        t2_red = reduced_cache[key] = t2.reduce(overlap, rho)
                     contrib = 2 * np.real(cast(complex, rho.expect(t1_red * t2_red)))
                 else:
                     if i not in av_1:
