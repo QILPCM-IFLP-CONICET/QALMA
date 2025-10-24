@@ -400,6 +400,8 @@ def _compute_cov_prod_sp_hh(
     result: float = 0.0
     av_1: Dict[int, complex] = {}
     av_2: Dict[int, complex] = {}
+    cache_reduce_1: Dict[Tuple[int, frozenset], Operator] = {}
+    cache_reduce_2: Dict[Tuple[int, frozenset], Operator] = {}
 
     op1 = op1.simplify()
     op2 = op2.simplify()
@@ -445,8 +447,17 @@ def _compute_cov_prod_sp_hh(
                     av_2[j] = cast(complex, rho.expect(t2))
                 result += np.real(av_1[i] * av_2[j])
             else:
-                t1_red = t1.reduce(overlap, rho)
-                t2_red = t2.reduce(overlap, rho)
+                key = (i, overlap)
+                if key in cache_reduce_1:
+                    t1_red = cache_reduce_1[key]
+                else:
+                    t1_red = cache_reduce_1[key] = t1.reduce(overlap, rho)
+                key = (j, overlap)
+                if key in cache_reduce_2:
+                    t2_red = cache_reduce_2[key]
+                else:
+                    t2_red = cache_reduce_2[key] = t2.reduce(overlap, rho)
+
                 result += np.real(cast(complex, rho.expect(t1_red * t2_red)))
     return result
 
@@ -461,7 +472,7 @@ def _compute_cov_prod_normsq_h(
     """
     result: float = 0.0
     av_1: Dict[int, complex] = {}
-    reduced_cache: Dict[int, Operator] = {}
+    reduced_cache: Dict[Tuple[int, frozenset], Operator] = {}
     op1 = op1.simplify()
     terms_1 = op1.terms if hasattr(op1, "terms") else [op1]
     terms_1, norms_sq = trim_terms_by_tolerance(rho, terms_1, tol)
