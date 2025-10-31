@@ -4,7 +4,11 @@ Operators
 """
 
 from qalma.operators import register_ops
-from qalma.operators.arithmetic import OneBodyOperator, SumOperator
+from qalma.operators.arithmetic import (
+    OneBodyOperator,
+    SumOperator,
+    iterable_to_operator,
+)
 from qalma.operators.basic import (
     LocalOperator,
     Operator,
@@ -25,5 +29,6 @@ __all__ = [
     "QutipOperator",
     "ScalarOperator",
     "SumOperator",
+    "iterable_to_operator",
     "register_ops",
 ]
