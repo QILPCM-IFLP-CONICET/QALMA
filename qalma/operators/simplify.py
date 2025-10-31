@@ -124,8 +124,9 @@ def group_terms_by_blocks(operator: Operator, fn: Optional[Callable] = None):
 
     Returns
     -------
-
-
+    Operator
+       A monomial operator or a sum operator, with terms acting
+       in different blocks.
     """
 
     if (
