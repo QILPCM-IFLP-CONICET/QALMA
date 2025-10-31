@@ -10,10 +10,11 @@ from test.helper import (
     SZ_C,
     TEST_CASES_STATES,
 )
+from typing import Dict
 
 import pytest
 
-from qalma.operators import ProductOperator
+from qalma.operators import Operator, ProductOperator
 from qalma.projections import (
     project_operator_to_m_body,
 )
@@ -28,9 +29,9 @@ from qalma.projections.nbody import (  # Product; Qutip; One body
 )
 
 TEST_STATES = {"None": None}
-TEST_OPERATORS = {}
-TEST_OPERATORS_SQ = {}
-TEST_SINGLE_TERMS = {}
+TEST_OPERATORS: Dict[str, Operator] = {}
+TEST_OPERATORS_SQ: Dict[str, Operator] = {}
+TEST_SINGLE_TERMS: Dict[str, Operator] = {}
 
 if os.environ.get("BENCHMARKS", 0):
     print("build single terms")
@@ -45,7 +46,10 @@ if os.environ.get("BENCHMARKS", 0):
     )
     print("   qutip")
     TEST_SINGLE_TERMS.update(
-        {f"{key}_qutip": op.to_qutip_operator for key, op in TEST_SINGLE_TERMS.items()}
+        {
+            f"{key}_qutip": op.to_qutip_operator()
+            for key, op in TEST_SINGLE_TERMS.items()
+        }
     )
     print("   complex:")
     for i in range(1, 7):
