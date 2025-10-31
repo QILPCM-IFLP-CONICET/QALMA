@@ -3,7 +3,7 @@ Functions implementing the Covariance Scalar Product
 """
 
 # from datetime import datetime
-from typing import Dict, Tuple, cast
+from typing import Dict, List, Tuple, cast
 
 import numpy as np
 from numpy import real
@@ -12,6 +12,7 @@ from numpy.typing import NDArray
 from qalma.operators import Operator
 from qalma.operators.functions import anticommutator
 from qalma.operators.states import ProductDensityOperator
+from qalma.settings import QALMA_TOLERANCE
 
 #  ### Functions that build the scalar products ###
 
@@ -136,7 +137,6 @@ class CovariantScalarProductFunction:
             ),
             dtype=float,
         )
-
         if isinstance(sigma, ProductDensityOperator):
             for i in range(basis_size):
                 for j in range(basis_size):
@@ -382,23 +382,59 @@ def _compute_cov_prod_sp_hg(
 
 
 def _compute_cov_prod_sp_hh(
-    rho: ProductDensityOperator, op1: Operator, op2: Operator
+    rho: ProductDensityOperator,
+    op1: Operator,
+    op2: Operator,
+    tol: float = QALMA_TOLERANCE,
 ) -> float:
     """
     Compute the covariance scalar product
     associated to a product state for two
     hermitician operators.
     """
+    error: float = 0.0
     result: float = 0.0
     av_1: Dict[int, complex] = {}
     av_2: Dict[int, complex] = {}
+    cache_reduce_1: Dict[Tuple[int, frozenset], Operator] = {}
+    cache_reduce_2: Dict[Tuple[int, frozenset], Operator] = {}
 
     op1 = op1.simplify()
     op2 = op2.simplify()
-    terms_1 = op1.terms if hasattr(op1, "terms") else [op1]
-    terms_2 = op2.terms if hasattr(op2, "terms") else [op2]
-    for i, t1 in enumerate(terms_1):
-        for j, t2 in enumerate(terms_2):
+
+    terms_norms_1 = sorted(
+        (
+            (
+                np.abs(cast(complex, rho.expect(term.dag() * term))) ** 0.5,
+                term,
+            )
+            for term in (op1.terms if hasattr(op1, "terms") else (op1,))
+        ),
+        key=lambda x: x[0],
+    )
+    terms_norms_2 = sorted(
+        (
+            (
+                abs(cast(complex, rho.expect(term.dag() * term))) ** 0.5,
+                term,
+            )
+            for term in (op2.terms if hasattr(op2, "terms") else (op2,))
+        ),
+        key=lambda x: x[0],
+    )
+
+    rem_num_terms = len(terms_norms_1) * len(terms_norms_2)
+
+    for i, (norm_1, t1) in enumerate(terms_norms_1):
+        for j, (norm_2, t2) in enumerate(terms_norms_2):
+            # If the norm of (t1,t2) is small enough, we can
+            # skip the term without harm:
+            mag = norm_1 * norm_2
+            if (tol - error) > mag * rem_num_terms:
+                error += mag
+                continue
+            rem_num_terms -= 1
+            # Determine the overlap
             overlap = t1.acts_over().intersection(t2.acts_over())
             if not overlap:
                 if i not in av_1:
@@ -407,13 +443,24 @@ def _compute_cov_prod_sp_hh(
                     av_2[j] = cast(complex, rho.expect(t2))
                 result += np.real(av_1[i] * av_2[j])
             else:
-                t1_red = t1.reduce(overlap, rho)
-                t2_red = t2.reduce(overlap, rho)
+                key = (i, overlap)
+                if key in cache_reduce_1:
+                    t1_red = cache_reduce_1[key]
+                else:
+                    t1_red = cache_reduce_1[key] = t1.reduce(overlap, rho)
+                key = (j, overlap)
+                if key in cache_reduce_2:
+                    t2_red = cache_reduce_2[key]
+                else:
+                    t2_red = cache_reduce_2[key] = t2.reduce(overlap, rho)
+
                 result += np.real(cast(complex, rho.expect(t1_red * t2_red)))
     return result
 
 
-def _compute_cov_prod_normsq_h(rho: ProductDensityOperator, op1: Operator) -> float:
+def _compute_cov_prod_normsq_h(
+    rho: ProductDensityOperator, op1: Operator, tol: float = QALMA_TOLERANCE
+) -> float:
     """
     Compute the square of the induced norm by
     the covariance scalar product associated to
@@ -421,20 +468,30 @@ def _compute_cov_prod_normsq_h(rho: ProductDensityOperator, op1: Operator) -> fl
     """
     result: float = 0.0
     av_1: Dict[int, complex] = {}
+    reduced_cache: Dict[Tuple[int, frozenset], Operator] = {}
     op1 = op1.simplify()
     terms_1 = op1.terms if hasattr(op1, "terms") else [op1]
+    terms_1, norms_sq = trim_terms_by_tolerance(rho, terms_1, tol)
+
     for i, t1 in enumerate(terms_1):
         for j, t2 in enumerate(terms_1):
             if j > i:
                 continue
             if i == j:
-                t1sq = t1 * t1
-                result += np.real(cast(complex, rho.expect(t1sq)))
+                result += norms_sq[i]
             else:
                 overlap = t1.acts_over().intersection(t2.acts_over())
                 if overlap:
-                    t1_red = t1.reduce(overlap, rho)
-                    t2_red = t2.reduce(overlap, rho)
+                    key = (i, overlap)
+                    if key in reduced_cache:
+                        t1_red = reduced_cache[key]
+                    else:
+                        t1_red = reduced_cache[key] = t1.reduce(overlap, rho)
+                    key = (j, overlap)
+                    if key in reduced_cache:
+                        t2_red = reduced_cache[key]
+                    else:
+                        t2_red = reduced_cache[key] = t2.reduce(overlap, rho)
                     contrib = 2 * np.real(cast(complex, rho.expect(t1_red * t2_red)))
                 else:
                     if i not in av_1:
@@ -445,3 +502,27 @@ def _compute_cov_prod_normsq_h(rho: ProductDensityOperator, op1: Operator) -> fl
                 result += contrib
     result = np.abs(result)
     return result
+
+
+def trim_terms_by_tolerance(rho, terms, tol) -> Tuple[List[Operator], List[float]]:
+    """Compute squared norms of each term, and remove those with smaller norm"""
+    terms_with_norms = sorted(
+        (
+            (
+                np.abs(cast(complex, rho.expect(t1.dag() * t1))),
+                t1,
+            )
+            for t1 in terms
+        ),
+        key=lambda x: -x[0],
+    )
+    n = len(terms_with_norms)
+    error = 0.0
+    while error < tol and n:
+        n = n - 1
+        last_norm = terms_with_norms[n][0] ** 0.5
+        error += last_norm
+    terms_with_norms = terms_with_norms[: n + 1]
+    return [term[1] for term in terms_with_norms], [
+        term[0] for term in terms_with_norms
+    ]
