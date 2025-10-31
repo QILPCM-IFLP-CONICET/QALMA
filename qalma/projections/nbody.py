@@ -364,7 +364,7 @@ def _project_qutip_operator_recursive(
     )
     if sigma_0 is None:
         if qutip_ops_last:
-            normalization = 1./ qutip_ops_last[0].dims[0][0]
+            normalization = 1.0 / qutip_ops_last[0].dims[0][0]
             averages = [op_loc.tr() * normalization for op_loc in qutip_ops_last]
         else:
             averages = []
