@@ -363,7 +363,11 @@ def _project_qutip_operator_recursive(
         block_qutip_op
     )
     if sigma_0 is None:
-        averages = [op_loc.tr() / op_loc.dims[0][0] for op_loc in qutip_ops_last]
+        if qutip_ops_last:
+            normalization = 1./ qutip_ops_last[0].dims[0][0]
+            averages = [op_loc.tr() * normalization for op_loc in qutip_ops_last]
+        else:
+            averages = []
         sigma_firsts = None
     else:
         sigma_last_qutip = sigma_0.partial_trace(frozenset({last_site})).to_qutip()
