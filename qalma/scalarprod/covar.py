@@ -139,7 +139,7 @@ class CovariantScalarProductFunction:
             ),
             dtype=float,
         )
-        print("> compute gram matrix ")
+
         if isinstance(sigma, ProductDensityOperator):
             for i in range(basis_size):
                 for j in range(basis_size):
@@ -476,15 +476,6 @@ def _compute_cov_prod_normsq_h(
     op1 = op1.simplify()
     terms_1 = op1.terms if hasattr(op1, "terms") else [op1]
     terms_1, norms_sq = trim_terms_by_tolerance(rho, terms_1, tol)
-    print(
-        "compute norm of an operator with",
-        op1.num_terms(),
-        "on",
-        op1.n_body_sector(),
-        "sector, with ",
-        len(terms_1),
-        "relevant terms",
-    )
 
     for i, t1 in enumerate(terms_1):
         for j, t2 in enumerate(terms_1):

@@ -91,16 +91,16 @@ docs-clean:
 benchmark: benchmark-expect benchmark-commutators benchmark-gram benchmark-projections
 
 benchmark-expect:
-	BENCHMARKS=1 QALMA_ALLTESTS=1 CHAIN_SIZE=20 pytest -x --benchmark-enable --benchmark-save="expect_$(BENCHMARK_FILE)" --benchmark-columns=min test/states/test_expect_benchmark.py
+	PYTHONOPTIMIZE=TRUE BENCHMARKS=1 QALMA_ALLTESTS=1 CHAIN_SIZE=20 pytest -x --benchmark-enable --benchmark-save="expect_$(BENCHMARK_FILE)" --benchmark-columns=min test/states/test_expect_benchmark.py
 
 benchmark-gram:
-	BENCHMARKS=1 QALMA_ALLTESTS=1 CHAIN_SIZE=20 pytest --benchmark-enable --benchmark-save="gram_$(BENCHMARK_FILE)" --benchmark-columns=min test/scalar_product/test_gram.py
+	PYTHONOPTIMIZE=TRUE BENCHMARKS=1 QALMA_ALLTESTS=1 CHAIN_SIZE=20 pytest --benchmark-enable --benchmark-save="gram_$(BENCHMARK_FILE)" --benchmark-columns=min test/scalar_product/test_gram.py
 
 benchmark-commutators:
-	BENCHMARKS=1 QALMA_ALLTESTS=1 CHAIN_SIZE=20 pytest --benchmark-enable --benchmark-save="commutators_$(BENCHMARK_FILE)" --benchmark-columns=min test/basic_operators/test_operator_functions_benchmarks.py
+	PYTHONOPTIMIZE=TRUE BENCHMARKS=1 QALMA_ALLTESTS=1 CHAIN_SIZE=20 pytest --benchmark-enable --benchmark-save="commutators_$(BENCHMARK_FILE)" --benchmark-columns=min test/basic_operators/test_operator_functions_benchmarks.py
 
 benchmark-projections:
-	BENCHMARKS=1 QALMA_ALLTESTS=1 CHAIN_SIZE=20 pytest -s --ff -x --benchmark-enable --benchmark-save="projections_$(BENCHMARK_FILE)" --benchmark-columns=min test/states/test_projections_benchmark.py
+	PYTHONOPTIMIZE=TRUE BENCHMARKS=1 QALMA_ALLTESTS=1 CHAIN_SIZE=20 pytest -s --ff -x --benchmark-enable --benchmark-save="projections_$(BENCHMARK_FILE)" --benchmark-columns=min test/states/test_projections_benchmark.py
 
 benchmark-set-reference:
 	python test/set_benchmark_reference.py
