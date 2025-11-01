@@ -72,7 +72,6 @@ class CovariantScalarProductFunction:
         Compute the cross gram matrix for basis basis_1 and basis_2.
         Operators are assumed to be hermitician.
         """
-        print("> compute cross gram matrix")
         sigma = self.sigma
         basis_1_size = len(basis_1)
         basis_2_size = len(basis_2)
@@ -86,7 +85,6 @@ class CovariantScalarProductFunction:
         if isinstance(sigma, ProductDensityOperator):
             for i in range(basis_1_size):
                 for j in range(basis_2_size):
-                    print(f"  ({i},{j})")
                     cross_gram_matrix[i, j] = self(basis_1[i], basis_2[j])
             return cross_gram_matrix
         if hasattr(sigma, "terms"):
@@ -139,11 +137,9 @@ class CovariantScalarProductFunction:
             ),
             dtype=float,
         )
-
         if isinstance(sigma, ProductDensityOperator):
             for i in range(basis_size):
                 for j in range(basis_size):
-                    print(f"  ({i},{j})")
                     if i > j:
                         continue
                     value = self(basis[i], basis[j])
