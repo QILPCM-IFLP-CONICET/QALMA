@@ -287,7 +287,7 @@ def adaptive_projected_evolution(
     # Initialize
     local_evol_parms["t"] = 0
     local_evol_parms["k_t"] = k0
-    local_evol_parms["curr_n_body"] = compute_n_body_sector(k0)
+    local_evol_parms["curr_n_body"] = n_body  # compute_n_body_sector(k0)
     local_evol_parms["sigma_ref"] = GibbsProductDensityOperator({}, k0.system)
     local_evol_parms["max_error_speed"] = tol / (t_max - t_0)
     tlist.append(local_evol_parms["t_ref"])
@@ -356,10 +356,16 @@ def adaptive_projected_evolution(
                     f"tolerance goal cannot be reached within this subspace. Try in {local_evol_parms['curr_n_body']} sector."
                 )
                 continue
-            #
-            saturated_tolerance = True
-            logging.warning(f"tolerance goal cannot be reached within {n_body} sector.")
-            break
+
+            if local_evol_parms["cummulated error"] > tol:
+                saturated_tolerance = True
+                logging.warning(
+                    f"tolerance goal cannot be reached within {n_body} sector."
+                )
+                break
+            local_evol_parms["max_error_speed"] = (
+                2 * local_evol_parms["max_error_speed"]
+            )
 
         if saturated_tolerance:
             logging.warning("tolerance goal cannot be reached within this subspace.")

@@ -402,6 +402,8 @@ class HierarchicalOperatorBasis(OperatorBasis):
                     comm_norm = np.abs(sp(new_elem, new_elem))
                     assert new_elem.isherm, "hermiticity lost"
 
+            new_elem = new_elem.tidyup()
+
             if np.abs(comm_norm) < tol_sq:
                 closed = True
                 deep = dimension = i + 1
