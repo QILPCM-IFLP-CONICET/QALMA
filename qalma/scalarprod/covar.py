@@ -3,13 +3,13 @@ Functions implementing the Covariance Scalar Product
 """
 
 # from datetime import datetime
-from typing import Dict, List, Tuple, cast
+from typing import Dict, List, Optional, Tuple, cast
 
 import numpy as np
 from numpy import real
 from numpy.typing import NDArray
 
-from qalma.operators import Operator
+from qalma.operators import Operator, iterable_to_operator
 from qalma.operators.functions import anticommutator
 from qalma.operators.states import ProductDensityOperator
 from qalma.settings import QALMA_TOLERANCE
@@ -458,6 +458,54 @@ def _compute_cov_prod_sp_hh(
     return result
 
 
+def _expect_value_cache(
+    rho: ProductDensityOperator,
+    op: Operator,
+    cache: Optional[Dict[Operator, complex]] = None,
+) -> complex:
+    if cache is None:
+        return cast(complex, rho.expect(op))
+    try:
+        return cache[op]
+    except KeyError:
+        cache[op] = val = cast(complex, rho.expect(op))
+        return val
+
+
+def _term_sp_cov_prod_g(
+    rho: ProductDensityOperator, op1, op2, av_cache=None
+) -> complex:
+    """
+    Compute the cov scalar product assocated to rho for
+    two hermitician single-term operators.
+    """
+    overlap = op1.acts_over().intersection(op2.acts_over())
+    if overlap:
+        op1_red = op1.reduce(overlap, rho).dag()
+        op2_red = op2.reduce(overlap, rho)
+        return 0.5 * (cast(complex, rho.expect(op1_red * op2_red + op2_red * op1_red)))
+
+    av_1 = _expect_value_cache(rho, op1, av_cache)
+    av_2 = _expect_value_cache(rho, op2, av_cache)
+    return np.conj(av_1) * av_2
+
+
+def _term_sp_cov_prod_h(rho: ProductDensityOperator, op1, op2, av_cache=None) -> float:
+    """
+    Compute the cov scalar product assocated to rho for
+    two hermitician single-term operators.
+    """
+    overlap = op1.acts_over().intersection(op2.acts_over())
+    if overlap:
+        op1_red = op1.reduce(overlap, rho)
+        op2_red = op2.reduce(overlap, rho)
+        return np.real(cast(complex, rho.expect(op1_red * op2_red)))
+
+    av_1 = _expect_value_cache(rho, op1, av_cache)
+    av_2 = _expect_value_cache(rho, op2, av_cache)
+    return np.real(av_1 * av_2)
+
+
 def _compute_cov_prod_normsq_h(
     rho: ProductDensityOperator, op1: Operator, tol: float = QALMA_TOLERANCE
 ) -> float:
@@ -467,11 +515,10 @@ def _compute_cov_prod_normsq_h(
     a product state for hermitician operators.
     """
     result: float = 0.0
-    av_1: Dict[int, complex] = {}
-    reduced_cache: Dict[Tuple[int, frozenset], Operator] = {}
-    op1 = op1.simplify()
+    av_cache: Dict[Operator, complex] = {}
+    op1 = op1.simplify().flat()
     terms_1 = op1.terms if hasattr(op1, "terms") else [op1]
-    terms_1, norms_sq = trim_terms_by_tolerance(rho, terms_1, tol)
+    norms_sq = [np.real(cast(complex, rho.expect(t1.dag() * t1))) for t1 in terms_1]
 
     for i, t1 in enumerate(terms_1):
         for j, t2 in enumerate(terms_1):
@@ -480,49 +527,83 @@ def _compute_cov_prod_normsq_h(
             if i == j:
                 result += norms_sq[i]
             else:
-                overlap = t1.acts_over().intersection(t2.acts_over())
-                if overlap:
-                    key = (i, overlap)
-                    if key in reduced_cache:
-                        t1_red = reduced_cache[key]
-                    else:
-                        t1_red = reduced_cache[key] = t1.reduce(overlap, rho)
-                    key = (j, overlap)
-                    if key in reduced_cache:
-                        t2_red = reduced_cache[key]
-                    else:
-                        t2_red = reduced_cache[key] = t2.reduce(overlap, rho)
-                    contrib = 2 * np.real(cast(complex, rho.expect(t1_red * t2_red)))
-                else:
-                    if i not in av_1:
-                        av_1[i] = cast(complex, rho.expect(t1))
-                    if j not in av_1:
-                        av_1[j] = cast(complex, rho.expect(t2))
-                    contrib = 2.0 * np.real(np.conj(av_1[i]) * av_1[j])
-                result += contrib
+                result += 2 * _term_sp_cov_prod_h(rho, t1, t2, av_cache)
     result = np.abs(result)
     return result
 
 
-def trim_terms_by_tolerance(rho, terms, tol) -> Tuple[List[Operator], List[float]]:
-    """Compute squared norms of each term, and remove those with smaller norm"""
-    terms_with_norms = sorted(
-        (
+def _compute_cov_prod_normsq_g(
+    rho: ProductDensityOperator, op1: Operator, tol: float = QALMA_TOLERANCE
+) -> float:
+    """
+    Compute the square of the induced norm by
+    the covariance scalar product associated to
+    a product state for hermitician operators.
+    """
+    result: float = 0.0
+    av_cache: Dict[Operator, complex] = {}
+    op1 = op1.simplify().flat()
+    terms_1 = op1.terms if hasattr(op1, "terms") else [op1]
+
+    for i, t1 in enumerate(terms_1):
+        for j, t2 in enumerate(terms_1):
+            if j > i:
+                continue
+            if i == j:
+                result += np.real(_term_sp_cov_prod_g(rho, t1, t2, av_cache))
+            else:
+                result += 2 * np.real(_term_sp_cov_prod_g(rho, t1, t2, av_cache))
+    return result
+
+
+def compute_list_terms_with_norms(
+    rho: ProductDensityOperator, terms=Tuple[Operator, ...]
+) -> List[Tuple[float, Operator]]:
+    """
+    Return a list of terms that decompose operator with their corresponding squared
+    covar norms relative to rho, sorted in norm decreasing order.
+    """
+    return sorted(
+        [
             (
-                np.abs(cast(complex, rho.expect(t1.dag() * t1))),
-                t1,
+                np.real(cast(complex, rho.expect(term.dag() * term))),
+                term,
             )
-            for t1 in terms
-        ),
+            for term in terms
+        ],
         key=lambda x: -x[0],
     )
+
+
+def remove_under_tolerance_terms(
+    terms_with_norms=Tuple[Operator, ...], tol=QALMA_TOLERANCE
+) -> List[Tuple[float, Operator]]:
+    """
+    Return a list of terms that decompose operator with their corresponding squared
+    covar norms relative to rho, sorted in norm decreasing order.
+    """
     n = len(terms_with_norms)
     error = 0.0
-    while error < tol and n:
+    while error < tol and n > 1:
         n = n - 1
         last_norm = terms_with_norms[n][0] ** 0.5
         error += last_norm
-    terms_with_norms = terms_with_norms[: n + 1]
-    return [term[1] for term in terms_with_norms], [
-        term[0] for term in terms_with_norms
-    ]
+
+    return terms_with_norms[:n]
+
+
+def trim_terms_by_tolerance(
+    rho: ProductDensityOperator, operator: Operator, tol: float = QALMA_TOLERANCE
+) -> Operator:
+    """Compute squared norms of each term, and remove those with smaller norm"""
+
+    isherm = operator.isherm
+    system = operator.system
+    terms = operator.flat().terms if hasattr(operator, "terms") else (operator,)
+    terms_with_norms: List[Tuple[float, Operator]] = compute_list_terms_with_norms(
+        rho, terms
+    )
+    terms_with_norms = remove_under_tolerance_terms(terms_with_norms, tol)
+    return iterable_to_operator(
+        (term[1] for term in terms_with_norms), system, isherm=isherm
+    )

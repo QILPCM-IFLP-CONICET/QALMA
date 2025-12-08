@@ -18,7 +18,6 @@ from qalma.meanfield import (
 )
 from qalma.operators import (
     Operator,
-    iterable_to_operator,
 )
 from qalma.operators.states import GibbsDensityOperator, GibbsProductDensityOperator
 from qalma.projections import n_body_projection
@@ -468,8 +467,6 @@ def trim_and_project_function(sigma, n_body, tol=1e-6):
         )
         op_b = op_b.simplify()
         op_b = n_body_projection(op_b, nmax=n_body, sigma=sigma).simplify()
-        terms = op_b.terms if hasattr(op_b, "terms") else [op_b]
-        terms, _ = trim_terms_by_tolerance(sigma, terms, tol)
-        return iterable_to_operator(terms, op_b.system, isherm=True).simplify()
+        return trim_terms_by_tolerance(sigma, op_b, tol)
 
     return trim_and_project
