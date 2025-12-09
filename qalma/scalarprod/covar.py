@@ -342,6 +342,7 @@ def compute_cov_prod_sp(
         return np.conj(_compute_cov_prod_sp_hg(rho, op1, op2))
     return _compute_cov_prod_sp_hg(rho, op1.dag(), op2)
 
+
 def remove_under_tolerance_terms(
     terms_with_norms=Tuple[Operator, ...], tol=QALMA_TOLERANCE
 ) -> List[Tuple[float, Operator]]:
