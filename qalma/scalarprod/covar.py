@@ -329,13 +329,14 @@ def compute_cov_prod_sp(
     Compute the covariance scalar product
     associated to a product state.
     """
+    if op1 is op2:
+        if op1.isherm:
+            return _compute_cov_prod_normsq_h(rho, op1)
+        return _compute_cov_prod_normsq_g(rho, op1)
+
     if op1.isherm:
-        if op1 is op2:
-            result = _compute_cov_prod_normsq_h(rho, op1)
-            return result
         if op2.isherm:
-            result = _compute_cov_prod_sp_hh(rho, op1, op2)
-            return result
+            return _compute_cov_prod_sp_hh(rho, op1, op2)
         return _compute_cov_prod_sp_hg(rho, op1, op2)
     if op2.isherm:
         op1, op2 = op2, op1
