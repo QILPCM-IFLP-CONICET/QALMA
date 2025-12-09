@@ -543,7 +543,7 @@ def _compute_cov_prod_normsq_g(
     """
     Compute the square of the induced norm by
     the covariance scalar product associated to
-    a product state for hermitician operators.
+    a product state for general operators.
     """
     result: float = 0.0
     av_cache: Dict[Operator, complex] = {}
@@ -607,3 +607,75 @@ def _term_sp_cov_prod_h(rho: ProductDensityOperator, op1, op2, av_cache=None) ->
     av_1 = _expect_value_cache(rho, op1, av_cache)
     av_2 = _expect_value_cache(rho, op2, av_cache)
     return np.real(av_1 * av_2)
+
+
+def _compute_cov_prod_sp_g(
+    rho: ProductDensityOperator,
+    op1: Operator,
+    op2: Operator,
+    tol: float = QALMA_TOLERANCE,
+) -> complex:
+    """
+    Compute the covariance scalar product
+    associated to a product state for two
+    general operators.
+    """
+    error: float = 0.0
+    result: complex = 0.0
+    av_cache: Dict[Operator, complex] = {}
+
+    terms_1 = op1.simplify().flat().terms if hasattr(op1, "terms") else (op1,)
+    terms_2 = op2.simplify().flat().terms if hasattr(op2, "terms") else (op2,)
+
+    terms_norms_1 = compute_list_terms_with_norms(rho, terms_1)
+    terms_norms_2 = compute_list_terms_with_norms(rho, terms_2)
+    rem_num_terms = len(terms_norms_1) * len(terms_norms_2)
+
+    for i, (norm_1, t1) in enumerate(reversed(terms_norms_1)):
+        for j, (norm_2, t2) in enumerate(reversed(terms_norms_2)):
+            # If the norm of (t1,t2) is small enough, we can
+            # skip the term without harm:
+            mag = norm_1 * norm_2
+            if (tol - error) > mag * rem_num_terms:
+                error += mag
+                continue
+            rem_num_terms -= 1
+            # Determine the overlap
+            result += _term_sp_cov_prod_g(rho, op1, op2, av_cache)
+    return result
+
+
+def _compute_cov_prod_sp_h(
+    rho: ProductDensityOperator,
+    op1: Operator,
+    op2: Operator,
+    tol: float = QALMA_TOLERANCE,
+) -> float:
+    """
+    Compute the covariance scalar product
+    associated to a product state for two
+    hermitician operators.
+    """
+    error: float = 0.0
+    result: float = 0.0
+    av_cache: Dict[Operator, complex] = {}
+
+    terms_1 = op1.simplify().flat().terms if hasattr(op1, "terms") else (op1,)
+    terms_2 = op2.simplify().flat().terms if hasattr(op2, "terms") else (op2,)
+
+    terms_norms_1 = compute_list_terms_with_norms(rho, terms_1)
+    terms_norms_2 = compute_list_terms_with_norms(rho, terms_2)
+    rem_num_terms = len(terms_norms_1) * len(terms_norms_2)
+
+    for i, (norm_1, t1) in enumerate(reversed(terms_norms_1)):
+        for j, (norm_2, t2) in enumerate(reversed(terms_norms_2)):
+            # If the norm of (t1,t2) is small enough, we can
+            # skip the term without harm:
+            mag = norm_1 * norm_2
+            if (tol - error) > mag * rem_num_terms:
+                error += mag
+                continue
+            rem_num_terms -= 1
+            # Determine the overlap
+            result += _term_sp_cov_prod_h(rho, op1, op2, av_cache)
+    return result
