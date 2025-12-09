@@ -63,10 +63,10 @@ class CovariantScalarProductFunction:
         sigma = self.sigma
 
         if hasattr(sigma, "terms"):
-            return compute_cov_mix_sp(self.sigma, op1, op2)
+            return compute_cov_mix_sp(self.sigma, op1.simplify().flat(), op2.simplify().flat())
 
         if isinstance(sigma, ProductDensityOperator):
-            result = compute_cov_prod_sp(self.sigma, op1, op2)
+            result = compute_cov_prod_sp(self.sigma, op1.simplify().flat(), op2.simplify().flat())
             return result
 
         # The remaining code computes the scalar product for generic states.
@@ -103,6 +103,9 @@ class CovariantScalarProductFunction:
         Operators are assumed to be hermitician.
         """
         sigma = self.sigma
+        basis_1 = [b.simplify().flat() for b in basis_1]
+        basis_2 = [b.simplify().flat() for b in basis_2]
+        
         basis_1_size = len(basis_1)
         basis_2_size = len(basis_2)
         cross_gram_matrix = np.zeros(
@@ -162,9 +165,13 @@ class CovariantScalarProductFunction:
         Compute the gram matrix associated to the hermitician operators
         specified in `basis`.
 
-        """
+        """        
         basis_size = len(basis)
         sigma = self.sigma
+
+        basis_1 = [b.simplify().flat() for b in basis_1]
+        basis_2 = [b.simplify().flat() for b in basis_2]
+        
         gram_matrix = np.zeros(
             (
                 basis_size,
@@ -415,7 +422,6 @@ def _compute_cov_prod_normsq(
     a product state for general operators.
     """
     result: float = 0.0
-    op1 = op1.simplify().flat()
     terms_1 = op1.terms if hasattr(op1, "terms") else [op1]
     discard_check = ErrorCummulator(tol, len(terms_1) ** 2)
     terms_with_norms = compute_list_terms_with_norms(rho, terms_1)
