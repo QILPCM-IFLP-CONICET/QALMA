@@ -319,7 +319,7 @@ def compute_cov_sqnorm(rho: ProductDensityOperator, op1: Operator) -> complex:
     """
     if op1.isherm:
         return _compute_cov_prod_normsq_h(rho, op1)
-    return _compute_cov_prod_sp_hg(rho, op1.dag(), op1)
+    return _compute_cov_prod_normsq_g(rho, op1)
 
 
 def compute_cov_prod_sp(
