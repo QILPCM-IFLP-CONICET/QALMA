@@ -154,6 +154,7 @@ class OperatorBasis:
                     break
             except LinAlgError:
                 pass
+
             li_indx = find_linearly_independent_rows(gram, tol=threshold)
             logging.warning(
                 (
