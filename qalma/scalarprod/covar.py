@@ -343,6 +343,25 @@ def compute_cov_prod_sp(
     return _compute_cov_prod_sp_hg(rho, op1.dag(), op2)
 
 
+def compute_list_terms_with_norms(
+    rho: ProductDensityOperator, terms=Tuple[Operator, ...]
+) -> List[Tuple[float, Operator]]:
+    """
+    Return a list of terms that decompose operator with their corresponding squared
+    covar norms relative to rho, sorted in norm decreasing order.
+    """
+    return sorted(
+        [
+            (
+                np.real(cast(complex, rho.expect(term.dag() * term))),
+                term,
+            )
+            for term in terms
+        ],
+        key=lambda x: -x[0],
+    )
+
+
 def remove_under_tolerance_terms(
     terms_with_norms=Tuple[Operator, ...], tol=QALMA_TOLERANCE
 ) -> List[Tuple[float, Operator]]:
@@ -374,25 +393,6 @@ def trim_terms_by_tolerance(
     terms_with_norms = remove_under_tolerance_terms(terms_with_norms, tol)
     return iterable_to_operator(
         (term[1] for term in terms_with_norms), system, isherm=isherm
-    )
-
-
-def compute_list_terms_with_norms(
-    rho: ProductDensityOperator, terms=Tuple[Operator, ...]
-) -> List[Tuple[float, Operator]]:
-    """
-    Return a list of terms that decompose operator with their corresponding squared
-    covar norms relative to rho, sorted in norm decreasing order.
-    """
-    return sorted(
-        [
-            (
-                np.real(cast(complex, rho.expect(term.dag() * term))),
-                term,
-            )
-            for term in terms
-        ],
-        key=lambda x: -x[0],
     )
 
 
