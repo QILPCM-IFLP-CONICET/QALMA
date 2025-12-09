@@ -63,10 +63,14 @@ class CovariantScalarProductFunction:
         sigma = self.sigma
 
         if hasattr(sigma, "terms"):
-            return compute_cov_mix_sp(self.sigma, op1.simplify().flat(), op2.simplify().flat())
+            return compute_cov_mix_sp(
+                self.sigma, op1.simplify().flat(), op2.simplify().flat()
+            )
 
         if isinstance(sigma, ProductDensityOperator):
-            result = compute_cov_prod_sp(self.sigma, op1.simplify().flat(), op2.simplify().flat())
+            result = compute_cov_prod_sp(
+                self.sigma, op1.simplify().flat(), op2.simplify().flat()
+            )
             return result
 
         # The remaining code computes the scalar product for generic states.
@@ -103,9 +107,9 @@ class CovariantScalarProductFunction:
         Operators are assumed to be hermitician.
         """
         sigma = self.sigma
-        basis_1 = [b.simplify().flat() for b in basis_1]
-        basis_2 = [b.simplify().flat() for b in basis_2]
-        
+        basis_1 = tuple(b.simplify().flat() for b in basis_1)
+        basis_2 = tuple(b.simplify().flat() for b in basis_2)
+
         basis_1_size = len(basis_1)
         basis_2_size = len(basis_2)
         cross_gram_matrix = np.zeros(
@@ -165,13 +169,12 @@ class CovariantScalarProductFunction:
         Compute the gram matrix associated to the hermitician operators
         specified in `basis`.
 
-        """        
+        """
         basis_size = len(basis)
         sigma = self.sigma
 
-        basis_1 = [b.simplify().flat() for b in basis_1]
-        basis_2 = [b.simplify().flat() for b in basis_2]
-        
+        basis = tuple(b.simplify().flat() for b in basis)
+
         gram_matrix = np.zeros(
             (
                 basis_size,
