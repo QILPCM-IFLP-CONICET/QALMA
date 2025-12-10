@@ -3,18 +3,48 @@ Functions implementing the Covariance Scalar Product
 """
 
 # from datetime import datetime
-from typing import Dict, List, Tuple, cast
+from typing import Callable, Dict, Generator, List, Optional, Tuple, cast
 
 import numpy as np
 from numpy import real
 from numpy.typing import NDArray
 
-from qalma.operators import Operator
+from qalma.operators import Operator, iterable_to_operator
 from qalma.operators.functions import anticommutator
 from qalma.operators.states import ProductDensityOperator
 from qalma.settings import QALMA_TOLERANCE
 
 #  ### Functions that build the scalar products ###
+
+
+class ErrorCummulator:
+    """
+    A class to track the accumulated error
+    introduced by discarding terms into a sum.
+    """
+
+    tol: float
+    rem_terms: int
+    error: float
+
+    def __init__(self, tol, num_terms):
+        self.tol = tol
+        self.rem_terms = num_terms
+        self.error = 0.0
+
+    def query(self, mag, steps=1) -> bool:
+        """
+        Check if mag times the remaining
+        number of terms is bellow the difference between
+        the tolerance and the accumulated error.
+
+        """
+        margin = self.tol - self.error
+        result = margin > mag and margin > mag * self.rem_terms
+        if result:
+            self.error += mag
+        self.rem_terms -= steps
+        return result
 
 
 class CovariantScalarProductFunction:
@@ -33,10 +63,14 @@ class CovariantScalarProductFunction:
         sigma = self.sigma
 
         if hasattr(sigma, "terms"):
-            return compute_cov_mix_sp(self.sigma, op1, op2)
+            return compute_cov_mix_sp(
+                self.sigma, op1.simplify().flat(), op2.simplify().flat()
+            )
 
         if isinstance(sigma, ProductDensityOperator):
-            result = compute_cov_prod_sp(self.sigma, op1, op2)
+            result = compute_cov_prod_sp(
+                self.sigma, op1.simplify().flat(), op2.simplify().flat()
+            )
             return result
 
         # The remaining code computes the scalar product for generic states.
@@ -73,6 +107,9 @@ class CovariantScalarProductFunction:
         Operators are assumed to be hermitician.
         """
         sigma = self.sigma
+        basis_1 = tuple(b.simplify().flat() for b in basis_1)
+        basis_2 = tuple(b.simplify().flat() for b in basis_2)
+
         basis_1_size = len(basis_1)
         basis_2_size = len(basis_2)
         cross_gram_matrix = np.zeros(
@@ -83,9 +120,14 @@ class CovariantScalarProductFunction:
             dtype=float,
         )
         if isinstance(sigma, ProductDensityOperator):
+            av_cache: Dict[Operator, complex] = {}
+
+            def _sp(op1, op2):
+                return compute_cov_prod_sp(self.sigma, op1, op2, av_cache)
+
             for i in range(basis_1_size):
                 for j in range(basis_2_size):
-                    cross_gram_matrix[i, j] = self(basis_1[i], basis_2[j])
+                    cross_gram_matrix[i, j] = _sp(basis_1[i], basis_2[j])
             return cross_gram_matrix
         if hasattr(sigma, "terms"):
             return sum(
@@ -130,6 +172,9 @@ class CovariantScalarProductFunction:
         """
         basis_size = len(basis)
         sigma = self.sigma
+
+        basis = tuple(b.simplify().flat() for b in basis)
+
         gram_matrix = np.zeros(
             (
                 basis_size,
@@ -138,11 +183,16 @@ class CovariantScalarProductFunction:
             dtype=float,
         )
         if isinstance(sigma, ProductDensityOperator):
+            av_cache: Dict[Operator, complex] = {}
+
+            def _sp(op1, op2):
+                return compute_cov_prod_sp(self.sigma, op1, op2, av_cache)
+
             for i in range(basis_size):
                 for j in range(basis_size):
                     if i > j:
                         continue
-                    value = self(basis[i], basis[j])
+                    value = _sp(basis[i], basis[j])
                     gram_matrix[i, j] = value
                     if i < j:
                         gram_matrix[j, i] = value
@@ -186,108 +236,6 @@ class CovariantScalarProductFunction:
         return gram_matrix
 
 
-def compute_cov_sp_sqnorm(rho: ProductDensityOperator, op1: Operator) -> complex:
-    """
-    Efficiently computes the squared norm associated to the  covariant scalar
-    product for Hermitian operators op1 and op2 when the state rho is
-    a ProductDensityOperator.
-
-
-    Parameters
-    ----------
-    rho : ProductDensityOperator
-        State defining the scalar product.
-    op1 : Operator
-        operator.
-
-    Returns
-    -------
-    complex
-        covar-induced norm.
-
-    """
-    result = 0.0
-    av_1: Dict[int, complex] = {}
-    op1 = op1.simplify()
-    terms_1 = op1.terms if hasattr(op1, "terms") else [op1]
-    for i, t1 in enumerate(terms_1):
-        for j, t2 in enumerate(terms_1):
-            if j > i:
-                continue
-            if i == j:
-                result += 0.5 * cast(
-                    float,
-                    np.real(cast(complex, rho.expect(t1.dag() * t2 + t2 * t1.dag()))),
-                )
-            else:
-                overlap = t1.acts_over().intersection(t2.acts_over())
-                if overlap:
-                    t1_red = t1.reduce(overlap, rho)
-                    t2_red = t2.reduce(overlap, rho)
-                    contrib = cast(
-                        float,
-                        np.real(
-                            cast(
-                                complex,
-                                rho.expect(
-                                    t1_red.dag() * t2_red + t2_red * t1_red.dag()
-                                ),
-                            )
-                        ),
-                    )
-                else:
-                    if i not in av_1:
-                        av_1[i] = cast(complex, rho.expect(t1))
-                    if j not in av_1:
-                        av_1[j] = cast(complex, rho.expect(t2))
-
-                    contrib = 2.0 * cast(
-                        float,
-                        np.real(np.conj(av_1[i]) * av_1[j]),
-                    )
-                result += contrib
-    return np.abs(result)
-
-
-def compute_cov_sp_prod(
-    rho: ProductDensityOperator, op1: Operator, op2: Operator
-) -> complex:
-    """
-    Efficiently computes the covariant scalar product for Hermitian operators
-    op1 and op2 when the state rho is a ProductDensityOperator.
-    """
-    result: complex = 0.0
-    av_1: Dict[int, complex] = {}
-    av_2: Dict[int, complex] = {}
-    if op1 is op2:
-        return compute_cov_sp_sqnorm(rho, op1)
-
-    op1 = op1.simplify()
-    op2 = op2.simplify()
-    for i, t1 in enumerate(op1.terms if hasattr(op1, "terms") else [op1]):
-        for j, t2 in enumerate(op2.terms if hasattr(op2, "terms") else [op2]):
-            if i == j:
-                contrib = 0.5 * cast(complex, rho.expect(t1.dag() * t2 + t2 * t1.dag()))
-            else:
-                overlap = t1.acts_over().intersection(t2.acts_over())
-                if not overlap:
-                    if i not in av_1:
-                        av_1[i] = cast(complex, rho.expect(t1))
-                    if j not in av_2:
-                        av_2[j] = cast(complex, rho.expect(t2))
-                    contrib = np.real(np.conj(av_1[i]) * av_2[j])
-                else:
-                    t1_red = t1.reduce(overlap, rho)
-                    t2_red = t2.reduce(overlap, rho)
-                    contrib = 0.5 * cast(
-                        complex,
-                        rho.expect(t1_red.dag() * t2_red + t2_red * t1_red.dag()),
-                    )
-            result += contrib
-
-    return np.real(result)
-
-
 def compute_cov_mix_sp(rho, op1: Operator, op2: Operator) -> complex:
     """
     Compute the covariance scalar product relative to a
@@ -299,7 +247,11 @@ def compute_cov_mix_sp(rho, op1: Operator, op2: Operator) -> complex:
     )
 
 
-def compute_cov_sqnorm(rho: ProductDensityOperator, op1: Operator) -> complex:
+def compute_cov_sqnorm(
+    rho: ProductDensityOperator,
+    operator: Operator,
+    av_cache: Optional[Dict[Operator, complex]] = None,
+) -> complex:
     """
     Compute the square of the covar operator norm of `op1` associated
     to the state `rho`.
@@ -307,9 +259,9 @@ def compute_cov_sqnorm(rho: ProductDensityOperator, op1: Operator) -> complex:
     Parameters
     ----------
     rho : ProductDensityOperator
-        The state.
-    op1 : Operator
-        operator.
+        The state that defines the scalar product.
+    operator : Operator
+        the operator argument of the norm.
 
     Returns
     -------
@@ -317,212 +269,330 @@ def compute_cov_sqnorm(rho: ProductDensityOperator, op1: Operator) -> complex:
         the covar-induced operator norm.
 
     """
-    if op1.isherm:
-        return _compute_cov_prod_normsq_h(rho, op1)
-    return _compute_cov_prod_sp_hg(rho, op1.dag(), op1)
+    if av_cache is None:
+        av_cache = {}
+    if operator.isherm:
+        return _compute_cov_prod_normsq(
+            rho, operator, term_sp=_term_sp_cov_prod_h, av_cache=av_cache
+        )
+    return _compute_cov_prod_normsq(rho, operator, av_cache=av_cache)
 
 
 def compute_cov_prod_sp(
-    rho: ProductDensityOperator, op1: Operator, op2: Operator
+    rho: ProductDensityOperator,
+    op1: Operator,
+    op2: Operator,
+    av_cache: Optional[Dict[Operator, complex]] = None,
 ) -> complex:
     """
     Compute the covariance scalar product
     associated to a product state.
     """
+    if av_cache is None:
+        av_cache = {}
+    if op1 is op2:
+        if op1.isherm:
+            return _compute_cov_prod_normsq(
+                rho, op1, term_sp=_term_sp_cov_prod_h, av_cache=av_cache
+            )
+        return _compute_cov_prod_normsq(rho, op1, av_cache=av_cache)
+
     if op1.isherm:
-        if op1 is op2:
-            result = _compute_cov_prod_normsq_h(rho, op1)
-            return result
         if op2.isherm:
-            result = _compute_cov_prod_sp_hh(rho, op1, op2)
-            return result
-        return _compute_cov_prod_sp_hg(rho, op1, op2)
-    if op2.isherm:
-        op1, op2 = op2, op1
-        return np.conj(_compute_cov_prod_sp_hg(rho, op1, op2))
-    return _compute_cov_prod_sp_hg(rho, op1.dag(), op2)
+            return _compute_cov_prod_sp_h(rho, op1, op2, av_cache=av_cache)
+    return _compute_cov_prod_sp_g(rho, op1, op2, av_cache=av_cache)
 
 
-def _compute_cov_prod_sp_hg(
-    rho: ProductDensityOperator, op1: Operator, op2: Operator
+def compute_list_terms_with_norms(
+    rho: ProductDensityOperator, terms=Tuple[Operator, ...]
+) -> List[Tuple[float, Operator]]:
+    """
+    Return a list of terms that decompose operator with their corresponding squared
+    covar norms relative to rho, sorted in norm decreasing order.
+    """
+    return sorted(
+        [
+            (
+                np.abs(cast(complex, rho.expect(term.dag() * term))) ** 0.5,
+                term,
+            )
+            for term in terms
+        ],
+        key=lambda x: -x[0],
+    )
+
+
+def remove_under_tolerance_terms(
+    terms_with_norms=Tuple[Operator, ...], tol=QALMA_TOLERANCE
+) -> List[Tuple[float, Operator]]:
+    """
+    Return a list of terms that decompose operator with their corresponding squared
+    covar norms relative to rho, sorted in norm decreasing order.
+    """
+    n = len(terms_with_norms)
+    error = 0.0
+    while error < tol and n > 1:
+        n = n - 1
+        last_norm = terms_with_norms[n][0]
+        error += last_norm
+
+    return terms_with_norms[:n]
+
+
+def trim_terms_by_tolerance(
+    rho: ProductDensityOperator, operator: Operator, tol: float = QALMA_TOLERANCE
+) -> Operator:
+    """Compute squared norms of each term, and remove those with smaller norm"""
+
+    isherm = operator.isherm
+    system = operator.system
+    terms = operator.flat().terms if hasattr(operator, "terms") else (operator,)
+    terms_with_norms: List[Tuple[float, Operator]] = compute_list_terms_with_norms(
+        rho, terms
+    )
+    terms_with_norms = remove_under_tolerance_terms(terms_with_norms, tol)
+    return iterable_to_operator(
+        (term[1] for term in terms_with_norms), system, isherm=isherm
+    )
+
+
+def _expect_value_cache(
+    rho: ProductDensityOperator,
+    op: Operator,
+    cache: Optional[Dict[Operator, complex]] = None,
+) -> complex:
+    if cache is None:
+        return cast(complex, rho.expect(op))
+    try:
+        return cache[op]
+    except KeyError:
+        cache[op] = val = cast(complex, rho.expect(op))
+        return val
+
+
+def _term_sp_cov_prod_g(
+    rho: ProductDensityOperator,
+    op1: Operator,
+    op2: Operator,
+    av_cache: Optional[Dict[Operator, complex]] = None,
 ) -> complex:
     """
-    Compute the covariance scalar product
-    associated to a product state for
-    an hermitician operator and a general operator.
+    Compute the cov scalar product assocated to rho for
+    two hermitician single-term operators.
     """
-    result: complex = 0.0
-    av_1: Dict[int, complex] = {}
-    av_2: Dict[int, complex] = {}
+    overlap = op1.acts_over().intersection(op2.acts_over())
+    if overlap:
+        op1_red = op1.reduce(overlap, rho).dag()
+        op2_red = op2.reduce(overlap, rho)
+        return 0.5 * (cast(complex, rho.expect(op1_red * op2_red + op2_red * op1_red)))
 
-    op1 = op1.simplify()
-    op2 = op2.simplify()
+    av_1 = _expect_value_cache(rho, op1, av_cache)
+    av_2 = _expect_value_cache(rho, op2, av_cache)
+    return np.conj(av_1) * av_2
+
+
+def _term_sp_cov_prod_h(
+    rho: ProductDensityOperator,
+    op1: Operator,
+    op2: Operator,
+    av_cache: Optional[Dict[Operator, complex]] = None,
+) -> float:
+    """
+    Compute the cov scalar product assocated to rho for
+    two hermitician single-term operators.
+    """
+    overlap = op1.acts_over().intersection(op2.acts_over())
+    if overlap:
+        op1_red = op1.reduce(overlap, rho)
+        op2_red = op2.reduce(overlap, rho)
+        return np.real(cast(complex, rho.expect(op1_red * op2_red)))
+
+    av_1 = _expect_value_cache(rho, op1, av_cache)
+    av_2 = _expect_value_cache(rho, op2, av_cache)
+    return np.real(av_1 * av_2)
+
+
+def _compute_cov_prod_normsq(
+    rho: ProductDensityOperator,
+    op1: Operator,
+    tol: float = QALMA_TOLERANCE,
+    term_sp: Callable = _term_sp_cov_prod_g,
+    av_cache: Optional[Dict[Operator, complex]] = None,
+) -> float:
+    """
+    Compute the square of the induced norm by
+    the covariance scalar product associated to
+    a product state for general operators.
+    """
     terms_1 = op1.terms if hasattr(op1, "terms") else [op1]
-    terms_2 = op2.terms if hasattr(op2, "terms") else [op2]
-    for i, t1 in enumerate(terms_1):
-        for j, t2 in enumerate(terms_2):
-            overlap = t1.acts_over().intersection(t2.acts_over())
-            if not overlap:
-                if i not in av_1:
-                    av_1[i] = cast(complex, rho.expect(t1))
-                if j not in av_2:
-                    av_2[j] = cast(complex, rho.expect(t2))
-                result += av_1[i] * av_2[j]
-            else:
-                t1_red = t1.reduce(overlap, rho)
-                t2_red = t2.reduce(overlap, rho)
-                result += (
-                    cast(
-                        complex,
-                        rho.expect(t1_red * t2_red + t2_red * t1_red),
+    len_terms = len(terms_1)
+    discard_check = ErrorCummulator(tol, len_terms * (len_terms - 1))
+    terms_with_norms = compute_list_terms_with_norms(rho, terms_1)
+    result: float = sum(n**2 for n, t in terms_with_norms)
+    if av_cache is None:
+        av_cache = {}
+
+    def iterator():
+        for j in range(len_terms - 1, -1, -1):
+            for i in range(j - 1, -1, -1):
+                yield (
+                    (
+                        i,
+                        j,
                     )
-                    * 0.5
                 )
+
+    for i, j in iterator():
+        (norm1, t1) = terms_with_norms[i]
+        (norm2, t2) = terms_with_norms[j]
+        if discard_check.query(2 * norm1 * norm2, 2):
+            continue
+        result += 2 * np.real(term_sp(rho, t1, t2, av_cache))
     return result
 
 
-def _compute_cov_prod_sp_hh(
+def _compute_cov_prod_sp_h(
     rho: ProductDensityOperator,
     op1: Operator,
     op2: Operator,
     tol: float = QALMA_TOLERANCE,
+    av_cache: Optional[Dict[Operator, complex]] = None,
 ) -> float:
     """
     Compute the covariance scalar product
     associated to a product state for two
     hermitician operators.
     """
-    error: float = 0.0
+    if av_cache is None:
+        av_cache = {}
+
     result: float = 0.0
-    av_1: Dict[int, complex] = {}
-    av_2: Dict[int, complex] = {}
-    cache_reduce_1: Dict[Tuple[int, frozenset], Operator] = {}
-    cache_reduce_2: Dict[Tuple[int, frozenset], Operator] = {}
+    term_sp: Callable = _term_sp_cov_prod_h
 
-    op1 = op1.simplify()
-    op2 = op2.simplify()
+    terms_1 = op1.flat().terms if hasattr(op1, "terms") else (op1,)
+    terms_2 = op2.flat().terms if hasattr(op2, "terms") else (op2,)
 
-    terms_norms_1 = sorted(
-        (
-            (
-                np.abs(cast(complex, rho.expect(term.dag() * term))) ** 0.5,
-                term,
+    if len(terms_2) < len(terms_1):
+        terms_1, terms_2 = terms_2, terms_1
+
+    terms_norms_1 = compute_list_terms_with_norms(rho, terms_1)
+    terms_norms_2 = compute_list_terms_with_norms(rho, terms_2)
+    discard_check = ErrorCummulator(tol, len(terms_norms_1) * len(terms_norms_2))
+
+    # Go over terms with the smaller norms, and try to discard them
+    def iterator():
+        m_1 = len(terms_norms_1) - 1
+        m_2 = len(terms_norms_2) - 1
+        for j in range(m_2, m_1, -1):
+            for i in range(m_1, -1, -1):
+                yield (
+                    (
+                        i,
+                        j,
+                    )
+                )
+        for j in range(m_1, -1, -1):
+            yield (
+                (
+                    j,
+                    j,
+                )
             )
-            for term in (op1.terms if hasattr(op1, "terms") else (op1,))
-        ),
-        key=lambda x: x[0],
-    )
-    terms_norms_2 = sorted(
-        (
-            (
-                abs(cast(complex, rho.expect(term.dag() * term))) ** 0.5,
-                term,
-            )
-            for term in (op2.terms if hasattr(op2, "terms") else (op2,))
-        ),
-        key=lambda x: x[0],
-    )
+            for i in range(j - 1, -1, -1):
+                yield (
+                    (
+                        i,
+                        j,
+                    )
+                )
+                yield (
+                    (
+                        j,
+                        i,
+                    )
+                )
 
-    rem_num_terms = len(terms_norms_1) * len(terms_norms_2)
+    # Go over terms with the smaller norms, and try to discard them
+    for i, j in iterator():
+        (norm1, t1) = terms_norms_1[i]
+        (norm2, t2) = terms_norms_2[j]
+        if discard_check.query(norm1 * norm2, 1):
+            continue
+        result += term_sp(rho, t1, t2, av_cache)
 
-    for i, (norm_1, t1) in enumerate(terms_norms_1):
-        for j, (norm_2, t2) in enumerate(terms_norms_2):
-            # If the norm of (t1,t2) is small enough, we can
-            # skip the term without harm:
-            mag = norm_1 * norm_2
-            if (tol - error) > mag * rem_num_terms:
-                error += mag
-                continue
-            rem_num_terms -= 1
-            # Determine the overlap
-            overlap = t1.acts_over().intersection(t2.acts_over())
-            if not overlap:
-                if i not in av_1:
-                    av_1[i] = cast(complex, rho.expect(t1))
-                if j not in av_2:
-                    av_2[j] = cast(complex, rho.expect(t2))
-                result += np.real(av_1[i] * av_2[j])
-            else:
-                key = (i, overlap)
-                if key in cache_reduce_1:
-                    t1_red = cache_reduce_1[key]
-                else:
-                    t1_red = cache_reduce_1[key] = t1.reduce(overlap, rho)
-                key = (j, overlap)
-                if key in cache_reduce_2:
-                    t2_red = cache_reduce_2[key]
-                else:
-                    t2_red = cache_reduce_2[key] = t2.reduce(overlap, rho)
-
-                result += np.real(cast(complex, rho.expect(t1_red * t2_red)))
     return result
 
 
-def _compute_cov_prod_normsq_h(
-    rho: ProductDensityOperator, op1: Operator, tol: float = QALMA_TOLERANCE
-) -> float:
+def _compute_cov_prod_sp_g(
+    rho: ProductDensityOperator,
+    op1: Operator,
+    op2: Operator,
+    tol: float = QALMA_TOLERANCE,
+    av_cache: Optional[Dict[Operator, complex]] = None,
+) -> complex:
     """
-    Compute the square of the induced norm by
-    the covariance scalar product associated to
-    a product state for hermitician operators.
+    Compute the covariance scalar product
+    associated to a product state for two
+    hermitician operators.
     """
-    result: float = 0.0
-    av_1: Dict[int, complex] = {}
-    reduced_cache: Dict[Tuple[int, frozenset], Operator] = {}
-    op1 = op1.simplify()
-    terms_1 = op1.terms if hasattr(op1, "terms") else [op1]
-    terms_1, norms_sq = trim_terms_by_tolerance(rho, terms_1, tol)
+    if av_cache is None:
+        av_cache = {}
 
-    for i, t1 in enumerate(terms_1):
-        for j, t2 in enumerate(terms_1):
-            if j > i:
-                continue
-            if i == j:
-                result += norms_sq[i]
-            else:
-                overlap = t1.acts_over().intersection(t2.acts_over())
-                if overlap:
-                    key = (i, overlap)
-                    if key in reduced_cache:
-                        t1_red = reduced_cache[key]
-                    else:
-                        t1_red = reduced_cache[key] = t1.reduce(overlap, rho)
-                    key = (j, overlap)
-                    if key in reduced_cache:
-                        t2_red = reduced_cache[key]
-                    else:
-                        t2_red = reduced_cache[key] = t2.reduce(overlap, rho)
-                    contrib = 2 * np.real(cast(complex, rho.expect(t1_red * t2_red)))
-                else:
-                    if i not in av_1:
-                        av_1[i] = cast(complex, rho.expect(t1))
-                    if j not in av_1:
-                        av_1[j] = cast(complex, rho.expect(t2))
-                    contrib = 2.0 * np.real(np.conj(av_1[i]) * av_1[j])
-                result += contrib
-    result = np.abs(result)
-    return result
+    conjugate: bool = False
+    result: complex = 0.0
+    term_sp: Callable = _term_sp_cov_prod_g
 
+    terms_1 = op1.flat().terms if hasattr(op1, "terms") else (op1,)
+    terms_2 = op2.flat().terms if hasattr(op2, "terms") else (op2,)
 
-def trim_terms_by_tolerance(rho, terms, tol) -> Tuple[List[Operator], List[float]]:
-    """Compute squared norms of each term, and remove those with smaller norm"""
-    terms_with_norms = sorted(
-        (
-            (
-                np.abs(cast(complex, rho.expect(t1.dag() * t1))),
-                t1,
+    if len(terms_2) < len(terms_1):
+        conjugate = True
+        terms_1, terms_2 = terms_2, terms_1
+
+    terms_norms_1 = compute_list_terms_with_norms(rho, terms_1)
+    terms_norms_2 = compute_list_terms_with_norms(rho, terms_2)
+
+    discard_check = ErrorCummulator(tol, len(terms_norms_1) * len(terms_norms_2))
+    # Go over terms with the smaller norms, and try to discard them
+
+    def iterator() -> Generator:
+        m_1 = len(terms_norms_1) - 1
+        m_2 = len(terms_norms_2) - 1
+        for j in range(m_2, m_1, -1):
+            for i in range(m_1, -1, -1):
+                yield (
+                    (
+                        i,
+                        j,
+                    )
+                )
+        for j in range(m_1, -1, -1):
+            yield (
+                (
+                    j,
+                    j,
+                )
             )
-            for t1 in terms
-        ),
-        key=lambda x: -x[0],
-    )
-    n = len(terms_with_norms)
-    error = 0.0
-    while error < tol and n:
-        n = n - 1
-        last_norm = terms_with_norms[n][0] ** 0.5
-        error += last_norm
-    terms_with_norms = terms_with_norms[: n + 1]
-    return [term[1] for term in terms_with_norms], [
-        term[0] for term in terms_with_norms
-    ]
+            for i in range(j - 1, -1, -1):
+                yield (
+                    (
+                        i,
+                        j,
+                    )
+                )
+                yield (
+                    (
+                        j,
+                        i,
+                    )
+                )
+
+    # Go over terms with the smaller norms, and try to discard them
+    for i, j in iterator():
+        (norm1, t1) = terms_norms_1[i]
+        (norm2, t2) = terms_norms_2[j]
+        if discard_check.query(norm1 * norm2, 1):
+            continue
+        result += term_sp(rho, t1, t2, av_cache)
+
+    return np.conj(result) if conjugate else result
