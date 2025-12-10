@@ -442,7 +442,8 @@ def _compute_cov_prod_normsq(
                     )
                 )
 
-    for i, j in iterator():
+    # for i, j in iterator():
+    for i, j in iterator_transverse_upper(terms_with_norms):
         (norm1, t1) = terms_with_norms[i]
         (norm2, t2) = terms_with_norms[j]
         if discard_check.query(2 * norm1 * norm2, 2):
@@ -618,6 +619,35 @@ def iterator_transverse(tn_1, tn_2):
         else:
             for i in range(upper_bound_i, lower_bound_i - 1, -1):
                 j = s - i
+                yield (
+                    (
+                        i,
+                        j,
+                    )
+                )
+
+
+def iterator_transverse_upper(tn_1):
+    m = len(tn_1)
+    for s in range(2 * m - 3, 0, -1):
+        lower_bound_i = max(0, s - m + 1)
+        upper_bound_i = min(m - 1, s // 2)
+        if s % 2 == 0:
+            for i in range(lower_bound_i, upper_bound_i + 1):
+                j = s - i
+                if i == j:
+                    continue
+                yield (
+                    (
+                        i,
+                        j,
+                    )
+                )
+        else:
+            for i in range(upper_bound_i, lower_bound_i - 1, -1):
+                j = s - i
+                if i == j:
+                    continue
                 yield (
                     (
                         i,
