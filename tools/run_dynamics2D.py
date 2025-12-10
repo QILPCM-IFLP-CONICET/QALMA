@@ -82,7 +82,7 @@ PHI_0 = [0, 0.25, 0.25, 1]
 def build_system_objects(args):
     global L, W, SYSTEM, HAMILTONIAN, SZ_TOTAL, HALF_LEN_COMM, SITES, GLOBAL_IDENTITY, K0, TRACK_OBSERVABLES
     SYSTEM = build_system(
-        geometry_name="square lattice",
+        geometry_name="open square lattice",
         model_name="spin",
         **{"L": L, "W": W, "Jz": 0, "Jxy": JX, "Alpha": ALPHA},
     )
