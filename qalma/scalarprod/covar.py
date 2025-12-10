@@ -513,7 +513,8 @@ def _compute_cov_prod_sp_h(
                 )
 
     # Go over terms with the smaller norms, and try to discard them
-    for i, j in iterator():
+    # for i, j in iterator():
+    for i, j in iterator_transverse(terms_norms_1, terms_norms_2):
         (norm1, t1) = terms_norms_1[i]
         (norm2, t2) = terms_norms_2[j]
         if discard_check.query(norm1 * norm2, 1):
@@ -588,7 +589,8 @@ def _compute_cov_prod_sp_g(
                 )
 
     # Go over terms with the smaller norms, and try to discard them
-    for i, j in iterator():
+    # for i, j in iterator():
+    for i, j in iterator_transverse(terms_norms_1, terms_norms_2):
         (norm1, t1) = terms_norms_1[i]
         (norm2, t2) = terms_norms_2[j]
         if discard_check.query(norm1 * norm2, 1):
@@ -596,3 +598,29 @@ def _compute_cov_prod_sp_g(
         result += term_sp(rho, t1, t2, av_cache)
 
     return np.conj(result) if conjugate else result
+
+
+def iterator_transverse(tn_1, tn_2):
+    m1 = len(tn_1)
+    m2 = len(tn_2)
+    for s in range(m1 + m2 - 2, -1, -1):
+        lower_bound_i = max(0, s - m2 + 1)
+        upper_bound_i = min(s, m1 - 1)
+        if s % 2 == 0:
+            for i in range(lower_bound_i, upper_bound_i + 1):
+                j = s - i
+                yield (
+                    (
+                        i,
+                        j,
+                    )
+                )
+        else:
+            for i in range(upper_bound_i, lower_bound_i - 1, -1):
+                j = s - i
+                yield (
+                    (
+                        i,
+                        j,
+                    )
+                )
