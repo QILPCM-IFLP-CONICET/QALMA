@@ -424,25 +424,30 @@ def _compute_cov_prod_normsq(
     the covariance scalar product associated to
     a product state for general operators.
     """
-    result: float = 0.0
     terms_1 = op1.terms if hasattr(op1, "terms") else [op1]
-    discard_check = ErrorCummulator(tol, len(terms_1) ** 2)
+    len_terms = len(terms_1)
+    discard_check = ErrorCummulator(tol, len_terms * (len_terms - 1))
     terms_with_norms = compute_list_terms_with_norms(rho, terms_1)
+    result: float = sum(n**2 for n, t in terms_with_norms)
     if av_cache is None:
         av_cache = {}
 
-    for i, (norm1, t1) in enumerate(terms_with_norms):
-        for j, (norm2, t2) in enumerate(terms_with_norms):
-            if j > i:
-                continue
-            if i == j:
-                if discard_check.query(2 * norm1 * norm2, 2):
-                    continue
-                result += norm1**2
-            else:
-                if discard_check.query(2 * norm1 * norm2, 2):
-                    continue
-                result += 2 * np.real(term_sp(rho, t1, t2, av_cache))
+    def iterator():
+        for j in range(len_terms - 1, -1, -1):
+            for i in range(j - 1, -1, -1):
+                yield (
+                    (
+                        i,
+                        j,
+                    )
+                )
+
+    for i, j in iterator():
+        (norm1, t1) = terms_with_norms[i]
+        (norm2, t2) = terms_with_norms[j]
+        if discard_check.query(2 * norm1 * norm2, 2):
+            continue
+        result += 2 * np.real(term_sp(rho, t1, t2, av_cache))
     return result
 
 
@@ -467,18 +472,54 @@ def _compute_cov_prod_sp_h(
     terms_1 = op1.flat().terms if hasattr(op1, "terms") else (op1,)
     terms_2 = op2.flat().terms if hasattr(op2, "terms") else (op2,)
 
+    if len(terms_2) < len(terms_1):
+        terms_1, terms_2 = terms_2, terms_1
+
     terms_norms_1 = compute_list_terms_with_norms(rho, terms_1)
     terms_norms_2 = compute_list_terms_with_norms(rho, terms_2)
     discard_check = ErrorCummulator(tol, len(terms_norms_1) * len(terms_norms_2))
+
     # Go over terms with the smaller norms, and try to discard them
-    for norm_1, t1 in reversed(terms_norms_1):
-        for norm_2, t2 in reversed(terms_norms_2):
-            # If the norm of (t1,t2) is small enough, we can
-            # skip the term without harm:
-            if discard_check.query(norm_1 * norm_2):
-                continue
-            # Determine the overlap
-            result += term_sp(rho, t1, t2, av_cache)
+    def iterator():
+        m_1 = len(terms_norms_1) - 1
+        m_2 = len(terms_norms_2) - 1
+        for j in range(m_2, m_1, -1):
+            for i in range(m_1, -1, -1):
+                yield (
+                    (
+                        i,
+                        j,
+                    )
+                )
+        for j in range(m_1, -1, -1):
+            yield (
+                (
+                    j,
+                    j,
+                )
+            )
+            for i in range(j - 1, -1, -1):
+                yield (
+                    (
+                        i,
+                        j,
+                    )
+                )
+                yield (
+                    (
+                        j,
+                        i,
+                    )
+                )
+
+    # Go over terms with the smaller norms, and try to discard them
+    for i, j in iterator():
+        (norm1, t1) = terms_norms_1[i]
+        (norm2, t2) = terms_norms_2[j]
+        if discard_check.query(norm1 * norm2, 1):
+            continue
+        result += term_sp(rho, t1, t2, av_cache)
+
     return result
 
 
@@ -497,23 +538,61 @@ def _compute_cov_prod_sp_g(
     if av_cache is None:
         av_cache = {}
 
+    conjugate: bool = False
     result: complex = 0.0
     term_sp: Callable = _term_sp_cov_prod_g
 
     terms_1 = op1.flat().terms if hasattr(op1, "terms") else (op1,)
     terms_2 = op2.flat().terms if hasattr(op2, "terms") else (op2,)
 
+    if len(terms_2) < len(terms_1):
+        conjugate = True
+        terms_1, terms_2 = terms_2, terms_1
+
     terms_norms_1 = compute_list_terms_with_norms(rho, terms_1)
     terms_norms_2 = compute_list_terms_with_norms(rho, terms_2)
 
     discard_check = ErrorCummulator(tol, len(terms_norms_1) * len(terms_norms_2))
     # Go over terms with the smaller norms, and try to discard them
-    for norm_1, t1 in reversed(terms_norms_1):
-        for norm_2, t2 in reversed(terms_norms_2):
-            # If the norm of (t1,t2) is small enough, we can
-            # skip the term without harm:
-            if discard_check.query(norm_1 * norm_2):
-                continue
-            # Determine the overlap
-            result += term_sp(rho, t1, t2, av_cache)
-    return result
+
+    def iterator():
+        m_1 = len(terms_norms_1) - 1
+        m_2 = len(terms_norms_2) - 1
+        for j in range(m_2, m_1, -1):
+            for i in range(m_1, -1, -1):
+                yield (
+                    (
+                        i,
+                        j,
+                    )
+                )
+        for j in range(m_1, -1, -1):
+            yield (
+                (
+                    j,
+                    j,
+                )
+            )
+            for i in range(j - 1, -1, -1):
+                yield (
+                    (
+                        i,
+                        j,
+                    )
+                )
+                yield (
+                    (
+                        j,
+                        i,
+                    )
+                )
+
+    # Go over terms with the smaller norms, and try to discard them
+    for i, j in iterator():
+        (norm1, t1) = terms_norms_1[i]
+        (norm2, t2) = terms_norms_2[j]
+        if discard_check.query(norm1 * norm2, 1):
+            continue
+        result += term_sp(rho, t1, t2, av_cache)
+
+    return np.conj(result) if conjugate else result
