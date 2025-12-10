@@ -150,11 +150,12 @@ class OperatorBasis:
                     1e-3 * min(row[i] for i, row in enumerate(gram)),
                 )
                 l_gram = cholesky(gram)
-                if all(abs(row[i]) > threshold for i, row in enumerate(l_gram)):
+                if all(abs(row[i]) >= threshold for i, row in enumerate(l_gram)):
                     break
             except LinAlgError:
                 pass
-            li_indx = find_linearly_independent_rows(gram)
+
+            li_indx = find_linearly_independent_rows(gram, tol=threshold)
             logging.warning(
                 (
                     "using a non-independent set of operators. "
@@ -401,6 +402,8 @@ class HierarchicalOperatorBasis(OperatorBasis):
                     new_elem = new_elem_proj
                     comm_norm = np.abs(sp(new_elem, new_elem))
                     assert new_elem.isherm, "hermiticity lost"
+
+            new_elem = new_elem.tidyup()
 
             if np.abs(comm_norm) < tol_sq:
                 closed = True
