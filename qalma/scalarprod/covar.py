@@ -31,6 +31,7 @@ class ErrorCummulator:
         self.tol = tol
         self.rem_terms = num_terms
         self.error = 0.0
+        self.margin = tol
 
     def query(self, mag, steps=1) -> bool:
         """
@@ -39,10 +40,11 @@ class ErrorCummulator:
         the tolerance and the accumulated error.
 
         """
-        margin = self.tol - self.error
+        margin = self.margin
         result = margin > mag and margin > mag * self.rem_terms
         if result:
             self.error += mag
+            self.margin -= mag
         self.rem_terms -= steps
         return result
 
@@ -271,6 +273,10 @@ def compute_cov_sqnorm(
     """
     if av_cache is None:
         av_cache = {}
+    # TODO:
+    # The following routines are optimized for handling products of
+    # large sums of operators. Consider branch this to handle
+    # special cases.
     if operator.isherm:
         return _compute_cov_prod_normsq(
             rho, operator, term_sp=_term_sp_cov_prod_h, av_cache=av_cache
