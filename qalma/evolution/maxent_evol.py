@@ -465,8 +465,14 @@ def trim_and_project_function(sigma, n_body, tol=1e-6):
             " sector upto tol=",
             tol,
         )
+        isherm = op_b.isherm
         op_b = op_b.simplify()
         op_b = n_body_projection(op_b, nmax=n_body, sigma=sigma).simplify()
-        return trim_terms_by_tolerance(sigma, op_b, tol)
+        op_b = trim_terms_by_tolerance(sigma, op_b, tol)
+        if isherm:
+            op_b = op_b.hermitician_part()
+        else:
+            print("basis element of type ", type(op_b), "is not hermitician")
+        return op_b
 
     return trim_and_project

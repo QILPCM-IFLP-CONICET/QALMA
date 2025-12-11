@@ -156,6 +156,15 @@ class SumOperator(Operator):
             return SumOperator(tuple(terms), self.system)
         return self
 
+    def hermitician_part(self):
+        if self._isherm is True:
+            return self
+        return SumOperator(
+            tuple(t.hermitician_part() for t in self.terms),
+            system=self.system,
+            isherm=True,
+        )
+
     @property
     def isherm(self) -> bool:
         isherm = self._isherm
@@ -406,6 +415,15 @@ class OneBodyOperator(SumOperator):
 
         prefactor = np.exp(ln_prefactor)
         return ProductOperator(sites_op, prefactor=prefactor, system=self.system)
+
+    def hermitician_part(self):
+        if self._isherm is True:
+            return self
+        return OneBodyOperator(
+            tuple(t.hermitician_part() for t in self.terms),
+            system=self.system,
+            isherm=True,
+        )
 
     def simplify(self):
         if self._simplified:

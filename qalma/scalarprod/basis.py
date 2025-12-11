@@ -74,7 +74,7 @@ class OperatorBasis:
 
         assert all(
             op_b.isherm for op_b in operators
-        ), "[(type(x), x.acts_over8), relative_non_hermitician_part(x),) for x in op_b]"
+        ), f"{[(type(x), x.acts_over(), relative_non_hermitician_part(x),x.isherm) for x in op_b]}"
         self.operator_basis = operators
 
         if precomputed_tensors is not None:
@@ -778,5 +778,7 @@ def do_compute_cross_gram_matrix(sp, ops1, ops2, dtype=np.float128):
 def relative_non_hermitician_part(x):
     if x.isherm:
         return True
-    err = x.dag() - x
-    return abs((err * err).tr()) ** 0.5 / ((x * x).tr()) ** 0.5
+    x_ah = x.dag() - x
+    error = abs((x_ah * x_ah).tr()) ** 0.5 / ((x * x).tr()) ** 0.5
+    print("error=", error," tolerance=", QALMA_TOLERANCE)
+    return error<QALMA_TOLERANCE
