@@ -399,7 +399,6 @@ class HierarchicalOperatorBasis(OperatorBasis):
             if not new_elem.isherm:
                 new_elem = new_elem.hermitician_part()
 
-            print("tidy up", type(new_elem))
             new_elem = new_elem.tidyup()
 
             if not new_elem.isherm:
@@ -777,11 +776,14 @@ def do_compute_cross_gram_matrix(sp, ops1, ops2, dtype=np.float128):
     return g12
 
 
-def relative_non_hermitician_part(x):
+def _relative_non_hermitician_part(x: Operator):
+    """
+    Auxiliar function to check how much `x` fails
+    being hermitician. Used for test only.
+    """
     if x.isherm:
         return True
     x_dag = x.dag()
     x_ah = x_dag - x
     error = abs((x_ah * x_ah).tr()) ** 0.5 / ((x_dag * x).tr()) ** 0.5
-    print("error=", error, " tolerance=", QALMA_TOLERANCE, error < QALMA_TOLERANCE)
     return error < QALMA_TOLERANCE
