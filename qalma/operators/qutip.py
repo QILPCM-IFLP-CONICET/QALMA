@@ -7,7 +7,7 @@ import logging
 from functools import reduce
 from typing import Dict, Iterable, List, Optional, Tuple, Union
 
-from numpy import imag, log as np_log
+from numpy import imag, log as np_log, real
 from qutip import Qobj, qeye, tensor  # type: ignore[import-untyped]
 
 from qalma.alpsmodels import qutip_model_from_dims
@@ -193,6 +193,19 @@ class QutipOperator(Operator):
         """Eigendecomposition"""
         evals, evecs = self.operator.eigenstates()
         return evals * self.prefactor, evecs
+
+    def hermitician_part(self):
+        if self.isherm:
+            return self
+        qop = self.operator
+        prefactor = self.prefactor
+        if qop.isherm:
+            prefactor = real(prefactor)
+        else:
+            qop = qop * (0.5 * prefactor)
+            qop = qop + qop.dag()
+            prefactor = 1.0
+        return QutipOperator(qop, self.system, self.site_names, prefactor)
 
     def inv(self):
         """the inverse of the operator"""
