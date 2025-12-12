@@ -311,7 +311,7 @@ class SumOperator(Operator):
         """Removes small elements from the quantum object."""
         tidy_terms = [term.tidyup(atol) for term in self.terms]
         tidy_terms = tuple((term for term in tidy_terms if term))
-        return iterable_to_operator(tidy_terms, self.system)
+        return iterable_to_operator(tidy_terms, self.system, isherm=self._isherm)
 
 
 NBodyOperator = SumOperator
@@ -498,9 +498,9 @@ class OneBodyOperator(SumOperator):
         """Removes small elements from the quantum object."""
         tidy_terms = [term.tidyup(atol) for term in self.terms]
         tidy_terms = tuple((term for term in tidy_terms if term))
-        isherm = all(term.isherm for term in tidy_terms) or None
-        isdiag = all(term.isdiagonal for term in tidy_terms) or None
-        return OneBodyOperator(tidy_terms, self.system, isherm=isherm, isdiag=isdiag)
+        return OneBodyOperator(
+            tidy_terms, self.system, isherm=self._isherm, isdiag=self._isdiagonal
+        )
 
 
 def iterable_to_operator(terms: Iterable[Operator], system, **kwargs) -> Operator:

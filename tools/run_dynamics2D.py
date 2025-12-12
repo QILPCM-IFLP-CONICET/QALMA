@@ -134,8 +134,10 @@ def run_series(axis):
 
     print("Plot observables")
     series_expect = [np.real(rho.expect(SZ_TOTAL)) for rho in series]
-    with open(f"series_L={L}_beta={BETA}_{UUID_CALL}.pkl", "wb") as f:
-        pickle.dump({"sol": series_sol, "ts": TIME_SPAN, "expect": series_expect}, f)
+    series_sol.expect_ops[0] = series_expect
+
+    with open(f"series_L={L}_W={W}_beta={BETA}_{UUID_CALL}.pkl", "wb") as f:
+        pickle.dump(series_sol, f)
 
     axis.plot(TIME_SPAN[: len(series)], series_expect, label="series")
     print("   done")

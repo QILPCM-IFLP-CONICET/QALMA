@@ -160,9 +160,10 @@ def run_series(axis):
 
     print("Plot observables")
     series_expect = [np.real(rho.expect(SZ_TOTAL)) for rho in series]
+    series_sol.expect_ops[0] = series_expect
 
     with open(f"series_L={L}_beta={BETA}_{UUID_CALL}.pkl", "wb") as f:
-        pickle.dump({"sol": series_sol, "ts": TIME_SPAN, "expect": series_expect}, f)
+        pickle.dump(series_sol, f)
 
     axis.plot(TIME_SPAN, series_expect, label="series")
     print("   done")

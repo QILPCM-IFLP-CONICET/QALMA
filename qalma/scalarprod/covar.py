@@ -111,7 +111,7 @@ class CovariantScalarProductFunction:
         sigma = self.sigma
         basis_1 = tuple(b.simplify().flat() for b in basis_1)
         basis_2 = tuple(b.simplify().flat() for b in basis_2)
-        isherm = all( all(b.isherm for b in basis) for basis in (basis_1, basis_2))
+        isherm = all(all(b.isherm for b in basis) for basis in (basis_1, basis_2))
         basis_1_size = len(basis_1)
         basis_2_size = len(basis_2)
         cross_gram_matrix = np.zeros(

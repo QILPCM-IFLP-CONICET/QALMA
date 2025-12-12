@@ -36,6 +36,7 @@ from .simulation import Simulation
 def compute_mean_field_state(k, sigma, **kwargs):
     sigma_result = variational_quadratic_mfa(k, sigma_ref=sigma)
     generator = -sigma_result.logm()
+    assert generator.isherm, "generator should be hermitician"
     return generator, sigma_result
 
 
@@ -82,6 +83,7 @@ def update_basis(
     if k_ref is None:
         k_ref_new, sigma = compute_mean_field_state(k, sigma)
         k_ref_new = k_ref_new + sigma.expect(k - k_ref_new)
+        k_ref_new = k_ref_new.hermitician_part()
     else:
         k_ref_new = k_ref
 
@@ -95,6 +97,7 @@ def update_basis(
     rest_elements = tuple(extra_observables)
     if k is not k_ref_new:
         rest_elements = rest_elements + (k_ref_new,)
+
     if rest_elements:
         new_basis = new_basis + rest_elements
 
