@@ -7,6 +7,7 @@ from datetime import datetime
 
 import matplotlib.pyplot as plt
 import numpy as np
+from pympler.asizeof import asizeof
 
 from qalma.evolution import (
     Simulation,
@@ -46,7 +47,17 @@ def update_basis_callback(state):
         "=",
         (state["t"] - state["t_ref"]) * state["max_error_speed"],
     )
+
+    print("    phi_0 =", state["phi_0"])
     print("    basis time cost=", state["basis time cost"])
+    print("    basis memory cost=", [asizeof(b) for b in state["basis"].operator_basis])
+    print(
+        "    basis nbody sector=",
+        [b.n_body_sector() for b in state["basis"].operator_basis],
+    )
+    print(
+        "    basis num terms=", [b.num_terms() for b in state["basis"].operator_basis]
+    )
     print("    curr_n_body=", state["curr_n_body"])
     print("    len basis=", len(state["basis"].operator_basis))
     print("    away from mean field", state["away"])
@@ -69,11 +80,11 @@ PHI_0 = [0, 0.25, 0.25, 1]
 
 
 def build_system_objects(args):
-    global L, SYSTEM, HAMILTONIAN, SZ_TOTAL, HALF_LEN_COMM, SITES, GLOBAL_IDENTITY, K0, TRACK_OBSERVABLES
+    global L, W, SYSTEM, HAMILTONIAN, SZ_TOTAL, HALF_LEN_COMM, SITES, GLOBAL_IDENTITY, K0, TRACK_OBSERVABLES
     SYSTEM = build_system(
-        geometry_name="open chain lattice",
+        geometry_name="open square lattice",
         model_name="spin",
-        **{"L": L, "Jz": 0, "Jxy": JX, "Alpha": ALPHA},
+        **{"L": L, "W": W, "Jz": 0, "Jxy": JX, "Alpha": ALPHA},
     )
     HAMILTONIAN = SYSTEM.global_operator("Hamiltonian").simplify()
     SZ_TOTAL = SYSTEM.global_operator("Sz")
@@ -109,43 +120,6 @@ def build_system_objects(args):
     TRACK_OBSERVABLES = tuple(track_observables)
 
 
-def run_exact(axis):
-    k_0 = K0 * BETA
-    hamiltonian = HAMILTONIAN
-    print("Start exact:", datetime.now())
-    exact = [
-        GibbsDensityOperator(k).to_qutip_operator()
-        for k in qutip_me_solve(hamiltonian, k_0, TIME_SPAN)
-    ]
-    print("Plot observables")
-    exact_expect = [np.real(rho.expect(SZ_TOTAL)) for rho in exact]
-    axis.set_ylim(min(-max(exact_expect), min(exact_expect)), max(exact_expect))
-    axis.plot(TIME_SPAN, exact_expect, label="exact")
-    axis.plot(
-        TIME_SPAN,
-        [exact_expect[0] * np.cos(1.4142 * BETA * JX * ALPHA * t) for t in TIME_SPAN],
-        label="2nd order Ehrenfest",
-        ls="-.",
-    )
-    axis.plot(
-        TIME_SPAN,
-        [
-            exact_expect[0]
-            * (
-                1
-                + 2
-                * ALPHA**2
-                / (1 + 3 * ALPHA**2)
-                * (np.cos(JX * BETA * t * (1 + 3 * ALPHA**2) ** 0.5) - 1)
-            )
-            for t in TIME_SPAN
-        ],
-        label="3nd order Ehrenfest",
-        ls="-.",
-    )
-    print("   done")
-
-
 def run_series(axis):
     k_0 = K0 * BETA
     hamiltonian = HAMILTONIAN
@@ -162,10 +136,10 @@ def run_series(axis):
     series_expect = [np.real(rho.expect(SZ_TOTAL)) for rho in series]
     series_sol.expect_ops[0] = series_expect
 
-    with open(f"series_L={L}_beta={BETA}_{UUID_CALL}.pkl", "wb") as f:
+    with open(f"series_L={L}_W={W}_beta={BETA}_{UUID_CALL}.pkl", "wb") as f:
         pickle.dump(series_sol, f)
 
-    axis.plot(TIME_SPAN, series_expect, label="series")
+    axis.plot(TIME_SPAN[: len(series)], series_expect, label="series")
     print("   done")
 
 
@@ -309,7 +283,7 @@ def run_simulation_projected(basis_depth, n_body, tolerance, axis):
 
 
 def set_parameters():
-    global BETA, FULL, L, MAX_M, ELL, TOL
+    global BETA, FULL, L, W, MAX_M, ELL, TOL
 
     argparser = argparse.ArgumentParser(
         prog="run_dynamics",
@@ -323,6 +297,9 @@ def set_parameters():
     )
     argparser.add_argument(
         "--length", "-L", type=int, default=4, help="length of the spin chain"
+    )
+    argparser.add_argument(
+        "--width", "-w", type=int, default=-1, help="width of the spin chain"
     )
     argparser.add_argument(
         "--beta", type=float, default=0.001, help="inverse temperature"
@@ -356,6 +333,7 @@ def set_parameters():
     print("ns", ns)
     print(type(args), args)
     L = args.length
+    W = args.width if args.width > 0 else L
     TOL = args.tol
     ELL = args.deep
     BETA = args.beta
