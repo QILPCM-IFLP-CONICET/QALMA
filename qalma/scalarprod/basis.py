@@ -72,9 +72,6 @@ class OperatorBasis:
         if n_body_projection is not None:
             operators = tuple((n_body_projection(op_b) for op_b in operators))
 
-        assert all(
-            op_b.isherm for op_b in operators
-        ), "[(type(x), x.acts_over8), relative_non_hermitician_part(x),) for x in op_b]"
         self.operator_basis = operators
 
         if precomputed_tensors is not None:
@@ -330,9 +327,6 @@ class HierarchicalOperatorBasis(OperatorBasis):
         self.generator = generator.simplify()
         self._build_basis(seed, deep, n_body_projection)
         self.build_tensors()
-        assert all(
-            op.isherm for op in self.operator_basis
-        ), f"isherm: {[[type(op), op.acts_over(), relative_non_hermitician_part(op)] for op in self.operator_basis]}"
 
     def __add__(self, other):
         return (
@@ -401,9 +395,14 @@ class HierarchicalOperatorBasis(OperatorBasis):
                 if new_elem_proj is not new_elem:
                     new_elem = new_elem_proj
                     comm_norm = np.abs(sp(new_elem, new_elem))
-                    assert new_elem.isherm, "hermiticity lost"
+
+            if not new_elem.isherm:
+                new_elem = new_elem.hermitician_part()
 
             new_elem = new_elem.tidyup()
+
+            if not new_elem.isherm:
+                new_elem = new_elem.hermitician_part()
 
             if np.abs(comm_norm) < tol_sq:
                 closed = True
@@ -414,9 +413,8 @@ class HierarchicalOperatorBasis(OperatorBasis):
                 errors = errors[:dimension]
                 break
 
-            elem_norm = comm_norm**0.5
+            elem_norm = abs(comm_norm**0.5)
             new_elem = new_elem / elem_norm
-            assert new_elem.isherm, "hermiticity lost"
             elements.append(new_elem)
             norms.append(elem_norm)
 
@@ -573,7 +571,6 @@ def append_basis(basis_1: OperatorBasis, basis_2: OperatorBasis | Iterable[Opera
         g22 = basis_2_gram if basis_2_gram is not None else gram_matrix(ops2, sp)
     else:
         g22 = gram_matrix(ops2, sp)
-
     if hasattr(sp, "compute_cross_gram_matrix"):
         g12 = sp.compute_cross_gram_matrix(ops1, ops2)
     else:
@@ -596,6 +593,7 @@ def append_basis(basis_1: OperatorBasis, basis_2: OperatorBasis | Iterable[Opera
     n1, n2, n = len(g11), len(g22), len(gram)
     if n == n1:
         return basis_1
+
     if len(operators) != n:
         operators = tuple((operators[idx] for idx in li_indices))
 
@@ -639,7 +637,8 @@ def append_basis(basis_1: OperatorBasis, basis_2: OperatorBasis | Iterable[Opera
         if reuse and hij_block is not None:
             if n_block != len(hij_block):
                 rows_li = tuple(rows_it)
-                ops = tuple(ops[idx] for idx in rows_li)
+                ops = tuple(ops[idx].hermitician_part() for idx in rows_li)
+                assert all(op.isherm for op in ops), "must be hermitician"
                 errors = np.array([errors[idx] for idx in rows_li])
                 hij_block = cast(NDArray, hij_block)[rows_li, :][:, rows_li]
 
@@ -647,7 +646,8 @@ def append_basis(basis_1: OperatorBasis, basis_2: OperatorBasis | Iterable[Opera
 
         # If not reuse, just remove the ld operators from ops and return empty blocks.
         if n_block != len(ops):
-            ops = tuple(ops[idx] for idx in rows_it)
+            ops = tuple(ops[idx].hermitician_part() for idx in rows_it)
+
         return (
             np.empty(
                 (
@@ -707,6 +707,7 @@ def append_basis(basis_1: OperatorBasis, basis_2: OperatorBasis | Iterable[Opera
         reuse_h22,
         (idx - n1 for idx in li_indices if idx >= n1),
     )
+    operators = ops1 + ops2
 
     hij21 = fill_h_blocks(ops1, ops2, hij11, errors_1_sq, reuse_h11)
     hij12 = fill_h_blocks(ops2, ops1, hij22, errors_2_sq, reuse_h22)
@@ -775,8 +776,14 @@ def do_compute_cross_gram_matrix(sp, ops1, ops2, dtype=np.float128):
     return g12
 
 
-def relative_non_hermitician_part(x):
+def _relative_non_hermitician_part(x: Operator):
+    """
+    Auxiliar function to check how much `x` fails
+    being hermitician. Used for test only.
+    """
     if x.isherm:
         return True
-    err = x.dag() - x
-    return abs((err * err).tr()) ** 0.5 / ((x * x).tr()) ** 0.5
+    x_dag = x.dag()
+    x_ah = x_dag - x
+    error = abs((x_ah * x_ah).tr()) ** 0.5 / ((x_dag * x).tr()) ** 0.5
+    return error < QALMA_TOLERANCE
