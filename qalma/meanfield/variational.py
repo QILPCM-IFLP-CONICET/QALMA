@@ -239,7 +239,7 @@ def self_consistent_mf(
         msg = (
             "self consistent mean field failed to converge after "
             f"{curr_step} iterations. "
-            "Last Delta S_rel= {np.real(new_rel_entropy - rel_entropy)}."
+            f"Last Delta S_rel= {np.real(new_rel_entropy - rel_entropy)}."
         )
         logging.warning(msg)
     return cast(ProductDensityOperator, sigma_ref), rel_entropy
