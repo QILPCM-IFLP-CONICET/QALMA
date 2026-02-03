@@ -150,6 +150,15 @@ class SumOperator(Operator):
             return SumOperator(tuple(terms), self.system)
         return self
 
+    def hermitician_part(self):
+        if self._isherm is True:
+            return self
+        return SumOperator(
+            tuple(t.hermitician_part() for t in self.terms),
+            system=self.system,
+            isherm=True,
+        )
+
     @property
     def isherm(self) -> bool:
         isherm = self._isherm
@@ -296,7 +305,7 @@ class SumOperator(Operator):
         """Removes small elements from the quantum object."""
         tidy_terms = [term.tidyup(atol) for term in self.terms]
         tidy_terms = tuple((term for term in tidy_terms if term))
-        return iterable_to_operator(tidy_terms, self.system)
+        return iterable_to_operator(tidy_terms, self.system, isherm=self._isherm)
 
 
 NBodyOperator = SumOperator
@@ -401,6 +410,15 @@ class OneBodyOperator(SumOperator):
         prefactor = np.exp(ln_prefactor)
         return ProductOperator(sites_op, prefactor=prefactor, system=self.system)
 
+    def hermitician_part(self):
+        if self._isherm is True:
+            return self
+        return OneBodyOperator(
+            tuple(t.hermitician_part() for t in self.terms),
+            system=self.system,
+            isherm=True,
+        )
+
     def simplify(self):
         if self._simplified:
             return self
@@ -474,9 +492,9 @@ class OneBodyOperator(SumOperator):
         """Removes small elements from the quantum object."""
         tidy_terms = [term.tidyup(atol) for term in self.terms]
         tidy_terms = tuple((term for term in tidy_terms if term))
-        isherm = all(term.isherm for term in tidy_terms) or None
-        isdiag = all(term.isdiagonal for term in tidy_terms) or None
-        return OneBodyOperator(tidy_terms, self.system, isherm=isherm, isdiag=isdiag)
+        return OneBodyOperator(
+            tidy_terms, self.system, isherm=self._isherm, isdiag=self._isdiagonal
+        )
 
 
 def iterable_to_operator(terms: Iterable[Operator], system, **kwargs) -> Operator:

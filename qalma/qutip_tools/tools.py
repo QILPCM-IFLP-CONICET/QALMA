@@ -837,7 +837,7 @@ def safe_exp_and_normalize(operator: Qobj) -> Tuple[Qobj, float]:
         )
         k_0 = (
             max(np.real(x) for x in err_arpack.eigenvalues)
-            if err_arpack.eigenvalues
+            if len(err_arpack.eigenvalues)
             else 0.0
         )
 

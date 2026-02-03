@@ -131,6 +131,18 @@ class ProductOperator(Operator):
             return LocalOperator(name, self.prefactor * op_factor, self.system)
         return self
 
+    def hermitician_part(self):
+        from qalma.operators import SumOperator
+
+        if self.isherm:
+            return self
+        if all(op.isherm for op in self.sites_op.values()):
+            return ProductOperator(self.sites_op, np.real(self.prefactor), self.system)
+        half_self = self * 0.5
+        return SumOperator(
+            (half_self, half_self.dag()), system=self.system, isherm=True
+        )
+
     def inv(self):
         sites_op = self.sites_op
         system = self.system
@@ -436,6 +448,11 @@ class ScalarOperator(ProductOperator):
         if isinstance(self.prefactor, complex):
             return ScalarOperator(self.prefactor.conjugate(), self.system)
         return self
+
+    def hermitician_part(self):
+        if self.isherm:
+            return self
+        return ScalarOperator(np.real(self.prefactor), self.system)
 
     @property
     def isherm(self):

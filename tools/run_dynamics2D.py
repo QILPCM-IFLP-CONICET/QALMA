@@ -79,7 +79,7 @@ PHI_0 = [0, 0.25, 0.25, 1]
 def build_system_objects(args):
     global L, W, SYSTEM, HAMILTONIAN, SZ_TOTAL, HALF_LEN_COMM, SITES, GLOBAL_IDENTITY, K0, TRACK_OBSERVABLES
     SYSTEM = build_system(
-        geometry_name="square lattice",
+        geometry_name="open square lattice",
         model_name="spin",
         **{"L": L, "W": W, "Jz": 0, "Jxy": JX, "Alpha": ALPHA},
     )
@@ -129,11 +129,13 @@ def run_series(axis):
         except Exception:
             break
 
-    with open(f"series_L={L}_beta={BETA}_{UUID_CALL}.pkl", "wb") as f:
-        pickle.dump(series_sol, f)
-
     print("Plot observables")
     series_expect = [np.real(rho.expect(SZ_TOTAL)) for rho in series]
+    series_sol.expect_ops[0] = series_expect
+
+    with open(f"series_L={L}_W={W}_beta={BETA}_{UUID_CALL}.pkl", "wb") as f:
+        pickle.dump(series_sol, f)
+
     axis.plot(TIME_SPAN[: len(series)], series_expect, label="series")
     print("   done")
 
@@ -176,16 +178,21 @@ def run_projected(axis):
     projected = []
     for t, k in zip(TIME_SPAN, exact_k):
         print(f"projected K({t})")
-        projected.append(
-            GibbsDensityOperator(basis.project_onto(k)).to_qutip_operator()
-        )
+        try:
+            projected.append(
+                GibbsDensityOperator(basis.project_onto(k)).to_qutip_operator()
+            )
+        except Exception:
+            break
 
     print("Plot observables", datetime.now())
     exact_expect = [np.real(rho.expect(SZ_TOTAL)) for rho in exact]
     axis.set_ylim(min(-max(exact_expect), min(exact_expect)), max(exact_expect))
     axis.plot(TIME_SPAN, exact_expect, label="exact")
     projected_expect = [np.real(rho.expect(SZ_TOTAL)) for rho in projected]
-    axis.plot(TIME_SPAN, projected_expect, ls="-.", label="projected")
+    axis.plot(
+        TIME_SPAN[: len(projected_expect)], projected_expect, ls="-.", label="projected"
+    )
 
     parameters = exact_sol.parameters.copy()
     parameters["basis size"] = 10

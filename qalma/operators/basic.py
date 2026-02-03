@@ -236,6 +236,12 @@ class Operator:  # pylint: disable=too-many-public-methods
         """simplifies sums and products"""
         return self
 
+    def hermitician_part(self):
+        """The hermitician part of the operator"""
+        if self.isherm:
+            return self
+        return (self + self.dag()) * 0.5
+
     @property
     def isherm(self) -> bool:
         """Check if the operator is hermitician"""
@@ -440,6 +446,14 @@ class LocalOperator(Operator):
 
     def expm(self):
         return LocalOperator(self.site, self.operator.expm(), self.system)
+
+    def hermitician_part(self):
+        """The hermitician part of the operator"""
+        op = self.operator
+        if op.isherm:
+            return self
+        op = (op + op.dag()) * 0.5
+        return LocalOperator(self.site, op, self.system)
 
     def inv(self):
         operator = self.operator

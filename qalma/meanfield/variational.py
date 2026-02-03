@@ -239,7 +239,7 @@ def self_consistent_mf(
         msg = (
             "self consistent mean field failed to converge after "
             f"{curr_step} iterations. "
-            "Last Delta S_rel= {np.real(new_rel_entropy - rel_entropy)}."
+            f"Last Delta S_rel= {np.real(new_rel_entropy - rel_entropy)}."
         )
         logging.warning(msg)
     return cast(ProductDensityOperator, sigma_ref), rel_entropy
@@ -308,6 +308,7 @@ def variational_quadratic_mfa(
     callback_optimizer = kwargs.get("callback_optimizer", None)
     max_self_consistent_steps: int = kwargs.get("max_self_consistent_steps", 10)
     callback_self_consistent_step = kwargs.get("callback_self_consistent_step", None)
+    ham = ham.hermitician_part()
 
     if sigma_ref is not None and hasattr(sigma_ref, "to_product_state"):
         sigma_ref = sigma_ref.to_product_state()
@@ -316,13 +317,13 @@ def variational_quadratic_mfa(
         None if sigma_ref is None else compute_rel_entropy(sigma_ref, ham)
     )
     if isinstance(ham, OneBodyOperator):
-        return GibbsProductDensityOperator(ham).to_product_state()
+        return GibbsProductDensityOperator(ham.hermitician_part()).to_product_state()
 
     for _ in range(its):
         # We start by projecting the generator `ham` to the two-body sector
         # relative to `sigma_ref`:
         changed = False
-        ham_proj = n_body_projection(ham, nmax=2, sigma=sigma_ref)
+        ham_proj = n_body_projection(ham, nmax=2, sigma=sigma_ref).hermitician_part()
         if isinstance(ham_proj, OneBodyOperator):
             sigma_candidate = GibbsProductDensityOperator(ham_proj).to_product_state()
         else:
