@@ -13,14 +13,8 @@ from qalma.operators.arithmetic import (
     SumOperator,
     iterable_to_operator,
 )
-from qalma.operators.basic import (
-    LocalOperator,
-    Operator,
-)
-from qalma.operators.product import (
-    ProductOperator,
-    ScalarOperator,
-)
+from qalma.operators.basic import LocalOperator, Operator
+from qalma.operators.product import ProductOperator, ScalarOperator
 from qalma.operators.quadratic import QuadraticFormOperator
 from qalma.operators.qutip import QutipOperator
 

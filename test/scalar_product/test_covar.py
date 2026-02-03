@@ -1,9 +1,5 @@
 import os
-from test.helper import (
-    OPERATOR_TYPE_CASES,
-    TEST_CASES_STATES,
-    check_equality,
-)
+from test.helper import OPERATOR_TYPE_CASES, TEST_CASES_STATES, check_equality
 
 import pytest
 

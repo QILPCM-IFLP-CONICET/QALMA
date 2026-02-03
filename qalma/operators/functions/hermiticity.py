@@ -16,14 +16,8 @@ from qalma.operators.arithmetic import (
     SumOperator,
     iterable_to_operator,
 )
-from qalma.operators.basic import (
-    LocalOperator,
-    Operator,
-)
-from qalma.operators.product import (
-    ProductOperator,
-    ScalarOperator,
-)
+from qalma.operators.basic import LocalOperator, Operator
+from qalma.operators.product import ProductOperator, ScalarOperator
 from qalma.operators.qutip import QutipOperator
 from qalma.operators.simplify import group_terms_by_blocks
 

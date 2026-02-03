@@ -21,10 +21,7 @@ from qalma.operators import (
 from qalma.operators.arithmetic import iterable_to_operator
 from qalma.operators.quadratic import QuadraticFormOperator
 from qalma.operators.qutip import QutipOperator
-from qalma.operators.states.basic import (
-    DensityOperatorProtocol,
-    ProductDensityOperator,
-)
+from qalma.operators.states.basic import DensityOperatorProtocol, ProductDensityOperator
 from qalma.operators.states.utils import (
     acts_over_order,
     compute_operator_expectation_value,

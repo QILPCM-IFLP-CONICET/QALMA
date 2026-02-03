@@ -12,15 +12,10 @@ import numpy as np
 from qutip import Qobj, tensor as tensor_qutip  # type: ignore[import-untyped]
 
 from qalma.model import SystemDescriptor
-from qalma.operators.basic import (
-    Operator,
-)
+from qalma.operators.basic import Operator
 from qalma.operators.product import ScalarOperator
 from qalma.operators.qutip import QutipOperator
-from qalma.operators.states.basic import (
-    DensityOperatorMixin,
-    DensityOperatorProtocol,
-)
+from qalma.operators.states.basic import DensityOperatorMixin, DensityOperatorProtocol
 
 
 class QutipDensityOperator(DensityOperatorMixin, QutipOperator):

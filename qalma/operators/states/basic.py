@@ -15,14 +15,8 @@ from qutip import (  # type: ignore[import-untyped]
 
 from qalma.model import SystemDescriptor
 from qalma.operators.arithmetic import OneBodyOperator, SumOperator
-from qalma.operators.basic import (
-    LocalOperator,
-    Operator,
-)
-from qalma.operators.product import (
-    ProductOperator,
-    ScalarOperator,
-)
+from qalma.operators.basic import LocalOperator, Operator
+from qalma.operators.product import ProductOperator, ScalarOperator
 from qalma.operators.quadratic import QuadraticFormOperator
 
 

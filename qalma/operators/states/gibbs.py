@@ -10,17 +10,9 @@ import qutip
 
 from qalma.model import SystemDescriptor
 from qalma.operators.arithmetic import OneBodyOperator
-from qalma.operators.basic import (
-    LocalOperator,
-    Operator,
-)
-from qalma.operators.product import (
-    ScalarOperator,
-)
-from qalma.operators.states.basic import (
-    DensityOperatorMixin,
-    ProductDensityOperator,
-)
+from qalma.operators.basic import LocalOperator, Operator
+from qalma.operators.product import ScalarOperator
+from qalma.operators.states.basic import DensityOperatorMixin, ProductDensityOperator
 from qalma.operators.states.utils import k_by_site_from_operator
 from qalma.qutip_tools.tools import is_diagonal_op, safe_exp_and_normalize
 
@@ -140,9 +132,7 @@ class GibbsDensityOperator(DensityOperatorMixin, Operator):
 
     def partial_trace(self, sites: Union[frozenset, SystemDescriptor]):
         # pylint: disable=import-outside-toplevel
-        from qalma.meanfield.gibbs_partial_trace import (
-            gibbs_meanfield_partial_trace,
-        )
+        from qalma.meanfield.gibbs_partial_trace import gibbs_meanfield_partial_trace
 
         if isinstance(sites, SystemDescriptor):
             sites = frozenset(sites.sites)

@@ -27,14 +27,8 @@ from qalma.operators import (
     ScalarOperator,
     SumOperator,
 )
-from qalma.operators.states import (
-    GibbsProductDensityOperator,
-    ProductDensityOperator,
-)
-from qalma.projections import (
-    one_body_from_qutip_operator,
-    project_operator_to_m_body,
-)
+from qalma.operators.states import GibbsProductDensityOperator, ProductDensityOperator
+from qalma.projections import one_body_from_qutip_operator, project_operator_to_m_body
 from qalma.projections.nbody import (
     _project_qutip_operator_to_m_body_recursive,
     project_product_operator_as_n_body_operator,

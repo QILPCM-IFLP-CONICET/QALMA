@@ -9,10 +9,7 @@ from test.helper import (
 
 import numpy as np
 
-from qalma.evolution import (
-    heisenberg_solve,
-    qutip_me_solve,
-)
+from qalma.evolution import heisenberg_solve, qutip_me_solve
 
 np.set_printoptions(
     edgeitems=30, linewidth=100000, formatter=dict(float=lambda x: "%.3g" % x)

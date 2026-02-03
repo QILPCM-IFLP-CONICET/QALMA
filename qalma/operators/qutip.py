@@ -13,14 +13,8 @@ from qutip import Qobj, qeye, tensor  # type: ignore[import-untyped]
 from qalma.alpsmodels import qutip_model_from_dims
 from qalma.geometry import GraphDescriptor
 from qalma.model import SystemDescriptor
-from qalma.operators.basic import (
-    LocalOperator,
-    Operator,
-)
-from qalma.operators.product import (
-    ProductOperator,
-    ScalarOperator,
-)
+from qalma.operators.basic import LocalOperator, Operator
+from qalma.operators.product import ProductOperator, ScalarOperator
 from qalma.qutip_tools.tools import (
     decompose_qutip_operator,
     decompose_qutip_operator_hermitician,

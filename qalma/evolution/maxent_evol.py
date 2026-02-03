@@ -13,12 +13,8 @@ from typing import Any, Callable, Dict, Iterable, List, Optional, Tuple, cast
 import numpy as np
 from numpy.typing import NDArray
 
-from qalma.meanfield import (
-    variational_quadratic_mfa,
-)
-from qalma.operators import (
-    Operator,
-)
+from qalma.meanfield import variational_quadratic_mfa
+from qalma.operators import Operator
 from qalma.operators.states import GibbsDensityOperator, GibbsProductDensityOperator
 from qalma.projections import n_body_projection
 from qalma.scalarprod import (

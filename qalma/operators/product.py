@@ -10,15 +10,8 @@ import numpy as np
 import qutip  # type: ignore[import-untyped]
 
 from qalma.model import SystemDescriptor
-from qalma.qutip_tools.tools import (
-    empty_op,
-    is_diagonal_op,
-    is_scalar_op,
-    norm,
-)
-from qalma.settings import (
-    QALMA_TOLERANCE,
-)
+from qalma.qutip_tools.tools import empty_op, is_diagonal_op, is_scalar_op, norm
+from qalma.settings import QALMA_TOLERANCE
 
 from .basic import LocalOperator, Operator
 

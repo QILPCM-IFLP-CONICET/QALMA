@@ -5,11 +5,7 @@ Examples
 
 
 from qalma.model import SystemDescriptor, build_spin_chain
-from qalma.operators import (
-    OneBodyOperator,
-    ScalarOperator,
-    SumOperator,
-)
+from qalma.operators import OneBodyOperator, ScalarOperator, SumOperator
 from qalma.operators.quadratic import build_quadratic_form_from_operator
 
 CHAIN_SIZE = 6

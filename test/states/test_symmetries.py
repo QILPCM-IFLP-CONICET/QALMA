@@ -17,10 +17,7 @@ from test.helper import (
 
 import pytest
 
-from qalma.projections.symmetries import (
-    project_conserved_quantity,
-    project_parity_like,
-)
+from qalma.projections.symmetries import project_conserved_quantity, project_parity_like
 from qalma.settings import QALMA_TOLERANCE
 
 TEST_STATES = {}

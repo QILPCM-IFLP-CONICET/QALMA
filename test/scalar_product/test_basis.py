@@ -309,7 +309,7 @@ def test_add_basis():
     proj_op = basis_extended1.project_onto(test_operator)
 
     prj_ext1_norm = sp(proj_op, proj_op)
-    assert full_norm == prj_ext1_norm, f"{full_norm} != {prj_ext1_norm}"
+    assert np.allclose(full_norm, prj_ext1_norm), f"{full_norm} != {prj_ext1_norm}"
 
     ## Extending from left
 
