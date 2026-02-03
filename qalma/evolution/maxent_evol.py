@@ -13,17 +13,8 @@ from typing import Any, Callable, Dict, Iterable, List, Optional, Tuple, cast
 import numpy as np
 from numpy.typing import NDArray
 
-<<<<<<< HEAD
 from qalma.meanfield import variational_quadratic_mfa
 from qalma.operators import Operator
-=======
-from qalma.meanfield import (
-    variational_quadratic_mfa,
-)
-from qalma.operators import (
-    Operator,
-)
->>>>>>> origin/master
 from qalma.operators.states import GibbsDensityOperator, GibbsProductDensityOperator
 from qalma.projections import n_body_projection
 from qalma.scalarprod import (
@@ -41,7 +32,6 @@ from .simulation import Simulation
 def compute_mean_field_state(k, sigma, **kwargs):
     sigma_result = variational_quadratic_mfa(k, sigma_ref=sigma)
     generator = -sigma_result.logm()
-    assert generator.isherm, "generator should be hermitician"
     return generator, sigma_result
 
 
@@ -88,7 +78,6 @@ def update_basis(
     if k_ref is None:
         k_ref_new, sigma = compute_mean_field_state(k, sigma)
         k_ref_new = k_ref_new + sigma.expect(k - k_ref_new)
-        k_ref_new = k_ref_new.hermitician_part()
     else:
         k_ref_new = k_ref
 
@@ -102,7 +91,6 @@ def update_basis(
     rest_elements = tuple(extra_observables)
     if k is not k_ref_new:
         rest_elements = rest_elements + (k_ref_new,)
-
     if rest_elements:
         new_basis = new_basis + rest_elements
 
@@ -473,18 +461,8 @@ def trim_and_project_function(sigma, n_body, tol=1e-6):
             " sector upto tol=",
             tol,
         )
-        isherm = op_b.isherm
         op_b = op_b.simplify()
         op_b = n_body_projection(op_b, nmax=n_body, sigma=sigma).simplify()
-<<<<<<< HEAD
         return trim_terms_by_tolerance(sigma, op_b, tol)
-=======
-        op_b = trim_terms_by_tolerance(sigma, op_b, tol)
-        if isherm:
-            op_b = op_b.hermitician_part()
-        else:
-            print("basis element of type ", type(op_b), "is not hermitician")
-        return op_b
->>>>>>> origin/master
 
     return trim_and_project

@@ -3,11 +3,7 @@ Functions implementing the Covariance Scalar Product
 """
 
 # from datetime import datetime
-<<<<<<< HEAD
 from typing import Callable, Dict, List, Optional, Tuple, cast
-=======
-from typing import Callable, Dict, Generator, List, Optional, Tuple, cast
->>>>>>> origin/master
 
 import numpy as np
 from numpy import real
@@ -35,10 +31,6 @@ class ErrorCummulator:
         self.tol = tol
         self.rem_terms = num_terms
         self.error = 0.0
-<<<<<<< HEAD
-=======
-        self.margin = tol
->>>>>>> origin/master
 
     def query(self, mag, steps=1) -> bool:
         """
@@ -47,18 +39,10 @@ class ErrorCummulator:
         the tolerance and the accumulated error.
 
         """
-<<<<<<< HEAD
         margin = self.tol - self.error
         result = margin > mag and margin > mag * self.rem_terms
         if result:
             self.error += mag
-=======
-        margin = self.margin
-        result = margin > mag and margin > mag * self.rem_terms
-        if result:
-            self.error += mag
-            self.margin -= mag
->>>>>>> origin/master
         self.rem_terms -= steps
         return result
 
@@ -125,11 +109,7 @@ class CovariantScalarProductFunction:
         sigma = self.sigma
         basis_1 = tuple(b.simplify().flat() for b in basis_1)
         basis_2 = tuple(b.simplify().flat() for b in basis_2)
-<<<<<<< HEAD
 
-=======
-        isherm = all(all(b.isherm for b in basis) for basis in (basis_1, basis_2))
->>>>>>> origin/master
         basis_1_size = len(basis_1)
         basis_2_size = len(basis_2)
         cross_gram_matrix = np.zeros(
@@ -137,7 +117,7 @@ class CovariantScalarProductFunction:
                 basis_1_size,
                 basis_2_size,
             ),
-            dtype=float if isherm else complex,
+            dtype=float,
         )
         if isinstance(sigma, ProductDensityOperator):
             av_cache: Dict[Operator, complex] = {}
@@ -194,17 +174,13 @@ class CovariantScalarProductFunction:
         sigma = self.sigma
 
         basis = tuple(b.simplify().flat() for b in basis)
-<<<<<<< HEAD
 
-=======
-        isherm = all(b.isherm for b in basis)
->>>>>>> origin/master
         gram_matrix = np.zeros(
             (
                 basis_size,
                 basis_size,
             ),
-            dtype=float if isherm else complex,
+            dtype=float,
         )
         if isinstance(sigma, ProductDensityOperator):
             av_cache: Dict[Operator, complex] = {}
@@ -295,13 +271,6 @@ def compute_cov_sqnorm(
     """
     if av_cache is None:
         av_cache = {}
-<<<<<<< HEAD
-=======
-    # TODO:
-    # The following routines are optimized for handling products of
-    # large sums of operators. Consider branch this to handle
-    # special cases.
->>>>>>> origin/master
     if operator.isherm:
         return _compute_cov_prod_normsq(
             rho, operator, term_sp=_term_sp_cov_prod_h, av_cache=av_cache
@@ -455,7 +424,6 @@ def _compute_cov_prod_normsq(
     the covariance scalar product associated to
     a product state for general operators.
     """
-<<<<<<< HEAD
     result: float = 0.0
     terms_1 = op1.terms if hasattr(op1, "terms") else [op1]
     discard_check = ErrorCummulator(tol, len(terms_1) ** 2)
@@ -475,32 +443,6 @@ def _compute_cov_prod_normsq(
                 if discard_check.query(2 * norm1 * norm2, 2):
                     continue
                 result += 2 * np.real(term_sp(rho, t1, t2, av_cache))
-=======
-    terms_1 = op1.terms if hasattr(op1, "terms") else [op1]
-    len_terms = len(terms_1)
-    discard_check = ErrorCummulator(tol, len_terms * (len_terms - 1))
-    terms_with_norms = compute_list_terms_with_norms(rho, terms_1)
-    result: float = sum(n**2 for n, t in terms_with_norms)
-    if av_cache is None:
-        av_cache = {}
-
-    def iterator():
-        for j in range(len_terms - 1, -1, -1):
-            for i in range(j - 1, -1, -1):
-                yield (
-                    (
-                        i,
-                        j,
-                    )
-                )
-
-    for i, j in iterator():
-        (norm1, t1) = terms_with_norms[i]
-        (norm2, t2) = terms_with_norms[j]
-        if discard_check.query(2 * norm1 * norm2, 2):
-            continue
-        result += 2 * np.real(term_sp(rho, t1, t2, av_cache))
->>>>>>> origin/master
     return result
 
 
@@ -525,7 +467,6 @@ def _compute_cov_prod_sp_h(
     terms_1 = op1.flat().terms if hasattr(op1, "terms") else (op1,)
     terms_2 = op2.flat().terms if hasattr(op2, "terms") else (op2,)
 
-<<<<<<< HEAD
     terms_norms_1 = compute_list_terms_with_norms(rho, terms_1)
     terms_norms_2 = compute_list_terms_with_norms(rho, terms_2)
     discard_check = ErrorCummulator(tol, len(terms_norms_1) * len(terms_norms_2))
@@ -538,56 +479,6 @@ def _compute_cov_prod_sp_h(
                 continue
             # Determine the overlap
             result += term_sp(rho, t1, t2, av_cache)
-=======
-    if len(terms_2) < len(terms_1):
-        terms_1, terms_2 = terms_2, terms_1
-
-    terms_norms_1 = compute_list_terms_with_norms(rho, terms_1)
-    terms_norms_2 = compute_list_terms_with_norms(rho, terms_2)
-    discard_check = ErrorCummulator(tol, len(terms_norms_1) * len(terms_norms_2))
-
-    # Go over terms with the smaller norms, and try to discard them
-    def iterator():
-        m_1 = len(terms_norms_1) - 1
-        m_2 = len(terms_norms_2) - 1
-        for j in range(m_2, m_1, -1):
-            for i in range(m_1, -1, -1):
-                yield (
-                    (
-                        i,
-                        j,
-                    )
-                )
-        for j in range(m_1, -1, -1):
-            yield (
-                (
-                    j,
-                    j,
-                )
-            )
-            for i in range(j - 1, -1, -1):
-                yield (
-                    (
-                        i,
-                        j,
-                    )
-                )
-                yield (
-                    (
-                        j,
-                        i,
-                    )
-                )
-
-    # Go over terms with the smaller norms, and try to discard them
-    for i, j in iterator():
-        (norm1, t1) = terms_norms_1[i]
-        (norm2, t2) = terms_norms_2[j]
-        if discard_check.query(norm1 * norm2, 1):
-            continue
-        result += term_sp(rho, t1, t2, av_cache)
-
->>>>>>> origin/master
     return result
 
 
@@ -606,29 +497,17 @@ def _compute_cov_prod_sp_g(
     if av_cache is None:
         av_cache = {}
 
-<<<<<<< HEAD
-=======
-    conjugate: bool = False
->>>>>>> origin/master
     result: complex = 0.0
     term_sp: Callable = _term_sp_cov_prod_g
 
     terms_1 = op1.flat().terms if hasattr(op1, "terms") else (op1,)
     terms_2 = op2.flat().terms if hasattr(op2, "terms") else (op2,)
 
-<<<<<<< HEAD
-=======
-    if len(terms_2) < len(terms_1):
-        conjugate = True
-        terms_1, terms_2 = terms_2, terms_1
-
->>>>>>> origin/master
     terms_norms_1 = compute_list_terms_with_norms(rho, terms_1)
     terms_norms_2 = compute_list_terms_with_norms(rho, terms_2)
 
     discard_check = ErrorCummulator(tol, len(terms_norms_1) * len(terms_norms_2))
     # Go over terms with the smaller norms, and try to discard them
-<<<<<<< HEAD
     for norm_1, t1 in reversed(terms_norms_1):
         for norm_2, t2 in reversed(terms_norms_2):
             # If the norm of (t1,t2) is small enough, we can
@@ -638,47 +517,3 @@ def _compute_cov_prod_sp_g(
             # Determine the overlap
             result += term_sp(rho, t1, t2, av_cache)
     return result
-=======
-
-    def iterator() -> Generator:
-        m_1 = len(terms_norms_1) - 1
-        m_2 = len(terms_norms_2) - 1
-        for j in range(m_2, m_1, -1):
-            for i in range(m_1, -1, -1):
-                yield (
-                    (
-                        i,
-                        j,
-                    )
-                )
-        for j in range(m_1, -1, -1):
-            yield (
-                (
-                    j,
-                    j,
-                )
-            )
-            for i in range(j - 1, -1, -1):
-                yield (
-                    (
-                        i,
-                        j,
-                    )
-                )
-                yield (
-                    (
-                        j,
-                        i,
-                    )
-                )
-
-    # Go over terms with the smaller norms, and try to discard them
-    for i, j in iterator():
-        (norm1, t1) = terms_norms_1[i]
-        (norm2, t2) = terms_norms_2[j]
-        if discard_check.query(norm1 * norm2, 1):
-            continue
-        result += term_sp(rho, t1, t2, av_cache)
-
-    return np.conj(result) if conjugate else result
->>>>>>> origin/master
