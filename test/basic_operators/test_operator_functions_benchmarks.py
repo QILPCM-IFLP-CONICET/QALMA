@@ -7,8 +7,8 @@ from test.helper import HAMILTONIAN, SX_A, SX_TOTAL, SZ_TOTAL, TEST_CASES_STATES
 
 import pytest
 
-from qalma.operators.functions import commutator, fidelity
 from qalma.operators import ProductOperator
+from qalma.operators.functions import commutator, fidelity
 
 
 @pytest.mark.skipif(
@@ -110,7 +110,7 @@ def test_fidelity(benchmark, name_rho, name_sigma):
 
     rho = TEST_CASES_STATES[name_rho]
     sigma = TEST_CASES_STATES[name_sigma]
-    if not (isinstance(rho, ProductOperator) and  isinstance(sigma, ProductOperator)):
+    if not (isinstance(rho, ProductOperator) and isinstance(sigma, ProductOperator)):
         return
 
     def impl():
