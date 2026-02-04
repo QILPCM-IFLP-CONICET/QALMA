@@ -2,10 +2,7 @@
 Basic unit test.
 """
 
-from test.helper import (
-    FULL_TEST_CASES,
-    check_operator_equality,
-)
+from test.helper import FULL_TEST_CASES, check_operator_equality
 
 import pytest
 
