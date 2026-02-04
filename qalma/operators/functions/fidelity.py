@@ -2,11 +2,10 @@
 Fidelity and related functions.
 """
 
-
 import numpy as np
 
 from qalma.operators import ProductOperator
-from qalma.utils import operator_to_wolfram
+
 
 def fidelity(rho1, rho2) -> float:
     """
@@ -41,9 +40,8 @@ def fidelity_product_states(rho1: ProductOperator, rho2: ProductOperator) -> flo
 
     radicand = rho1 * rho2
 
-    
-    result = .5*np.log(radicand.prefactor)
+    result = 0.5 * np.log(radicand.prefactor)
     for factor in radicand.sites_op.values():
         result += np.log(sum(abs(factor.eigenenergies()) ** 0.5))
-        
+
     return np.exp(result)

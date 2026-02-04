@@ -267,43 +267,65 @@ def test_spectral_norm(name, operator):
     )
 
 
-
 @pytest.mark.parametrize(
     ["name_rho", "name_sigma"],
-    [(name_rho, name_sigma,)
-     for name_rho in TEST_CASES_STATES
-     for name_sigma in TEST_CASES_STATES],
+    [
+        (
+            name_rho,
+            name_sigma,
+        )
+        for name_rho in TEST_CASES_STATES
+        for name_sigma in TEST_CASES_STATES
+    ],
 )
 def test_fidelity(name_rho, name_sigma):
     from qutip import fidelity as qutip_fidelity
-    
+
     rho = TEST_CASES_STATES[name_rho]
     sigma = TEST_CASES_STATES[name_sigma]
     rho_qutip = QUTIP_TEST_CASES_STATES[name_rho]
     sigma_qutip = QUTIP_TEST_CASES_STATES[name_sigma]
-    if name_rho==name_sigma:
+    if name_rho == name_sigma:
         assert rho_qutip is sigma_qutip
         assert rho is sigma
-        assert np.allclose(rho_qutip.tr(),1), f"rho_qutip must be normalized. got {rho_qutip.tr()}."
+        assert np.allclose(
+            rho_qutip.tr(), 1
+        ), f"rho_qutip must be normalized. got {rho_qutip.tr()}."
         self_fidelity = fidelity(rho, sigma)
-        assert np.allclose(self_fidelity, 1., rtol=1e-12), f"fidelity with the same state {name_rho} must be 1. Got {self_fidelity}."
+        assert np.allclose(
+            self_fidelity, 1.0, rtol=1e-12
+        ), f"fidelity with the same state {name_rho} must be 1. Got {self_fidelity}."
         fidelity_qutip = qutip_fidelity(rho_qutip, sigma_qutip)
-        assert np.allclose(fidelity_qutip, 1.,rtol=0.15), f"qutip fidelity with the same state {name_rho} must be 1. got {fidelity_qutip}."
-        
-    if name_rho<name_sigma:
-        assert np.allclose(rho_qutip.tr(),1), f"rho_qutip must be normalized. got {rho_qutip.tr()}."
-        assert np.allclose(sigma_qutip.tr(),1), f"sigma_qutip must be normalized. got {sigma_qutip.tr()}."
+        assert np.allclose(
+            fidelity_qutip, 1.0, rtol=0.15
+        ), f"qutip fidelity with the same state {name_rho} must be 1. got {fidelity_qutip}."
+
+    if name_rho < name_sigma:
+        assert np.allclose(
+            rho_qutip.tr(), 1
+        ), f"rho_qutip must be normalized. got {rho_qutip.tr()}."
+        assert np.allclose(
+            sigma_qutip.tr(), 1
+        ), f"sigma_qutip must be normalized. got {sigma_qutip.tr()}."
         fidelity1 = fidelity(rho, sigma)
         fidelity2 = fidelity(sigma, rho)
-        assert 0<= fidelity1<=(1.+1.e-12), f"fidelity is a number between 0 and 1. Got {fidelity1}."
-        assert np.allclose(fidelity1, fidelity2), f"Fidelity({name_rho},{name_sigma}) must be symmetric: {fidelity1}!={fidelity2}."
+        assert (
+            0 <= fidelity1 <= (1.0 + 1.0e-12)
+        ), f"fidelity is a number between 0 and 1. Got {fidelity1}."
+        assert np.allclose(
+            fidelity1, fidelity2
+        ), f"Fidelity({name_rho},{name_sigma}) must be symmetric: {fidelity1}!={fidelity2}."
         fidelity1_qutip = qutip_fidelity(rho_qutip, sigma_qutip)
         fidelity2_qutip = qutip_fidelity(sigma_qutip, rho_qutip)
         # Qutip is not a very good reference...
-        assert np.allclose(fidelity1_qutip, fidelity2_qutip, rtol=.45), f"Fidelity({name_rho},{name_sigma}) must be symmetric: qutip gives {fidelity1_qutip}!={fidelity2_qutip}."
-        assert np.allclose(fidelity1_qutip, fidelity1,rtol=.45), f"Fidelity({name_rho},{name_sigma}) gives a diferent value in qutip. {fidelity1}!={fidelity1_qutip}"
+        assert np.allclose(
+            fidelity1_qutip, fidelity2_qutip, rtol=0.45
+        ), f"Fidelity({name_rho},{name_sigma}) must be symmetric: qutip gives {fidelity1_qutip}!={fidelity2_qutip}."
+        assert np.allclose(
+            fidelity1_qutip, fidelity1, rtol=0.45
+        ), f"Fidelity({name_rho},{name_sigma}) gives a diferent value in qutip. {fidelity1}!={fidelity1_qutip}"
 
-    
+
 # test_load()
 # test_all()
 # test_eval_expr()
