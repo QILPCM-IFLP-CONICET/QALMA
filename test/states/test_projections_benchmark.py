@@ -15,7 +15,9 @@ from typing import Dict
 import pytest
 
 from qalma.operators import Operator, ProductOperator
-from qalma.projections import project_operator_to_m_body
+from qalma.projections import (
+    project_operator_to_m_body,
+)
 from qalma.projections.nbody import (  # Product; Qutip; One body
     _project_product_operator_to_m_body_recursive,
     _project_product_operator_to_one_body,
