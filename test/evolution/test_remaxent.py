@@ -25,11 +25,12 @@ from qalma.evolution import (
     update_basis_light,
 )
 from qalma.operators.functions import commutator, spectral_norm
+from qalma.operators.quadratic import QuadraticFormOperator
 from qalma.operators.states.gibbs import GibbsProductDensityOperator
 from qalma.scalarprod import fetch_covar_scalar_product, orthogonalize_basis
 
 np.set_printoptions(
-    edgeitems=30, linewidth=100000, formatter=dict(float=lambda x: "%.3g" % x)
+    edgeitems=30, linewidth=100000, formatter={"float": lambda x: "%.3g" % x}
 )
 
 
@@ -81,17 +82,23 @@ def compare_solutions(sol, sol_qutip, t_span, order, coeff_bound, tol=1.0e-8):
     diff_sols = [
         spectral_norm(k1.to_qutip() - k2_qutip) for k1, k2_qutip in zip(sol, sol_qutip)
     ]
-    assert all(
-        error <= coeff_bound * t**order + tol for t, error in zip(t_span, diff_sols)
-    ), (
-        "Some of the errors in "
-        f"{dict([(t, (d, coeff_bound*t**order+tol,)) for t,d in zip(t_span, diff_sols) if d>= coeff_bound*t**order+tol])}"
-        " are larger from the expected bound."
+
+    broken = {
+        t: (
+            error,
+            coeff_bound * t**order + tol,
+        )
+        for t, error in zip(t_span, diff_sols)
+        if error >= coeff_bound * t**order + tol
+    }
+
+    assert len(broken) == 0, (
+        "Some of the errors in " f"{broken}" " are larger from the expected bound."
     )
 
 
 def fn_hij_tensor_with_errors_from_qutip(basis, sp, ham_j):
-
+    """test fn_hij_tensor computation"""
     comm_h_ops = [(ham_j * op2 - op2 * ham_j) for op2 in basis]
     local_h_ij = np.zeros([len(basis), len(basis)], dtype=complex)
     for i, b in enumerate(basis):
@@ -123,7 +130,6 @@ def test_build_hierarchical_basis(name_ham, ham, name_k0, k0, sigma_name, sigma)
     """
     Check the construction of hierarchical basis
     """
-    from qalma.operators.quadratic import QuadraticFormOperator
 
     if isinstance(ham, QuadraticFormOperator):
         return
@@ -146,7 +152,7 @@ def test_build_hierarchical_basis(name_ham, ham, name_k0, k0, sigma_name, sigma)
         b_op.isherm for b_op in h_basis
     ), "operators in a Hierarchical basis must be hermitician."
     h_basis_qutip = [qutip_k0]
-    for i in range(deep):
+    for _ in range(deep):
         h_basis_qutip.append(
             qutip_ham * h_basis_qutip[-1] - h_basis_qutip[-1] * qutip_ham
         )
@@ -180,7 +186,7 @@ def test_build_hierarchical_basis(name_ham, ham, name_k0, k0, sigma_name, sigma)
     print("werrs      ", werrs)
     assert all(
         abs(x - y) < 1e-6 for x, y in zip(werrs_qutip, werrs)
-    ), f"werrs and werrs_qutip do not match {[abs(x - y)  for x, y in zip(werrs_qutip, werrs)]}."
+    ), f"werrs and werrs_qutip do not match {[abs(x - y) for x, y in zip(werrs_qutip, werrs)]}."
 
     # check commutators
 
@@ -218,7 +224,7 @@ def test_evolution():
 
 
 def test_adaptive():
-
+    """test adaptive evolution"""
     t_span = np.linspace(0, 2, 10)
     k0 = SX_AB
     ham = 0.1 * HAMILTONIAN + SZ_TOTAL
@@ -230,7 +236,7 @@ def test_adaptive():
 
 
 def test_adaptive_light():
-
+    """test adaptive evolution with light update basis"""
     t_span = np.linspace(0, 2, 10)
     k0 = SX_AB
     ham = 0.1 * HAMILTONIAN + SZ_TOTAL
