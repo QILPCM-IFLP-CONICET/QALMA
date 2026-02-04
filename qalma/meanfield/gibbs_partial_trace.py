@@ -10,7 +10,9 @@ from typing import List
 
 from qutip import tensor as qutip_tensor
 
-from qalma.meanfield import variational_quadratic_mfa
+from qalma.meanfield import (
+    variational_quadratic_mfa,
+)
 from qalma.model import SystemDescriptor
 from qalma.operators import (
     Operator,
@@ -20,7 +22,10 @@ from qalma.operators import (
     SumOperator,
 )
 from qalma.operators.arithmetic import iterable_to_operator
-from qalma.operators.states.basic import DensityOperatorProtocol, ProductDensityOperator
+from qalma.operators.states.basic import (
+    DensityOperatorProtocol,
+    ProductDensityOperator,
+)
 from qalma.operators.states.gibbs import GibbsDensityOperator
 from qalma.settings import MAXIMUM_GIBBS_EXACT_PARTIAL_TRACE
 

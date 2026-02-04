@@ -10,7 +10,10 @@ import numpy as np
 from qalma.operators import Operator
 from qalma.operators.states import DensityOperatorProtocol, ProductDensityOperator
 from qalma.operators.states.gibbs import GibbsProductDensityOperator
-from qalma.projections import ProjectingOperatorFunction, n_body_projection
+from qalma.projections import (
+    ProjectingOperatorFunction,
+    n_body_projection,
+)
 
 
 def self_consistent_project_meanfield(

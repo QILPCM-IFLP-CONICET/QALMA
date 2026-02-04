@@ -5,7 +5,11 @@ Basic unit test.
 import numpy as np
 import pytest
 
-from .helper import OPERATOR_TYPE_CASES, TEST_CASES_STATES, check_operator_equality
+from .helper import (
+    OPERATOR_TYPE_CASES,
+    TEST_CASES_STATES,
+    check_operator_equality,
+)
 
 np.set_printoptions(
     edgeitems=30, linewidth=100000, formatter=dict(float=lambda x: "%.3g" % x)

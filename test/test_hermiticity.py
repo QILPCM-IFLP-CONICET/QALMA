@@ -10,7 +10,10 @@ from qalma.operators.states.gibbs import (
     GibbsProductDensityOperator,
 )
 
-from .helper import OPERATOR_TYPE_CASES, TEST_CASES_STATES
+from .helper import (
+    OPERATOR_TYPE_CASES,
+    TEST_CASES_STATES,
+)
 
 np.set_printoptions(
     edgeitems=30, linewidth=100000, formatter={"float": lambda x: "%.3g" % x}

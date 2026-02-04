@@ -21,7 +21,10 @@ from qalma.evolution.maxent_evol import (
 from qalma.meanfield.variational import compute_rel_entropy, variational_quadratic_mfa
 from qalma.model import build_system
 from qalma.operators import ScalarOperator
-from qalma.operators.states import GibbsDensityOperator, GibbsProductDensityOperator
+from qalma.operators.states import (
+    GibbsDensityOperator,
+    GibbsProductDensityOperator,
+)
 from qalma.projections import n_body_projection
 from qalma.scalarprod import fetch_covar_scalar_product
 from qalma.scalarprod.basis import HierarchicalOperatorBasis

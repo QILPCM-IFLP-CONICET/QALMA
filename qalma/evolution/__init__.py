@@ -17,7 +17,10 @@ from qalma.evolution.maxent_evol import (
 )
 from qalma.evolution.qutip_solver import qutip_me_solve
 from qalma.evolution.series_solver import series_evolution
-from qalma.evolution.tools import m_th_partial_sum, slice_times
+from qalma.evolution.tools import (
+    m_th_partial_sum,
+    slice_times,
+)
 
 from .simulation import Simulation
 
