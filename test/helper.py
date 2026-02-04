@@ -27,7 +27,10 @@ from qalma.operators.states import (
     GibbsProductDensityOperator,
     ProductDensityOperator,
 )
-from qalma.projections.symmetries import project_conserved_quantity, project_parity_like
+from qalma.projections.symmetries import (
+    project_conserved_quantity,
+    project_parity_like,
+)
 from qalma.settings import VERBOSITY_LEVEL
 
 

@@ -10,8 +10,14 @@ from typing import Iterable, Optional, Set, Tuple, Union
 import numpy as np
 
 from qalma.model import SystemDescriptor
-from qalma.operators.basic import LocalOperator, Operator
-from qalma.operators.product import ProductOperator, ScalarOperator
+from qalma.operators.basic import (
+    LocalOperator,
+    Operator,
+)
+from qalma.operators.product import (
+    ProductOperator,
+    ScalarOperator,
+)
 from qalma.operators.qutip import QutipOperator
 from qalma.settings import QALMA_TOLERANCE
 

@@ -9,8 +9,13 @@ from qutip import Qobj, tensor
 
 from qalma.model import SystemDescriptor
 from qalma.operators.arithmetic import OneBodyOperator, SumOperator
-from qalma.operators.basic import Operator
-from qalma.operators.product import ProductOperator, ScalarOperator
+from qalma.operators.basic import (
+    Operator,
+)
+from qalma.operators.product import (
+    ProductOperator,
+    ScalarOperator,
+)
 from qalma.operators.qutip import QutipOperator
 from qalma.qutip_tools.tools import (
     data_is_diagonal,

@@ -7,11 +7,19 @@ from test.helper import CHAIN_SIZE, SX_A, SX_B, SX_TOTAL, SYSTEM, TEST_CASES_STA
 import numpy as np
 import pytest
 
-from qalma import graph_from_alps_xml, model_from_alps_xml
-from qalma.meanfield import variational_quadratic_mfa
+from qalma import (
+    graph_from_alps_xml,
+    model_from_alps_xml,
+)
+from qalma.meanfield import (
+    variational_quadratic_mfa,
+)
 from qalma.model import SystemDescriptor
 from qalma.operators import ScalarOperator
-from qalma.operators.states import GibbsProductDensityOperator, ProductDensityOperator
+from qalma.operators.states import (
+    GibbsProductDensityOperator,
+    ProductDensityOperator,
+)
 from qalma.projections import n_body_projection
 from qalma.settings import QALMA_TOLERANCE
 

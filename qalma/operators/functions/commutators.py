@@ -9,7 +9,9 @@ from typing import Union
 from qutip import Qobj
 
 from qalma.operators.arithmetic import SumOperator, iterable_to_operator
-from qalma.operators.basic import Operator
+from qalma.operators.basic import (
+    Operator,
+)
 from qalma.operators.simplify import collect_nbody_terms
 from qalma.parallel import USE_PARALLEL, commutator_qalma_parallel
 

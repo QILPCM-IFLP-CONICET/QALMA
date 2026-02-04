@@ -11,8 +11,15 @@ import qutip  # type: ignore[import-untyped]
 from qutip import Qobj
 
 from qalma.model import SystemDescriptor
-from qalma.qutip_tools.tools import empty_op, is_diagonal_op, is_scalar_op, norm
-from qalma.settings import QALMA_ALLOW_OVERWRITE_BINDINGS
+from qalma.qutip_tools.tools import (
+    empty_op,
+    is_diagonal_op,
+    is_scalar_op,
+    norm,
+)
+from qalma.settings import (
+    QALMA_ALLOW_OVERWRITE_BINDINGS,
+)
 
 from .utils import find_arithmetic_implementation
 

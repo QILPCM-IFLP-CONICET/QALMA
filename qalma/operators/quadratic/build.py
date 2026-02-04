@@ -21,8 +21,14 @@ from numpy.linalg import eigh
 from qutip import Qobj
 
 from qalma.operators.arithmetic import OneBodyOperator, SumOperator
-from qalma.operators.basic import LocalOperator, Operator
-from qalma.operators.product import ProductOperator, ScalarOperator
+from qalma.operators.basic import (
+    LocalOperator,
+    Operator,
+)
+from qalma.operators.product import (
+    ProductOperator,
+    ScalarOperator,
+)
 from qalma.operators.qutip import QutipOperator
 from qalma.settings import QALMA_TOLERANCE
 

@@ -2,11 +2,16 @@
 Basic unit test.
 """
 
-from test.helper import OPERATOR_TYPE_CASES, check_operator_equality
+from test.helper import (
+    OPERATOR_TYPE_CASES,
+    check_operator_equality,
+)
 
 import pytest
 
-from qalma.operators.quadratic.build import build_quadratic_form_from_operator
+from qalma.operators.quadratic.build import (
+    build_quadratic_form_from_operator,
+)
 
 CHAIN_SIZE = 6
 

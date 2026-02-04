@@ -9,8 +9,14 @@ import logging
 from numpy import ndarray, real
 
 from qalma.operators.arithmetic import OneBodyOperator
-from qalma.operators.basic import LocalOperator, Operator
-from qalma.operators.product import ProductOperator, ScalarOperator
+from qalma.operators.basic import (
+    LocalOperator,
+    Operator,
+)
+from qalma.operators.product import (
+    ProductOperator,
+    ScalarOperator,
+)
 
 # from qalma.operators.simplify import simplify_sum_operator
 

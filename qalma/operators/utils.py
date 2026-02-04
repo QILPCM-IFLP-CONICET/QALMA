@@ -5,7 +5,9 @@ Utility functions used in Operator classes.
 import logging
 from typing import Callable, Optional
 
-from qalma.settings import QALMA_INFER_ARITHMETICS
+from qalma.settings import (
+    QALMA_INFER_ARITHMETICS,
+)
 
 
 def find_arithmetic_implementation(

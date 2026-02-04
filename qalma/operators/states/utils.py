@@ -9,11 +9,20 @@ import numpy as np
 from qutip import Qobj, tensor as qutip_tensor
 
 from qalma.operators.arithmetic import SumOperator
-from qalma.operators.basic import LocalOperator, Operator
-from qalma.operators.product import ProductOperator, ScalarOperator
+from qalma.operators.basic import (
+    LocalOperator,
+    Operator,
+)
+from qalma.operators.product import (
+    ProductOperator,
+    ScalarOperator,
+)
 from qalma.operators.quadratic import QuadraticFormOperator
 from qalma.operators.qutip import QutipOperator
-from qalma.operators.states.basic import DensityOperatorProtocol, ProductDensityOperator
+from qalma.operators.states.basic import (
+    DensityOperatorProtocol,
+    ProductDensityOperator,
+)
 from qalma.operators.states.qutip import QutipDensityOperator
 from qalma.qutip_tools.tools import (
     safe_exp_and_normalize as safe_exp_and_normalize_qobj,
