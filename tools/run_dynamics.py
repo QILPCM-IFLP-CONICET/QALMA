@@ -17,6 +17,7 @@ from qalma.evolution.maxent_evol import (
     adaptive_projected_evolution,
     projected_evolution,
 )
+from qalma.meanfield.variational import compute_rel_entropy, variational_quadratic_mfa
 from qalma.model import build_system
 from qalma.operators import ScalarOperator
 from qalma.operators.states import (
@@ -167,6 +168,28 @@ def run_series(axis):
 
     axis.plot(TIME_SPAN, series_expect, label="series")
     print("   done")
+
+
+def run_meanfield_projection(axis):
+    with open(f"exact_L={L}_beta={BETA}_{UUID_CALL}.pkl", "rb") as f:
+        result = pickle.load(f)
+
+    rel_s_vals = [0.0]
+    varmf = [GibbsProductDensityOperator(BETA * K0)]
+    for t, state_ln in zip(result.time_span[1:], result.states[1:]):
+        sigma_mf = variational_quadratic_mfa(state_ln, sigma_ref=varmf[-1])
+        rel_s = compute_rel_entropy(sigma_mf, state_ln)
+        varmf.append(sigma_mf)
+        rel_s_vals.append(rel_s)
+
+    result.states = varmf
+    result.expect_ops[0] = [np.real(rho.expect(SZ_TOTAL)) for rho in varmf]
+    result.expect_ops["relative entropy"] = rel_s
+
+    with open(f"meanfield_reduction_L={L}_beta={BETA}_{UUID_CALL}.pkl", "wb") as f:
+        pickle.dump(result, f)
+
+    axis.plot(result.time_span, result.expect_ops[0], label="meanfield")
 
 
 def run_projected(axis):
@@ -368,6 +391,7 @@ def run_simulations():
     fig, axis = plt.subplots()
     if FULL:
         run_projected(axis)
+        run_meanfield_projection(axis)
         run_series(axis)
     run_simulation_adaptive(ELL, MAX_M, TOL, axis)
     axis.legend()
