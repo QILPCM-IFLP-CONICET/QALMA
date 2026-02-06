@@ -70,8 +70,7 @@ class MixtureDensityOperator(DensityOperatorMixin, SumOperator):
                     (term * term_a) * (term.prefactor * term_a.prefactor)
                     for term in self.terms
                     for term_a in a.terms
-                ),
-                self.system,
+                )
             )
         if isinstance(a, SumOperator):
             return SumOperator(
@@ -79,11 +78,10 @@ class MixtureDensityOperator(DensityOperatorMixin, SumOperator):
                     (term * term_a) * term.prefactor
                     for term in self.terms
                     for term_a in a.terms
-                ),
-                self.system,
+                )
             )
         return SumOperator(
-            tuple((-term * a) * (-term.prefactor) for term in self.terms), self.system
+            tuple((-term * a) * (-term.prefactor) for term in self.terms)
         )
 
     def __neg__(self):

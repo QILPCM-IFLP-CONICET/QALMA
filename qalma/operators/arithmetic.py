@@ -37,7 +37,10 @@ class SumOperator(Operator):
         isdiag: Optional[bool] = None,
         simplified: Optional[bool] = False,
     ):
-        assert system is not None
+        # assert system is not None
+        # assert all(
+        #    system.contains(term.system) for term in term_tuple
+        # ), "some terms lives in a larger system"
         assert isinstance(term_tuple, tuple)
         assert len(term_tuple) > 0
         assert self not in term_tuple, "cannot be a term of myself."
