@@ -120,6 +120,7 @@ def collect_local_states(
     A dict of local states associated to the sites enumerated in the keys.
 
     """
+    assert obs_objs is not None
     local_states: Dict[frozenset, DensityOperatorProtocol] = {}
     block_objts = collect_blocks_for_expect(obs_objs)
     for obj_block in (frozenset(blk) for blk in block_objts):

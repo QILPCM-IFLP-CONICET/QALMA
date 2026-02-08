@@ -78,6 +78,8 @@ def build_system_objects(args):
     )
     HAMILTONIAN = SYSTEM.global_operator("Hamiltonian").simplify()
     SZ_TOTAL = SYSTEM.global_operator("Sz")
+    if SZ_TOTAL is None:
+        SZ_TOTAL = sum(SYSTEM.site_operator("Sz", site) for site in SYSTEM.sites)
 
     SITES = tuple(SYSTEM.sites.keys())
     # Other operators
@@ -181,10 +183,19 @@ def run_meanfield_projection(axis):
         rel_s = compute_rel_entropy(sigma_mf, state_ln)
         varmf.append(sigma_mf)
         rel_s_vals.append(rel_s)
+        with open(f"_meanfield_reduction_L={L}_beta={BETA}_{UUID_CALL}.pkl", "wb") as f:
+            pickle.dump(
+                {
+                    "relative entropy": rel_s_vals,
+                    "states": varmf,
+                    "time_span": result.time_span[: len(varmf)],
+                },
+                f,
+            )
 
     result.states = varmf
     result.expect_ops[0] = [np.real(rho.expect(SZ_TOTAL)) for rho in varmf]
-    result.expect_ops["relative entropy"] = rel_s
+    result.expect_ops["relative entropy"] = rel_s_vals
 
     with open(f"meanfield_reduction_L={L}_beta={BETA}_{UUID_CALL}.pkl", "wb") as f:
         pickle.dump(result, f)
