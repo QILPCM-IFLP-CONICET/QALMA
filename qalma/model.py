@@ -615,11 +615,14 @@ class SystemDescriptor:
 
         result = self.operators["global_operators"].get(name, None)
         if result is not None:
+            logging.warning("%s already defined. Return from cache.", name)
             return result
         # Build the global_operator from the descriptor
         op_descr = self.spec["model"].global_ops.get(name, None)
         if op_descr is None:
-            logging.warning("%s not defined.", op_descr)
+            logging.warning(
+                "%s not defined in %s.", name, str(self.spec["model"].global_ops.keys())
+            )
             return None
 
         graph = self.spec["graph"]
@@ -671,6 +674,7 @@ class SystemDescriptor:
             result = OneBodyOperator(site_terms, self, True)
         result = result.simplify()
         self.operators["global_operators"][name] = result
+        logging.debug("  return operator of type %s.", str(type(result)))
         return result
 
 
