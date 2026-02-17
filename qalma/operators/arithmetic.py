@@ -153,7 +153,7 @@ class SumOperator(Operator):
                 if term is not new_term:
                     changed = True
         if changed:
-            return SumOperator(tuple(terms), self.system)
+            return SumOperator(tuple(terms), self.system, isherm=self._isherm)
         return self
 
     def hermitician_part(self):
