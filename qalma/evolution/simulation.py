@@ -3,8 +3,12 @@ This module defines the `Simulation` dataclass containing the
 state and the result of a simulation.
 """
 
+import pickle
 from dataclasses import dataclass
 from typing import Any, Dict, List
+
+import h5py
+import numpy as np
 
 from qalma.operators.basic import Operator
 
