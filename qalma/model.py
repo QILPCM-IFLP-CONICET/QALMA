@@ -78,10 +78,21 @@ class SystemDescriptor:
         # To be the equal, two SystemDescriptors
         # should have the same values in the
         # `spec` attribute:
+        if self is other:
+            return True
         assert isinstance(other, SystemDescriptor)
         for key, my_spec in self.spec.items():
+            print("comparing", key)
             if other.spec[key] != my_spec:
                 return False
+        for site in other.sites:
+            if site not in self.sites:
+                return False
+
+        for site, descr in self.sites.items():
+            if descr != other.sites[site]:
+                return False
+
         return True
 
     def __repr__(self):

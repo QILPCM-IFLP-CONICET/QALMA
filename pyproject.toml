@@ -15,6 +15,7 @@ license = { file = "LICENSE.txt" }
 dependencies = [
     "matplotlib",
     "qutip",
+    "h5py",
 ]
 classifiers = [
     "Intended Audience :: Developers",

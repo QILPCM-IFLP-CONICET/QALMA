@@ -58,7 +58,7 @@ class QutipDensityOperator(DensityOperatorMixin, QutipOperator):
             )
 
         # TODO: check me again
-        assert operand.system is self.system, (
+        assert operand.system == self.system, (
             f"\nself({type(self)}).system:\n{self.system}\n "
             f"and operand({type(operand)}).system:\n{operand.system}\n "
             "are not the same."
