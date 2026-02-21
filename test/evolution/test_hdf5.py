@@ -7,6 +7,17 @@ from qalma.model import build_system
 from qalma.operators.states import GibbsDensityOperator
 
 
+def test_empty():
+    sim = Simulation(parameters={},stats={},time_span=[],expect_ops={}, states=[])
+    sim.save_hdf5("/tmp/sol.h5")
+    sim = Simulation.load_hdf5("/tmp/sol.h5")
+    assert  len(sim.parameters)==0
+    assert  len(sim.stats)==0
+    assert len(sim.time_span)==0
+    assert len(sim.expect_ops)==0
+    assert len(sim.states)==0
+
+
 def test_qutip_me_solve():
     system = build_system(
         parms={

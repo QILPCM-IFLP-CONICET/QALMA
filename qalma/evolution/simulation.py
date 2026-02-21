@@ -123,6 +123,7 @@ class Simulation:
                 f.create_dataset("time span", data=np.array(time_span))
                 states = self.states
                 if states:
+                    states_group = f.create_group("states")
                     system = states[0].system
                     if system is not None:
                         data = np.frombuffer(pickle.dumps(system), dtype=np.uint8)
@@ -147,7 +148,6 @@ class Simulation:
                         def serialize_state(rho, t):
                             return pickle.dumps((rho, t))
 
-                    states_group = f.create_group("states")
                     for i, rho in enumerate(states):
                         states_group.create_dataset(
                             "rho_" + f"{i}".rjust(6, "0"),
@@ -183,20 +183,21 @@ class Simulation:
                 except KeyError:
                     system = None
 
-                states_group = f["states"]
+                states_group = f.get("states", None)
                 states_and_times = []
-                for op_name in sorted(
-                    states_group.keys(), key=lambda x: int(x.split("_")[1])
-                ):
-                    state_bytes = states_group[op_name][0]
-                    entry = pickle.loads(
-                        state_bytes.tobytes()
-                        if isinstance(state_bytes, np.void)
-                        else state_bytes
-                    )
-                    if system:
-                        entry[0]._set_system_(system)
-                    states_and_times.append(entry)
+                if states_group is not None:
+                    for op_name in sorted(
+                            states_group.keys(), key=lambda x: int(x.split("_")[1])
+                    ):
+                        state_bytes = states_group[op_name][0]
+                        entry = pickle.loads(
+                            state_bytes.tobytes()
+                            if isinstance(state_bytes, np.void)
+                            else state_bytes
+                        )
+                        if system:
+                            entry[0]._set_system_(system)
+                        states_and_times.append(entry)
             states_and_times = sorted(states_and_times, key=lambda entry: entry[1])
             states = [entry[0] for entry in states_and_times]
             time_span = [entry[1] for entry in states_and_times]
