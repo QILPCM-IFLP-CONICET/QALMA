@@ -4,7 +4,11 @@ import pickle
 import sys
 
 for filename in sys.argv[1:]:
-    out_filename = filename.split(".")[0] + ".h5"
+    if filename[-4:] == ".pkl":
+    	out_filename = filename[:-4] + ".h5"
+    else:
+    	out_filename = filename + ".h5"
+
     print(filename, "->", out_filename)
     with open(filename, "rb") as f:
         sim = pickle.load(f)
