@@ -173,7 +173,20 @@ class Simulation:
                 parameters = load_hdf5_dict(f["parameters"])
                 stats = load_hdf5_dict(f["stats"])
                 expect_ops = load_hdf5_dict(f["expect obs"])
-                time_span = []
+                stored_time_span = f["time span"]
+                # Ensure that time span follows the right order
+                for key, data in expect_ops.items():
+                    expect_ops[key] = np.array(
+                        [
+                            q
+                            for t, q in sorted(
+                                zip(stored_time_span, data), key=lambda x: x[0]
+                            )
+                        ]
+                    )
+
+                time_span = sorted(stored_time_span)
+
                 try:
                     system_bytes = f["system"][0]
                     system = pickle.loads(
@@ -199,9 +212,14 @@ class Simulation:
                         if system:
                             entry[0]._set_system_(system)
                         states_and_times.append(entry)
-            states_and_times = sorted(states_and_times, key=lambda entry: entry[1])
-            states = [entry[0] for entry in states_and_times]
-            time_span = [entry[1] for entry in states_and_times]
+                    states_and_times = sorted(
+                        states_and_times, key=lambda entry: entry[1]
+                    )
+                    states = [entry[0] for entry in states_and_times]
+                    # The order must be the same...
+                    assert time_span == [entry[1] for entry in states_and_times]
+                else:
+                    states = []
 
             return cls(parameters, stats, time_span, expect_ops, states)
 
