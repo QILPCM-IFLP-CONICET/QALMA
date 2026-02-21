@@ -3,6 +3,7 @@ This module defines the `Simulation` dataclass containing the
 state and the result of a simulation.
 """
 
+import logging
 import pickle
 from dataclasses import dataclass
 from typing import Any, Dict, List
@@ -13,7 +14,7 @@ import numpy as np
 from qalma.operators.basic import Operator
 
 
-def store_hdf5_dict(group: h5py.Group, data_dict: Dict[Any, Any]) -> bool:
+def store_hdf5_dict(group: h5py.Group, data_dict: Dict[str, Any]):
     """
     Store data in a Python dict in a group of a hdf5 file.
     """
@@ -44,13 +45,13 @@ def store_hdf5_dict(group: h5py.Group, data_dict: Dict[Any, Any]) -> bool:
             dset = group.create_dataset(
                 key_str, shape=(1,), dtype=h5py.vlen_dtype(np.dtype("V1"))
             )
+            dset.attrs["pickled"] = True
             dset[0] = data
-    return True
 
 
-def load_hdf5_dict(group: h5py.Group):
+def load_hdf5_dict(group: h5py.Group) -> Dict[str, Any]:
     """
-    Store data in a Python dict in a group of a hdf5 file.
+    Load data from a Python dict stored as a group in a hdf5 file.
     """
     loaded_dict = {}
     for key_str in group.keys():
@@ -61,11 +62,16 @@ def load_hdf5_dict(group: h5py.Group):
                 if "encoding" in dataset.attrs:
                     loaded_dict[key_str] = raw_data.decode("utf-8")
                     continue
-        try:
-            loaded_dict[key_str] = pickle.loads(dataset[0].tobytes())
-            continue
-        except (pickle.UnpicklingError, EOFError, ValueError):
-            pass
+        if dataset.attrs.get("pickled", False):
+            try:
+                loaded_dict[key_str] = pickle.loads(dataset[0].tobytes())
+                continue
+            except (pickle.UnpicklingError, EOFError, ValueError):
+                logging.warning(
+                    " key %s was marked as containing a pickled object, but cannot be loaded.",
+                    key_str,
+                )
+                pass
         loaded_dict[key_str] = raw_data
         continue
 
