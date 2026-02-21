@@ -152,10 +152,10 @@ class Simulation:
                         states_group.create_dataset(
                             "rho_" + f"{i}".rjust(6, "0"),
                             shape=(1,),
+                            compression="gzip",
                             dtype=h5py.vlen_dtype(np.dtype("V1")),
                         )[0] = np.frombuffer(
-                            serialize_state(rho, time_span[i]), dtype=np.uint8
-                        )
+                            serialize_state(rho, time_span[i]), dtype=np.uint8)
         except (PermissionError,) as exc:
             logging.warning(
                 "The object could not be stored in %s. (%s)", filename, str(exc)
