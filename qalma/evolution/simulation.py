@@ -155,7 +155,8 @@ class Simulation:
                             compression="gzip",
                             dtype=h5py.vlen_dtype(np.dtype("V1")),
                         )[0] = np.frombuffer(
-                            serialize_state(rho, time_span[i]), dtype=np.uint8)
+                            serialize_state(rho, time_span[i]), dtype=np.uint8
+                        )
         except (PermissionError,) as exc:
             logging.warning(
                 "The object could not be stored in %s. (%s)", filename, str(exc)
@@ -187,7 +188,7 @@ class Simulation:
                 states_and_times = []
                 if states_group is not None:
                     for op_name in sorted(
-                            states_group.keys(), key=lambda x: int(x.split("_")[1])
+                        states_group.keys(), key=lambda x: int(x.split("_")[1])
                     ):
                         state_bytes = states_group[op_name][0]
                         entry = pickle.loads(
