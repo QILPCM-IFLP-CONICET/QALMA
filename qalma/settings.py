@@ -39,7 +39,7 @@ PARALLEL_USE_THREADS = False
 
 # Mean field approximation parameters.
 DEFAULT_MAX_NUMBER_OF_FIELDS = 6
-MAXIMUM_GIBBS_EXACT_PARTIAL_TRACE = 11
+MAXIMUM_GIBBS_EXACT_PARTIAL_TRACE = 8
 
 
 logging.basicConfig(level=logging.INFO)
