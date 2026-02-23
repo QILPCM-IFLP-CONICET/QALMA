@@ -174,6 +174,7 @@ class Simulation:
         """
         Load an object serialized as an hdf5 file
         """
+        return SimulationHDF5(filename)
         try:
             with h5py.File(filename, "r") as f:
                 parameters = load_hdf5_dict(f["parameters"])
@@ -228,7 +229,10 @@ class SimulationHDF5(Simulation):
 
         def __iter__(self):
             with h5py.File(self.filename, "r") as f:
-                yield from hdf5_state_iterator(f["states"], self.system)
+                group = f.get("states", None)
+                if group is None:
+                    return
+                yield from hdf5_state_iterator(group, self.system)
 
         def __getitem__(self, idx: int):
             key = "rho_" + f"{idx}".rjust(6, "0")
@@ -237,16 +241,24 @@ class SimulationHDF5(Simulation):
 
         def __setitem__(self, idx: int, value: Operator):
             key = "rho_" + f"{idx}".rjust(6, "0")
-            with h5py.File(self.filename, "r") as f:
-                store_state(key, value, f["states"], self.system)
+            with h5py.File(self.filename, "w") as f:
+                if group is None:
+                    group = f.create_group("states")
+                
+                store_state(key, value, group, self.system)
 
         def __len__(self):
             with h5py.File(self.filename, "r") as f:
-                return len(f["states"])
+                group = f.get("states", None)
+                if group is None:
+                    return 0
+                return len(group)
 
         def append(self, elem):
-            with h5py.File(self.filename, "r") as f:
-                group = f["states"]
+            with h5py.File(self.filename, "w") as f:
+                group = f.get("states", None)
+                if group is None:
+                    group = f.create_group("states")
                 idx = len(group)
                 key = "rho_" + f"{idx}".rjust(6, "0")
                 while key in group:
@@ -255,8 +267,10 @@ class SimulationHDF5(Simulation):
                 self[key] = elem
 
         def extend(self, elems):
-            with h5py.File(self.filename, "r") as f:
+            with h5py.File(self.filename, "w") as f:
                 group = f["states"]
+                if group is None:
+                    group = f.create_group("states")                
                 idx = len(group)
                 key = "rho_" + f"{idx}".rjust(6, "0")
                 for elem in elems:
@@ -268,24 +282,34 @@ class SimulationHDF5(Simulation):
     def __init__(self, filename):
         """Create an interface with an HDF5 file that stores a simulation"""
         self.filename = filename
-        self.states = self.StateList(self.filename)
+        print("Simulation from", filename)
         with h5py.File(filename, "r") as f:
             self.parameters = load_hdf5_dict(f["parameters"])
+            print("parameters:",self.parameters)
             self.stats = load_hdf5_dict(f["stats"])
+            print("stats:",self.stats)
             self.expect_ops = load_hdf5_dict(f["expect obs"])
-            self.time_span = stored_time_span = f["time span"]
+            print("expect:", self.expect_ops)
+            stored_time_span = list(f["time span"])
+            self.time_span = stored_time_span
+            print(self.time_span)
+            self.system = system_from_hdf5(f)
+            print("system:", str(self.system))
             self.key_map = {
                 t: f"{pos}".rjust(6, "0") for pos, t in enumerate(stored_time_span)
             }
-
+        self.states = self.StateList(self.filename, self.system)
+        
 
 def hdf5_state_iterator(group: h5py.Group, system: Optional[SystemDescriptor] = None):
     """Yield states from a hdf5 group"""
 
     if system is None:
         system = system_from_hdf5(group)
+    
+        
     key_time_map = {
-        t: "rho_" + f"{i}".rjust(6, "0") for i, t in enumerate(group["time span"])
+        t: "rho_" + f"{i}".rjust(6, "0") for i, t in enumerate(group.get("time span",[]))
     }
     if "states" not in group:
         return
