@@ -3,7 +3,6 @@
 Examples
 """
 
-
 from qalma.model import SystemDescriptor, build_spin_chain
 from qalma.operators import (
     OneBodyOperator,

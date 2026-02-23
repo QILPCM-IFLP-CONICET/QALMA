@@ -34,6 +34,7 @@ def test_qutip_me_solve_states():
     hamiltonian = system.global_operator("Hamiltonian")
     rho0 = GibbsDensityOperator(system.site_operator("Sz", "1[0]"))
     solution = qutip_me_solve(hamiltonian, rho0, t_list)
+
     solution.save_hdf5("/tmp/sol.h5")
     stored = Simulation.load_hdf5("/tmp/sol.h5")
     compare_sim_objects(solution, stored)
@@ -61,6 +62,9 @@ def test_qutip_me_solve_expect():
         },
     )
     solution.save_hdf5("/tmp/sol.h5")
+    assert (
+        solution.states[0].system is system
+    ), "Check that the system was not modified after serialization."
     stored = Simulation.load_hdf5("/tmp/sol.h5")
     compare_sim_objects(solution, stored)
 
@@ -81,7 +85,8 @@ def compare_sim_objects(solution, stored):
         assert stored.parameters[key] == solution.parameters[key], key
 
     system = solution.states[0].system if solution.states else None
-    assert all(str(system) == str(state.system) for state in stored.states)
+    for state in stored.states:
+        assert str(system) == str(state.system), f"{system}!={state.system}"
     assert all(
         key in stored.expect_ops for key in solution.expect_ops
     ), f"{key} is missing in the stored object."

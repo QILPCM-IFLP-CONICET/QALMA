@@ -146,7 +146,7 @@ class DensityOperatorMixin:
     def eigenstates(self) -> list:
         """Eigendecomposition"""
         if isinstance(self, Operator):
-            return super().eigenstates()  # type:ignore[misc]
+            return super().eigenstates()  # type: ignore[misc]
         raise NotImplementedError
 
     def expect(

@@ -5,6 +5,7 @@ Created on Tue Sep 12 19:07:05 2023
 
 @author: mmatera <matera@fisica.unlp.edu.ar>
 """
+
 import logging
 import os
 import os.path as osp
@@ -38,7 +39,7 @@ PARALLEL_USE_THREADS = False
 
 # Mean field approximation parameters.
 DEFAULT_MAX_NUMBER_OF_FIELDS = 6
-MAXIMUM_GIBBS_EXACT_PARTIAL_TRACE = 8
+MAXIMUM_GIBBS_EXACT_PARTIAL_TRACE = 11
 
 
 logging.basicConfig(level=logging.INFO)
