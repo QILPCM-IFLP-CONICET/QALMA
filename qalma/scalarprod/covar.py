@@ -449,8 +449,8 @@ def _compute_cov_prod_normsq(
                 )
 
     for i, j in iterator():
-        (norm1, t1) = terms_with_norms[i]
-        (norm2, t2) = terms_with_norms[j]
+        norm1, t1 = terms_with_norms[i]
+        norm2, t2 = terms_with_norms[j]
         if discard_check.query(2 * norm1 * norm2, 2):
             continue
         result += 2 * np.real(term_sp(rho, t1, t2, av_cache))
@@ -520,8 +520,8 @@ def _compute_cov_prod_sp_h(
 
     # Go over terms with the smaller norms, and try to discard them
     for i, j in iterator():
-        (norm1, t1) = terms_norms_1[i]
-        (norm2, t2) = terms_norms_2[j]
+        norm1, t1 = terms_norms_1[i]
+        norm2, t2 = terms_norms_2[j]
         if discard_check.query(norm1 * norm2, 1):
             continue
         result += term_sp(rho, t1, t2, av_cache)
@@ -595,8 +595,8 @@ def _compute_cov_prod_sp_g(
 
     # Go over terms with the smaller norms, and try to discard them
     for i, j in iterator():
-        (norm1, t1) = terms_norms_1[i]
-        (norm2, t2) = terms_norms_2[j]
+        norm1, t1 = terms_norms_1[i]
+        norm2, t2 = terms_norms_2[j]
         if discard_check.query(norm1 * norm2, 1):
             continue
         result += term_sp(rho, t1, t2, av_cache)

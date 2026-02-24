@@ -2,6 +2,7 @@
 """
 Functions to simplify sums of operators
 """
+
 import logging
 from typing import Callable, Dict, List, Optional, Sequence, cast
 

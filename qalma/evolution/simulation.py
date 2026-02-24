@@ -21,11 +21,12 @@ sim = Simulation.load_hdf5(filename)
 import logging
 import pickle
 from dataclasses import dataclass
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Optional
 
 import h5py
 import numpy as np
 
+from qalma.model import SystemDescriptor
 from qalma.operators.basic import Operator
 
 
@@ -67,6 +68,38 @@ def store_hdf5_dict(group: h5py.Group, data_dict: Dict[str, Any]):
             )
             dset.attrs["pickled"] = True
             dset[0] = data
+
+
+def store_system(group, system):
+    """Store a SystemDescription on the group"""
+    data = np.frombuffer(pickle.dumps(system), dtype=np.uint8)
+    dset = group.create_dataset(
+        "system", shape=(1,), dtype=h5py.vlen_dtype(np.dtype("V1"))
+    )
+    dset[0] = data
+
+
+def store_state(key, state, group, system=None):
+    if system is not None:
+
+        def serialize_state(rho):
+            state_sys = rho.system
+            rho._set_system_(None)
+            data = pickle.dumps(rho)
+            rho._set_system_(state_sys)
+            return data
+
+    else:
+
+        def serialize_state(rho):
+            return pickle.dumps(rho)
+
+    group.create_dataset(
+        key,
+        shape=(1,),
+        compression="gzip",
+        dtype=h5py.vlen_dtype(np.dtype("V1")),
+    )[0] = np.frombuffer(serialize_state(state), dtype=np.uint8)
 
 
 def load_hdf5_dict(group: h5py.Group) -> Dict[str, Any]:
@@ -125,38 +158,11 @@ class Simulation:
                 if states:
                     states_group = f.create_group("states")
                     system = states[0].system
-                    if system is not None:
-                        data = np.frombuffer(pickle.dumps(system), dtype=np.uint8)
-                        dset = f.create_dataset(
-                            "system", shape=(1,), dtype=h5py.vlen_dtype(np.dtype("V1"))
-                        )
-                        dset[0] = data
-
-                        def serialize_state(rho, t):
-                            rho._set_system_(None)
-                            data = pickle.dumps(
-                                (
-                                    rho,
-                                    t,
-                                )
-                            )
-                            rho._set_system_(system)
-                            return data
-
-                    else:
-
-                        def serialize_state(rho, t):
-                            return pickle.dumps((rho, t))
-
+                    # Store the system
+                    store_system(f, system)
                     for i, rho in enumerate(states):
-                        states_group.create_dataset(
-                            "rho_" + f"{i}".rjust(6, "0"),
-                            shape=(1,),
-                            compression="gzip",
-                            dtype=h5py.vlen_dtype(np.dtype("V1")),
-                        )[0] = np.frombuffer(
-                            serialize_state(rho, time_span[i]), dtype=np.uint8
-                        )
+                        key = "rho_" + f"{i}".rjust(6, "0")
+                        store_state(key, rho, states_group, system)
         except (PermissionError,) as exc:
             logging.warning(
                 "The object could not be stored in %s. (%s)", filename, str(exc)
@@ -168,6 +174,7 @@ class Simulation:
         """
         Load an object serialized as an hdf5 file
         """
+        return SimulationHDF5(filename)
         try:
             with h5py.File(filename, "r") as f:
                 parameters = load_hdf5_dict(f["parameters"])
@@ -184,42 +191,13 @@ class Simulation:
                             )
                         ]
                     )
-
                 time_span = sorted(stored_time_span)
-
-                try:
-                    system_bytes = f["system"][0]
-                    system = pickle.loads(
-                        system_bytes.tobytes()
-                        if isinstance(system_bytes, np.void)
-                        else system_bytes
-                    )
-                except KeyError:
-                    system = None
-
-                states_group = f.get("states", None)
-                states_and_times = []
-                if states_group is not None:
-                    for op_name in sorted(
-                        states_group.keys(), key=lambda x: int(x.split("_")[1])
-                    ):
-                        state_bytes = states_group[op_name][0]
-                        entry = pickle.loads(
-                            state_bytes.tobytes()
-                            if isinstance(state_bytes, np.void)
-                            else state_bytes
-                        )
-                        if system:
-                            entry[0]._set_system_(system)
-                        states_and_times.append(entry)
-                    states_and_times = sorted(
-                        states_and_times, key=lambda entry: entry[1]
-                    )
-                    states = [entry[0] for entry in states_and_times]
-                    # The order must be the same...
-                    assert time_span == [entry[1] for entry in states_and_times]
-                else:
-                    states = []
+                states = []
+                for state in hdf5_state_iterator(f):
+                    states.append(state)
+                    assert (
+                        states[0].system == states[-1].system
+                    ), f"{states[0].system}!={states[-1].system}"
 
             return cls(parameters, stats, time_span, expect_ops, states)
 
@@ -234,3 +212,165 @@ class Simulation:
                 str(exc),
             )
             return None
+
+
+class SimulationHDF5(Simulation):
+    """
+    Interface to read and write simulations stored as HDF5 files.
+    The interface avois to load all the states of a file at once, to avoid
+    saturate the memory.
+    """
+
+    class StateList:
+        def __init__(self, filename, system):
+            self.filename = filename
+            with h5py.File(filename, "r") as f:
+                self.system = system_from_hdf5(f)
+
+        def __iter__(self):
+            print("iterator for h5sim", len(self))
+            with h5py.File(self.filename, "r") as f:
+                group = f.get("states", None)
+                if group is None:
+                    print("empty iterator")
+                    return
+                yield from hdf5_state_iterator(f, self.system)
+
+        def __getitem__(self, idx: int):
+            key = "rho_" + f"{idx}".rjust(6, "0")
+            with h5py.File(self.filename, "r") as f:
+                group = f.get("states", None)
+                if group is None:
+                    raise ValueError("there are no stored elements")
+                return state_from_hdf5(f, key, self.system)
+            raise ValueError("element out of range")
+
+        def __setitem__(self, idx: int, value: Operator):
+            key = "rho_" + f"{idx}".rjust(6, "0")
+            with h5py.File(self.filename, "w") as f:
+                group = f.get("states", None)
+                if group is None:
+                    group = f.create_group("states")
+
+                store_state(key, value, group, self.system)
+
+        def __len__(self):
+            with h5py.File(self.filename, "r") as f:
+                group = f.get("states", None)
+                if group is None:
+                    return 0
+                return len(group)
+
+        def append(self, elem):
+            with h5py.File(self.filename, "w") as f:
+                group = f.get("states", None)
+                if group is None:
+                    group = f.create_group("states")
+                idx = len(group)
+                key = "rho_" + f"{idx}".rjust(6, "0")
+                while key in group:
+                    idx += 1
+                    key = "rho_" + f"{idx}".rjust(6, "0")
+                self[key] = elem
+
+        def extend(self, elems):
+            with h5py.File(self.filename, "w") as f:
+                group = f["states"]
+                if group is None:
+                    group = f.create_group("states")
+                idx = len(group)
+                key = "rho_" + f"{idx}".rjust(6, "0")
+                for elem in elems:
+                    while key in group:
+                        idx += 1
+                        key = "rho_" + f"{idx}".rjust(6, "0")
+                    self[key] = elem
+
+    def __init__(self, filename):
+        """Create an interface with an HDF5 file that stores a simulation"""
+        self.filename = filename
+        print("Simulation from", filename)
+        with h5py.File(filename, "r") as f:
+            self.parameters = load_hdf5_dict(f["parameters"])
+            self.stats = load_hdf5_dict(f["stats"])
+            self.expect_ops = load_hdf5_dict(f["expect obs"])
+            stored_time_span = list(f["time span"])
+            self.time_span = stored_time_span
+            self.system = system_from_hdf5(f)
+            self.key_map = {
+                t: f"{pos}".rjust(6, "0") for pos, t in enumerate(stored_time_span)
+            }
+        self.states = self.StateList(self.filename, self.system)
+
+
+def hdf5_state_iterator(group: h5py.Group, system: Optional[SystemDescriptor] = None):
+    """Yield states from a hdf5 group"""
+
+    if system is None:
+        system = system_from_hdf5(group)
+
+    key_time_map = {
+        t: "rho_" + f"{i}".rjust(6, "0")
+        for i, t in enumerate(group.get("time span", []))
+    }
+    if "states" not in group:
+        print(" no states defined in", group)
+        return
+    assert system is not None
+
+    for t in sorted(key_time_map):
+        key = key_time_map[t]
+        state = state_from_hdf5(group, key, system)
+        assert state.system is system
+        yield state
+
+
+def state_from_hdf5(
+    group: h5py.Group, key: str, system: Optional[SystemDescriptor] = None
+):
+    """
+    Read a state stored in a hdf5
+    file by its key name
+    """
+    if system is None:
+        system = system_from_hdf5(group)
+    try:
+        state_bytes = group["states"][key][0]
+    except KeyError:
+        print("key error:", key, "not in ", group)
+        return None
+
+    assert system is not None
+    entry = pickle.loads(
+        state_bytes.tobytes() if isinstance(state_bytes, np.void) else state_bytes
+    )
+    state = entry if isinstance(entry, Operator) else None
+    # If the element is a tuple or an iterable object,
+    # return the first element.
+    if state is None:
+        for elem in entry:
+            if isinstance(elem, Operator):
+                state = elem
+                break
+
+    if state is not None:
+        if system:
+            state._set_system_(system)
+
+    return state
+
+
+def system_from_hdf5(group: h5py.Group):
+    """
+    Read the SystemDescriptor stored
+    in a hdf5 group
+    """
+    try:
+        system_bytes = group["system"][0]
+        return pickle.loads(
+            system_bytes.tobytes()
+            if isinstance(system_bytes, np.void)
+            else system_bytes
+        )
+    except KeyError:
+        return None

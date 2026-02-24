@@ -80,9 +80,10 @@ class SystemDescriptor:
         # `spec` attribute:
         if self is other:
             return True
+        if other is None:
+            return False
         assert isinstance(other, SystemDescriptor)
         for key, my_spec in self.spec.items():
-            print("comparing", key)
             if other.spec[key] != my_spec:
                 return False
         for site in other.sites:

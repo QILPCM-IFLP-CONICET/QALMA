@@ -22,7 +22,6 @@ from qalma.model import build_system
 from qalma.operators import ScalarOperator
 from qalma.operators.states import (
     GibbsDensityOperator,
-    GibbsProductDensityOperator,
 )
 from qalma.projections import n_body_projection
 from qalma.scalarprod import fetch_covar_scalar_product
@@ -88,8 +87,9 @@ def build_system_objects(args):
     SX_A = SYSTEM.site_operator(f"Sx@{SITES[0]}")
     SY_A = SYSTEM.site_operator(f"Sy@{SITES[0]}")
     SZ_A = SYSTEM.site_operator(f"Sz@{SITES[0]}")
-    K0 = SX_A * PHI_0[1] + SY_A * PHI_0[2] + SZ_A * PHI_0[3]
-    RHO_0 = GibbsProductDensityOperator(K0)
+    K0 = (SX_A * PHI_0[1] + SY_A * PHI_0[2] + SZ_A * PHI_0[3]) * 0.1 + HAMILTONIAN
+
+    RHO_0 = variational_quadratic_mfa(K0)
     K0 = -RHO_0.logm()
 
     track_list = args.track
@@ -173,16 +173,25 @@ def run_series(axis):
 
 
 def run_meanfield_projection(axis):
-    with open(f"exact_L={L}_beta={BETA}_{UUID_CALL}.pkl", "rb") as f:
-        result = pickle.load(f)
-
+    """
+    Compute the mean field approximation of the exact evolution.
+    """
+    print(200 * "\n", "Run meanfield projection")
+    result = Simulation.load_hdf5(f"exact_ne_L={L}_beta={BETA}_{UUID_CALL}.h5")
+    print(20 * "-", "\n\n")
     rel_s_vals = [0.0]
-    varmf = [GibbsProductDensityOperator(BETA * K0)]
-    for t, state_ln in zip(result.time_span[1:], result.states[1:]):
-        sigma_mf = variational_quadratic_mfa(state_ln, sigma_ref=varmf[-1])
+    sigma_mf = None
+    varmf = []
+    time_span = result.time_span
+    exact_states = result.states
+    expect_0 = []
+    for t, state_ln in zip(time_span, exact_states):
+        print("           t=", t)
+        sigma_mf = variational_quadratic_mfa(state_ln, sigma_ref=sigma_mf)
         rel_s = compute_rel_entropy(sigma_mf, state_ln)
         varmf.append(sigma_mf)
         rel_s_vals.append(rel_s)
+        expect_0.append(np.real(sigma_mf.expect(SZ_TOTAL)))
         with open(f"_meanfield_reduction_L={L}_beta={BETA}_{UUID_CALL}.pkl", "wb") as f:
             pickle.dump(
                 {
@@ -194,7 +203,8 @@ def run_meanfield_projection(axis):
             )
 
     result.states = varmf
-    result.expect_ops[0] = [np.real(rho.expect(SZ_TOTAL)) for rho in varmf]
+    result.expect_ops[0] = expect_0
+    print(">>> computed:", len(result.expect_ops[0]))
     result.expect_ops["relative entropy"] = rel_s_vals
 
     with open(f"meanfield_reduction_L={L}_beta={BETA}_{UUID_CALL}.pkl", "wb") as f:
@@ -208,13 +218,12 @@ def run_projected(axis):
     hamiltonian = HAMILTONIAN
     print("Start exact:", datetime.now())
     exact_sol = qutip_me_solve(hamiltonian, k_0, TIME_SPAN)
-    with open(f"exact_L={L}_beta={BETA}_{UUID_CALL}.pkl", "wb") as f:
-        pickle.dump(exact_sol, f)
+    exact_sol.save_hdf5(f"exact_ne_L={L}_beta={BETA}_{UUID_CALL}.h5")
 
     exact_k = exact_sol.states
     exact = [GibbsDensityOperator(k).to_qutip_operator() for k in exact_k]
 
-    sigma_0 = GibbsProductDensityOperator(K0)
+    sigma_0 = variational_quadratic_mfa(K0)
     sp = fetch_covar_scalar_product(sigma_0)
 
     def projection_function(op_b):
@@ -269,7 +278,7 @@ def run_projected(axis):
                 stats={"errors": basis.errors},
                 time_span=exact_sol.time_span,
                 expect_ops={0: projected_expect},
-                states=[],
+                states=projected,
             ),
             f,
         )
@@ -277,6 +286,7 @@ def run_projected(axis):
 
 
 def run_simulation_adaptive(basis_depth, n_body, tolerance, axis):
+    print(f"Adaptative evolution BETA={BETA}")
     k_0 = K0 * BETA
     hamiltonian = HAMILTONIAN
     print(
@@ -284,7 +294,7 @@ def run_simulation_adaptive(basis_depth, n_body, tolerance, axis):
         datetime.now(),
     )
     try:
-        adaptative_sol = adaptive_projected_evolution(
+        adaptive_sol = adaptive_projected_evolution(
             hamiltonian,
             k_0,
             TIME_SPAN,
@@ -296,20 +306,20 @@ def run_simulation_adaptive(basis_depth, n_body, tolerance, axis):
             include_one_body_projection=True,
             extra_observables=TRACK_OBSERVABLES,
         )
-
+        adaptive_sol.parameters["beta"] = BETA
         with open(
-            f"adaptative3__L={L}_beta={BETA}_nbody={n_body}_deep={basis_depth}_{UUID_CALL}.pkl",
+            f"adaptive3__L={L}_beta={BETA}_nbody={n_body}_deep={basis_depth}_{UUID_CALL}.pkl",
             "wb",
         ) as f:
-            pickle.dump(adaptative_sol, f)
+            pickle.dump(adaptive_sol, f)
 
         # plt.scatter(ts[:len(max_ent)], [np.real(rho.expect(k_0)) for rho in max_ent], label=f"$\\ell={basis_depth}$, m={n_body}, tol={tolerance}")
         plt.scatter(
-            TIME_SPAN[: len(adaptative_sol.time_span)],
-            [np.real(ex_val) for ex_val in adaptative_sol.expect_ops[0]],
+            TIME_SPAN[: len(adaptive_sol.time_span)],
+            [np.real(ex_val) for ex_val in adaptive_sol.expect_ops[0]],
             label=f"c->$\\ell={basis_depth}$, m={n_body}, tol={tolerance}",
         )
-        print("len:", len(adaptative_sol.time_span))
+        print("len:", len(adaptive_sol.time_span))
     except Exception as e:
         print("                   EXCEPTION ")
         print(type(e), e)
@@ -358,9 +368,7 @@ def set_parameters():
     argparser.add_argument(
         "--length", "-L", type=int, default=4, help="length of the spin chain"
     )
-    argparser.add_argument(
-        "--beta", type=float, default=0.001, help="inverse temperature"
-    )
+    argparser.add_argument("--beta", type=float, default=1, help="inverse temperature")
     argparser.add_argument(
         "--n_body", "-M", type=int, default=4, help="max n_body sector"
     )
@@ -393,6 +401,7 @@ def set_parameters():
     TOL = args.tol
     ELL = args.deep
     BETA = args.beta
+    print("Beta=", BETA)
     MAX_M = args.n_body
     FULL = args.full
     build_system_objects(args)

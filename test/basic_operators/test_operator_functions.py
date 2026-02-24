@@ -323,7 +323,7 @@ def test_fidelity(name_rho, name_sigma):
         ), f"Fidelity({name_rho},{name_sigma}) must be symmetric: qutip gives {fidelity1_qutip}!={fidelity2_qutip}."
         assert np.allclose(
             fidelity1_qutip, fidelity1, rtol=0.45
-        ), f"Fidelity({name_rho},{name_sigma}) gives a diferent value in qutip. {fidelity1}!={fidelity1_qutip}"
+        ), f"Fidelity({name_rho},{name_sigma}) gives a different value in qutip. {fidelity1}!={fidelity1_qutip}"
 
 
 # test_load()
