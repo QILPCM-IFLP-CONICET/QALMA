@@ -228,23 +228,30 @@ class SimulationHDF5(Simulation):
                 self.system = system_from_hdf5(f)
 
         def __iter__(self):
+            print("iterator for h5sim", len(self))
             with h5py.File(self.filename, "r") as f:
                 group = f.get("states", None)
                 if group is None:
+                    print("empty iterator")
                     return
-                yield from hdf5_state_iterator(group, self.system)
+                yield from hdf5_state_iterator(f, self.system)
 
         def __getitem__(self, idx: int):
             key = "rho_" + f"{idx}".rjust(6, "0")
             with h5py.File(self.filename, "r") as f:
-                return state_from_hdf5(f["states"], key, self.system)
+                group = f.get("states", None)
+                if group is None:
+                    raise ValueError("there are no stored elements")
+                return state_from_hdf5(f, key, self.system)
+            raise ValueError("element out of range")
 
         def __setitem__(self, idx: int, value: Operator):
             key = "rho_" + f"{idx}".rjust(6, "0")
             with h5py.File(self.filename, "w") as f:
+                group = f.get("states", None)
                 if group is None:
                     group = f.create_group("states")
-                
+
                 store_state(key, value, group, self.system)
 
         def __len__(self):
@@ -270,7 +277,7 @@ class SimulationHDF5(Simulation):
             with h5py.File(self.filename, "w") as f:
                 group = f["states"]
                 if group is None:
-                    group = f.create_group("states")                
+                    group = f.create_group("states")
                 idx = len(group)
                 key = "rho_" + f"{idx}".rjust(6, "0")
                 for elem in elems:
@@ -285,33 +292,29 @@ class SimulationHDF5(Simulation):
         print("Simulation from", filename)
         with h5py.File(filename, "r") as f:
             self.parameters = load_hdf5_dict(f["parameters"])
-            print("parameters:",self.parameters)
             self.stats = load_hdf5_dict(f["stats"])
-            print("stats:",self.stats)
             self.expect_ops = load_hdf5_dict(f["expect obs"])
-            print("expect:", self.expect_ops)
             stored_time_span = list(f["time span"])
             self.time_span = stored_time_span
-            print(self.time_span)
             self.system = system_from_hdf5(f)
-            print("system:", str(self.system))
             self.key_map = {
                 t: f"{pos}".rjust(6, "0") for pos, t in enumerate(stored_time_span)
             }
         self.states = self.StateList(self.filename, self.system)
-        
+
 
 def hdf5_state_iterator(group: h5py.Group, system: Optional[SystemDescriptor] = None):
     """Yield states from a hdf5 group"""
 
     if system is None:
         system = system_from_hdf5(group)
-    
-        
+
     key_time_map = {
-        t: "rho_" + f"{i}".rjust(6, "0") for i, t in enumerate(group.get("time span",[]))
+        t: "rho_" + f"{i}".rjust(6, "0")
+        for i, t in enumerate(group.get("time span", []))
     }
     if "states" not in group:
+        print(" no states defined in", group)
         return
     assert system is not None
 
@@ -334,6 +337,7 @@ def state_from_hdf5(
     try:
         state_bytes = group["states"][key][0]
     except KeyError:
+        print("key error:", key, "not in ", group)
         return None
 
     assert system is not None
