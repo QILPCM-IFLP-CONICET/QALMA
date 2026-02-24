@@ -306,7 +306,7 @@ def run_simulation_adaptive(basis_depth, n_body, tolerance, axis):
             include_one_body_projection=True,
             extra_observables=TRACK_OBSERVABLES,
         )
-        adaptive_sol.parameters["beta"]=BETA
+        adaptive_sol.parameters["beta"] = BETA
         with open(
             f"adaptive3__L={L}_beta={BETA}_nbody={n_body}_deep={basis_depth}_{UUID_CALL}.pkl",
             "wb",
@@ -368,9 +368,7 @@ def set_parameters():
     argparser.add_argument(
         "--length", "-L", type=int, default=4, help="length of the spin chain"
     )
-    argparser.add_argument(
-        "--beta", type=float, default=1, help="inverse temperature"
-    )
+    argparser.add_argument("--beta", type=float, default=1, help="inverse temperature")
     argparser.add_argument(
         "--n_body", "-M", type=int, default=4, help="max n_body sector"
     )
@@ -403,7 +401,7 @@ def set_parameters():
     TOL = args.tol
     ELL = args.deep
     BETA = args.beta
-    print("Beta=",BETA)
+    print("Beta=", BETA)
     MAX_M = args.n_body
     FULL = args.full
     build_system_objects(args)
