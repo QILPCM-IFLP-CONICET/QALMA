@@ -79,7 +79,7 @@ def occupation_factor(phi: NDArray, threshold: float = 0.995) -> int:
 
 def update_basis(
     k, sigma, ham, order, n_body, extra_observables, k_ref=None
-) -> Tuple[HierarchicalOperatorBasis, Operator, Operator]:
+) -> Tuple[OperatorBasis, Operator, Operator]:
     if k_ref is None:
         k_ref_new, sigma = compute_mean_field_state(k, sigma)
         k_ref_new = k_ref_new + sigma.expect(k - k_ref_new)
@@ -92,7 +92,7 @@ def update_basis(
         ham,
         order,
         fetch_covar_scalar_product(sigma),
-        n_body_projection=trim_and_project_function(sigma, n_body, tol=1e-6),
+        n_body_projection=trim_and_project_function(sigma, n_body, tol=1e-9),
     )
     rest_elements = tuple(extra_observables)
     if k is not k_ref_new:
@@ -108,7 +108,54 @@ def update_basis(
     )
 
 
-def update_basis_light(k, sigma, ham, order, n_body, extra_observables, k_ref=None):
+def update_basis_heavy(
+    k, sigma, ham, order, n_body, extra_observables, k_ref=None
+) -> Tuple[OperatorBasis, Operator, Operator]:
+    if k_ref is None:
+        k_ref_new, sigma = compute_mean_field_state(k, sigma)
+        k_ref_new = k_ref_new + sigma.expect(k - k_ref_new)
+        k_ref_new = k_ref_new.hermitician_part()
+    else:
+        k_ref_new = k_ref
+
+    sp = fetch_covar_scalar_product(sigma)
+    new_basis: OperatorBasis = HierarchicalOperatorBasis(
+        k,
+        ham,
+        order,
+        sp,
+    )
+    # Now a new basis is built projecting the operators to the n_body sector.
+    new_basis = OperatorBasis(
+        new_basis.operator_basis,
+        ham,
+        sp,
+        n_body_projection=trim_and_project_function(sigma, n_body, tol=1e-6),
+        precomputed_tensors={
+            "gram": new_basis.gram,
+            "gram_inv": new_basis.gram_inv,
+            "errors": new_basis.errors,
+            "gen_matrix": new_basis.gen_matrix,
+            "hij": new_basis._hij,
+        },
+    )
+
+    rest_elements = tuple(extra_observables)
+    if k is not k_ref_new:
+        rest_elements = rest_elements + (k_ref_new,)
+    if rest_elements:
+        new_basis = new_basis + rest_elements
+
+    return (
+        new_basis,
+        sigma,
+        k_ref_new,
+    )
+
+
+def update_basis_light(
+    k, sigma, ham, order, n_body, extra_observables, k_ref=None
+) -> Tuple[OperatorBasis, Operator, Operator]:
     if k_ref is None:
         k_ref_new, sigma = compute_mean_field_state(k, sigma)
         k_ref_new = k_ref_new + sigma.expect(k - k_ref_new)
@@ -149,6 +196,8 @@ def adaptive_projected_evolution(
     basis_update_callback: Callable[
         ..., Tuple[OperatorBasis, Operator, Operator]
     ] = update_basis,
+    update_condition: str = "adaptive",
+    store_states=False,
 ) -> Simulation:
     """
     Compute the solution of the MaxEnt projected Schrödinger equation
@@ -193,6 +242,16 @@ def adaptive_projected_evolution(
     on_update_basis_callback: Callable[dict], optional
         if not None, this function is called each time the basis is rebuilt.
 
+    update_condition: str (case insensitive)
+        The condition to update the basis. One of
+        * `"adaptive"` (default) update the basis when the accuracy goal
+          can not be reached.
+        * `"always"`: update the basis on each step
+        * `"never"` : the basis stays fixed.
+        Default: adaptive
+    store_states: bool
+        If True, always store the states.
+
     Returns
     -------
     Simulation:
@@ -217,6 +276,7 @@ def adaptive_projected_evolution(
     t_max = t_span[-1]
     tlist: List[float] = []
 
+    update_condition = update_condition.lower()
     parameters: Dict[str, Any] = {
         "n_body": n_body,
         "order": order,
@@ -224,6 +284,7 @@ def adaptive_projected_evolution(
         "include_one_body_projection": include_one_body_projection,
         "basis_update_callback": basis_update_callback.__name__,
         "system": ham.system,
+        "update_condition": update_condition,
     }
     stats: Dict[str, Any] = {
         "method": "Adaptative Restricted Evolution",
@@ -241,6 +302,16 @@ def adaptive_projected_evolution(
         expect_ops=expect_ops,
         states=states,
     )
+    if update_condition == "always":
+        always_update, never_update = True, False
+    elif update_condition == "never":
+        always_update, never_update = False, True
+    elif update_condition == "adaptive":
+        always_update, never_update = False, False
+    else:
+        raise ValueError(
+            f"update_condition={update_condition} is not one of the valid values 'always', 'never', 'adaptive'."
+        )
 
     ### Handle e_ops #####
     if e_ops is None:
@@ -258,6 +329,8 @@ def adaptive_projected_evolution(
             curr_e_ops = GibbsDensityOperator(k).expect(e_ops)
             for key, val in curr_e_ops.items():
                 expect_ops.setdefault(key, []).append(val)
+            if store_states:
+                states.append(k)
 
     ####  Basis update ########
     def call_update_basis(local_evol_parms) -> bool:
@@ -315,7 +388,7 @@ def adaptive_projected_evolution(
         local_evol_parms["t"] = t
         last_error = error
         # If K_t is too far from K_ref, update the basis:
-        if away > tol:
+        if always_update or (not never_update and away > tol):
             logging.info("updating K_ref")
             local_evol_parms["k_ref"] = None
             call_update_basis(local_evol_parms)

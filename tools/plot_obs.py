@@ -37,6 +37,7 @@ for idx, filename in enumerate(sys.argv[1:]):
                 for k in simulation.states
             ]
             if is_hdf5:
+                print(">> storing expect ops")
                 simulation.save_hdf5(filename)
             else:
                 with open(filename, "wb") as f:

@@ -42,11 +42,17 @@ def store_hdf5_dict(group: h5py.Group, data_dict: Dict[str, Any]):
     for key, value in data_dict.items():
         key_str = str(key)
         if isinstance(value, str):
+            if key_str in group:
+                del group[key_str]
             dset = group.create_dataset(
                 key_str, data=value, dtype=h5py.string_dtype(encoding="utf-8")
             )
             dset.attrs["encoding"] = "utf-8"
-        elif any(isinstance(value, t) for t in [int, float, bool, np.ndarray]):
+            continue
+        if any(isinstance(value, t) for t in [int, float, bool, np.ndarray]):
+            if key_str in group:
+                del group[key_str]
+
             dset = group.create_dataset(key_str, data=value)
         elif isinstance(value, (list, tuple)) and all(
             isinstance(
@@ -60,9 +66,13 @@ def store_hdf5_dict(group: h5py.Group, data_dict: Dict[str, Any]):
             )
             for x in value
         ):
+            if key_str in group:
+                del group[key_str]
             group.create_dataset(key_str, data=np.array(value))
         else:
             data = np.frombuffer(pickle.dumps(value), dtype=np.uint8)
+            if key_str in group:
+                del group[key_str]
             dset = group.create_dataset(
                 key_str, shape=(1,), dtype=h5py.vlen_dtype(np.dtype("V1"))
             )
@@ -147,8 +157,9 @@ class Simulation:
         """
         Serialize the object as an hdf5 file
         """
+        print("generic save h5 file")
         try:
-            with h5py.File(filename, "w") as f:
+            with h5py.File(filename, "w-") as f:
                 store_hdf5_dict(f.create_group("parameters"), self.parameters)
                 store_hdf5_dict(f.create_group("stats"), self.stats)
                 store_hdf5_dict(f.create_group("expect obs"), self.expect_ops)
@@ -247,7 +258,7 @@ class SimulationHDF5(Simulation):
 
         def __setitem__(self, idx: int, value: Operator):
             key = "rho_" + f"{idx}".rjust(6, "0")
-            with h5py.File(self.filename, "w") as f:
+            with h5py.File(self.filename, "r+") as f:
                 group = f.get("states", None)
                 if group is None:
                     group = f.create_group("states")
@@ -262,7 +273,7 @@ class SimulationHDF5(Simulation):
                 return len(group)
 
         def append(self, elem):
-            with h5py.File(self.filename, "w") as f:
+            with h5py.File(self.filename, "r+") as f:
                 group = f.get("states", None)
                 if group is None:
                     group = f.create_group("states")
@@ -274,7 +285,7 @@ class SimulationHDF5(Simulation):
                 self[key] = elem
 
         def extend(self, elems):
-            with h5py.File(self.filename, "w") as f:
+            with h5py.File(self.filename, "r+") as f:
                 group = f["states"]
                 if group is None:
                     group = f.create_group("states")
@@ -301,6 +312,25 @@ class SimulationHDF5(Simulation):
                 t: f"{pos}".rjust(6, "0") for pos, t in enumerate(stored_time_span)
             }
         self.states = self.StateList(self.filename, self.system)
+
+    def save_hdf5(self, filename: str):
+        """
+        Serialize the object as an hdf5 file
+        """
+        # Here we assume that the states are serialized on the fly.
+        print("specialized save hdf5 file")
+        try:
+            with h5py.File(self.filename, "r+") as f:
+                store_hdf5_dict(f["parameters"], self.parameters)
+                store_hdf5_dict(f["stats"], self.stats)
+                store_hdf5_dict(f["expect obs"], self.expect_ops)
+                time_span = self.time_span
+                f["time span"][:] = np.array(time_span)
+        except (PermissionError,) as exc:
+            logging.warning(
+                "The object could not be stored in %s. (%s)", filename, str(exc)
+            )
+            return
 
 
 def hdf5_state_iterator(group: h5py.Group, system: Optional[SystemDescriptor] = None):
