@@ -5,6 +5,7 @@ import logging
 import pickle
 import uuid
 from datetime import datetime
+from typing import Dict
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -23,7 +24,7 @@ from qalma.evolution.maxent_evol import (
 )
 from qalma.meanfield.variational import compute_rel_entropy, variational_quadratic_mfa
 from qalma.model import build_system
-from qalma.operators import ScalarOperator
+from qalma.operators import Operator, ScalarOperator
 from qalma.operators.states import (
     GibbsDensityOperator,
 )
@@ -38,6 +39,7 @@ np.set_printoptions(
 logging.basicConfig(level=logging.INFO)
 
 
+TRACK_OBSERVABLES: Dict[str, Operator] = {}
 UUID_CALL = f"{uuid.uuid4()}"
 
 UPDATE_CONDITION = "adaptive"
@@ -47,6 +49,7 @@ UPDATE_BASIS_PROTOCOLS = {
     "light": update_basis_light,
 }
 UBP = "standard"
+
 
 # PARAMETERS
 TIME_SPAN = np.linspace(0, 10, 600)
@@ -63,7 +66,7 @@ def build_system_objects(args):
     Build objects shared by all the simulations from the command line arguments.
     """
 
-    global L, SYSTEM, HAMILTONIAN, SZ_TOTAL, HALF_LEN_COMM, SITES, GLOBAL_IDENTITY, K0, TRACK_OBSERVABLES
+    global L, SYSTEM, HAMILTONIAN, SZ_TOTAL, HALF_LEN_COMM, SITES, GLOBAL_IDENTITY, K0
 
     # try to load the available exact simulation
     SYSTEM = None
@@ -101,23 +104,21 @@ def build_system_objects(args):
     K0 = -RHO_0.logm()
 
     track_list = args.track
+
     if track_list.lower() == "none":
         track_list = ""
     elif track_list.lower() == "all":
         track_list = "SZ_TOTAL,SZ_TOTAL_SQ,H,H_SQ"
-    track_observables = []
-    for obs_t in track_list.split(","):
-        if obs_t.strip() == "SZ_TOTAL":
-            track_observables.append(SZ_TOTAL)
-        elif obs_t.strip() == "SZ_TOTAL":
-            track_observables.append(SZ_TOTAL)
+
+    for obs_t in track_list.upper().split(","):
+        if obs_t.strip().upper() == "SZ_TOTAL":
+            TRACK_OBSERVABLES[obs_t] = SZ_TOTAL
         elif obs_t.strip() == "SZ_TOTAL_SQ":
-            track_observables.append(SZ_TOTAL**2)
+            TRACK_OBSERVABLES[obs_t] = SZ_TOTAL**2
         elif obs_t.strip() == "H":
-            track_observables.append(HAMILTONIAN)
+            TRACK_OBSERVABLES[obs_t] = HAMILTONIAN
         elif obs_t.strip() == "H_SQ":
-            track_observables.append(HAMILTONIAN * HAMILTONIAN)
-    TRACK_OBSERVABLES = tuple(track_observables)
+            TRACK_OBSERVABLES[obs_t] = HAMILTONIAN * HAMILTONIAN
 
 
 def find_exact_sim(sim=None, le=None, beta=None):
@@ -314,16 +315,13 @@ def run_projected(axis):
         nonlocal sigma_mf
         sigma_mf = variational_quadratic_mfa(k, sigma_ref=sigma_mf)
         sp = fetch_covar_scalar_product(sigma_mf)
-        return (
-            HierarchicalOperatorBasis(
-                k,
-                HAMILTONIAN,
-                ELL,
-                sp,
-                n_body_projection=projection_function,
-            )
-            + TRACK_OBSERVABLES
-        )
+        return HierarchicalOperatorBasis(
+            k,
+            HAMILTONIAN,
+            ELL,
+            sp,
+            n_body_projection=projection_function,
+        ) + tuple(TRACK_OBSERVABLES.values())
 
     if UPDATE_CONDITION == "always":
         print(
@@ -368,6 +366,7 @@ def run_projected(axis):
     parameters["ell"] = 10
     parameters["beta"] = BETA
     parameters["update_condition"] = UPDATE_CONDITION.lower()
+    parameters["track observables"] = tuple(TRACK_OBSERVABLES)
     with open(
         f"projected_exact_uc={UPDATE_CONDITION}_L={L}_beta={BETA}_{UUID_CALL}.pkl", "wb"
     ) as f:
@@ -404,18 +403,19 @@ def run_simulation_adaptive(basis_depth, n_body, tolerance, axis):
             store_states=True,
             on_update_basis_callback=update_basis_callback,
             include_one_body_projection=True,
-            extra_observables=TRACK_OBSERVABLES,
+            extra_observables=tuple(TRACK_OBSERVABLES.values()),
             basis_update_callback=UPDATE_BASIS_PROTOCOLS[UBP],
             update_condition=UPDATE_CONDITION,
         )
         adaptive_sol.parameters["beta"] = BETA
         adaptive_sol.parameters["UBP"] = UBP
         adaptive_sol.parameters["L"] = L
+        adaptive_sol.parameters["track observables"] = tuple(TRACK_OBSERVABLES)
         assert len(adaptive_sol.states) > 0
-        adaptive_sol.save_hdf5(
-            f"adaptive3_ubp={UBP}_L={L}_beta={BETA}_nbody={n_body}_deep={basis_depth}_{UUID_CALL}.h5"
-        )
+        out_filename = f"adaptive3_ubp={UBP}_L={L}_beta={BETA}_nbody={n_body}_deep={basis_depth}_{UUID_CALL}.h5"
 
+        adaptive_sol.save_hdf5(out_filename)
+        print("Adaptive evolution simulation results stored in", out_filename)
         # plt.scatter(ts[:len(max_ent)], [np.real(rho.expect(k_0)) for rho in max_ent], label=f"$\\ell={basis_depth}$, m={n_body}, tol={tolerance}")
         plt.scatter(
             TIME_SPAN[: len(adaptive_sol.time_span)],
