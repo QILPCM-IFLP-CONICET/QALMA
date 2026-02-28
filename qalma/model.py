@@ -636,7 +636,8 @@ class SystemDescriptor:
         """Return a global operator by its name"""
         # pylint: disable=import-outside-toplevel
         from qalma.operators import OneBodyOperator, SumOperator
-        if len(self.operators["site_operators"])==0:
+
+        if len(self.operators["site_operators"]) == 0:
             self._load_site_operators()
             self._load_global_ops()
 

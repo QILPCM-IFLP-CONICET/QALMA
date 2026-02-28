@@ -179,7 +179,7 @@ class Simulation:
             return
 
     @classmethod
-    def load(cls, filename:str):
+    def load(cls, filename: str):
         try:
             sim = cls.load_hdf5(filename)
         except OSError:
@@ -191,7 +191,7 @@ class Simulation:
                 return pickle.load(f)
         except pickle.UnpicklingError:
             return None
-            
+
     @classmethod
     def load_hdf5(cls, filename: str):
         """

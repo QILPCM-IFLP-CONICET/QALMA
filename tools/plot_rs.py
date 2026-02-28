@@ -6,7 +6,6 @@ mpl.use("module://mpl_ascii")
 import glob
 import pickle
 import sys
-import glob
 
 import numpy as np
 from matplotlib import pyplot as plt
@@ -55,12 +54,8 @@ def populate_rs(sim) -> bool:
     sim.expect_ops["relative entropy"] = rs_values
     return True
 
-for idx, filename in enumerate(
-        [
-        fn
-        for pat in sys.argv[1:]
-        for fn in glob.glob(pat)
-        ]):
+
+for idx, filename in enumerate([fn for pat in sys.argv[1:] for fn in glob.glob(pat)]):
     print(filename)
     is_hdf5 = True
     obs_key = "relative entropy"

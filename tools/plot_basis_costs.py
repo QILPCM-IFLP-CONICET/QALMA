@@ -3,19 +3,15 @@
 # import matplotlib as mpl
 # mpl.use("module://mpl_ascii")
 
+import glob
 import pickle
 import sys
-import glob
+
 from matplotlib import pyplot as plt
 
 fig, axs = plt.subplots(2, 2, sharex=True)
 
-for idx, filename in enumerate(
-        [
-        fn
-        for pat in sys.argv[1:]
-        for fn in glob.glob(pat)
-        ]):
+for idx, filename in enumerate([fn for pat in sys.argv[1:] for fn in glob.glob(pat)]):
     print(filename)
     with open(filename, "rb") as f:
         data = pickle.load(f)

@@ -3,9 +3,9 @@
 import matplotlib as mpl
 
 mpl.use("module://mpl_ascii")
+import glob
 import pickle
 import sys
-import glob
 
 import numpy as np
 from matplotlib import pyplot as plt
@@ -13,12 +13,7 @@ from matplotlib import pyplot as plt
 from qalma.evolution.simulation import Simulation
 from qalma.operators.states import GibbsDensityOperator
 
-for idx, filename in enumerate(
-        [
-        fn
-        for pat in sys.argv[1:]
-        for fn in glob.glob(pat)
-        ]):
+for idx, filename in enumerate([fn for pat in sys.argv[1:] for fn in glob.glob(pat)]):
     print(filename)
     is_hdf5 = True
     if filename[-4:] == ".pkl":
