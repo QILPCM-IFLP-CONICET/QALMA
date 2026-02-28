@@ -285,6 +285,7 @@ def adaptive_projected_evolution(
         "basis_update_callback": basis_update_callback.__name__,
         "system": ham.system,
         "update_condition": update_condition,
+        "method": "Adaptative Restricted Evolution",
     }
     stats: Dict[str, Any] = {
         "method": "Adaptative Restricted Evolution",

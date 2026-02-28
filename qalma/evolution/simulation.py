@@ -181,6 +181,20 @@ class Simulation:
             return
 
     @classmethod
+    def load(cls, filename:str):
+        try:
+            sim = cls.load_hdf5(filename)
+        except OSError:
+            sim = None
+        if sim is not None:
+            return sim
+        try:
+            with open(filename, "rb") as f:
+                return pickle.load(f)
+        except pickle.UnpicklingError:
+            return None
+            
+    @classmethod
     def load_hdf5(cls, filename: str):
         """
         Load an object serialized as an hdf5 file
