@@ -58,7 +58,7 @@ TIME_SPAN = np.linspace(0, 10, 600)
 ALPHA = 0.61  #   jy=.9 jx
 JX = 0.662743 / (1 - ALPHA) ** 0.5  # 1.75  -> vLR=1
 JY = (1 - ALPHA) * JX
-PHI_0 = [0, 0.25, 0.25, 1]
+PHI_0 = np.array([0, 0.25, 0.25, 1])
 
 
 def build_system_objects(args):
@@ -98,7 +98,7 @@ def build_system_objects(args):
     SX_A = SYSTEM.site_operator(f"Sx@{SITES[0]}")
     SY_A = SYSTEM.site_operator(f"Sy@{SITES[0]}")
     SZ_A = SYSTEM.site_operator(f"Sz@{SITES[0]}")
-    K0 = (SX_A * PHI_0[1] + SY_A * PHI_0[2] + SZ_A * PHI_0[3]) * 0.5 + HAMILTONIAN
+    K0 = (SX_A * PHI_0[1] + SY_A * PHI_0[2] + SZ_A * PHI_0[3]) + HAMILTONIAN
 
     RHO_0 = variational_quadratic_mfa(K0)
     K0 = -RHO_0.logm()

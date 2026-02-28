@@ -830,6 +830,9 @@ def safe_exp_and_normalize(operator: Qobj) -> Tuple[Qobj, float]:
                 operator.eigenenergies(sparse=True, sort="high", eigvals=num_eigvals)
             )
         )
+    except np.linalg.LinAlgError as err_la:
+        logging.warning(err_la)
+        k_0 = 0
     except ArpackNoConvergence as err_arpack:
         logging.warning(
             "Convergence failed. try with "
