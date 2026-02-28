@@ -61,7 +61,6 @@ def store_hdf5_dict(group: h5py.Group, data_dict: Dict[str, Any]):
                     int,
                     float,
                     bool,
-                    str,
                 ),
             )
             for x in value
@@ -153,13 +152,12 @@ class Simulation:
     expect_ops: Dict[Any, Any]
     states: List[Operator]
 
-    def save_hdf5(self, filename: str):
+    def save_hdf5(self, filename: str, mode="w-"):
         """
         Serialize the object as an hdf5 file
         """
-        print("generic save h5 file")
         try:
-            with h5py.File(filename, "w-") as f:
+            with h5py.File(filename, mode) as f:
                 store_hdf5_dict(f.create_group("parameters"), self.parameters)
                 store_hdf5_dict(f.create_group("stats"), self.stats)
                 store_hdf5_dict(f.create_group("expect obs"), self.expect_ops)
@@ -253,11 +251,9 @@ class SimulationHDF5(Simulation):
                 self.system = system_from_hdf5(f)
 
         def __iter__(self):
-            print("iterator for h5sim", len(self))
             with h5py.File(self.filename, "r") as f:
                 group = f.get("states", None)
                 if group is None:
-                    print("empty iterator")
                     return
                 yield from hdf5_state_iterator(f, self.system)
 
@@ -314,7 +310,6 @@ class SimulationHDF5(Simulation):
     def __init__(self, filename):
         """Create an interface with an HDF5 file that stores a simulation"""
         self.filename = filename
-        print("Simulation from", filename)
         with h5py.File(filename, "r") as f:
             self.parameters = load_hdf5_dict(f["parameters"])
             self.stats = load_hdf5_dict(f["stats"])
@@ -327,14 +322,13 @@ class SimulationHDF5(Simulation):
             }
         self.states = self.StateList(self.filename, self.system)
 
-    def save_hdf5(self, filename: str):
+    def save_hdf5(self, filename: str, mode="r+"):
         """
         Serialize the object as an hdf5 file
         """
         # Here we assume that the states are serialized on the fly.
-        print("specialized save hdf5 file")
         try:
-            with h5py.File(self.filename, "r+") as f:
+            with h5py.File(self.filename, mode) as f:
                 store_hdf5_dict(f["parameters"], self.parameters)
                 store_hdf5_dict(f["stats"], self.stats)
                 store_hdf5_dict(f["expect obs"], self.expect_ops)
@@ -358,7 +352,7 @@ def hdf5_state_iterator(group: h5py.Group, system: Optional[SystemDescriptor] = 
         for i, t in enumerate(group.get("time span", []))
     }
     if "states" not in group:
-        print(" no states defined in", group)
+        logging.info(" no states defined in", group)
         return
     assert system is not None
 
@@ -381,7 +375,7 @@ def state_from_hdf5(
     try:
         state_bytes = group["states"][key][0]
     except KeyError:
-        print("key error:", key, "not in ", group)
+        logging.info("key error:", key, "not in ", group)
         return None
 
     assert system is not None
