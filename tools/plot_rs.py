@@ -46,9 +46,9 @@ def populate_rs(sim) -> bool:
         print("No exact simulation available")
         return False
     for sigma, rho in zip(sim.states, exact_sim.states):
-        if rho is not DensityOperatorMixin:
+        if not isinstance(rho, DensityOperatorMixin):
             rho = GibbsDensityOperator(rho)
-        if sigma is not DensityOperatorMixin:
+        if not isinstance(sigma, DensityOperatorMixin):
             sigma = GibbsDensityOperator(sigma)
         rs_values.append(relative_entropy(sigma, rho))
     sim.expect_ops["relative entropy"] = rs_values

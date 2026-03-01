@@ -11,7 +11,7 @@ import numpy as np
 from matplotlib import pyplot as plt
 
 from qalma.evolution.simulation import Simulation
-from qalma.operators.states import GibbsDensityOperator
+from qalma.operators.states import DensityOperatorMixin, GibbsDensityOperator
 
 for idx, filename in enumerate([fn for pat in sys.argv[1:] for fn in glob.glob(pat)]):
     print(filename)
@@ -33,8 +33,14 @@ for idx, filename in enumerate([fn for pat in sys.argv[1:] for fn in glob.glob(p
             system = simulation.states[0].system
             print("build expect from states")
             sz_total = sum(system.site_operator("Sz", s) for s in system.sites)
+
+            def ensure_is_state(k):
+                if not isinstance(k, DensityOperatorMixin):
+                    return GibbsDensityOperator(k)
+                return k
+
             simulation.expect_ops[obs_key] = [
-                GibbsDensityOperator(k).to_qutip_operator().expect(sz_total)
+                ensure_is_state(k).to_qutip_operator().expect(sz_total)
                 for k in simulation.states
             ]
             if is_hdf5:
