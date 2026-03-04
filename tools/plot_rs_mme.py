@@ -21,17 +21,17 @@ def find_exact_sim(sim):
     L = parms["L"]
     BETA = parms["beta"]
     exact_sim = None
-    print("  look for", f"exact_*L={L}_beta={BETA}*.h5")
+    print("look for", f"exact_*L={L}_beta={BETA}*.h5")
     for candidate in glob.glob(f"exact_*L={L}_beta={BETA}*.h5"):
-        print("    candidate:", candidate)
+        print("candidate:", candidate)
         exact_sim = Simulation.load_hdf5(candidate)
         if exact_sim.states[0].system == sim.states[0].system:
-            print("    candidate found:", candidate)
+            print("candidate found:", candidate)
             break
-        print("    systems are not equal. Try the next...")
+        print("systems are not equal. Try the next...")
 
     if exact_sim is None:
-        print("  No candidate found. Run `run_dynamics.py` with the `--full` parameter.")
+        print("No candidate found. Run `run_dynamics.py` with the `--full` parameter.")
     return exact_sim
 
 
@@ -43,22 +43,27 @@ def populate_rs(sim) -> bool:
     exact_sim = find_exact_sim(sim)
     rs_values = []
     if exact_sim is None:
-        print("  No exact simulation available")
+        print("No exact simulation available")
         return False
-    for sigma, rho in zip(sim.states, exact_sim.states):
-        if not isinstance(rho, DensityOperatorMixin):
-            rho = GibbsDensityOperator(rho)
+    system = (
+        exact_sim.system if hasattr(exact_sim, "system") else exact_sim.states[0].system
+    )
+    hamiltonian = system.global_operator("Hamiltonian").simplify()
+    beta = exact_sim.parameters["beta"]
+    rho = GibbsDensityOperator(hamiltonian*0).to_qutip_operator()
+
+    for sigma in sim.states:
         if not isinstance(sigma, DensityOperatorMixin):
             sigma = GibbsDensityOperator(sigma)
         rs_values.append(relative_entropy(sigma, rho))
-    sim.expect_ops["relative entropy"] = rs_values
+    sim.expect_ops["relative entropy to MME"] = rs_values
     return True
 
 
 for idx, filename in enumerate([fn for pat in sys.argv[1:] for fn in glob.glob(pat)]):
     print(filename)
     is_hdf5 = True
-    obs_key = "relative entropy"
+    obs_key = "relative entropy to MME"
     if filename[-4:] == ".pkl":
         is_hdf5 = False
         with open(filename, "rb") as f:
@@ -69,8 +74,9 @@ for idx, filename in enumerate([fn for pat in sys.argv[1:] for fn in glob.glob(p
         print("wrong file extension", filename)
         exit(-1)
 
-    if obs_key not in simulation.expect_ops:
+    if True or obs_key not in simulation.expect_ops:
         populate_rs(simulation)
+        print("saving")
         if is_hdf5:
             simulation.save_hdf5(filename)
         else:
@@ -84,5 +90,5 @@ for idx, filename in enumerate([fn for pat in sys.argv[1:] for fn in glob.glob(p
     )
 
 plt.legend()
-plt.savefig("relative_entropy_evol.svg")
+plt.savefig("relative_entropy_evol_MME.svg")
 plt.show()
