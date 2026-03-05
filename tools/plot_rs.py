@@ -31,7 +31,9 @@ def find_exact_sim(sim):
         print("    systems are not equal. Try the next...")
 
     if exact_sim is None:
-        print("  No candidate found. Run `run_dynamics.py` with the `--full` parameter.")
+        print(
+            "  No candidate found. Run `run_dynamics.py` with the `--full` parameter."
+        )
     return exact_sim
 
 

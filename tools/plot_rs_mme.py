@@ -49,8 +49,7 @@ def populate_rs(sim) -> bool:
         exact_sim.system if hasattr(exact_sim, "system") else exact_sim.states[0].system
     )
     hamiltonian = system.global_operator("Hamiltonian").simplify()
-    beta = exact_sim.parameters["beta"]
-    rho = GibbsDensityOperator(hamiltonian*0).to_qutip_operator()
+    rho = GibbsDensityOperator(hamiltonian * 0).to_qutip_operator()
 
     for sigma in sim.states:
         if not isinstance(sigma, DensityOperatorMixin):

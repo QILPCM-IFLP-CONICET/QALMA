@@ -3,6 +3,7 @@ Classes to represent density operators as Gibbs states $rho=e^{-k}$.
 
 """
 
+from functools import cached_property
 from typing import Callable, Dict, Iterable, Optional, Tuple, Union, cast
 
 import numpy as np
@@ -204,6 +205,13 @@ class GibbsProductDensityOperator(DensityOperatorMixin, Operator):
     prefactor: complex
     free_energies: Dict[str, float]
     isherm: bool = True
+
+    @cached_property
+    def _dense(self) -> dict:
+        """
+        Proxy to ProductState._dense
+        """
+        return self.to_product_state()._dense
 
     def __init__(
         self,

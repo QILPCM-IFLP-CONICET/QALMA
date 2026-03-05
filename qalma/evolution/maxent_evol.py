@@ -376,8 +376,10 @@ def adaptive_projected_evolution(
     stats["n_body_sector"].append(local_evol_parms["curr_n_body"])
     # Perform tasks that follows to a success evolution:
     call_on_success_evol(t_0, local_evol_parms["k_t"])
-    away = local_evol_parms["basis"].operator_norm(
-        (local_evol_parms["k_t"] - local_evol_parms["k_ref"]).simplify()
+    away = abs(
+        local_evol_parms["basis"].operator_norm(
+            (local_evol_parms["k_t"] - local_evol_parms["k_ref"]).simplify()
+        )
     )
     local_evol_parms["away"] = away
     stats["errors"].append(0)
