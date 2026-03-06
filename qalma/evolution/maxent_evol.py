@@ -513,7 +513,7 @@ def projected_evolution(ham, k0, t_span, order, n_body: int = -1) -> Simulation:
         order,
         sp,
         n_body_projection=lambda op_b: n_body_projection(
-            op_b, nmax=n_body, sigma=sigma_0
+            op_b, n_max=n_body, sigma=sigma_0
         ),
     )
     phi_0 = basis.coefficient_expansion(k0)
@@ -546,7 +546,7 @@ def trim_and_project_function(sigma, n_body, tol=1e-6):
         )
         isherm = op_b.isherm
         op_b = op_b.simplify()
-        op_b = n_body_projection(op_b, nmax=n_body, sigma=sigma).simplify()
+        op_b = n_body_projection(op_b, n_max=n_body, sigma=sigma).simplify()
         op_b = trim_terms_by_tolerance(sigma, op_b, tol)
         if isherm:
             op_b = op_b.hermitician_part()

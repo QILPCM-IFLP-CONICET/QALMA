@@ -16,12 +16,12 @@ import pytest
 
 from qalma.operators import Operator, ProductOperator
 from qalma.projections import (
-    project_operator_to_m_body,
+    project_operator_to_n_body,
 )
 from qalma.projections.nbody import (  # Product; Qutip; One body
-    _project_product_operator_to_m_body_recursive,
+    _project_product_operator_to_n_body_recursive,
     _project_product_operator_to_one_body,
-    _project_qutip_operator_to_m_body_recursive,
+    _project_qutip_operator_to_n_body_recursive,
     project_product_operator_as_n_body_operator,
     project_qutip_operator_as_n_body_operator,
     project_qutip_to_one_body,
@@ -153,7 +153,7 @@ def test_one_body_qutip_projector(benchmark, name, state_name):
         for name in TEST_SINGLE_TERMS
         for state_name, sigma0 in TEST_STATES.items()
         for projector in (
-            "_project_product_operator_to_m_body_recursive",
+            "_project_product_operator_to_n_body_recursive",
             "project_product_operator_as_n_body_operator",
         )
         for nbody in range(8)
@@ -164,10 +164,10 @@ def test_product_projectors(benchmark, name, state_name, projector, nbody):
     operator = TEST_SINGLE_TERMS[name]
     state = TEST_STATES[state_name]
 
-    if projector == "_project_product_operator_to_m_body_recursive":
+    if projector == "_project_product_operator_to_n_body_recursive":
 
         def impl():
-            return _project_product_operator_to_m_body_recursive(operator, nbody, state)
+            return _project_product_operator_to_n_body_recursive(operator, nbody, state)
 
     else:
 
@@ -189,7 +189,7 @@ def test_product_projectors(benchmark, name, state_name, projector, nbody):
         for name in TEST_SINGLE_TERMS
         for state_name, sigma0 in TEST_STATES.items()
         for projector in (
-            "_project_qutip_operator_to_m_body_recursive",
+            "_project_qutip_operator_to_n_body_recursive",
             "project_qutip_operator_as_n_body_operator",
         )
         for nbody in range(8)
@@ -200,10 +200,10 @@ def test_qutip_projectors(benchmark, name, state_name, projector, nbody):
     operator = TEST_SINGLE_TERMS[name]
     state = TEST_STATES[state_name]
 
-    if projector == "_project_qutip_operator_to_m_body_recursive":
+    if projector == "_project_qutip_operator_to_n_body_recursive":
 
         def impl():
-            return _project_qutip_operator_to_m_body_recursive(operator, nbody, state)
+            return _project_qutip_operator_to_n_body_recursive(operator, nbody, state)
 
     else:
 
@@ -229,7 +229,7 @@ def test_qutip_projectors(benchmark, name, state_name, projector, nbody):
         for state_name, sigma0 in TEST_STATES.items()
         for proj_name, proj_func in (
             ("project_to_n_body_operator", project_to_n_body_operator),
-            ("project_operator_to_m_body", project_operator_to_m_body),
+            ("project_operator_to_n_body", project_operator_to_n_body),
         )
     ],
 )
