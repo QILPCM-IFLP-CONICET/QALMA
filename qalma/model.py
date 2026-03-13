@@ -217,7 +217,7 @@ class SystemDescriptor:
                 self._subsystems_cache[block] = system
                 return True
 
-        print("check model and graph")
+        logging.info("check model and graph")
         if (
             self.spec["model"] == system.spec["model"]
             and self.spec["graph"].contains(system.spec["graph"])
@@ -225,13 +225,6 @@ class SystemDescriptor:
         ):
             self._subsystems_cache[block] = system
             return True
-        print(
-            {
-                "same model?": self.spec["model"] == system.spec["model"],
-                "same graph?": self.spec["graph"].contains(system.spec["graph"]),
-                "same sites?": all(site in self.sites for site in system.sites),
-            }
-        )
         if not self.spec["model"] == system.spec["model"]:
             print(self.spec["model"], " \n vs\n", system.spec["model"])
         if not self.spec["graph"].contains(system.spec["graph"]):
