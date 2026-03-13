@@ -42,11 +42,17 @@ def store_hdf5_dict(group: h5py.Group, data_dict: Dict[str, Any]):
     for key, value in data_dict.items():
         key_str = str(key)
         if isinstance(value, str):
+            if key_str in group:
+                del group[key_str]
             dset = group.create_dataset(
                 key_str, data=value, dtype=h5py.string_dtype(encoding="utf-8")
             )
             dset.attrs["encoding"] = "utf-8"
-        elif any(isinstance(value, t) for t in [int, float, bool, np.ndarray]):
+            continue
+        if any(isinstance(value, t) for t in [int, float, bool, np.ndarray]):
+            if key_str in group:
+                del group[key_str]
+
             dset = group.create_dataset(key_str, data=value)
         elif isinstance(value, (list, tuple)) and all(
             isinstance(
@@ -55,14 +61,17 @@ def store_hdf5_dict(group: h5py.Group, data_dict: Dict[str, Any]):
                     int,
                     float,
                     bool,
-                    str,
                 ),
             )
             for x in value
         ):
+            if key_str in group:
+                del group[key_str]
             group.create_dataset(key_str, data=np.array(value))
         else:
             data = np.frombuffer(pickle.dumps(value), dtype=np.uint8)
+            if key_str in group:
+                del group[key_str]
             dset = group.create_dataset(
                 key_str, shape=(1,), dtype=h5py.vlen_dtype(np.dtype("V1"))
             )
@@ -143,12 +152,12 @@ class Simulation:
     expect_ops: Dict[Any, Any]
     states: List[Operator]
 
-    def save_hdf5(self, filename: str):
+    def save_hdf5(self, filename: str, mode="w-"):
         """
         Serialize the object as an hdf5 file
         """
         try:
-            with h5py.File(filename, "w") as f:
+            with h5py.File(filename, mode) as f:
                 store_hdf5_dict(f.create_group("parameters"), self.parameters)
                 store_hdf5_dict(f.create_group("stats"), self.stats)
                 store_hdf5_dict(f.create_group("expect obs"), self.expect_ops)
@@ -168,6 +177,20 @@ class Simulation:
                 "The object could not be stored in %s. (%s)", filename, str(exc)
             )
             return
+
+    @classmethod
+    def load(cls, filename: str):
+        try:
+            sim = cls.load_hdf5(filename)
+        except OSError:
+            sim = None
+        if sim is not None:
+            return sim
+        try:
+            with open(filename, "rb") as f:
+                return pickle.load(f)
+        except pickle.UnpicklingError:
+            return None
 
     @classmethod
     def load_hdf5(cls, filename: str):
@@ -228,11 +251,9 @@ class SimulationHDF5(Simulation):
                 self.system = system_from_hdf5(f)
 
         def __iter__(self):
-            print("iterator for h5sim", len(self))
             with h5py.File(self.filename, "r") as f:
                 group = f.get("states", None)
                 if group is None:
-                    print("empty iterator")
                     return
                 yield from hdf5_state_iterator(f, self.system)
 
@@ -247,7 +268,7 @@ class SimulationHDF5(Simulation):
 
         def __setitem__(self, idx: int, value: Operator):
             key = "rho_" + f"{idx}".rjust(6, "0")
-            with h5py.File(self.filename, "w") as f:
+            with h5py.File(self.filename, "r+") as f:
                 group = f.get("states", None)
                 if group is None:
                     group = f.create_group("states")
@@ -262,7 +283,7 @@ class SimulationHDF5(Simulation):
                 return len(group)
 
         def append(self, elem):
-            with h5py.File(self.filename, "w") as f:
+            with h5py.File(self.filename, "r+") as f:
                 group = f.get("states", None)
                 if group is None:
                     group = f.create_group("states")
@@ -274,7 +295,7 @@ class SimulationHDF5(Simulation):
                 self[key] = elem
 
         def extend(self, elems):
-            with h5py.File(self.filename, "w") as f:
+            with h5py.File(self.filename, "r+") as f:
                 group = f["states"]
                 if group is None:
                     group = f.create_group("states")
@@ -289,7 +310,6 @@ class SimulationHDF5(Simulation):
     def __init__(self, filename):
         """Create an interface with an HDF5 file that stores a simulation"""
         self.filename = filename
-        print("Simulation from", filename)
         with h5py.File(filename, "r") as f:
             self.parameters = load_hdf5_dict(f["parameters"])
             self.stats = load_hdf5_dict(f["stats"])
@@ -301,6 +321,24 @@ class SimulationHDF5(Simulation):
                 t: f"{pos}".rjust(6, "0") for pos, t in enumerate(stored_time_span)
             }
         self.states = self.StateList(self.filename, self.system)
+
+    def save_hdf5(self, filename: str, mode="r+"):
+        """
+        Serialize the object as an hdf5 file
+        """
+        # Here we assume that the states are serialized on the fly.
+        try:
+            with h5py.File(self.filename, mode) as f:
+                store_hdf5_dict(f["parameters"], self.parameters)
+                store_hdf5_dict(f["stats"], self.stats)
+                store_hdf5_dict(f["expect obs"], self.expect_ops)
+                time_span = self.time_span
+                f["time span"][:] = np.array(time_span)
+        except (PermissionError,) as exc:
+            logging.warning(
+                "The object could not be stored in %s. (%s)", filename, str(exc)
+            )
+            return
 
 
 def hdf5_state_iterator(group: h5py.Group, system: Optional[SystemDescriptor] = None):
@@ -314,7 +352,7 @@ def hdf5_state_iterator(group: h5py.Group, system: Optional[SystemDescriptor] = 
         for i, t in enumerate(group.get("time span", []))
     }
     if "states" not in group:
-        print(" no states defined in", group)
+        logging.info(" no states defined in", group)
         return
     assert system is not None
 
@@ -337,7 +375,7 @@ def state_from_hdf5(
     try:
         state_bytes = group["states"][key][0]
     except KeyError:
-        print("key error:", key, "not in ", group)
+        logging.info("key error:", key, "not in ", group)
         return None
 
     assert system is not None

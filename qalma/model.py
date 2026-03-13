@@ -217,13 +217,18 @@ class SystemDescriptor:
                 self._subsystems_cache[block] = system
                 return True
 
+        logging.info("check model and graph")
         if (
-            self.spec["model"] is system.spec["model"]
+            self.spec["model"] == system.spec["model"]
             and self.spec["graph"].contains(system.spec["graph"])
             and all(site in self.sites for site in system.sites)
         ):
             self._subsystems_cache[block] = system
             return True
+        if not self.spec["model"] == system.spec["model"]:
+            print(self.spec["model"], " \n vs\n", system.spec["model"])
+        if not self.spec["graph"].contains(system.spec["graph"]):
+            print(self.spec["graph"], " \n vs\n", system.spec["graph"])
         return False
 
     def union(self, system):
@@ -624,6 +629,10 @@ class SystemDescriptor:
         """Return a global operator by its name"""
         # pylint: disable=import-outside-toplevel
         from qalma.operators import OneBodyOperator, SumOperator
+
+        if len(self.operators["site_operators"]) == 0:
+            self._load_site_operators()
+            self._load_global_ops()
 
         result = self.operators["global_operators"].get(name, None)
         if result is not None:

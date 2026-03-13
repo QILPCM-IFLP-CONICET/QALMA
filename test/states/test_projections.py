@@ -33,12 +33,12 @@ from qalma.operators.states import (
 )
 from qalma.projections import (
     one_body_from_qutip_operator,
-    project_operator_to_m_body,
+    project_operator_to_n_body,
 )
 from qalma.projections.nbody import (
-    _project_qutip_operator_to_m_body_recursive,
-    project_product_operator_as_n_body_operator,
-    project_qutip_operator_as_n_body_operator,
+    _project_product_operator_combinatorial,
+    _project_qutip_operator_combinatorial,
+    _project_qutip_operator_recursive,
     project_to_n_body_operator,
 )
 from qalma.settings import QALMA_TOLERANCE
@@ -148,12 +148,12 @@ def test_compare_recursive_and_iterative_n_body_projections(op_name, op_test):
             print(" <sx>=", 0)
         for n_body in [1]:
             print("   n=", n_body)
-            result_m = project_operator_to_m_body(op_test, n_body, sigma0)
+            result_m = project_operator_to_n_body(op_test, n_body, sigma0)
             result_n = project_to_n_body_operator(op_test, n_body, sigma0)
             if isherm:
                 assert (
                     result_m.isherm
-                ), "project_operator_to_m_body should preserve hermiticity"
+                ), "project_operator_to_n_body should preserve hermiticity"
                 assert (
                     result_n.isherm
                 ), "project_to_n_body_operator should preserve hermiticity"
@@ -179,8 +179,8 @@ def test_compare_recursive_and_iterative_n_body_projections(op_name, op_test):
 def test_compare_iterative_and_recursive_n_body_qutip_projections(op_name, op_test):
     """
     This test compares the results of using the recursive
-    `_project_qutip_operator_to_m_body_recursive` and the iterative
-    `project_qutip_operator_as_n_body_operator` n-body projections.
+    `_project_qutip_operator_recursive` and the iterative
+    `_project_qutip_operator_combinatorial` n-body projections.
     """
     failed = {}
     print(f"projecting <<{op_name}>> in mean field")
@@ -193,12 +193,8 @@ def test_compare_iterative_and_recursive_n_body_qutip_projections(op_name, op_te
         print(f"  = sigma0{state_name}")
         for n_body in range(0, 4):
             print("   n=", n_body)
-            result_m = _project_qutip_operator_to_m_body_recursive(
-                op_test, n_body, sigma0
-            )
-            result_n = project_qutip_operator_as_n_body_operator(
-                op_test, n_body, sigma0
-            )
+            result_m = _project_qutip_operator_recursive(op_test, n_body, sigma0)
+            result_n = _project_qutip_operator_combinatorial(op_test, n_body, sigma0)
             if not check_operator_equality(result_m, result_n, 5e-6):
                 failed[
                     (
@@ -220,8 +216,8 @@ def test_compare_iterative_and_recursive_n_body_qutip_projections(op_name, op_te
 def test_compare_iterative_and_recursive_n_body_product_projections(op_name, op_test):
     """
     This test compares the results of using the recursive
-    `project_operator_to_m_body` and the iterative specific
-    `project_product_operator_as_n_body_operator` product n-body projections.
+    `project_operator_to_n_body` and the iterative specific
+    `_project_product_operator_combinatorial` product n-body projections.
     """
     failed = {}
     print(f"projecting <<{op_name}>> in mean field")
@@ -238,10 +234,8 @@ def test_compare_iterative_and_recursive_n_body_product_projections(op_name, op_
         print(f"  = sigma0{state_name}")
         for n_body in range(0, 4):
             print("   n=", n_body)
-            result_m = project_operator_to_m_body(op_test, n_body, sigma0)
-            result_n = project_product_operator_as_n_body_operator(
-                op_test, n_body, sigma0
-            )
+            result_m = project_operator_to_n_body(op_test, n_body, sigma0)
+            result_n = _project_product_operator_combinatorial(op_test, n_body, sigma0)
             if not check_operator_equality(result_m, result_n, 1e-7):
                 failed[
                     (
@@ -266,7 +260,7 @@ def test_compare_iterative_and_recursive_n_body_product_projections(op_name, op_
         for name in TEST_OPERATORS
         for proj_name, proj_func in (
             ("project_to_n_body_operator", project_to_n_body_operator),
-            ("project_operator_to_m_body", project_operator_to_m_body),
+            ("project_operator_to_n_body", project_operator_to_n_body),
         )
     ],
 )
@@ -307,7 +301,7 @@ def test_idempotency_nbody_projection(op_name, projection_name, projection_funct
         for state_name, state in TEST_CASES_STATES.items()
         for proj_name, proj_func in (
             ("project_to_n_body_operator", project_to_n_body_operator),
-            ("project_operator_to_m_body", project_operator_to_m_body),
+            ("project_operator_to_n_body", project_operator_to_n_body),
         )
         if isinstance(state, (GibbsProductDensityOperator, ProductDensityOperator))
     ],
@@ -400,7 +394,7 @@ def test_compare_meanfield_projection_using_iterative_and_recursive_projections(
     print(f"projecting <<{op_name}>> in mean field")
     for state_name, sigma0 in TEST_STATES.items():
         result_m = project_meanfield(
-            op_test, sigma0, proj_func=project_operator_to_m_body
+            op_test, sigma0, proj_func=project_operator_to_n_body
         )
         result_n = project_meanfield(
             op_test, sigma0, proj_func=project_to_n_body_operator
