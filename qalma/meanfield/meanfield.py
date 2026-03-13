@@ -10,14 +10,14 @@ from qalma.meanfield.self_consistent_projections import (
 from qalma.operators import Operator
 from qalma.operators.states import DensityOperatorProtocol, ProductDensityOperator
 from qalma.operators.states.gibbs import GibbsProductDensityOperator
-from qalma.projections import project_operator_to_m_body
+from qalma.projections import project_operator_to_n_body
 
 
 def project_meanfield(
     k_op,
     sigma0: Optional[ProductDensityOperator | GibbsProductDensityOperator] = None,
     max_it: int = 100,
-    proj_func: Callable = project_operator_to_m_body,
+    proj_func: Callable = project_operator_to_n_body,
 ) -> Operator:
     """
     Look for a one-body operator kmf s.t
