@@ -83,7 +83,7 @@ if __name__ == "__main__":
     parser.add_argument(
         "--threshold",
         type=float,
-        default=0.5,
+        default=0.05,
         help="A numerical threshold value (default: 0.5)",
     )
     # Add the files argument (nargs='+' collects one or more arguments into a list)
