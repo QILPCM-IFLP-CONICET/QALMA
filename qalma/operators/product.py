@@ -164,7 +164,7 @@ class ProductOperator(Operator):
         return "$" + "\\otimes".join(factors_latex) + "$"
 
     def acts_over(self) -> frozenset:
-        return frozenset(site for site in self.sites_op)
+        return frozenset(site for site in self._sites_op)
 
     def dag(self):
         """
@@ -296,9 +296,9 @@ class ProductOperator(Operator):
             subsystem = self.system.subsystem(sites)
 
         sites_out = tuple(s for s in full_system_sites if s not in sites)
-        sites_op = self.sites_op
+        sites_op = self._sites_op
         prefactors = [
-            sites_op[s].tr() if s in sites_op else dimensions[s] for s in sites_out
+            sites_op[s].trace() if s in sites_op else dimensions[s] for s in sites_out
         ]
         sites_op = {s: o for s, o in sites_op.items() if s in sites}
         prefactor = self.prefactor
@@ -352,10 +352,10 @@ class ProductOperator(Operator):
         # Special cases:
         if state is None:
             dimensions = self.system.dimensions
-            sites_op = self.sites_op
+            sites_op = self._sites_op
 
             for site in environment:
-                prefactor *= sites_op[site].tr() / dimensions[site]
+                prefactor *= sites_op[site].trace() / dimensions[site]
             return ProductOperator(
                 {site: sites_op[site] for site in sites}, prefactor, system
             )
@@ -366,10 +366,10 @@ class ProductOperator(Operator):
         if hasattr(state, "to_product_state"):
             state = state.to_product_state()
         if isinstance(state, ProductOperator):
-            state_by_site = state.sites_op
-            sites_op = self.sites_op
+            state_by_site = state._sites_op
+            sites_op = self._sites_op
             for site in environment:
-                prefactor *= (sites_op[site] * state_by_site[site]).tr()
+                prefactor *= (sites_op[site] @ state_by_site[site]).trace()
             result = ProductOperator(
                 {site: sites_op[site] for site in sites}, prefactor, system
             )
@@ -377,7 +377,7 @@ class ProductOperator(Operator):
             # General case:
             env_tuple = tuple(environment)
             state = state.partial_trace(environment).to_qutip(env_tuple)
-            sites_ops = self.sites_op
+            sites_ops = self._sites_op
             prefactor *= (
                 state * qutip.tensor([self.sites_op[site] for site in env_tuple])
             ).tr()
