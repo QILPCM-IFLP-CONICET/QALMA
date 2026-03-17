@@ -3,7 +3,7 @@ Different representations for operators
 """
 
 import logging
-from functools import cache, cached_property, reduce
+from functools import cached_property, reduce
 
 # from types import MappingProxyType
 from typing import Iterable, Optional, Tuple, Union
@@ -420,7 +420,6 @@ class ProductOperator(Operator):
             return ProductOperator(nontrivial_factors, prefactor, self.system)
         return self
 
-    @cache
     def to_qutip(self, block: Optional[Tuple[str, ...]] = None):
         """
         return a qutip object acting over the sites listed in
@@ -585,7 +584,6 @@ class ScalarOperator(ProductOperator):
             return ScalarOperator(0, self.system)
         return self
 
-    @cache
     def to_qutip(self, block: Optional[Tuple[str, ...]] = None):
         """
         return a qutip object acting over the sites listed in

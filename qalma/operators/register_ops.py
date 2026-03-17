@@ -421,7 +421,7 @@ def _(x_op: ProductOperator, y_op: ProductOperator):
         return ScalarOperator(prefactor, system)
     if len(site_op) == 1:
         site, array_op_local = next(iter(site_op.items()))
-        op_local = Qobj(array_op_local*prefactor, copy=False)
+        op_local = Qobj(array_op_local * prefactor, copy=False)
         return LocalOperator(site, op_local, system)
     return ProductOperator(site_op, prefactor, system)
 
