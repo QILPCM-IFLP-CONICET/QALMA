@@ -202,7 +202,7 @@ def _(y_op: DensityOperatorMixin, x_op: Operator):
     )
 )
 def _(x_op: Operator, y_op: ProductDensityOperator):
-    y_op_reg = ProductOperator(y_op.sites_op, 1, y_op.system)
+    y_op_reg = ProductOperator(y_op.site_factors, 1, y_op.system)
     return x_op + y_op_reg
 
 
@@ -210,7 +210,7 @@ def _(x_op: Operator, y_op: ProductDensityOperator):
     [(type_1, ProductDensityOperator) for type_1 in BASIC_OPERATOR_TYPES]
 )
 def _(x_op: Operator, y_op: ProductDensityOperator):
-    y_op_reg = ProductOperator(y_op.sites_op, 1, y_op.system)
+    y_op_reg = ProductOperator(y_op.site_factors, 1, y_op.system)
     return x_op * y_op_reg
 
 
@@ -218,20 +218,20 @@ def _(x_op: Operator, y_op: ProductDensityOperator):
     [(ProductDensityOperator, type_1) for type_1 in BASIC_OPERATOR_TYPES]
 )
 def _(y_op: ProductDensityOperator, x_op: Operator):
-    y_op_reg = ProductOperator(y_op.sites_op, 1, y_op.system)
+    y_op_reg = ProductOperator(y_op.site_factors, 1, y_op.system)
     return y_op_reg * x_op
 
 
 @Operator.register_mul_handler((ProductDensityOperator, ProductDensityOperator))
 def _(x_op: ProductDensityOperator, y_op: ProductDensityOperator):
     system = x_op.system * y_op.system if x_op.system else y_op.system
-    sites_op = x_op.sites_op.copy()
-    for site, factor in y_op.sites_op.items():
-        if site in sites_op:
-            sites_op[site] *= factor
+    site_factors = x_op.site_factors.copy()
+    for site, factor in y_op.site_factors.items():
+        if site in site_factors:
+            site_factors[site] = site_factors[site] @ factor
         else:
-            sites_op[site] = factor
-    return ProductOperator(sites_op, 1, system)
+            site_factors[site] = factor
+    return ProductOperator(site_factors, 1, system)
 
 
 # ProductDensityOperator times Operators
@@ -368,13 +368,14 @@ def _(x_op: Operator, y_op: GibbsProductDensityOperator):
     )
 )
 def _(x_op: ProductOperator, y_op: ScalarOperator):
-    site_op = x_op.sites_op.copy()
     prefactor = x_op.prefactor
     system = x_op.system or y_op.system
-    if len(site_op) == 0:
+    sites_op = x_op.site_factors
+    if len(sites_op) == 0:
         return ScalarOperator(prefactor + y_op.prefactor, system)
-    if len(site_op) == 1:
-        first_site, first_loc_op = next(iter(site_op.items()))
+
+    if len(sites_op) == 1:
+        first_site, first_loc_op = next(iter(x_op.site_factors_qutip.items()))
         return LocalOperator(
             first_site, first_loc_op * prefactor + y_op.prefactor, system
         )

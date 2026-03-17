@@ -164,7 +164,9 @@ class QutipOperator(Operator):
             )
         )
         if isherm:
-            assert all(term.isherm for term in terms)
+            assert all(
+                term.isherm for term in terms
+            ), f"{[(type(term), term.isherm) for term in terms]}"
         if len(terms) == 0:
             terms = tuple((ScalarOperator(0, self.system),))
         return SumOperator(terms, self.system, isherm=isherm)

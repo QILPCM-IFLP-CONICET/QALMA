@@ -6,7 +6,7 @@ import logging
 from functools import cached_property, reduce
 
 # from types import MappingProxyType
-from typing import Iterable, Optional, Tuple, Union
+from typing import Dict, Iterable, Optional, Tuple, Union
 
 import numpy as np
 import qutip  # type: ignore[import-untyped]
@@ -23,6 +23,13 @@ from qalma.settings import (
 )
 
 from .basic import LocalOperator, Operator
+
+# from scipy.linalg import ishermitian
+
+
+def ishermitian(array: np.ndarray):
+    """Determine if the array is hermitian."""
+    return np.allclose(array, array.T.conj())
 
 
 def _to_array(op) -> np.ndarray:
@@ -45,6 +52,10 @@ def _to_array(op) -> np.ndarray:
 class ProductOperator(Operator):
     """Product of operators acting over different sites"""
 
+    site_factors: Dict[str, np.ndarray]
+    prefactor: complex
+    system: SystemDescriptor
+
     def __init__(
         self,
         sites_operators: dict,
@@ -66,10 +77,10 @@ class ProductOperator(Operator):
             }
 
         sites_operators = {key: _to_array(op) for key, op in sites_operators.items()}
-        self._sites_op = sites_operators
+        self.site_factors = sites_operators
         if any(empty_op(op) for op in sites_operators.values()):
             prefactor = 0
-            self.sites_op = {}
+            self.site_factors = {}
         self.prefactor = prefactor
         assert isinstance(prefactor, (int, float, complex)), f"{type(prefactor)}"
         self.system = system
@@ -80,8 +91,10 @@ class ProductOperator(Operator):
             }
 
     @cached_property
-    def sites_op(self):
-        result = {key: qutip.Qobj(op, copy=False) for key, op in self._sites_op.items()}
+    def site_factors_qutip(self) -> Dict[str, qutip.Qobj]:
+        result = {
+            key: qutip.Qobj(op, copy=False) for key, op in self.site_factors.items()
+        }
         return result  # MappingProxyType(result)
 
     @cached_property
@@ -97,9 +110,9 @@ class ProductOperator(Operator):
         Raises ``ValueError`` for heterogeneous systems; callers should
         catch it and fall back to iterating over ``_dense``.
         """
-        if not self.sites_op:
+        if not self.site_factors:
             return (), np.empty((0,), dtype=np.complex128)
-        dense = self._sites_op
+        dense = self.site_factors
         sites = tuple(sorted(dense))
         shapes = {dense[s].shape for s in sites}
         if len(shapes) > 1:
@@ -121,14 +134,16 @@ class ProductOperator(Operator):
         return complex((a * b.T).sum())
 
     def __bool__(self):
-        return bool(self.prefactor) and all(bool(factor) for factor in self.sites_op)
+        return bool(self.prefactor) and all(
+            factor.any() for factor in self.site_factors.values()
+        )
 
     def __neg__(self):
-        return ProductOperator(self.sites_op, -self.prefactor, self.system)
+        return ProductOperator(self.site_factors, -self.prefactor, self.system)
 
     def __pow__(self, exp):
         return ProductOperator(
-            {s: op**exp for s, op in self.sites_op.items()},
+            {s: op**exp for s, op in self.site_factors_qutip.items()},
             self.prefactor**exp,
             self.system,
         )
@@ -137,7 +152,7 @@ class ProductOperator(Operator):
         result = "  " + str(self.prefactor) + " * (\n  "
         result += "  (x)\n  ".join(
             f"({item[1].full()} <-  {item[0]})"
-            for item in sorted(self.sites_op.items(), key=lambda x: x[0])
+            for item in sorted(self.site_factors_qutip.items(), key=lambda x: x[0])
         )
         result += "\n   )"
         return result
@@ -145,7 +160,7 @@ class ProductOperator(Operator):
     def _repr_latex(self):
         """latex representation"""
         factors_latex = []
-        for site, qutip_op in self.sites_op.items():
+        for site, qutip_op in self.site_factors_qutip.items():
             # pylint: disable=protected-access
             tex = qutip_op._repr_latex_().replace("$$", "$")
             parts = tex.split("$")
@@ -164,20 +179,20 @@ class ProductOperator(Operator):
         return "$" + "\\otimes".join(factors_latex) + "$"
 
     def acts_over(self) -> frozenset:
-        return frozenset(site for site in self._sites_op)
+        return frozenset(site for site in self.site_factors)
 
     def dag(self):
         """
         Return the adjoint operator
         """
-        sites_op_dag = {key: op.dag() for key, op in self.sites_op.items()}
+        sites_op_dag = {key: op.T.conj() for key, op in self.site_factors.items()}
         prefactor = self.prefactor
         if isinstance(prefactor, complex):
             prefactor = prefactor.conjugate()
         return ProductOperator(sites_op_dag, prefactor, self.system)
 
     def expm(self):
-        sites_op = self.sites_op
+        sites_op = self.site_factors_qutip
         n_ops = len(sites_op)
         if n_ops == 0:
             return ScalarOperator(np.exp(self.prefactor), self.system)
@@ -191,11 +206,11 @@ class ProductOperator(Operator):
         return result
 
     def flat(self):
-        nfactors = len(self.sites_op)
+        nfactors = len(self.site_factors)
         if nfactors == 0:
             return ScalarOperator(self.prefactor, self.system)
         if nfactors == 1:
-            name, op_factor = list(self.sites_op.items())[0]
+            name, op_factor = list(self.site_factors_qutip.items())[0]
             return LocalOperator(name, self.prefactor * op_factor, self.system)
         return self
 
@@ -204,15 +219,17 @@ class ProductOperator(Operator):
 
         if self.isherm:
             return self
-        if all(op.isherm for op in self.sites_op.values()):
-            return ProductOperator(self.sites_op, np.real(self.prefactor), self.system)
+        if all(ishermitian(op) for op in self.site_factors.values()):
+            return ProductOperator(
+                self.site_factors, np.real(self.prefactor), self.system
+            )
         half_self = self * 0.5
         return SumOperator(
             (half_self, half_self.dag()), system=self.system, isherm=True
         )
 
     def inv(self):
-        sites_op = self.sites_op
+        sites_op = self.site_factors_qutip
         system = self.system
         prefactor = self.prefactor
 
@@ -227,7 +244,22 @@ class ProductOperator(Operator):
     def isherm(self) -> bool:
         # TODO: check if it worth to check that factors are not hermitician
         # up to a phase factor.
-        if not all(loc_op.isherm for loc_op in self.sites_op.values()):
+        if not all(ishermitian(loc_op) for loc_op in self.site_factors.values()):
+            print([ishermitian(loc_op) for loc_op in self.site_factors.values()])
+            print(
+                [
+                    np.allclose(loc_op, loc_op.T.conj())
+                    for loc_op in self.site_factors.values()
+                ]
+            )
+
+            print(
+                [
+                    loc_op
+                    for loc_op in self.site_factors.values()
+                    if not ishermitian(loc_op)
+                ]
+            )
             return False
         prefactor = self.prefactor
         if isinstance(prefactor, (int, float, np.float64)):
@@ -238,7 +270,7 @@ class ProductOperator(Operator):
 
     @cached_property
     def isdiagonal(self) -> bool:
-        for factor_op in self.sites_op.values():
+        for factor_op in self.site_factors.values():
             if not is_diagonal_op(factor_op):
                 return False
         return True
@@ -258,7 +290,7 @@ class ProductOperator(Operator):
         system = self.system
         terms = tuple(
             LocalOperator(site, log_qutip(loc_op), system)
-            for site, loc_op in self.sites_op.items()
+            for site, loc_op in self.site_factors_qutip.items()
         )
         result = OneBodyOperator(terms, system, False)
         result = result + ScalarOperator(np.log(self.prefactor), system)
@@ -268,7 +300,7 @@ class ProductOperator(Operator):
         """The norm of the operator"""
 
         result = self.prefactor
-        for op_loc in self.sites_op.values():
+        for op_loc in self.site_factors_qutip.values():
             result *= norm(op_loc, ord)
 
         if ord in ("fro", "nuc"):
@@ -276,7 +308,7 @@ class ProductOperator(Operator):
             for dim in (
                 dim
                 for site, dim in self.system.dimensions.items()
-                if site not in self.sites_op
+                if site not in self.site_factors
             ):
                 dim_factor *= dim
             if ord == "fro":
@@ -296,7 +328,7 @@ class ProductOperator(Operator):
             subsystem = self.system.subsystem(sites)
 
         sites_out = tuple(s for s in full_system_sites if s not in sites)
-        sites_op = self._sites_op
+        sites_op = self.site_factors
         prefactors = [
             sites_op[s].trace() if s in sites_op else dimensions[s] for s in sites_out
         ]
@@ -352,7 +384,7 @@ class ProductOperator(Operator):
         # Special cases:
         if state is None:
             dimensions = self.system.dimensions
-            sites_op = self._sites_op
+            sites_op = self.site_factors
 
             for site in environment:
                 prefactor *= sites_op[site].trace() / dimensions[site]
@@ -366,8 +398,8 @@ class ProductOperator(Operator):
         if hasattr(state, "to_product_state"):
             state = state.to_product_state()
         if isinstance(state, ProductOperator):
-            state_by_site = state._sites_op
-            sites_op = self._sites_op
+            state_by_site = state.site_factors
+            sites_op = self.site_factors
             for site in environment:
                 prefactor *= (sites_op[site] @ state_by_site[site]).trace()
             result = ProductOperator(
@@ -377,9 +409,11 @@ class ProductOperator(Operator):
             # General case:
             env_tuple = tuple(environment)
             state = state.partial_trace(environment).to_qutip(env_tuple)
-            sites_ops = self._sites_op
+            sites_ops = self.site_factors
+            # TODO: check if we can do more using numpy
             prefactor *= (
-                state * qutip.tensor([self.sites_op[site] for site in env_tuple])
+                state
+                * qutip.tensor([self.site_factors_qutip[site] for site in env_tuple])
             ).tr()
             sites_op = {site: op_q for site, op_q in sites_ops.items() if site in sites}
             result = ProductOperator(sites_op, prefactor, system)
@@ -400,7 +434,7 @@ class ProductOperator(Operator):
         prefactor = self.prefactor
         if prefactor == 0:
             return ScalarOperator(0, self.system)
-        for site, op_factor in self.sites_op.items():
+        for site, op_factor in self.site_factors.items():
             if is_scalar_op(op_factor):
                 prefactor *= op_factor[0, 0]
                 assert isinstance(
@@ -415,8 +449,10 @@ class ProductOperator(Operator):
             return ScalarOperator(prefactor, self.system)
         if nops == 1:
             site, op_local = next(iter(nontrivial_factors.items()))
-            return LocalOperator(site, prefactor * op_local, self.system)
-        if nops != len(self.sites_op):
+            return LocalOperator(
+                site, qutip.Qobj(prefactor * op_local, copy=False), self.system
+            )
+        if nops != len(self.site_factors):
             return ProductOperator(nontrivial_factors, prefactor, self.system)
         return self
 
@@ -427,7 +463,7 @@ class ProductOperator(Operator):
         By default (`block=None`) returns a qutip object
         acting over all the sites, in lexicographical order.
         """
-        sites_op = self.sites_op
+        sites_op = self.site_factors_qutip
         system = self.system
         sites = system.sites if system else {}
         # Ensure that block has the sites in the operator.
@@ -463,7 +499,7 @@ class ProductOperator(Operator):
         Otherwise, returns a QutipOperator.
         """
         prefactor = self.prefactor
-        if not (prefactor and self.sites_op):
+        if not (prefactor and self.site_factors_qutip):
             return ScalarOperator(prefactor, self.system)
         return super().to_qutip_operator()
 
@@ -474,7 +510,7 @@ class ProductOperator(Operator):
     def tidyup(self, atol=None):
         """remove tiny elements of the operator"""
         tidy_site_operators = {
-            name: op_s.tidyup(atol) for name, op_s in self.sites_op.items()
+            name: op_s.tidyup(atol) for name, op_s in self.site_factors_qutip.items()
         }
         return ProductOperator(tidy_site_operators, self.prefactor, self.system)
 

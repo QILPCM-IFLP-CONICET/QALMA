@@ -153,7 +153,7 @@ def test_product_gibbs_with_dict(key, k_gen):
     if isinstance(k_gen, LocalOperator):
         local_gen_dic[k_gen.site] = k_gen.operator
     elif isinstance(k_gen, ProductOperator):
-        if len(k_gen.sites_op) != 0:
+        if len(k_gen.site_factors) != 0:
             site, op = k_gen.sites_op.items()
             local_gen_dic[site] = op
     elif isinstance(k_gen, QutipOperator):

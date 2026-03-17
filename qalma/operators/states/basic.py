@@ -5,7 +5,7 @@ Density operator classes.
 import logging
 import pickle
 from functools import cache
-from typing import Iterable, Optional, Protocol, Tuple, Union, cast
+from typing import Any, Iterable, Optional, Protocol, Tuple, Union, cast
 
 import numpy as np
 from numpy.typing import NDArray
@@ -23,6 +23,7 @@ from qalma.operators.basic import (
 from qalma.operators.product import (
     ProductOperator,
     ScalarOperator,
+    _to_array,
 )
 from qalma.operators.quadratic import QuadraticFormOperator
 
@@ -298,7 +299,8 @@ class ProductDensityOperator(DensityOperatorMixin, ProductOperator):
             local_states = {}
             local_zs = {}
         else:
-            local_zs = {site: state.tr() for site, state in local_states.items()}
+            local_states = {key: _to_array(val) for key, val in local_states.items()}
+            local_zs = {site: state.trace() for site, state in local_states.items()}
             if normalize:
                 assert (z > 0 for z in local_zs.values())
                 local_states = {
@@ -330,7 +332,7 @@ class ProductDensityOperator(DensityOperatorMixin, ProductOperator):
         if isinstance(a, (float, np.float64)):
             if a >= 0:
                 return ProductDensityOperator(
-                    self.sites_op, self.prefactor * a, self.system, False
+                    self.site_factors, self.prefactor * a, self.system, False
                 )
             logging.warning(
                 (
@@ -338,18 +340,18 @@ class ProductDensityOperator(DensityOperatorMixin, ProductOperator):
                     "density operator returns a regular operator."
                 )
             )
-            return ProductOperator(self.sites_op, 1, self.system) * a
-        return ProductOperator(self.sites_op, 1, self.system) * a
+            return ProductOperator(self.site_factors, 1, self.system) * a
+        return ProductOperator(self.site_factors, 1, self.system) * a
 
     def __neg__(self):
         logging.warning("Negate a DensityOperator leads to a regular operator.")
-        return ProductOperator(self.sites_op, -1, self.system)
+        return ProductOperator(self.site_factors, -1, self.system)
 
     def __rmul__(self, a):
         if isinstance(a, (float, np.float64)):
             if a >= 0:
                 return ProductDensityOperator(
-                    self.sites_op, self.prefactor * a, self.system, False
+                    self.site_factors, self.prefactor * a, self.system, False
                 )
             logging.warning(
                 (
@@ -357,10 +359,10 @@ class ProductDensityOperator(DensityOperatorMixin, ProductOperator):
                     "a density operator returns a regular operator."
                 )
             )
-            return ProductOperator(self.sites_op, 1, self.system) * a
-        return a * ProductOperator(self.sites_op, 1, self.system)
+            return ProductOperator(self.site_factors, 1, self.system) * a
+        return a * ProductOperator(self.site_factors, 1, self.system)
 
-    def expect(self, obs_objs):
+    def expect(self: Any, obs_objs: Any) -> Any:
         """
         Compute the expectation value of an operator or a sequence of
         operators.
@@ -378,7 +380,7 @@ class ProductDensityOperator(DensityOperatorMixin, ProductOperator):
             op_dense = np.asarray(
                 obs_objs.operator.full(), dtype=np.complex128, order="C"
             )
-            return self._trace2(self._sites_op[site], op_dense)
+            return self._trace2(self.site_factors[site], op_dense)
 
         if isinstance(obs_objs, ProductOperator):
             obs_prod = cast(ProductOperator, obs_objs)
@@ -386,7 +388,7 @@ class ProductDensityOperator(DensityOperatorMixin, ProductOperator):
             if not result:
                 return complex(0)
 
-            rhos = self._sites_op  # dict[site -> (d,d)]
+            rhos = self.site_factors  # dict[site -> (d,d)]
 
             # --- Fast path: homogeneous system, batched einsum -----------
             try:
@@ -398,11 +400,10 @@ class ProductDensityOperator(DensityOperatorMixin, ProductOperator):
             except (ValueError, KeyError):
                 # Heterogeneous dims or a site not in rhos: fall back to
                 # a per-site loop that is still numpy-only (no Qobj).
-                for site, obs_op in obs_prod.sites_op.items():
+                for site, obs_op in obs_prod.site_factors.items():
                     if not result:
                         break
-                    op_dense = np.asarray(obs_op.full(), dtype=np.complex128, order="C")
-                    result *= self._trace2(rhos[site], op_dense)
+                    result *= self._trace2(rhos[site], obs_op)
 
             return result
 
@@ -432,7 +433,7 @@ class ProductDensityOperator(DensityOperatorMixin, ProductOperator):
             )
 
         system = self.system
-        sites_op = self.sites_op
+        sites_op = self.site_factors_qutip
         terms = tuple(
             LocalOperator(site, log_qutip(loc_op), system)
             for site, loc_op in sites_op.items()
@@ -441,13 +442,13 @@ class ProductDensityOperator(DensityOperatorMixin, ProductOperator):
             norm = -sum(
                 np.log(dim)
                 for site, dim in system.dimensions.items()
-                if site not in self.sites_op
+                if site not in sites_op
             )
             return OneBodyOperator(terms, system, False) + ScalarOperator(norm, system)
         return OneBodyOperator(terms, system, False)
 
     def partial_trace(self, sites: Union[frozenset, SystemDescriptor]):
-        sites_op = self.sites_op
+        sites_op = self.site_factors_qutip
         if isinstance(sites, SystemDescriptor):
             subsystem = sites
             sites = frozenset(sites.sites.keys())
@@ -466,7 +467,7 @@ class ProductDensityOperator(DensityOperatorMixin, ProductOperator):
         if prefactor == 0 or len(self.system.dimensions) == 0:
             return np.exp(-sum(np.log(dim) for dim in self.system.dimensions.values()))
 
-        sites_op = self.sites_op
+        sites_op = self.site_factors_qutip
         dimensions = self.system.dimensions
         if block is None:
             block = tuple(sorted(self.system.sites))

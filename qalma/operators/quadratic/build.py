@@ -66,8 +66,8 @@ def build_local_basis(
 
         for term in product_terms:
             site1, site2 = sites
-            basis_by_site.setdefault(site1, []).append(term.sites_op[site1])
-            basis_by_site.setdefault(site2, []).append(term.sites_op[site2])
+            basis_by_site.setdefault(site1, []).append(term.site_factors_qutip[site1])
+            basis_by_site.setdefault(site2, []).append(term.site_factors_qutip[site2])
 
     return orthonormal_hs_local_basis(basis_by_site)
 
@@ -119,7 +119,7 @@ def zero_expectation_value_basis(basis: LocalBasisDict, sigma_ref):
     in a way that each operator have zero mean regarding
     sigma_ref
     """
-    local_sigmas = sigma_ref.sites_op
+    local_sigmas = sigma_ref.site_factors_qutip
 
     new_basis = {}
     for site, _ in basis.items():
@@ -144,7 +144,7 @@ def classify_terms(operator, sigma_ref):
     """
 
     local_sigmas = (
-        sigma_ref.sites_op
+        sigma_ref.site_factors_qutip
         if sigma_ref is not None
         else {
             site: 1 / dimension
@@ -155,7 +155,7 @@ def classify_terms(operator, sigma_ref):
     def decompose_two_body_product_operator(prod_op):
         prefactor = prod_op.prefactor
         system = prod_op.system
-        sites_op = operator.sites_op
+        sites_op = operator.site_factors_qutip
         assert len(sites_op) == 2
         averages = {
             site: (
@@ -458,7 +458,7 @@ def fill_array_from_block(result_array, local_basis, positions, block, terms):
     position_1 = positions[site1]
     position_2 = positions[site2]
     for term in terms:
-        op1, op2 = (term.sites_op[site] for site in block)
+        op1, op2 = (term.site_factors_qutip[site] for site in block)
         for mu, b1 in enumerate(local_basis[site1]):
             for nu, b2 in enumerate(local_basis[site2]):
                 i = position_1 + mu

@@ -412,8 +412,8 @@ def _(x_op: ProductOperator, y_op: ProductOperator):
 
     """
     system = x_op.system.union(y_op.system)
-    site_op = x_op._sites_op.copy()
-    site_op_y = y_op._sites_op
+    site_op = x_op.site_factors.copy()
+    site_op_y = y_op.site_factors
     for site, op_local in site_op_y.items():
         site_op[site] = site_op[site] @ op_local if site in site_op else op_local
     prefactor = x_op.prefactor * y_op.prefactor
@@ -451,7 +451,7 @@ def _(x_op: ProductOperator, y_value: complex) -> Operator:
     """
     if y_value:
         prefactor = x_op.prefactor * y_value
-        return ProductOperator(x_op.sites_op, prefactor, x_op.system)
+        return ProductOperator(x_op.site_factors, prefactor, x_op.system)
     return ScalarOperator(0, x_op.system)
 
 
@@ -480,7 +480,7 @@ def _(y_value: complex, x_op: ProductOperator):
     """
     if y_value:
         prefactor = x_op.prefactor * y_value
-        return ProductOperator(x_op.sites_op, prefactor, x_op.system)
+        return ProductOperator(x_op.site_factors, prefactor, x_op.system)
     return ScalarOperator(0, x_op.system)
 
 
@@ -507,7 +507,7 @@ def _(x_op: ProductOperator, y_op: ScalarOperator):
     prefactor = y_op.prefactor
     if prefactor:
         prefactor = x_op.prefactor * prefactor
-        return ProductOperator(x_op.sites_op, prefactor, x_op.system)
+        return ProductOperator(x_op.site_factors, prefactor, x_op.system)
     return ScalarOperator(0, x_op.system)
 
 
@@ -537,7 +537,7 @@ def _(
     prefactor = y_op.prefactor
     if prefactor:
         prefactor = x_op.prefactor * prefactor
-        return ProductOperator(x_op.sites_op, prefactor, x_op.system)
+        return ProductOperator(x_op.site_factors, prefactor, x_op.system)
     return ScalarOperator(0, x_op.system)
 
 
@@ -564,7 +564,7 @@ def _(x_op: ProductOperator, y_op: LocalOperator):
     site = y_op.site
     op_local = y_op.operator.full()
     system = x_op.system * y_op.system if x_op.system else y_op.system
-    site_op = x_op._sites_op.copy()
+    site_op = x_op.site_factors.copy()
     if site in site_op:
         op_local = site_op[site] @ op_local
 
@@ -600,7 +600,7 @@ def _(y_op: LocalOperator, x_op: ProductOperator):
     site = y_op.site
     op_local = y_op.operator.full()
     system = x_op.system * y_op.system if x_op.system else y_op.system
-    site_op = x_op._sites_op.copy()
+    site_op = x_op.site_factors.copy()
     if site in site_op:
         op_local = op_local @ site_op[site]
 
@@ -1334,13 +1334,14 @@ def _(x_op: ProductOperator, y_value: complex):
     -------
 
     """
-    site_op = x_op.sites_op.copy()
     prefactor = x_op.prefactor
     system = x_op.system
-    if len(site_op) == 0:
+    sites_op = x_op.site_factors
+    if len(sites_op) == 0:
         return ScalarOperator(prefactor + y_value, system)
-    if len(site_op) == 1:
-        first_site, first_loc_op = next(iter(site_op.items()))
+
+    if len(sites_op) == 1:
+        first_site, first_loc_op = next(iter(x_op.site_factors_qutip.items()))
         return LocalOperator(first_site, first_loc_op * prefactor + y_value, system)
     y_op = ScalarOperator(y_value, system)
     return SumOperator(
@@ -1383,8 +1384,8 @@ def _(x_op: ProductOperator, y_op: ProductOperator):
 
     """
     system = x_op.system or y_op.system
-    site_op_x = x_op.sites_op
-    site_op_y = y_op.sites_op
+    site_op_x = x_op.site_factors
+    site_op_y = y_op.site_factors
     if len(site_op_x) > 1 or len(site_op_y) > 1:
         return SumOperator(
             (
@@ -1417,7 +1418,7 @@ def _(x_op: ProductOperator, y_op: LocalOperator):
 
     """
     system = x_op.system or y_op.system
-    site_op_x = x_op.sites_op
+    site_op_x = x_op.site_factors
     if len(site_op_x) > 1:
         return SumOperator(
             (

@@ -211,7 +211,8 @@ else:
             if data.nnz == 0:
                 return True
             return all(a == b for a, b in zip(*data.nonzero()))
-        data = data.as_ndarray()
+        if hasattr(data, "as_ndarray"):
+            data = data.as_ndarray()
         dim_i, dim_j = data.shape
         return not any(
             data[i_idx, j_idx]
@@ -282,7 +283,8 @@ else:
                 return a00
 
         # Must be dense...
-        data = data.as_ndarray()
+        if hasattr(data, "as_ndarray"):
+            data = data.as_ndarray()
         dim_i, dim_j = data.shape
         if any(
             data[i_idx, j_idx]
@@ -333,7 +335,7 @@ def empty_op(op) -> bool:
 
     if hasattr(op, "operator"):
         return empty_op(op.operator)
-    if any(empty_op(factor) for factor in getattr(op, "sites_op", {}).values()):
+    if any(empty_op(factor) for factor in getattr(op, "_sites_op", {}).values()):
         return True
     return False
 
@@ -345,13 +347,17 @@ def hermitician_part(op: Qobj, tol=None) -> Qobj:
     return (op + op.dag()).tidyup(tol) * 0.5
 
 
-def is_diagonal_op(op: Qobj) -> bool:
+def is_diagonal_op(op: Qobj | np.ndarray) -> bool:
+    if isinstance(op, np.ndarray):
+        return data_is_diagonal(op)
     return data_is_diagonal(op.data)
 
 
 def is_scalar_op(op: Qobj) -> bool:
     """Check if op is a multiple of the identity operator"""
-    return data_is_scalar(op.data)
+    if isinstance(op, Qobj):
+        return data_is_scalar(op.data)
+    return data_is_scalar(op)
 
 
 def isnan_qutip(op: Qobj) -> bool:

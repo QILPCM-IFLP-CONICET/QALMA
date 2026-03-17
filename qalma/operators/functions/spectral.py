@@ -53,7 +53,7 @@ def spectral_norm(operator: Operator) -> float:
         return max(abs((op_qutip.dag() * op_qutip).eigenenergies())) ** 0.5
     if isinstance(operator, ProductOperator):
         result = abs(operator.prefactor)
-        for loc_op in operator.sites_op.values():
+        for loc_op in operator.site_factors_qutip.values():
             if loc_op.isherm:
                 result *= max(abs(loc_op.eigenenergies()))
             else:
