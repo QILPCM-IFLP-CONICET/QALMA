@@ -81,7 +81,7 @@ class ProductOperator(Operator):
 
     @cached_property
     def sites_op(self):
-        result = {key: qutip.Qobj(op) for key, op in self._sites_op.items()}
+        result = {key: qutip.Qobj(op, copy=False) for key, op in self._sites_op.items()}
         return result  # MappingProxyType(result)
 
     @cached_property

@@ -369,7 +369,6 @@ def _(x_op: LocalOperator, y_op: LocalOperator):
     -------
 
     """
-    print("Local operator * Local operator")
     site_x = x_op.site
     site_y = y_op.site
     system = x_op.system or y_op.system
@@ -422,7 +421,7 @@ def _(x_op: ProductOperator, y_op: ProductOperator):
         return ScalarOperator(prefactor, system)
     if len(site_op) == 1:
         site, array_op_local = next(iter(site_op.items()))
-        op_local = Qobj(array_op_local*prefactor)
+        op_local = Qobj(array_op_local*prefactor, copy=False)
         return LocalOperator(site, op_local, system)
     return ProductOperator(site_op, prefactor, system)
 
@@ -573,7 +572,7 @@ def _(x_op: ProductOperator, y_op: LocalOperator):
 
     if len(site_op) == 1:
         site, array_op_local = next(iter(site_op.items()))
-        op_local = Qobj(array_op_local * x_op.prefactor)
+        op_local = Qobj(array_op_local * x_op.prefactor, copy=False)
         return LocalOperator(site, op_local, system)
     return ProductOperator(site_op, x_op.prefactor, system)
 
@@ -609,7 +608,7 @@ def _(y_op: LocalOperator, x_op: ProductOperator):
 
     if len(site_op) == 1:
         site, array_op_local = next(iter(site_op.items()))
-        op_local = Qobj(array_op_local * x_op.prefactor)
+        op_local = Qobj(array_op_local * x_op.prefactor, copy=False)
         return LocalOperator(site, op_local, system)
     return ProductOperator(site_op, x_op.prefactor, system)
 

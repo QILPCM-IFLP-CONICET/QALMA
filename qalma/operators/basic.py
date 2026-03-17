@@ -117,7 +117,6 @@ class Operator:  # pylint: disable=too-many-public-methods
             return func(self, factor)
         # Now, look for cases associated to the class hierarchy
         func = find_arithmetic_implementation(self, factor, dispatch_table)
-        print("mul using", func)
         if func:
             return func(self, factor)
 
@@ -173,11 +172,11 @@ class Operator:  # pylint: disable=too-many-public-methods
 
     def __rmul__(self, factor):
         # Use __mul__dispatch__ to determine how to evaluate the product
+
         dispatch_table = Operator.__mul__dispatch__
 
         # First try with the cases stored in the dispatch table:
         func = dispatch_table.get((type(factor), type(self)), None)
-        print("rmul using", func)
         if func is not None:
             return func(factor, self)
         # Now, look for cases associated to the class hierarchy
