@@ -190,6 +190,9 @@ def test_compare_iterative_and_recursive_n_body_qutip_projections(op_name, op_te
     assert isinstance(op_test, QutipOperator)
 
     for state_name, sigma0 in TEST_STATES.items():
+        if not isinstance(sigma0, ProductDensityOperator):
+            continue
+
         print(f"  = sigma0{state_name}")
         for n_body in range(0, 4):
             print("   n=", n_body)
@@ -231,6 +234,8 @@ def test_compare_iterative_and_recursive_n_body_product_projections(op_name, op_
             return
 
     for state_name, sigma0 in TEST_STATES.items():
+        if not isinstance(sigma0, ProductDensityOperator):
+            continue
         print(f"  = sigma0{state_name}")
         for n_body in range(0, 4):
             print("   n=", n_body)

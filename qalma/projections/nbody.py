@@ -25,6 +25,9 @@ from qalma.operators.states.basic import (
     DensityOperatorProtocol,
     ProductDensityOperator,
 )
+from qalma.operators.states.gibbs import (
+    GibbsProductDensityOperator,
+)
 from qalma.operators.states.utils import (
     acts_over_order,
     compute_operator_expectation_value,
@@ -757,6 +760,8 @@ def project_to_n_body_operator(
     if isinstance(full_operator, (OneBodyOperator, LocalOperator)):
         return full_operator
 
+    if isinstance(sigma, GibbsProductDensityOperator):
+        sigma = sigma.to_product_state()
     if isinstance(full_operator, SumOperator):
         return project_sum_operator(full_operator, n_max, sigma)
 

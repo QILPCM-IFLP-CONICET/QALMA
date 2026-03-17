@@ -3,7 +3,6 @@ Classes to represent density operators as Gibbs states $rho=e^{-k}$.
 
 """
 
-from functools import cached_property
 from typing import Callable, Dict, Iterable, Optional, Tuple, Union, cast
 
 import numpy as np
@@ -285,9 +284,9 @@ class GibbsProductDensityOperator(DensityOperatorMixin, Operator):
                 )
         return operand * self.to_product_state()
 
-    @cached_property
-    def _sites_op(self):
-        return self.to_product_state()._sites_op
+    # @cached_property
+    # def _sites_op(self):
+    #    return self.to_product_state()._sites_op
 
     def acts_over(self) -> frozenset:
         """
