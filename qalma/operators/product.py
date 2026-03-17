@@ -3,7 +3,7 @@ Different representations for operators
 """
 
 import logging
-from functools import reduce
+from functools import cached_property, reduce
 from typing import Iterable, Optional, Tuple, Union
 
 import numpy as np
@@ -58,6 +58,57 @@ class ProductOperator(Operator):
             self.dimensions = {
                 name: site["dimension"] for name, site in system.sites.items()
             }
+
+    @cached_property
+    def _dense(self) -> dict:
+        """
+        Dense numpy representation of each local factor, keyed by site name.
+
+        Each value is a complex128 C-contiguous ndarray of shape (d, d).
+        Built once on first access. If the operator is ever mutated after
+        construction (which should not happen in normal use), invalidate
+        with ``del self._dense``.
+        """
+        return {
+            site: np.asarray(op.full(), dtype=np.complex128, order="C")
+            for site, op in self.sites_op.items()
+        }
+
+    @cached_property
+    def _dense_tensor(self):
+        """
+        Stacked dense representation for *homogeneous* systems, i.e. where
+        every site has the same local Hilbert-space dimension d.
+
+        Returns ``(sites, tensor)`` where:
+          - ``sites``  is a sorted tuple of site names matching axis-0, and
+          - ``tensor`` is a complex128 ndarray of shape ``(N, d, d)``.
+
+        Raises ``ValueError`` for heterogeneous systems; callers should
+        catch it and fall back to iterating over ``_dense``.
+        """
+        if not self.sites_op:
+            return (), np.empty((0,), dtype=np.complex128)
+        dense = self._dense
+        sites = tuple(sorted(dense))
+        shapes = {dense[s].shape for s in sites}
+        if len(shapes) > 1:
+            raise ValueError(
+                "ProductOperator._dense_tensor: heterogeneous site dimensions "
+                f"{shapes}; use _dense instead."
+            )
+        return sites, np.stack([dense[s] for s in sites])  # (N, d, d)
+
+    @staticmethod
+    def _trace2(a: np.ndarray, b: np.ndarray) -> complex:
+        """
+        Tr(a @ b) without allocating an intermediate matrix.
+
+        Equivalent to ``np.einsum('ij,ji->', a, b)`` but avoids einsum's
+        fixed Python overhead, which dominates for the small matrices (d=2,3,4)
+        typical in spin/boson lattice models.
+        """
+        return complex((a * b.T).sum())
 
     def __bool__(self):
         return bool(self.prefactor) and all(bool(factor) for factor in self.sites_op)

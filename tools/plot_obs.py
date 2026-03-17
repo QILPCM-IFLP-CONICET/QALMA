@@ -3,6 +3,7 @@
 import matplotlib as mpl
 
 mpl.use("module://mpl_ascii")
+import glob
 import pickle
 import sys
 
@@ -10,9 +11,9 @@ import numpy as np
 from matplotlib import pyplot as plt
 
 from qalma.evolution.simulation import Simulation
-from qalma.operators.states import GibbsDensityOperator
+from qalma.operators.states import DensityOperatorMixin, GibbsDensityOperator
 
-for idx, filename in enumerate(sys.argv[1:]):
+for idx, filename in enumerate([fn for pat in sys.argv[1:] for fn in glob.glob(pat)]):
     print(filename)
     is_hdf5 = True
     if filename[-4:] == ".pkl":
@@ -32,11 +33,18 @@ for idx, filename in enumerate(sys.argv[1:]):
             system = simulation.states[0].system
             print("build expect from states")
             sz_total = sum(system.site_operator("Sz", s) for s in system.sites)
+
+            def ensure_is_state(k):
+                if not isinstance(k, DensityOperatorMixin):
+                    return GibbsDensityOperator(k)
+                return k
+
             simulation.expect_ops[obs_key] = [
-                GibbsDensityOperator(k).to_qutip_operator().expect(sz_total)
+                ensure_is_state(k).to_qutip_operator().expect(sz_total)
                 for k in simulation.states
             ]
             if is_hdf5:
+                print(">> storing expect ops")
                 simulation.save_hdf5(filename)
             else:
                 with open(filename, "wb") as f:
@@ -51,6 +59,7 @@ for idx, filename in enumerate(sys.argv[1:]):
         [np.real(x) for x in simulation.expect_ops[obs_key]],
         label=filename[:20],
     )
+
 
 plt.legend()
 plt.savefig("sz_evol.svg")

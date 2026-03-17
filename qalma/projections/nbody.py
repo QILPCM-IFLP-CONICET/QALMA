@@ -277,6 +277,35 @@ def _project_product_operator_recursive(
     if n_factors <= n_max:
         return full_operator
 
+    if n_max == 2 and sigma_ref is not None:
+        prefactor = src_operator.prefactor
+        if not prefactor:
+            return ScalarOperator(0, full_operator.system)
+
+        system = full_operator.system
+        rhos = sigma_ref._dense  # dict[site -> (d,d)]
+
+        averages: dict = {}
+        for site, l_op in sites_op.items():
+            op_dense = np.asarray(l_op.full(), dtype=np.complex128, order="C")
+            averages[site] = ProductOperator._trace2(rhos[site], op_dense)
+
+        fluct_op = {site: l_op - averages[site] for site, l_op in sites_op.items()}
+
+        terms = []
+        for n_f in range(n_max + 1):
+            for subcomb in combinations(sites_op, n_f):
+                num_factors = (
+                    val for site, val in averages.items() if site not in subcomb
+                )
+                term_prefactor = np_prod(num_factors, prefactor)
+                if term_prefactor == 0:
+                    continue
+                sub_site_ops = {site: fluct_op[site] for site in subcomb}
+                terms.append(ProductOperator(sub_site_ops, term_prefactor, system))
+
+        return iterable_to_operator(terms, system)
+
     # When we project to a few-body subspace, it is better to use the
     # combinatorial approach
     if n_max <= _FEW_BODY_APPROACH_THRESHOLD_:

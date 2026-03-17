@@ -1,9 +1,11 @@
 #!/usr/bin/env python
 import argparse
+import glob
 import logging
 import pickle
 import uuid
 from datetime import datetime
+from typing import Dict
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -16,10 +18,13 @@ from qalma.evolution import (
 from qalma.evolution.maxent_evol import (
     adaptive_projected_evolution,
     projected_evolution,
+    update_basis,
+    update_basis_heavy,
+    update_basis_light,
 )
 from qalma.meanfield.variational import compute_rel_entropy, variational_quadratic_mfa
 from qalma.model import build_system
-from qalma.operators import ScalarOperator
+from qalma.operators import Operator, ScalarOperator
 from qalma.operators.states import (
     GibbsDensityOperator,
 )
@@ -27,9 +32,131 @@ from qalma.projections import n_body_projection
 from qalma.scalarprod import fetch_covar_scalar_product
 from qalma.scalarprod.basis import HierarchicalOperatorBasis
 
+np.set_printoptions(
+    edgeitems=30, linewidth=100000, formatter=dict(float=lambda x: "%.3g" % x)
+)
+
 logging.basicConfig(level=logging.INFO)
 
+
+TRACK_OBSERVABLES: Dict[str, Operator] = {}
 UUID_CALL = f"{uuid.uuid4()}"
+
+UPDATE_CONDITION = "adaptive"
+UPDATE_BASIS_PROTOCOLS = {
+    "standard": update_basis,
+    "heavy": update_basis_heavy,
+    "light": update_basis_light,
+}
+UBP = "standard"
+
+
+# PARAMETERS
+TIME_SPAN = np.linspace(0, 10, 600)
+
+
+ALPHA = 0.61  #   jy=.9 jx
+JX = 0.662743 / (1 - ALPHA) ** 0.5  # 1.75  -> vLR=1
+JY = (1 - ALPHA) * JX
+PHI_0 = np.array([0, 0.25, 0.25, 1])
+
+
+def build_system_objects(args):
+    """
+    Build objects shared by all the simulations from the command line arguments.
+    """
+
+    global L, SYSTEM, HAMILTONIAN, SZ_TOTAL, HALF_LEN_COMM, SITES, GLOBAL_IDENTITY, K0
+
+    # try to load the available exact simulation
+    SYSTEM = None
+    for filename in glob.glob(f"exact_ne_L={L}_beta={BETA}*.h5"):
+        print("try with ", filename)
+        exact_sim = Simulation.load_hdf5(filename)
+        if exact_sim.system is None:
+            continue
+        SYSTEM = exact_sim.system
+        SYSTEM._load_site_operators()
+        SYSTEM._load_global_ops()
+
+    if SYSTEM is None:
+        SYSTEM = build_system(
+            geometry_name="open chain lattice",
+            model_name="spin",
+            **{"L": L, "Jz": 0, "Jxy": JX, "Alpha": ALPHA},
+        )
+
+    HAMILTONIAN = SYSTEM.global_operator("Hamiltonian").simplify()
+    SZ_TOTAL = SYSTEM.global_operator("Sz")
+    if SZ_TOTAL is None:
+        SZ_TOTAL = sum(SYSTEM.site_operator("Sz", site) for site in SYSTEM.sites)
+
+    SITES = tuple(SYSTEM.sites.keys())
+    # Other operators
+    GLOBAL_IDENTITY = ScalarOperator(1.0, SYSTEM)
+
+    SX_A = SYSTEM.site_operator(f"Sx@{SITES[0]}")
+    SY_A = SYSTEM.site_operator(f"Sy@{SITES[0]}")
+    SZ_A = SYSTEM.site_operator(f"Sz@{SITES[0]}")
+    K0 = (SX_A * PHI_0[1] + SY_A * PHI_0[2] + SZ_A * PHI_0[3]) + HAMILTONIAN
+
+    RHO_0 = variational_quadratic_mfa(K0)
+    K0 = -RHO_0.logm()
+
+    track_list = args.track
+
+    if track_list.lower() == "none":
+        track_list = ""
+    elif track_list.lower() == "all":
+        track_list = "SZ_TOTAL,SZ_TOTAL_SQ,H,H_SQ"
+
+    for obs_t in track_list.upper().split(","):
+        if obs_t.strip().upper() == "SZ_TOTAL":
+            TRACK_OBSERVABLES[obs_t] = SZ_TOTAL
+        elif obs_t.strip() == "SZ_TOTAL_SQ":
+            TRACK_OBSERVABLES[obs_t] = SZ_TOTAL**2
+        elif obs_t.strip() == "H":
+            TRACK_OBSERVABLES[obs_t] = HAMILTONIAN
+        elif obs_t.strip() == "H_SQ":
+            TRACK_OBSERVABLES[obs_t] = HAMILTONIAN * HAMILTONIAN
+
+
+def find_exact_sim(sim=None, le=None, beta=None):
+    """Find a simulation containing the exact evolution"""
+    global UUID_CALL
+    if sim:
+        parms = sim.parameters
+        le = parms["L"]
+        beta = parms["beta"]
+    elif le is None:
+        raise ValueError("neither a simulation or le was not provided")
+    elif beta is None:
+        raise ValueError("neither a simulation or beta was not provided")
+
+    exact_sim = None
+    pattern = f"exact_*L={le}_beta={beta}*.h5"
+    print("look for", pattern)
+    for candidate in glob.glob(pattern):
+        print("  > candidate:", candidate)
+        exact_sim = Simulation.load_hdf5(candidate)
+        if sim is None or exact_sim.system == sim.states[0].system:
+            print("  > candidate found:", candidate)
+            UUID_CALL = exact_sim.parameters["uuid"]
+            break
+        exact_sim = None
+        print("    > systems are not equal. Try the next...")
+
+    # Not found. Build exact simulation
+    if exact_sim is None:
+        k_0 = K0 * BETA
+        hamiltonian = HAMILTONIAN
+        exact_sim = qutip_me_solve(hamiltonian, k_0, TIME_SPAN)
+        exact_sim.parameters["L"] = L
+        exact_sim.parameters["beta"] = BETA
+        exact_sim.parameters["uuid"] = UUID_CALL
+        exact_sim.save_hdf5(f"exact_ne_L={L}_beta={BETA}_{UUID_CALL}.h5")
+
+    return exact_sim
 
 
 def update_basis_callback(state):
@@ -54,74 +181,16 @@ def update_basis_callback(state):
     print("    basis.errors", state["basis"].errors)
 
 
-np.set_printoptions(
-    edgeitems=30, linewidth=100000, formatter=dict(float=lambda x: "%.3g" % x)
-)
-
-# PARAMETERS
-TIME_SPAN = np.linspace(0, 8, 500)
-
-
-ALPHA = 0.61  #   jy=.9 jx
-JX = 0.662743 / (1 - ALPHA) ** 0.5  # 1.75  -> vLR=1
-JY = (1 - ALPHA) * JX
-PHI_0 = [0, 0.25, 0.25, 1]
-
-
-def build_system_objects(args):
-    global L, SYSTEM, HAMILTONIAN, SZ_TOTAL, HALF_LEN_COMM, SITES, GLOBAL_IDENTITY, K0, TRACK_OBSERVABLES
-    SYSTEM = build_system(
-        geometry_name="open chain lattice",
-        model_name="spin",
-        **{"L": L, "Jz": 0, "Jxy": JX, "Alpha": ALPHA},
-    )
-    HAMILTONIAN = SYSTEM.global_operator("Hamiltonian").simplify()
-    SZ_TOTAL = SYSTEM.global_operator("Sz")
-    if SZ_TOTAL is None:
-        SZ_TOTAL = sum(SYSTEM.site_operator("Sz", site) for site in SYSTEM.sites)
-
-    SITES = tuple(SYSTEM.sites.keys())
-    # Other operators
-    GLOBAL_IDENTITY = ScalarOperator(1.0, SYSTEM)
-
-    SX_A = SYSTEM.site_operator(f"Sx@{SITES[0]}")
-    SY_A = SYSTEM.site_operator(f"Sy@{SITES[0]}")
-    SZ_A = SYSTEM.site_operator(f"Sz@{SITES[0]}")
-    K0 = (SX_A * PHI_0[1] + SY_A * PHI_0[2] + SZ_A * PHI_0[3]) * 0.1 + HAMILTONIAN
-
-    RHO_0 = variational_quadratic_mfa(K0)
-    K0 = -RHO_0.logm()
-
-    track_list = args.track
-    if track_list.lower() == "none":
-        track_list = ""
-    elif track_list.lower() == "all":
-        track_list = "SZ_TOTAL,SZ_TOTAL_SQ,H,H_SQ"
-    track_observables = []
-    for obs_t in track_list.split(","):
-        if obs_t.strip() == "SZ_TOTAL":
-            track_observables.append(SZ_TOTAL)
-        elif obs_t.strip() == "SZ_TOTAL":
-            track_observables.append(SZ_TOTAL)
-        elif obs_t.strip() == "SZ_TOTAL_SQ":
-            track_observables.append(SZ_TOTAL**2)
-        elif obs_t.strip() == "H":
-            track_observables.append(HAMILTONIAN)
-        elif obs_t.strip() == "H_SQ":
-            track_observables.append(HAMILTONIAN * HAMILTONIAN)
-    TRACK_OBSERVABLES = tuple(track_observables)
-
-
 def run_exact(axis):
-    k_0 = K0 * BETA
-    hamiltonian = HAMILTONIAN
-    print("Start exact:", datetime.now())
-    exact = [
-        GibbsDensityOperator(k).to_qutip_operator()
-        for k in qutip_me_solve(hamiltonian, k_0, TIME_SPAN)
-    ]
+    exact_sim = find_exact_sim(beta=BETA, le=L)
+    exact = [GibbsDensityOperator(k).to_qutip_operator() for k in exact_sim.states]
     print("Plot observables")
-    exact_expect = [np.real(rho.expect(SZ_TOTAL)) for rho in exact]
+    if "0" in exact_sim.expect_ops:
+        exact_expect = exact_sim.expect_ops["0"]
+    else:
+        exact_expect = [np.real(rho.expect(SZ_TOTAL)) for rho in exact]
+        exact_sim.expect_ops["0"] = exact_expect
+
     axis.set_ylim(min(-max(exact_expect), min(exact_expect)), max(exact_expect))
     axis.plot(TIME_SPAN, exact_expect, label="exact")
     axis.plot(
@@ -165,6 +234,10 @@ def run_series(axis):
     series_expect = [np.real(rho.expect(SZ_TOTAL)) for rho in series]
     series_sol.expect_ops[0] = series_expect
 
+    series_sol.parameters["L"] = L
+    series_sol.parameters["beta"] = BETA
+    series_sol.parameters["order"] = 30
+
     with open(f"series_L={L}_beta={BETA}_{UUID_CALL}.pkl", "wb") as f:
         pickle.dump(series_sol, f)
 
@@ -176,10 +249,10 @@ def run_meanfield_projection(axis):
     """
     Compute the mean field approximation of the exact evolution.
     """
-    print(200 * "\n", "Run meanfield projection")
-    result = Simulation.load_hdf5(f"exact_ne_L={L}_beta={BETA}_{UUID_CALL}.h5")
-    print(20 * "-", "\n\n")
-    rel_s_vals = [0.0]
+    print("Run meanfield projection")
+    result = find_exact_sim(le=L, beta=BETA)
+    print(20 * "-", "\n")
+    rel_s_vals = []
     sigma_mf = None
     varmf = []
     time_span = result.time_span
@@ -204,7 +277,6 @@ def run_meanfield_projection(axis):
 
     result.states = varmf
     result.expect_ops[0] = expect_0
-    print(">>> computed:", len(result.expect_ops[0]))
     result.expect_ops["relative entropy"] = rel_s_vals
 
     with open(f"meanfield_reduction_L={L}_beta={BETA}_{UUID_CALL}.pkl", "wb") as f:
@@ -214,47 +286,69 @@ def run_meanfield_projection(axis):
 
 
 def run_projected(axis):
-    k_0 = K0 * BETA
-    hamiltonian = HAMILTONIAN
-    print("Start exact:", datetime.now())
-    exact_sol = qutip_me_solve(hamiltonian, k_0, TIME_SPAN)
-    exact_sol.save_hdf5(f"exact_ne_L={L}_beta={BETA}_{UUID_CALL}.h5")
+    """
+    Compute the projected solution.
+    """
+
+    exact_sol = find_exact_sim(le=L, beta=BETA)
+    if exact_sol is None:
+        print("Start exact:", datetime.now())
+    else:
+        print("exact solution was loaded.")
 
     exact_k = exact_sol.states
     exact = [GibbsDensityOperator(k).to_qutip_operator() for k in exact_k]
 
-    sigma_0 = variational_quadratic_mfa(K0)
-    sp = fetch_covar_scalar_product(sigma_0)
+    sigma_mf = None
 
     def projection_function(op_b):
-        print("projection function", datetime.now())
-        new_op = n_body_projection(op_b, nmax=MAX_M, sigma=sigma_0)
+        nonlocal sigma_mf
+        print("     projection function", datetime.now())
+        new_op = n_body_projection(op_b, nmax=MAX_M, sigma=sigma_mf)
         if new_op is not op_b:
             if hasattr(new_op, "terms"):
                 print("  projection has", len(new_op.terms))
 
         return new_op
 
-    basis = (
-        HierarchicalOperatorBasis(
-            k_0,
+    def build_basis(k):
+        nonlocal sigma_mf
+        sigma_mf = variational_quadratic_mfa(k, sigma_ref=sigma_mf)
+        sp = fetch_covar_scalar_product(sigma_mf)
+        return HierarchicalOperatorBasis(
+            k,
             HAMILTONIAN,
             ELL,
             sp,
             n_body_projection=projection_function,
+        ) + tuple(TRACK_OBSERVABLES.values())
+
+    if UPDATE_CONDITION == "always":
+        print(
+            f"projecting using dynamic hierarchical basis of deep {ELL} in the {MAX_M} sector.",
+            datetime.now(),
         )
-        + TRACK_OBSERVABLES
-    )
-    print("projecting using basis", basis, datetime.now())
+    else:
+        print(
+            f"projecting using static hierarchical basis of deep {ELL} in the {MAX_M} sector.",
+            datetime.now(),
+        )
 
     projected = []
+    rel_s = []
+    sigma_mf = None
+    basis = None
     for t, k in zip(TIME_SPAN, exact_k):
         print(f"projected K({t})")
         try:
-            projected.append(
-                GibbsDensityOperator(basis.project_onto(k)).to_qutip_operator()
-            )
-        except Exception:
+            if t == 0 or UPDATE_CONDITION == "always":
+                basis = build_basis(k)
+            sigma_prj = GibbsDensityOperator(basis.project_onto(k))
+            projected.append(sigma_prj.to_qutip_operator())
+            rel_s.append(compute_rel_entropy(sigma_prj, k))
+        except Exception as e:
+            print("EXCEPTION")
+            print(e)
             break
 
     print("Plot observables", datetime.now())
@@ -271,13 +365,17 @@ def run_projected(axis):
     parameters["n_body_projection"] = MAX_M
     parameters["ell"] = 10
     parameters["beta"] = BETA
-    with open(f"projected_exact_L={L}_beta={BETA}_{UUID_CALL}.pkl", "wb") as f:
+    parameters["update_condition"] = UPDATE_CONDITION.lower()
+    parameters["track observables"] = tuple(TRACK_OBSERVABLES)
+    with open(
+        f"projected_exact_uc={UPDATE_CONDITION}_L={L}_beta={BETA}_{UUID_CALL}.pkl", "wb"
+    ) as f:
         pickle.dump(
             Simulation(
                 parameters=parameters,
                 stats={"errors": basis.errors},
                 time_span=exact_sol.time_span,
-                expect_ops={0: projected_expect},
+                expect_ops={0: projected_expect, "relative entropy": rel_s},
                 states=projected,
             ),
             f,
@@ -302,24 +400,28 @@ def run_simulation_adaptive(basis_depth, n_body, tolerance, axis):
             n_body,
             tol=tolerance,
             e_ops=[SZ_TOTAL],
+            store_states=True,
             on_update_basis_callback=update_basis_callback,
             include_one_body_projection=True,
-            extra_observables=TRACK_OBSERVABLES,
+            extra_observables=tuple(TRACK_OBSERVABLES.values()),
+            basis_update_callback=UPDATE_BASIS_PROTOCOLS[UBP],
+            update_condition=UPDATE_CONDITION,
         )
         adaptive_sol.parameters["beta"] = BETA
-        with open(
-            f"adaptive3__L={L}_beta={BETA}_nbody={n_body}_deep={basis_depth}_{UUID_CALL}.pkl",
-            "wb",
-        ) as f:
-            pickle.dump(adaptive_sol, f)
+        adaptive_sol.parameters["UBP"] = UBP
+        adaptive_sol.parameters["L"] = L
+        adaptive_sol.parameters["track observables"] = tuple(TRACK_OBSERVABLES)
+        assert len(adaptive_sol.states) > 0
+        out_filename = f"adaptive3_ubp={UBP}_L={L}_beta={BETA}_nbody={n_body}_deep={basis_depth}_{UUID_CALL}.h5"
 
+        adaptive_sol.save_hdf5(out_filename)
+        print("Adaptive evolution simulation results stored in", out_filename)
         # plt.scatter(ts[:len(max_ent)], [np.real(rho.expect(k_0)) for rho in max_ent], label=f"$\\ell={basis_depth}$, m={n_body}, tol={tolerance}")
         plt.scatter(
             TIME_SPAN[: len(adaptive_sol.time_span)],
             [np.real(ex_val) for ex_val in adaptive_sol.expect_ops[0]],
             label=f"c->$\\ell={basis_depth}$, m={n_body}, tol={tolerance}",
         )
-        print("len:", len(adaptive_sol.time_span))
     except Exception as e:
         print("                   EXCEPTION ")
         print(type(e), e)
@@ -345,7 +447,6 @@ def run_simulation_projected(basis_depth, n_body, tolerance, axis):
             ls="-.",
             label=f"proyected-> $\\ell={basis_depth}$, m={n_body}, tol={tolerance}",
         )
-        print("len:", len(max_ent))
     except Exception as e:
         print("                   EXCEPTION ")
         print(type(e), e)
@@ -353,7 +454,7 @@ def run_simulation_projected(basis_depth, n_body, tolerance, axis):
 
 
 def set_parameters():
-    global BETA, FULL, L, MAX_M, ELL, TOL
+    global UPDATE_CONDITION, BETA, FULL, L, MAX_M, ELL, TOL, UBP
 
     argparser = argparse.ArgumentParser(
         prog="run_dynamics",
@@ -381,6 +482,22 @@ def set_parameters():
     )
     argparser.add_argument("--tol", type=float, default=0.001, help="tolerance")
     argparser.add_argument(
+        "--update-condition",
+        type=str,
+        default="adaptive",
+        help="If true, update the basis on each step.",
+    )
+    argparser.add_argument(
+        "--ubp",
+        type=str,
+        default="standard",
+        help=(
+            "update basis protocol. The protocol used to update the basis."
+            "One of `standard` (default), `heavy` (projected hierarchical basis) or `light` "
+            "(hierarchical basis starting from the 1-body projection of the generating operator)."
+        ),
+    )
+    argparser.add_argument(
         "--track",
         type=str,
         default="None",
@@ -395,15 +512,15 @@ def set_parameters():
     )
 
     args, ns = argparser.parse_known_args()
-    print("ns", ns)
-    print(type(args), args)
-    L = args.length
-    TOL = args.tol
-    ELL = args.deep
+    print("arguments:", args)
+    UPDATE_CONDITION = args.update_condition
     BETA = args.beta
-    print("Beta=", BETA)
-    MAX_M = args.n_body
+    ELL = args.deep
     FULL = args.full
+    L = args.length
+    MAX_M = args.n_body
+    TOL = args.tol
+    UBP = args.ubp
     build_system_objects(args)
 
 

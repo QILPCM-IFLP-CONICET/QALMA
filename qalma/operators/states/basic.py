@@ -4,6 +4,7 @@ Density operator classes.
 
 import logging
 import pickle
+from functools import cached_property
 from typing import Iterable, Optional, Protocol, Tuple, Union, cast
 
 import numpy as np
@@ -282,6 +283,28 @@ class ProductDensityOperator(DensityOperatorMixin, ProductOperator):
 
     prefactor: complex  # must be float
 
+    @cached_property
+    def _dense(self) -> dict:
+        """
+        Override ProductOperator._dense to include *every* site in the
+        system, not only those explicitly stored in sites_op.
+
+        Sites absent from sites_op get the maximally mixed state
+        (identity / d), which is consistent with the semantics of
+        ProductDensityOperator: missing sites are implicitly identity.
+
+        This means _dense is a complete site -> (d,d) ndarray mapping,
+        which is exactly what the inner loops of expect() need to avoid
+        ever touching Qobj.
+        """
+        d: dict = {}
+        for site, op in self.sites_op.items():
+            d[site] = np.asarray(op.full(), dtype=np.complex128, order="C")
+        for site, dim in self.system.dimensions.items():
+            if site not in d:
+                d[site] = np.eye(dim, dtype=np.complex128) / dim
+        return d
+
     def __init__(
         self,
         local_states: dict,
@@ -359,40 +382,57 @@ class ProductDensityOperator(DensityOperatorMixin, ProductOperator):
             return ProductOperator(self.sites_op, 1, self.system) * a
         return a * ProductOperator(self.sites_op, 1, self.system)
 
-    def expect(
-        self, obs_objs: Union[Operator, Iterable]
-    ) -> Union[np.ndarray, dict, complex]:
+    def expect(self, obs_objs):
         """
-        Compute the expectation value of an operator or a sequence of operators
+        Compute the expectation value of an operator or a sequence of
+        operators.
+
+        Hot paths use dense numpy arithmetic and bypass Qobj overhead:
+
+        * LocalOperator  -> single _trace2 call (no Qobj allocation)
+        * ProductOperator, homogeneous system -> batched einsum over a
+          stacked (N, d, d) tensor
+        * ProductOperator, heterogeneous system -> per-site _trace2 loop
+        * Everything else -> delegate to the parent DensityOperatorMixin
         """
         if isinstance(obs_objs, LocalOperator):
-            operator = obs_objs.operator
             site = obs_objs.site
-            local_states = self.sites_op
-            if site in local_states:
-                return (local_states[site] * operator).tr()
-            return operator.tr() / self.system.dimensions[site]
+            op_dense = np.asarray(
+                obs_objs.operator.full(), dtype=np.complex128, order="C"
+            )
+            return self._trace2(self._dense[site], op_dense)
 
         if isinstance(obs_objs, ProductOperator):
             obs_prod = cast(ProductOperator, obs_objs)
-            sites_obs = obs_prod.sites_op
-            local_states = self.sites_op
-            dimensions = self.system.dimensions
-            result: complex = obs_prod.prefactor
+            result: complex = complex(obs_prod.prefactor)
+            if not result:
+                return complex(0)
 
-            for site, obs_op in sites_obs.items():
-                if result == 0:
-                    break
-                if site in local_states:
-                    result *= (local_states[site] * obs_op).tr()
-                else:
-                    result *= obs_op.tr() / dimensions[site]
+            rhos = self._dense  # dict[site -> (d,d)]
+
+            # --- Fast path: homogeneous system, batched einsum -----------
+            try:
+                obs_sites, obs_tensor = obs_prod._dense_tensor  # (N, d, d)
+                rho_tensor = np.stack([rhos[s] for s in obs_sites])  # (N, d, d)
+                # traces[i] = Tr(rho_i @ obs_i), no intermediate matrices
+                traces = np.einsum("nij,nji->n", rho_tensor, obs_tensor)
+                result *= complex(traces.prod())
+            except (ValueError, KeyError):
+                # Heterogeneous dims or a site not in rhos: fall back to
+                # a per-site loop that is still numpy-only (no Qobj).
+                for site, obs_op in obs_prod.sites_op.items():
+                    if not result:
+                        break
+                    op_dense = np.asarray(obs_op.full(), dtype=np.complex128, order="C")
+                    result *= self._trace2(rhos[site], op_dense)
+
             return result
 
         if isinstance(obs_objs, SumOperator):
-            obs_sum: SumOperator = cast(SumOperator, obs_objs)
+            obs_sum = cast(SumOperator, obs_objs)
             return cast(
-                NDArray, sum(cast(NDArray, self.expect(term)) for term in obs_sum.terms)
+                NDArray,
+                sum(cast(NDArray, self.expect(term)) for term in obs_sum.terms),
             )
 
         if isinstance(obs_objs, (tuple, list)):
@@ -401,6 +441,7 @@ class ProductDensityOperator(DensityOperatorMixin, ProductOperator):
         if isinstance(obs_objs, dict):
             return {key: self.expect(val) for key, val in obs_objs.items()}
 
+        # Fallback for QuadraticFormOperator and any other type
         return super().expect(obs_objs)
 
     def logm(self):

@@ -290,7 +290,9 @@ class SumOperator(Operator):
         """Produce a qutip compatible object"""
         terms = self.terms
         system = self.system
-        assert all(system.contains(term.system) for term in terms)
+        assert all(
+            system.contains(term.system) for term in terms
+        ), f"Some terms does not contain a compabible system: system={system}\n {[(pos, system,) for pos, term in enumerate(terms)  if not system.contains(term.system)]}"
         if block is None:
             block = tuple(sorted(self.acts_over() if system is None else system.sites))
         else:
