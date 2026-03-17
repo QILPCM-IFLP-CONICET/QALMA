@@ -4,7 +4,7 @@ Density operator classes.
 
 import logging
 import pickle
-from functools import cached_property
+from functools import cache
 from typing import Iterable, Optional, Protocol, Tuple, Union, cast
 
 import numpy as np
@@ -283,28 +283,6 @@ class ProductDensityOperator(DensityOperatorMixin, ProductOperator):
 
     prefactor: complex  # must be float
 
-    @cached_property
-    def _dense(self) -> dict:
-        """
-        Override ProductOperator._dense to include *every* site in the
-        system, not only those explicitly stored in sites_op.
-
-        Sites absent from sites_op get the maximally mixed state
-        (identity / d), which is consistent with the semantics of
-        ProductDensityOperator: missing sites are implicitly identity.
-
-        This means _dense is a complete site -> (d,d) ndarray mapping,
-        which is exactly what the inner loops of expect() need to avoid
-        ever touching Qobj.
-        """
-        d: dict = {}
-        for site, op in self.sites_op.items():
-            d[site] = np.asarray(op.full(), dtype=np.complex128, order="C")
-        for site, dim in self.system.dimensions.items():
-            if site not in d:
-                d[site] = np.eye(dim, dtype=np.complex128) / dim
-        return d
-
     def __init__(
         self,
         local_states: dict,
@@ -400,7 +378,7 @@ class ProductDensityOperator(DensityOperatorMixin, ProductOperator):
             op_dense = np.asarray(
                 obs_objs.operator.full(), dtype=np.complex128, order="C"
             )
-            return self._trace2(self._dense[site], op_dense)
+            return self._trace2(self._sites_op[site], op_dense)
 
         if isinstance(obs_objs, ProductOperator):
             obs_prod = cast(ProductOperator, obs_objs)
@@ -408,7 +386,7 @@ class ProductDensityOperator(DensityOperatorMixin, ProductOperator):
             if not result:
                 return complex(0)
 
-            rhos = self._dense  # dict[site -> (d,d)]
+            rhos = self._sites_op  # dict[site -> (d,d)]
 
             # --- Fast path: homogeneous system, batched einsum -----------
             try:
@@ -482,6 +460,7 @@ class ProductDensityOperator(DensityOperatorMixin, ProductOperator):
             local_states, np.real(self.prefactor), subsystem, normalize=False
         )
 
+    @cache
     def to_qutip(self, block: Optional[Tuple[str, ...]] = None):
         prefactor = self.prefactor
         if prefactor == 0 or len(self.system.dimensions) == 0:

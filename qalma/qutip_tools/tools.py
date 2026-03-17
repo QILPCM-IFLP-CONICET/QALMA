@@ -325,6 +325,9 @@ def empty_op(op) -> bool:
     if getattr(op, "prefactor", 1) == 0:
         return True
 
+    if hasattr(op, "nonzero"):
+        return len(op.nonzero()) == 0
+
     if hasattr(op, "data"):
         return data_is_zero(op.data)
 

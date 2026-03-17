@@ -588,8 +588,8 @@ class GraphDescriptor:
             self.subgraphs[node_set] = other
             return True
 
-        print(
-            "nodes not coincide",
+        logging.warning(
+            "nodes not coincide %s",
             [
                 (self_nodes.get(node, None), other_nodes[node])
                 for node in node_set

@@ -283,7 +283,7 @@ def _project_product_operator_recursive(
             return ScalarOperator(0, full_operator.system)
 
         system = full_operator.system
-        rhos = sigma_ref._dense  # dict[site -> (d,d)]
+        rhos = sigma_ref._sites_op  # dict[site -> (d,d)]
 
         averages: dict = {}
         for site, l_op in sites_op.items():

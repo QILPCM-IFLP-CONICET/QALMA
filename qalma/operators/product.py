@@ -3,7 +3,9 @@ Different representations for operators
 """
 
 import logging
-from functools import cached_property, reduce
+from functools import cache, cached_property, reduce
+
+# from types import MappingProxyType
 from typing import Iterable, Optional, Tuple, Union
 
 import numpy as np
@@ -21,6 +23,23 @@ from qalma.settings import (
 )
 
 from .basic import LocalOperator, Operator
+
+
+def _to_array(op) -> np.ndarray:
+    """Convert a local operator to np.ndarray complex128.
+
+    Accepts:
+      - np.ndarray  → return a C-contiguous copy of type complex128
+      - qutip.Qobj  → get a dense matrix representation via `.full()`
+      - int / float / complex → error (should be handled as prefactors)
+    """
+    if isinstance(op, np.ndarray):
+        return np.asarray(op, dtype=complex, order="C")
+    if isinstance(op, qutip.Qobj):
+        return np.asarray(op.full(), dtype=complex, order="C")
+    raise TypeError(
+        f"Local operators must be np.ndarray o qutip.Qobj, " f"got {type(op)}"
+    )
 
 
 class ProductOperator(Operator):
@@ -46,7 +65,8 @@ class ProductOperator(Operator):
                 if not isinstance(local_op, (int, float, complex))
             }
 
-        self.sites_op = sites_operators
+        sites_operators = {key: _to_array(op) for key, op in sites_operators.items()}
+        self._sites_op = sites_operators
         if any(empty_op(op) for op in sites_operators.values()):
             prefactor = 0
             self.sites_op = {}
@@ -60,19 +80,9 @@ class ProductOperator(Operator):
             }
 
     @cached_property
-    def _dense(self) -> dict:
-        """
-        Dense numpy representation of each local factor, keyed by site name.
-
-        Each value is a complex128 C-contiguous ndarray of shape (d, d).
-        Built once on first access. If the operator is ever mutated after
-        construction (which should not happen in normal use), invalidate
-        with ``del self._dense``.
-        """
-        return {
-            site: np.asarray(op.full(), dtype=np.complex128, order="C")
-            for site, op in self.sites_op.items()
-        }
+    def sites_op(self):
+        result = {key: qutip.Qobj(op) for key, op in self._sites_op.items()}
+        return result  # MappingProxyType(result)
 
     @cached_property
     def _dense_tensor(self):
@@ -89,7 +99,7 @@ class ProductOperator(Operator):
         """
         if not self.sites_op:
             return (), np.empty((0,), dtype=np.complex128)
-        dense = self._dense
+        dense = self._sites_op
         sites = tuple(sorted(dense))
         shapes = {dense[s].shape for s in sites}
         if len(shapes) > 1:
@@ -213,7 +223,7 @@ class ProductOperator(Operator):
             return LocalOperator(site, op_local / prefactor, system)
         return ProductOperator(sites_op, 1 / prefactor, system)
 
-    @property
+    @cached_property
     def isherm(self) -> bool:
         # TODO: check if it worth to check that factors are not hermitician
         # up to a phase factor.
@@ -226,7 +236,7 @@ class ProductOperator(Operator):
             return abs(prefactor.imag) < QALMA_TOLERANCE
         return False
 
-    @property
+    @cached_property
     def isdiagonal(self) -> bool:
         for factor_op in self.sites_op.values():
             if not is_diagonal_op(factor_op):
@@ -410,6 +420,7 @@ class ProductOperator(Operator):
             return ProductOperator(nontrivial_factors, prefactor, self.system)
         return self
 
+    @cache
     def to_qutip(self, block: Optional[Tuple[str, ...]] = None):
         """
         return a qutip object acting over the sites listed in
@@ -574,6 +585,7 @@ class ScalarOperator(ProductOperator):
             return ScalarOperator(0, self.system)
         return self
 
+    @cache
     def to_qutip(self, block: Optional[Tuple[str, ...]] = None):
         """
         return a qutip object acting over the sites listed in

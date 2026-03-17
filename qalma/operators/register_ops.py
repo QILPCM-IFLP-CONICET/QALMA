@@ -369,6 +369,7 @@ def _(x_op: LocalOperator, y_op: LocalOperator):
     -------
 
     """
+    print("Local operator * Local operator")
     site_x = x_op.site
     site_y = y_op.site
     system = x_op.system or y_op.system
@@ -412,16 +413,17 @@ def _(x_op: ProductOperator, y_op: ProductOperator):
 
     """
     system = x_op.system.union(y_op.system)
-    site_op = x_op.sites_op.copy()
-    site_op_y = y_op.sites_op
+    site_op = x_op._sites_op.copy()
+    site_op_y = y_op._sites_op
     for site, op_local in site_op_y.items():
-        site_op[site] = site_op[site] * op_local if site in site_op else op_local
+        site_op[site] = site_op[site] @ op_local if site in site_op else op_local
     prefactor = x_op.prefactor * y_op.prefactor
     if len(site_op) == 0 or prefactor == 0:
         return ScalarOperator(prefactor, system)
     if len(site_op) == 1:
-        site, op_local = next(iter(site_op.items()))
-        return LocalOperator(site, op_local * prefactor, system)
+        site, array_op_local = next(iter(site_op.items()))
+        op_local = Qobj(array_op_local*prefactor)
+        return LocalOperator(site, op_local, system)
     return ProductOperator(site_op, prefactor, system)
 
 
@@ -561,17 +563,18 @@ def _(x_op: ProductOperator, y_op: LocalOperator):
 
     """
     site = y_op.site
-    op_local = y_op.operator
+    op_local = y_op.operator.full()
     system = x_op.system * y_op.system if x_op.system else y_op.system
-    site_op = x_op.sites_op.copy()
+    site_op = x_op._sites_op.copy()
     if site in site_op:
-        op_local = site_op[site] * op_local
+        op_local = site_op[site] @ op_local
 
     site_op[site] = op_local
 
     if len(site_op) == 1:
-        site, op_local = next(iter(site_op.items()))
-        return LocalOperator(site, op_local * x_op.prefactor, system)
+        site, array_op_local = next(iter(site_op.items()))
+        op_local = Qobj(array_op_local * x_op.prefactor)
+        return LocalOperator(site, op_local, system)
     return ProductOperator(site_op, x_op.prefactor, system)
 
 
@@ -596,17 +599,18 @@ def _(y_op: LocalOperator, x_op: ProductOperator):
 
     """
     site = y_op.site
-    op_local = y_op.operator
+    op_local = y_op.operator.full()
     system = x_op.system * y_op.system if x_op.system else y_op.system
-    site_op = x_op.sites_op.copy()
+    site_op = x_op._sites_op.copy()
     if site in site_op:
-        op_local = op_local * site_op[site]
+        op_local = op_local @ site_op[site]
 
     site_op[site] = op_local
 
     if len(site_op) == 1:
-        site, op_local = next(iter(site_op.items()))
-        return LocalOperator(site, op_local * x_op.prefactor, system)
+        site, array_op_local = next(iter(site_op.items()))
+        op_local = Qobj(array_op_local * x_op.prefactor)
+        return LocalOperator(site, op_local, system)
     return ProductOperator(site_op, x_op.prefactor, system)
 
 

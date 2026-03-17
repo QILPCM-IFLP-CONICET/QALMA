@@ -206,13 +206,6 @@ class GibbsProductDensityOperator(DensityOperatorMixin, Operator):
     free_energies: Dict[str, float]
     isherm: bool = True
 
-    @cached_property
-    def _dense(self) -> dict:
-        """
-        Proxy to ProductState._dense
-        """
-        return self.to_product_state()._dense
-
     def __init__(
         self,
         k: Union[Operator, dict],
@@ -291,6 +284,10 @@ class GibbsProductDensityOperator(DensityOperatorMixin, Operator):
                     self.k_by_site, self.system, self.prefactor * operand, True
                 )
         return operand * self.to_product_state()
+
+    @cached_property
+    def _sites_op(self):
+        return self.to_product_state()._sites_op
 
     def acts_over(self) -> frozenset:
         """
