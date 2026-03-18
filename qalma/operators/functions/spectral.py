@@ -85,7 +85,8 @@ def relative_entropy(rho: Operator, sigma: Operator) -> float:
     log_sigma = log_op(sigma)    
     delta_log = (log_rho - log_sigma).simplify()
     print("direct:", real((rho * delta_log).tr()))
-    print("expect:", real(rho.expect(delta_log)))
+    if hasattr(rho, "expect"):
+        print("expect:", real(rho.expect(delta_log)))
     
     if hasattr(rho, "expect"):
         print(rho.expect)

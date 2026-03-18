@@ -203,7 +203,7 @@ class GibbsProductDensityOperator(DensityOperatorMixin, Operator):
 
     def __init__(
         self,
-        k: Union[Operator, dict],
+        k: Union[Operator, Dict[str, Operator]],
         system: Optional[SystemDescriptor] = None,
         prefactor: complex = 1,
         normalized: bool = False,
