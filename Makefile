@@ -21,6 +21,7 @@ SOURCEDIR     = docs
 BUILDDIR      = docs/_build
 
 BENCHMARK_FILE := bench_$(shell date +%Y%m%d)_$(shell git rev-parse --short HEAD)
+CURRENT_GIT_BRANCH := $(shell git rev-parse --abbrev-ref HEAD)
 
 .PHONY: \
     all \
@@ -91,16 +92,33 @@ docs-clean:
 benchmark: benchmark-expect benchmark-commutators benchmark-gram benchmark-projections
 
 benchmark-expect:
-	PYTHONOPTIMIZE=TRUE BENCHMARKS=1 QALMA_ALLTESTS=1 CHAIN_SIZE=20 pytest -x --benchmark-enable --benchmark-save="expect_$(BENCHMARK_FILE)" --benchmark-columns=min test/states/test_expect_benchmark.py
+	PYTHONOPTIMIZE=TRUE BENCHMARKS=1 QALMA_ALLTESTS=1 CHAIN_SIZE=20 pytest -x --benchmark-enable --profile-svg --benchmark-save="expect_$(BENCHMARK_FILE)" --benchmark-columns=min test/states/test_expect_benchmark.py
+	mkdir -p "prof/$(CURRENT_GIT_BRANCH)"
+	-mv prof/*.prof  "prof/$(CURRENT_GIT_BRANCH)"
+	-mv prof/*.svg  "prof/$(CURRENT_GIT_BRANCH)"
+	-mv prof/*.png  "prof/$(CURRENT_GIT_BRANCH)"
 
 benchmark-gram:
-	PYTHONOPTIMIZE=TRUE BENCHMARKS=1 QALMA_ALLTESTS=1 CHAIN_SIZE=20 pytest --benchmark-enable --benchmark-save="gram_$(BENCHMARK_FILE)" --benchmark-columns=min test/scalar_product/test_gram.py
+	PYTHONOPTIMIZE=TRUE BENCHMARKS=1 QALMA_ALLTESTS=1 CHAIN_SIZE=20 pytest --benchmark-enable --profile-svg --benchmark-save="gram_$(BENCHMARK_FILE)" --benchmark-columns=min test/scalar_product/test_gram.py
+	mkdir -p "prof/$(CURRENT_GIT_BRANCH)"
+	-mv prof/*.prof  "prof/$(CURRENT_GIT_BRANCH)"
+	-mv prof/*.svg  "prof/$(CURRENT_GIT_BRANCH)"
+	-mv prof/*.png  "prof/$(CURRENT_GIT_BRANCH)"
 
 benchmark-commutators:
-	PYTHONOPTIMIZE=TRUE BENCHMARKS=1 QALMA_ALLTESTS=1 CHAIN_SIZE=20 pytest --benchmark-enable --benchmark-save="commutators_$(BENCHMARK_FILE)" --benchmark-columns=min test/basic_operators/test_operator_functions_benchmarks.py
+	PYTHONOPTIMIZE=TRUE BENCHMARKS=1 QALMA_ALLTESTS=1 CHAIN_SIZE=20 pytest --benchmark-enable --profile-svg --benchmark-save="commutators_$(BENCHMARK_FILE)" --benchmark-columns=min test/basic_operators/test_operator_functions_benchmarks.py
+	mkdir -p "prof/$(CURRENT_GIT_BRANCH)"
+	-mv prof/*.prof  "prof/$(CURRENT_GIT_BRANCH)"
+	-mv prof/*.svg  "prof/$(CURRENT_GIT_BRANCH)"
+	-mv prof/*.png  "prof/$(CURRENT_GIT_BRANCH)"
 
 benchmark-projections:
-	PYTHONOPTIMIZE=TRUE BENCHMARKS=1 QALMA_ALLTESTS=1 CHAIN_SIZE=20 pytest -s --ff -x --benchmark-enable --benchmark-save="projections_$(BENCHMARK_FILE)" --benchmark-columns=min test/states/test_projections_benchmark.py
+	PYTHONOPTIMIZE=TRUE BENCHMARKS=1 QALMA_ALLTESTS=1 CHAIN_SIZE=20 pytest -s --ff -x --benchmark-enable --profile-svg --benchmark-save="projections_$(BENCHMARK_FILE)" --benchmark-columns=min test/states/test_projections_benchmark.py
+	mkdir -p "prof/$(CURRENT_GIT_BRANCH)"
+	-mv prof/*.prof  "prof/$(CURRENT_GIT_BRANCH)"
+	-mv prof/*.svg  "prof/$(CURRENT_GIT_BRANCH)"
+	-mv prof/*.png  "prof/$(CURRENT_GIT_BRANCH)"
+
 
 benchmark-set-reference:
 	python test/set_benchmark_reference.py
