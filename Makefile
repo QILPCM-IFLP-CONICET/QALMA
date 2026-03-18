@@ -1,4 +1,4 @@
-# A GNU Makefile to run various tasks - compatibility for us old-timers.
+	# A GNU Makefile to run various tasks - compatibility for us old-timers.
 
 # Note: This makefile include remake-style target comments.
 # These comments before the targets start with #:
