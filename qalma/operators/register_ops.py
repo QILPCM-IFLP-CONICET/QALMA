@@ -193,7 +193,9 @@ def _(x_op: LocalOperator, y_val: complex) -> Operator:
     -------
 
     """
-    return LocalOperator(x_op.site, x_op.operator + y_val, x_op.system)
+    new_op = x_op.operator.copy()
+    np.fill_diagonal(new_op, new_op.diagonal() + y_val)
+    return LocalOperator(x_op.site, new_op, x_op.system)
 
 
 @Operator.register_add_handler(
@@ -217,7 +219,10 @@ def _(x_op: LocalOperator, y_op: ScalarOperator) -> Operator:
 
     """
     system = x_op.system.union(y_op.system)
-    return LocalOperator(x_op.site, x_op.operator + y_op.prefactor, system)
+    new_op = x_op.operator.copy()
+    np.fill_diagonal(new_op, new_op.diagonal() + y_op.prefactor)
+
+    return LocalOperator(x_op.site, new_op, system)
 
 
 @Operator.register_add_handler(
@@ -373,7 +378,7 @@ def _(x_op: LocalOperator, y_op: LocalOperator):
     site_y = y_op.site
     system = x_op.system or y_op.system
     if site_x == site_y:
-        return LocalOperator(site_x, x_op.operator * y_op.operator, system)
+        return LocalOperator(site_x, x_op.operator @ y_op.operator, system)
     return ProductOperator(
         sites_operators={
             site_x: x_op.operator,
@@ -562,19 +567,19 @@ def _(x_op: ProductOperator, y_op: LocalOperator):
 
     """
     site = y_op.site
-    op_local = y_op.operator.full()
+    op_local = y_op.operator
     system = x_op.system * y_op.system if x_op.system else y_op.system
-    site_op = x_op.site_factors.copy()
-    if site in site_op:
-        op_local = site_op[site] @ op_local
+    sites_op = x_op.site_factors.copy()
+    if site in sites_op:
+        op_local = sites_op[site] @ op_local
 
-    site_op[site] = op_local
+    sites_op[site] = op_local
 
-    if len(site_op) == 1:
-        site, array_op_local = next(iter(site_op.items()))
-        op_local = Qobj(array_op_local * x_op.prefactor, copy=False)
+    if len(sites_op) == 1:
+        site, array_op_local = next(iter(sites_op.items()))
+        op_local = array_op_local * x_op.prefactor
         return LocalOperator(site, op_local, system)
-    return ProductOperator(site_op, x_op.prefactor, system)
+    return ProductOperator(sites_op, x_op.prefactor, system)
 
 
 @Operator.register_mul_handler(
@@ -598,19 +603,19 @@ def _(y_op: LocalOperator, x_op: ProductOperator):
 
     """
     site = y_op.site
-    op_local = y_op.operator.full()
+    op_local = y_op.operator
     system = x_op.system * y_op.system if x_op.system else y_op.system
-    site_op = x_op.site_factors.copy()
-    if site in site_op:
-        op_local = op_local @ site_op[site]
+    sites_op = x_op.site_factors.copy()
+    if site in sites_op:
+        op_local = op_local @ sites_op[site]
 
-    site_op[site] = op_local
+    sites_op[site] = op_local
 
-    if len(site_op) == 1:
-        site, array_op_local = next(iter(site_op.items()))
-        op_local = Qobj(array_op_local * x_op.prefactor, copy=False)
+    if len(sites_op) == 1:
+        site, array_op_local = next(iter(sites_op.items()))
+        op_local = array_op_local * x_op.prefactor
         return LocalOperator(site, op_local, system)
-    return ProductOperator(site_op, x_op.prefactor, system)
+    return ProductOperator(sites_op, x_op.prefactor, system)
 
 
 # #######################################################

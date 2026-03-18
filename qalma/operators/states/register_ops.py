@@ -375,10 +375,10 @@ def _(x_op: ProductOperator, y_op: ScalarOperator):
         return ScalarOperator(prefactor + y_op.prefactor, system)
 
     if len(sites_op) == 1:
-        first_site, first_loc_op = next(iter(x_op.site_factors_qutip.items()))
-        return LocalOperator(
-            first_site, first_loc_op * prefactor + y_op.prefactor, system
-        )
+        first_site, op_array = next(iter(x_op.site_factors.items()))
+        op_array = op_array * prefactor  # Create a copy to show the change
+        np.fill_diagonal(op_array, op_array.diagonal() + y_op.prefactor)
+        return LocalOperator(first_site, op_array, system)
 
     return SumOperator(
         (

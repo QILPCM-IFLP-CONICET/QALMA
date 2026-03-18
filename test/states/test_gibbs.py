@@ -151,10 +151,10 @@ def test_product_gibbs_with_dict(key, k_gen):
 
     local_gen_dic = {}
     if isinstance(k_gen, LocalOperator):
-        local_gen_dic[k_gen.site] = k_gen.operator
+        local_gen_dic[k_gen.site] = k_gen.operator_qutip
     elif isinstance(k_gen, ProductOperator):
         if len(k_gen.site_factors) != 0:
-            site, op = k_gen.sites_op.items()
+            site, op = k_gen.site_factors_qutip.items()
             local_gen_dic[site] = op
     elif isinstance(k_gen, QutipOperator):
         (site,) = k_gen.site_names
@@ -163,7 +163,7 @@ def test_product_gibbs_with_dict(key, k_gen):
     elif isinstance(k_gen, SumOperator):
         for term in k_gen.flat().terms:
             if isinstance(term, LocalOperator):
-                local_gen_dic[term.site] = term.operator
+                local_gen_dic[term.site] = term.operator_qutip
             elif isinstance(term, ProductOperator):
                 site, op = term.sites_op.items()
                 local_gen_dic[site] = op
@@ -178,9 +178,13 @@ def test_product_gibbs_with_dict(key, k_gen):
 
 def do_test_log(rho):
     """Test the logm method."""
+    print("log test", type(rho), rho)
     rho_qutip = rho.to_qutip()
+    print("->qutip", type(rho_qutip), rho_qutip)
     ln_rho_neg = rho.logm()
+    print("log rho", type(ln_rho_neg), ln_rho_neg)
     ln_rho_neg_qutip = ln_rho_neg.to_qutip()
+    print("log rho qutip", type(ln_rho_neg_qutip), ln_rho_neg_qutip)
     rho_g, ln_z = safe_exp_and_normalize(ln_rho_neg_qutip)
     assert abs(ln_z) < QALMA_TOLERANCE**0.5
     check_operator_equality(rho_qutip, rho_g)

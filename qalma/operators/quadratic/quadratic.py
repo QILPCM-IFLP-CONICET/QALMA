@@ -510,9 +510,9 @@ def one_body_operator_hermitician_hs_sp(x_op: OneBodyOperator, y_op: OneBodyOper
             elif isinstance(t_2, ScalarOperator):
                 result += t_1.tr() * t_2.prefactor
             elif t_1.site == t_2.site:
-                result += (t_1.operator * t_2.operator).tr()
+                result += (t_1.operator @ t_2.operator).trace()
             else:
-                result += t_1.operator.tr() * t_2.operator.tr()
+                result += t_1.operator.trace() * t_2.operator.trace()
     return result
 
 

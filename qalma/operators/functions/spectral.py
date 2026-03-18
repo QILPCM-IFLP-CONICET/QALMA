@@ -7,6 +7,7 @@ Spectral-related functions for operators.
 import logging
 
 from numpy import ndarray, real
+from qutip import Qobj
 
 from qalma.operators.arithmetic import OneBodyOperator
 from qalma.operators.basic import (
@@ -48,8 +49,8 @@ def spectral_norm(operator: Operator) -> float:
         return abs(operator.prefactor)
     if isinstance(operator, LocalOperator):
         if operator.isherm:
-            return max(abs(operator.operator.eigenenergies()))
-        op_qutip = operator.operator
+            return max(abs(Qobj(operator.operator, copy=False).eigenenergies()))
+        op_qutip = Qobj(operator.operator)
         return max(abs((op_qutip.dag() * op_qutip).eigenenergies())) ** 0.5
     if isinstance(operator, ProductOperator):
         result = abs(operator.prefactor)
@@ -71,7 +72,7 @@ def spectral_norm(operator: Operator) -> float:
 
 def log_op(operator: Operator) -> Operator:
     """The logarithm of an operator"""
-
+    assert isinstance(operator, Operator)
     if hasattr(operator, "logm"):
         return operator.logm()
     return operator.to_qutip_operator().logm()
@@ -81,11 +82,17 @@ def relative_entropy(rho: Operator, sigma: Operator) -> float:
     """Compute the relative entropy"""
 
     log_rho = log_op(rho)
-    log_sigma = log_op(sigma)
+    log_sigma = log_op(sigma)    
     delta_log = (log_rho - log_sigma).simplify()
+    print("direct:", real((rho * delta_log).tr()))
+    print("expect:", real(rho.expect(delta_log)))
+    
     if hasattr(rho, "expect"):
-        result = real(rho.expect(delta_log))
+        print(rho.expect)
+        result = real(rho.expect(delta_log.to_qutip_operator()))
+        print("   @>", result)
     else:
+        print("rho is", type(rho), "delta_log is", type(delta_log), "use trace")
         result = real((rho * delta_log).tr())
     if result < 0:
         logging.warning("S(rho|sigma)=%.4f<0", result)

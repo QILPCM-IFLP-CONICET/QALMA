@@ -159,12 +159,12 @@ def k_by_site_from_operator(k: Operator) -> Dict[str, Operator]:
         site = next(iter(system.dimensions))
         return {site: k.prefactor * system.site_identity(site)}
     if isinstance(k, LocalOperator):
-        return {getattr(k, "site"): getattr(k, "operator")}
+        return {k.site: k.operator_qutip}
     if isinstance(k, ProductOperator):
         prefactor = getattr(k, "prefactor")
         if prefactor == 0:
             return {}
-        sites_op = getattr(k, "sites_op")
+        sites_op = k.site_factors_qutip
         if len(sites_op) > 1:
             raise ValueError(
                 "k must be a sum of one-body operators, but has a term acting on {k.acts_over()}"
@@ -177,12 +177,12 @@ def k_by_site_from_operator(k: Operator) -> Dict[str, Operator]:
             return dict(sites_op.items())
         return {site: op * prefactor for site, op in sites_op.items()}
     if isinstance(k, SumOperator):
-        result = {}
+        result: Dict[str, Qobj] = {}
         offset = 0
         for term in getattr(k, "terms"):
             if isinstance(term, LocalOperator):
                 site = term.site
-                result[site] = term.operator
+                result[site] = term.operator_qutip
             elif isinstance(term, ScalarOperator):
                 offset += term.prefactor
             elif isinstance(term, SumOperator):
@@ -255,7 +255,7 @@ def safe_exp_and_normalize_localop(operator: LocalOperator):
     """
     system = operator.system
     site = operator.site
-    loc_rho, log_z = safe_exp_and_normalize_qobj(operator.operator)
+    loc_rho, log_z = safe_exp_and_normalize_qobj(operator.operator_qutip)
     logz = sum(
         (
             np.log(dim)
@@ -396,10 +396,12 @@ def safe_exp_and_normalize(operator):
         operator = operator.to_qutip_operator()
     if isinstance(operator, QutipOperator):
         return safe_exp_and_normalize_qutip_operator(operator)
-    if isinstance(operator, ProductOperator):
+    if isinstance(operator, ScalarOperator):
         system = operator.system
         ln_z = sum((np.log(dim) for dim in system.dimensions.values()))
         return (ScalarOperator(np.exp(-ln_z), system), ln_z + operator.prefactor)
+
+    assert isinstance(operator, Qobj), f"type={type(operator)} should not be here."
 
     # assume Qobj or any other class with a compatible interface.
     return safe_exp_and_normalize_qobj(operator)

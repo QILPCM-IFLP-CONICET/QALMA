@@ -395,7 +395,7 @@ class OneBodyOperator(SumOperator):
             if isinstance(term, ScalarOperator):
                 ln_prefactor += term.prefactor
                 continue
-            operator_qt = term.operator
+            operator_qt = term.operator_qutip
             try:
                 k_0 = max(
                     np.real(

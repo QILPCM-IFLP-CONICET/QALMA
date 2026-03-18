@@ -14,12 +14,13 @@ with L and M_a one-body operators, w_a certain weights and
 """
 
 # from numbers import Number
-from typing import Dict, List, cast
+from typing import Dict, Generator, List, Optional, Tuple, cast
 
 import numpy as np
 from numpy.linalg import eigh
 from qutip import Qobj
 
+from qalma.model import SystemDescriptor
 from qalma.operators.arithmetic import OneBodyOperator, SumOperator
 from qalma.operators.basic import (
     LocalOperator,
@@ -35,12 +36,12 @@ from qalma.settings import QALMA_TOLERANCE
 from .quadratic import QuadraticFormOperator
 
 LocalBasisDict = Dict[str, List[Qobj]]
-
+BlockTermsDict = Dict[Tuple[str, ...], List[Operator]]
 # from typing import Union
 
 
 def build_local_basis(
-    terms_by_block: Dict[frozenset, List[Operator]],
+    terms_by_block: BlockTermsDict,
 ) -> LocalBasisDict:
     """
     Build a local basis of operators from
@@ -61,8 +62,10 @@ def build_local_basis(
                     product_terms.extend(term_.terms)
                 else:
                     product_terms.append(term_)
+            elif isinstance(term, ProductOperator):
+                product_terms.append(term)
             else:
-                product_terms.append(cast(ProductOperator, term))
+                raise TypeError(f"type {type(term)} should not be here.")
 
         for term in product_terms:
             site1, site2 = sites
@@ -131,7 +134,9 @@ def zero_expectation_value_basis(basis: LocalBasisDict, sigma_ref):
     return new_basis
 
 
-def classify_terms(operator, sigma_ref):
+def classify_terms(
+    operator: Operator, sigma_ref
+) -> Tuple[BlockTermsDict, List[Operator], List[Operator]]:
     """
     Decompose `operator` as list of terms
     associated to each pairs of sites,
@@ -152,9 +157,10 @@ def classify_terms(operator, sigma_ref):
         }
     )
 
-    def decompose_two_body_product_operator(prod_op):
+    def decompose_two_body_product_operator(prod_op) -> Tuple[Operator, Operator]:
         prefactor = prod_op.prefactor
         system = prod_op.system
+        assert isinstance(operator, ProductOperator)
         sites_op = operator.site_factors_qutip
         assert len(sites_op) == 2
         averages = {
@@ -169,26 +175,23 @@ def classify_terms(operator, sigma_ref):
             site: (loc_op - averages[site]) for site, loc_op in sites_op.items()
         }
         site1, site2 = sites_op
-        one_body_term = (
-            OneBodyOperator(
-                (
-                    LocalOperator(
-                        site1, sites_op[site1] * (averages[site2] * prefactor), system
-                    ),
-                    LocalOperator(
-                        site2, sites_op[site2] * (averages[site1] * prefactor), system
-                    ),
+        one_body_term: Operator = OneBodyOperator(
+            (
+                LocalOperator(
+                    site1, sites_op[site1] * (averages[site2] * prefactor), system
                 ),
-                system,
-            )
-            + averages[site1] * averages[site2] * prefactor
-        )
+                LocalOperator(
+                    site2, sites_op[site2] * (averages[site1] * prefactor), system
+                ),
+            ),
+            system,
+        ) + averages[site1] * (averages[site2] * prefactor)
         one_body_term = one_body_term.simplify()
         return ProductOperator(sites_op, prefactor, system).simplify(), one_body_term
 
-    terms_by_block = {}
-    offset_terms = []
-    linear_terms = []
+    terms_by_block: BlockTermsDict = {}
+    offset_terms: List[Operator] = []
+    linear_terms: List[Operator] = []
 
     if isinstance(operator, OneBodyOperator):
         return terms_by_block, [operator], offset_terms
@@ -237,19 +240,24 @@ def classify_terms(operator, sigma_ref):
     raise ValueError(f"operator of type {type(operator)} cannot be processed.")
 
 
-def build_quadratic_form_matrix(terms_by_block, local_basis: LocalBasisDict):
+def build_quadratic_form_matrix(
+    terms_by_block: BlockTermsDict, local_basis: LocalBasisDict
+) -> Tuple[np.ndarray, Dict[str, int]]:
     """
     Build the matrix associated to the quadratic form in a given basis.
     """
+    positions: Dict[str, int]
+    full_size: int
     positions, full_size = build_positions_and_full_size(local_basis)
 
-    result_array = np.zeros(
+    result_array: np.ndarray = np.zeros(
         (
             full_size,
             full_size,
         )
     )
-
+    block: Tuple[str, ...]
+    terms: List[Operator]
     for block, terms in terms_by_block.items():
         fill_array_from_block(result_array, local_basis, positions, block, terms)
 
@@ -258,8 +266,8 @@ def build_quadratic_form_matrix(terms_by_block, local_basis: LocalBasisDict):
 
 def build_quadratic_form_from_operator(
     operator: Operator,
-    simplify=True,
-    isherm=None,
+    simplify: bool = True,
+    isherm: Optional[bool] = None,
     sigma_ref=None,
 ) -> QuadraticFormOperator:
     """
@@ -334,8 +342,8 @@ def build_quadratic_form_from_operator(
     terms_by_2body_block, linear_terms, offset_terms = classify_terms(
         operator, sigma_ref
     )
-    linear_term = sum(linear_terms).simplify() if linear_terms else None
-    offset = sum(offset_terms).simplify() if offset_terms else None
+    linear_term = cast(Operator, sum(linear_terms)).simplify() if linear_terms else None
+    offset = cast(Operator, sum(offset_terms)).simplify() if offset_terms else None
 
     if isherm:
         linear_term = force_hermitic_t(linear_term)
@@ -363,19 +371,19 @@ def build_quadratic_form_from_operator(
     )
 
 
-def basis_and_weights(qf_basis_list):
+def basis_and_weights(qf_basis_list: List[List[Operator]]):
     """build basis and weights"""
 
-    def spectral_norm(ob_op):
+    def spectral_norm(ob_op: Operator) -> complex:
         if isinstance(ob_op, ScalarOperator):
             return ob_op.prefactor
         if isinstance(ob_op, OneBodyOperator):
             return sum(spectral_norm(term) for term in ob_op.simplify().terms)
         if isinstance(ob_op, LocalOperator):
-            return max((ob_op.operator**2).eigenenergies()) ** 0.5
+            return max((ob_op.operator_qutip**2).eigenenergies()) ** 0.5
         raise TypeError(f"spectral_norm can not be computed for {type(ob_op)}")
 
-    spectral_norms = (
+    spectral_norms: Generator = (
         spectral_norm(weight_generator[1]) for weight_generator in qf_basis_list
     )
     qf_basis_and_weight = tuple(
@@ -391,7 +399,9 @@ def basis_and_weights(qf_basis_list):
     )
 
 
-def decompose_matrix(qf_array, local_basis, local_basis_offsets, system):
+def decompose_matrix(
+    qf_array: np.ndarray, local_basis, local_basis_offsets, system: SystemDescriptor
+):
     """
     Decompose the array into
     """
@@ -435,12 +445,16 @@ def force_hermitic_t(t):
     return t
 
 
-def build_positions_and_full_size(local_basis):
+def build_positions_and_full_size(
+    local_basis: LocalBasisDict,
+) -> Tuple[Dict[str, int], int]:
     """
     Build the positions
     """
-    sizes = {site: len(local_base) for site, local_base in local_basis.items()}
-    sorted_sites = sorted(sizes)
+    sizes: Dict[str, int] = {
+        site: len(local_base) for site, local_base in local_basis.items()
+    }
+    sorted_sites: List[str] = sorted(sizes)
     return (
         {
             site: sum(sizes[site_] for site_ in sorted_sites[:pos])
@@ -450,7 +464,13 @@ def build_positions_and_full_size(local_basis):
     )
 
 
-def fill_array_from_block(result_array, local_basis, positions, block, terms):
+def fill_array_from_block(
+    result_array: np.ndarray,
+    local_basis: LocalBasisDict,
+    positions: Dict[str, int],
+    block: Tuple[str, ...],
+    terms: List[Operator],
+) -> None:
     """
     Full result_array with the coefficients obtained from the local basis.
     """
@@ -458,6 +478,7 @@ def fill_array_from_block(result_array, local_basis, positions, block, terms):
     position_1 = positions[site1]
     position_2 = positions[site2]
     for term in terms:
+        assert isinstance(term, ProductOperator)
         op1, op2 = (term.site_factors_qutip[site] for site in block)
         for mu, b1 in enumerate(local_basis[site1]):
             for nu, b2 in enumerate(local_basis[site2]):

@@ -13,9 +13,11 @@ import qutip  # type: ignore[import-untyped]
 
 from qalma.model import SystemDescriptor
 from qalma.qutip_tools.tools import (
+    _to_array,
     empty_op,
     is_diagonal_op,
     is_scalar_op,
+    ishermitian,
     norm,
 )
 from qalma.settings import (
@@ -25,28 +27,6 @@ from qalma.settings import (
 from .basic import LocalOperator, Operator
 
 # from scipy.linalg import ishermitian
-
-
-def ishermitian(array: np.ndarray):
-    """Determine if the array is hermitian."""
-    return np.allclose(array, array.T.conj())
-
-
-def _to_array(op) -> np.ndarray:
-    """Convert a local operator to np.ndarray complex128.
-
-    Accepts:
-      - np.ndarray  → return a C-contiguous copy of type complex128
-      - qutip.Qobj  → get a dense matrix representation via `.full()`
-      - int / float / complex → error (should be handled as prefactors)
-    """
-    if isinstance(op, np.ndarray):
-        return np.asarray(op, dtype=complex, order="C")
-    if isinstance(op, qutip.Qobj):
-        return np.asarray(op.full(), dtype=complex, order="C")
-    raise TypeError(
-        f"Local operators must be np.ndarray o qutip.Qobj, " f"got {type(op)}"
-    )
 
 
 class ProductOperator(Operator):
@@ -93,7 +73,8 @@ class ProductOperator(Operator):
     @cached_property
     def site_factors_qutip(self) -> Dict[str, qutip.Qobj]:
         result = {
-            key: qutip.Qobj(op, copy=False) for key, op in self.site_factors.items()
+            key: qutip.Qobj(op, copy=False).tidyup().to("CSR")
+            for key, op in self.site_factors.items()
         }
         return result  # MappingProxyType(result)
 
@@ -486,7 +467,7 @@ class ProductOperator(Operator):
             return self.prefactor
 
         factors = (
-            (sites_op.get(site, None) if site in sites_op else sites[site]["identity"])
+            (sites_op[site] if site in sites_op else sites[site]["identity"])
             for site in block
         )
 

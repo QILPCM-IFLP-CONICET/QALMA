@@ -163,6 +163,7 @@ class DensityOperatorMixin:
         )
 
         local_states = collect_local_states(obs_objs, self)
+        print("local states for", local_states.keys())
         # local_states = {None: self}
 
         def do_evaluate_expect(obs):
@@ -377,9 +378,7 @@ class ProductDensityOperator(DensityOperatorMixin, ProductOperator):
         """
         if isinstance(obs_objs, LocalOperator):
             site = obs_objs.site
-            op_dense = np.asarray(
-                obs_objs.operator.full(), dtype=np.complex128, order="C"
-            )
+            op_dense = obs_objs.operator
             return self._trace2(self.site_factors[site], op_dense)
 
         if isinstance(obs_objs, ProductOperator):

@@ -6,7 +6,7 @@ Classes to represent density operators as Gibbs states $rho=e^{-k}$.
 from typing import Callable, Dict, Iterable, Optional, Tuple, Union, cast
 
 import numpy as np
-import qutip
+from qutip import Qobj
 
 from qalma.model import SystemDescriptor
 from qalma.operators.arithmetic import OneBodyOperator
@@ -59,6 +59,7 @@ class GibbsDensityOperator(DensityOperatorMixin, Operator):
 
         assert prefactor > 0
         self.k = k
+        assert isinstance(k, Operator)
         self.f_global = 0.0
         self._free_energy = 0.0
         self.prefactor = prefactor
@@ -108,11 +109,6 @@ class GibbsDensityOperator(DensityOperatorMixin, Operator):
         """
         return self.k.acts_over().intersection(self.system.sites)
 
-    # def expect(
-    #    self, obs_objs: Union[Operator, Iterable]
-    # ) -> Union[np.ndarray, dict, Number]:
-    #    return self.to_qutip_operator().expect(obs_objs)
-
     @property
     def free_energy(self):
         """compute the free energy"""
@@ -126,7 +122,7 @@ class GibbsDensityOperator(DensityOperatorMixin, Operator):
         self._free_energy = value
         return self._free_energy
 
-    def logm(self):
+    def logm(self) -> Operator:
         self.normalize()
         k = self.k
         return -k
@@ -181,7 +177,7 @@ class GibbsDensityOperator(DensityOperatorMixin, Operator):
             result = (-self.k).to_qutip(block).expm()
         else:
             k_qutip = self.k.to_qutip(block)
-            if not isinstance(k_qutip, qutip.Qobj):
+            if not isinstance(k_qutip, Qobj):
                 return 1.0
             result, log_prefactor = safe_exp_and_normalize(-k_qutip)
             self.k = self.k + log_prefactor
@@ -220,25 +216,29 @@ class GibbsProductDensityOperator(DensityOperatorMixin, Operator):
 
         self.prefactor = prefactor
         if isinstance(k, dict):
+            print("k from dict")
             assert system is not None
             self_system = self.system = cast(SystemDescriptor, system)
             k_by_site = k
+            assert all(isinstance(k_loc, Qobj) for k_loc in k_by_site.values())
         else:
+            print("k from operator")
             k_operator: Operator = cast(Operator, k)
             k_operator = k_operator.simplify()
-            if system:
-                system = k_operator.system.union(system)
-            else:
-                system = k_operator.system
-            self_system = self.system = cast(SystemDescriptor, system)
+            system = k_operator.system.union(system)
+            self_system = self.system = system
             k_by_site = k_by_site_from_operator(k_operator)
+            assert all(isinstance(k_loc, Qobj) for k_loc in k_by_site.values())
 
         if normalized:
+            print("assuming normalized")
             f_locals = {site: 0.0 for site in k_by_site}
         else:
+            print("must normalize")
 
             def safe_local_f(op_loc):
-                spectrum = -(op_loc.eigenenergies())
+                assert isinstance(op_loc, Qobj)
+                spectrum = (-op_loc).eigenenergies()
                 f0 = max(spectrum)
                 spectrum = spectrum - f0
                 return -np.log(sum(np.exp(spectrum))) - f0
@@ -288,6 +288,14 @@ class GibbsProductDensityOperator(DensityOperatorMixin, Operator):
     # def _sites_op(self):
     #    return self.to_product_state()._sites_op
 
+    def __repr__(self):
+        result = "Gibbs Product density operator:\n"
+        result += "\n".join(
+            f"{site}:exp(-1*{op})" for site, op in self.k_by_site.items()
+        )
+        result += f"\n free energies:{self.free_energies}"
+        return result
+
     def acts_over(self) -> frozenset:
         """
         Return a set with the names of the sites where
@@ -307,7 +315,7 @@ class GibbsProductDensityOperator(DensityOperatorMixin, Operator):
                 return False
         return True
 
-    def logm(self):
+    def logm(self) -> Operator:
         terms = tuple(
             LocalOperator(site, -loc_op, self.system)
             for site, loc_op in self.k_by_site.items()

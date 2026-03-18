@@ -3,7 +3,7 @@ Different representations for operators
 """
 
 import logging
-from functools import reduce
+from functools import cached_property, reduce
 from typing import Callable, Dict, Iterable, List, Optional, Tuple, Union
 
 import numpy as np
@@ -12,9 +12,11 @@ from qutip import Qobj
 
 from qalma.model import SystemDescriptor
 from qalma.qutip_tools.tools import (
+    _to_array,
     empty_op,
     is_diagonal_op,
     is_scalar_op,
+    ishermitian,
     norm,
 )
 from qalma.settings import (
@@ -212,7 +214,7 @@ class Operator:  # pylint: disable=too-many-public-methods
         if len(acts_over) > 4:
             return repr(self)
         qutip_repr = self.to_qutip(tuple(acts_over))
-        if isinstance(qutip_repr, qutip.Qobj):
+        if isinstance(qutip_repr, Qobj):
             # pylint: disable=protected-access
             parts = qutip_repr._repr_latex_().replace("$$", "$").split("$")
             if len(parts) != 3:
@@ -272,7 +274,7 @@ class Operator:  # pylint: disable=too-many-public-methods
         """List of eigenstates of the operator"""
         return self.to_qutip_operator().eigenstates()
 
-    def expm(self):
+    def expm(self) -> "Operator":
         """
         Compute the exponential of the Qutip representation of the operator
         """
@@ -294,11 +296,11 @@ class Operator:  # pylint: disable=too-many-public-methods
         op_qutip = (op_qutip - max_eval).expm()
         return QutipOperator(op_qutip, self.system, prefactor=np.exp(max_eval))
 
-    def inv(self):
+    def inv(self) -> "Operator":
         """the inverse of the operator"""
         return self.to_qutip_operator().inv()
 
-    def logm(self):
+    def logm(self) -> "Operator":
         """Logarithm of the operator"""
         return self.to_qutip_operator().logm()
 
@@ -362,7 +364,7 @@ class Operator:  # pylint: disable=too-many-public-methods
         self.system = system
         return self
 
-    def simplify(self):
+    def simplify(self) -> "Operator":
         """Returns a more efficient representation"""
         return self
 
@@ -379,7 +381,7 @@ class Operator:  # pylint: disable=too-many-public-methods
             return self
         site_names = {site: i for i, site in enumerate(block)}
         qobj = self.to_qutip(block)
-        if isinstance(qobj, qutip.Qobj):
+        if isinstance(qobj, Qobj):
             from .qutip import QutipOperator
 
             assert qobj.type != "scalar"
@@ -404,9 +406,12 @@ class LocalOperator(Operator):
     Operator acting over a single site.
     """
 
+    operator: np.ndarray
+    site: str
+
     def __init__(
         self,
-        site,
+        site: str,
         local_operator,
         system: Optional[SystemDescriptor] = None,
     ):
@@ -415,21 +420,18 @@ class LocalOperator(Operator):
         self.site = site
         if isinstance(local_operator, (int, float, complex)):
             local_operator = system.site_identity(site) * local_operator
-        assert isinstance(local_operator, Qobj)
-        self.operator = local_operator
+
+        self.operator = _to_array(local_operator)
         self.system = system
 
     def __bool__(self):
-        operator = self.operator
-        if isinstance(operator, Qobj):
-            return not empty_op(operator)
-        return bool(self.operator)
+        return bool(self.operator.any())
 
     def __neg__(self):
         return LocalOperator(self.site, -self.operator, self.system)
 
     def __pow__(self, exp):
-        operator = self.operator
+        operator = self.operator_qutip
         if exp < 0 and hasattr(operator, "inv"):
             operator = operator.inv()
             exp = -exp
@@ -437,7 +439,12 @@ class LocalOperator(Operator):
         return LocalOperator(self.site, operator**exp, self.system)
 
     def __repr__(self):
-        return f"Local Operator on site {self.site}:" f"\n {repr(self.operator.full())}"
+        return f"Local Operator on site {self.site}:" f"\n {repr(self.operator_qutip)}"
+
+    @cached_property
+    def operator_qutip(self) -> Qobj:
+        """Return a Qutip representation of the local operator"""
+        return Qobj(self.operator, copy=False).tidyup().to("CSR")
 
     def acts_over(self) -> frozenset:
         return frozenset((self.site,))
@@ -447,23 +454,23 @@ class LocalOperator(Operator):
         Return the adjoint operator
         """
         operator = self.operator
-        if operator.isherm:
+        if self.isherm:
             return self
-        return LocalOperator(self.site, operator.dag(), self.system)
+        return LocalOperator(self.site, operator.T.conj(), self.system)
 
     def expm(self):
-        return LocalOperator(self.site, self.operator.expm(), self.system)
+        return LocalOperator(self.site, self.operator_qutip.expm(), self.system)
 
     def hermitician_part(self):
         """The hermitician part of the operator"""
         op = self.operator
-        if op.isherm:
+        if self.isherm:
             return self
-        op = (op + op.dag()) * 0.5
+        op = (op + op.T.conj()) * 0.5
         return LocalOperator(self.site, op, self.system)
 
     def inv(self):
-        operator = self.operator
+        operator = self.operator_qutip
         system = self.system
         site = self.site
         return LocalOperator(
@@ -472,16 +479,11 @@ class LocalOperator(Operator):
             system,
         )
 
-    @property
+    @cached_property
     def isherm(self) -> bool:
-        operator = self.operator
-        if isinstance(operator, (float, int)):
-            return True
-        if isinstance(operator, complex):
-            return operator.imag == 0.0
-        return operator.isherm
+        return ishermitian(self.operator)
 
-    @property
+    @cached_property
     def isdiagonal(self) -> bool:
         return is_diagonal_op(self.operator)
 
@@ -494,7 +496,7 @@ class LocalOperator(Operator):
                 for e_val, e_vec in zip(evals, evecs)
             )
 
-        return LocalOperator(self.site, log_qutip(self.operator), self.system)
+        return LocalOperator(self.site, log_qutip(self.operator_qutip), self.system)
 
     def norm(self, ord=None):
         """The norm of the operator"""
@@ -536,7 +538,7 @@ class LocalOperator(Operator):
         if site not in local_sites:
             from .product import ScalarOperator
 
-            return ScalarOperator(local_op.tr() * prefactor, subsystem)
+            return ScalarOperator(local_op.trace() * prefactor, subsystem)
         return LocalOperator(site, local_op * prefactor, subsystem)
 
     def reduce(self, sites: Iterable, state=None) -> Operator:
@@ -569,7 +571,7 @@ class LocalOperator(Operator):
         if state is not None:
             scalar_val = state.expect(self)
         else:
-            scalar_val = self.operator.tr() / system.dimensions[site]
+            scalar_val = self.operator.trace() / system.dimensions[site]
 
         from .product import ScalarOperator
 
@@ -608,6 +610,8 @@ class LocalOperator(Operator):
             operator = qutip.qeye(dimensions[site]) * operator
         elif isinstance(operator, Operator):
             operator = operator.to_qutip((site,))
+        else:
+            operator = self.operator_qutip
         # Build factors
         factors_dict = (operator if s == site else sites[s]["identity"] for s in block)
         return qutip.tensor(*factors_dict)
@@ -618,4 +622,4 @@ class LocalOperator(Operator):
 
     def tidyup(self, atol=None):
         """remove tiny elements of the operator"""
-        return LocalOperator(self.site, self.operator.tidyup(atol), self.system)
+        return LocalOperator(self.site, self.operator_qutip.tidyup(atol), self.system)

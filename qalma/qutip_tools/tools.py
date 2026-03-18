@@ -22,6 +22,29 @@ from qutip import (  # type: ignore[import-untyped]
 from scipy.linalg import norm as scipy_norm, svd
 from scipy.sparse.linalg import ArpackNoConvergence
 
+
+def ishermitian(array: np.ndarray):
+    """Determine if the array is hermitian."""
+    return np.allclose(array, array.T.conj())
+
+
+def _to_array(op) -> np.ndarray:
+    """Convert a local operator to np.ndarray complex128.
+
+    Accepts:
+      - np.ndarray  → return a C-contiguous copy of type complex128
+      - qutip.Qobj  → get a dense matrix representation via `.full()`
+      - int / float / complex → error (should be handled as prefactors)
+    """
+    if isinstance(op, np.ndarray):
+        return np.asarray(op, dtype=complex, order="C")
+    if isinstance(op, Qobj):
+        return np.asarray(op.full(), dtype=complex, order="C")
+    raise TypeError(
+        f"Local operators must be np.ndarray o qutip.Qobj, " f"got {type(op)}"
+    )
+
+
 if int(qutip_version[0]) < 5:
 
     def data_element_iterator(data) -> Iterator:
@@ -333,9 +356,9 @@ def empty_op(op) -> bool:
     if hasattr(op, "data"):
         return data_is_zero(op.data)
 
-    if hasattr(op, "operator"):
-        return empty_op(op.operator)
-    if any(empty_op(factor) for factor in getattr(op, "_sites_op", {}).values()):
+    if hasattr(op, "operator_qutip"):
+        return empty_op(op.operator_qutip)
+    if any(empty_op(factor) for factor in getattr(op, "site_factors", {}).values()):
         return True
     return False
 
@@ -425,19 +448,15 @@ def norm(
 
     See scipy.linalg.norm
     """
-    try:
-        return scipy_norm(op)
-    except TypeError:
-        # Version Qutip 5.2 does not support Qutip as ufunc. Handle
-        # specific cases
-        pass
-
-    data = op.data
-    if op.isbra or op.isket:
+    if isinstance(op, Qobj):
+        data = op.data
+        if op.isbra or op.isket:
+            return scipy_norm(data.to_array(), ord, axis, keepdims, check_finite)
+        assert op.isoper, "op is not valid."
         return scipy_norm(data.to_array(), ord, axis, keepdims, check_finite)
-    assert op.isoper, "op is not valid."
-    data = op.data
-    return scipy_norm(data.to_array(), ord, axis, keepdims, check_finite)
+    else:
+        data = op
+        return scipy_norm(data, ord, axis, keepdims, check_finite)
 
 
 def reshape_qutip_data(data, dims, bs=1) -> ndarray:
