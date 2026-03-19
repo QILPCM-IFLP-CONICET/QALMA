@@ -18,6 +18,7 @@ from qalma.qutip_tools.tools import (
     is_scalar_op,
     ishermitian,
     norm,
+    to_csr_qobj,
 )
 from qalma.settings import (
     QALMA_ALLOW_OVERWRITE_BINDINGS,
@@ -443,9 +444,7 @@ class LocalOperator(Operator):
     @cached_property
     def operator_qutip(self) -> Qobj:
         """Return a Qutip representation of the local operator"""
-        op = self.operator.copy()
-        op[np.abs(op) < 1e-12] = 0
-        return Qobj(op, copy=False).to("CSR")
+        return to_csr_qobj(self.operator.copy())
 
     def acts_over(self) -> frozenset:
         return frozenset((self.site,))

@@ -19,6 +19,7 @@ from qalma.qutip_tools.tools import (
     is_scalar_op,
     ishermitian,
     norm,
+    to_csr_qobj,
 )
 from qalma.settings import (
     QALMA_TOLERANCE,
@@ -72,12 +73,7 @@ class ProductOperator(Operator):
 
     @cached_property
     def site_factors_qutip(self) -> Dict[str, qutip.Qobj]:
-        result:Dict[str, qutip.Qobj] = {}
-        for key, op_ in self.site_factors.items():
-            op = op_.copy()
-            op[np.abs(op) < 1e-12] = 0
-            result[key] = qutip.Qobj(op, copy=False).to("CSR")
-        return result
+        return {key: to_csr_qobj(op.copy()) for key, op in self.site_factors.items()}
 
     @cached_property
     def _dense_tensor(self):
