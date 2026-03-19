@@ -108,7 +108,7 @@ if int(qutip_version[0]) < 5:
         """Build a Qobj with CSR storage directly from a dense numpy array."""
         dims = [[d] for d in array.shape]
         array[np.abs(array) < atol] = 0
-        return Qobj(sp.csr_matrix(array), dims=dims)
+        return Qobj(sp.csr_matrix(array), dims=dims, copy=False)
 
 else:
 
@@ -328,11 +328,21 @@ else:
             scalar if all(scalar == data[i, i] for i in range(data.shape[0])) else None
         )
 
-    def to_csr_qobj(array: np.ndarray, atol: float = 1e-12) -> Qobj:
-        """Build a Qobj with CSR storage directly from a dense numpy array."""
-        dims = [[d] for d in array.shape]
-        array[np.abs(array) < atol] = 0
-        return Qobj(array, dims=dims, dtype="CSR").tidyup()
+    if int(qutip_version[2]) < 2:
+
+        def to_csr_qobj(array: np.ndarray, atol: float = 1e-12) -> Qobj:
+            """Build a Qobj with CSR storage directly from a dense numpy array."""
+            dims = [[d] for d in array.shape]
+            array[np.abs(array) < atol] = 0
+            return Qobj(array, dims=dims, data_type="CSR").tidyup()
+
+    else:
+
+        def to_csr_qobj(array: np.ndarray, atol: float = 1e-12) -> Qobj:
+            """Build a Qobj with CSR storage directly from a dense numpy array."""
+            dims = [[d] for d in array.shape]
+            array[np.abs(array) < atol] = 0
+            return Qobj(array, dims=dims, dtype="CSR").tidyup()
 
 
 def data_has_nan(data) -> bool:
