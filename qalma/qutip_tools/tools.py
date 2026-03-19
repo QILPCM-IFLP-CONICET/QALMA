@@ -11,7 +11,6 @@ from typing import Dict, Iterable, Iterator, List, Optional, Tuple
 import numpy as np
 
 # type: ignore[import-untyped]
-import scipy as sp
 from numpy import ndarray, zeros as np_zeros
 from numpy.linalg import eigh
 from qutip import (  # type: ignore[import-untyped]
@@ -21,6 +20,7 @@ from qutip import (  # type: ignore[import-untyped]
     tensor as qutip_tensor,
 )
 from scipy.linalg import norm as scipy_norm, svd
+from scipy.sparse import csr_matrix as sp_csr_matrix
 from scipy.sparse.linalg import ArpackNoConvergence
 
 
@@ -108,7 +108,7 @@ if int(qutip_version[0]) < 5:
         """Build a Qobj with CSR storage directly from a dense numpy array."""
         dims = [[d] for d in array.shape]
         array[np.abs(array) < atol] = 0
-        return Qobj(sp.csr_matrix(array), dims=dims, copy=False)
+        return Qobj(sp_csr_matrix(array), dims=dims, copy=False)
 
 else:
 
@@ -334,14 +334,15 @@ else:
             """Build a Qobj with CSR storage directly from a dense numpy array."""
             dims = [[d] for d in array.shape]
             array[np.abs(array) < atol] = 0
-            return Qobj(sp.csr_matrix(array), dims=dims, copy=False)
+            return Qobj(sp_csr_matrix(array), dims=dims, copy=False)
+
     else:
 
         def to_csr_qobj(array: np.ndarray, atol: float = 1e-12) -> Qobj:
             """Build a Qobj with CSR storage directly from a dense numpy array."""
             dims = [[d] for d in array.shape]
             array[np.abs(array) < atol] = 0
-            return Qobj(array, dims=dims, dtype="CSR")
+            return Qobj(sp_csr_matrix(array), dims=dims, copy=False)
 
 
 def data_has_nan(data) -> bool:
