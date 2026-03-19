@@ -19,7 +19,7 @@ from qalma.qutip_tools.tools import (
     is_scalar_op,
     ishermitian,
     norm,
-    to_csr_qobj,
+    to_qobj,
 )
 from qalma.settings import (
     QALMA_TOLERANCE,
@@ -73,7 +73,7 @@ class ProductOperator(Operator):
 
     @cached_property
     def site_factors_qutip(self) -> Dict[str, qutip.Qobj]:
-        return {key: to_csr_qobj(op.copy()) for key, op in self.site_factors.items()}
+        return {key: to_qobj(op.copy()) for key, op in self.site_factors.items()}
 
     @cached_property
     def _dense_tensor(self):
@@ -412,9 +412,7 @@ class ProductOperator(Operator):
             return ScalarOperator(prefactor, self.system)
         if nops == 1:
             site, op_local = next(iter(nontrivial_factors.items()))
-            return LocalOperator(
-                site, qutip.Qobj(prefactor * op_local, copy=False), self.system
-            )
+            return LocalOperator(site, to_qobj(op_local * prefactor), self.system)
         if nops != len(self.site_factors):
             return ProductOperator(nontrivial_factors, prefactor, self.system)
         return self

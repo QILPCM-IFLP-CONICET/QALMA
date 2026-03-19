@@ -19,6 +19,8 @@ from qutip import (  # type: ignore[import-untyped]
     qeye,
     tensor as qutip_tensor,
 )
+from qutip.core.data.csr import fast_from_scipy
+from qutip.core.data.dense import fast_from_numpy
 from scipy.linalg import norm as scipy_norm, svd
 from scipy.sparse import csr_matrix as sp_csr_matrix
 from scipy.sparse.linalg import ArpackNoConvergence
@@ -253,7 +255,7 @@ else:
             return data.num_diag == 0
         if hasattr(data, "as_scipy"):
             return data.as_scipy().nnz == 0
-        return not bool(data.as_ndarray().any())
+        return np.count_nonzero(data.as_ndarray()) == 0
 
     def scalar_value(data):
         """
@@ -669,11 +671,14 @@ def schmidt_dec_rest_last_qutip_operator_hermitician(
     return opsh_1, opsh_2
 
 
-def to_csr_qobj(array: np.ndarray, atol: float = 1e-12) -> Qobj:
+def to_qobj(array: np.ndarray, atol: float = 1e-12) -> Qobj:
     """Build a Qobj with CSR storage directly from a dense numpy array."""
     dims = [[d] for d in array.shape]
-    array[np.abs(array) < atol] = 0
-    return Qobj(sp_csr_matrix(array), dims=dims, copy=False)
+    zero_pos = np.abs(array) < atol
+    if np.count_nonzero(zero_pos):
+        array[zero_pos] = 0
+        return Qobj(fast_from_scipy(sp_csr_matrix(array)), dims=dims, copy=False)
+    return Qobj(fast_from_numpy(array), dims=dims, copy=False)
 
 
 def decompose_qutip_operator(operator: Qobj, tol: float = 1e-10) -> List[Tuple]:

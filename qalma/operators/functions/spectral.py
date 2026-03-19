@@ -7,7 +7,6 @@ Spectral-related functions for operators.
 import logging
 
 from numpy import ndarray, real
-from qutip import Qobj
 
 from qalma.operators.arithmetic import OneBodyOperator
 from qalma.operators.basic import (
@@ -18,6 +17,7 @@ from qalma.operators.product import (
     ProductOperator,
     ScalarOperator,
 )
+from qalma.qutip_tools.tools import to_qobj
 
 # from qalma.operators.simplify import simplify_sum_operator
 
@@ -49,8 +49,8 @@ def spectral_norm(operator: Operator) -> float:
         return abs(operator.prefactor)
     if isinstance(operator, LocalOperator):
         if operator.isherm:
-            return max(abs(Qobj(operator.operator, copy=False).eigenenergies()))
-        op_qutip = Qobj(operator.operator)
+            return max(abs(to_qobj(operator.operator).eigenenergies()))
+        op_qutip = to_qobj(operator.operator)
         return max(abs((op_qutip.dag() * op_qutip).eigenenergies())) ** 0.5
     if isinstance(operator, ProductOperator):
         result = abs(operator.prefactor)
