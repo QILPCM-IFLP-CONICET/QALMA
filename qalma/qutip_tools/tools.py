@@ -334,15 +334,14 @@ else:
             """Build a Qobj with CSR storage directly from a dense numpy array."""
             dims = [[d] for d in array.shape]
             array[np.abs(array) < atol] = 0
-            return Qobj(array, dims=dims, data_type="CSR").tidyup()
-
+            return Qobj(sp.csr_matrix(array), dims=dims, copy=False)
     else:
 
         def to_csr_qobj(array: np.ndarray, atol: float = 1e-12) -> Qobj:
             """Build a Qobj with CSR storage directly from a dense numpy array."""
             dims = [[d] for d in array.shape]
             array[np.abs(array) < atol] = 0
-            return Qobj(array, dims=dims, dtype="CSR").tidyup()
+            return Qobj(array, dims=dims, dtype="CSR")
 
 
 def data_has_nan(data) -> bool:
