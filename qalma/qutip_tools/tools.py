@@ -512,12 +512,16 @@ def schmidt_dec_first_rest_qutip_operator(
         reshape_qutip_data(data, dims, 1), full_matrices=False, overwrite_a=True
     )
     ops_1 = [
-        Qobj(s * u_mat[:, i].reshape(dim_1, dim_1), dims=dims_1, copy=False)
+        Qobj(
+            (s * u_mat[:, i].reshape(dim_1, dim_1)),
+            dims=dims_1,
+            copy=False,
+        )
         for i, s in enumerate(s_mat)
         if s > tol
     ]
     ops_2 = [
-        Qobj(vh_mat_row.reshape(dim_2, dim_2), dims=dims_2, copy=False)
+        Qobj((vh_mat_row.reshape(dim_2, dim_2)), dims=dims_2, copy=False)
         for vh_mat_row, s in zip(vh_mat, s_mat)
         if s > tol
     ]
@@ -602,12 +606,16 @@ def schmidt_dec_rest_last_qutip_operator(
         reshape_qutip_data(data, dims, -1), full_matrices=False, overwrite_a=True
     )
     ops_1 = [
-        Qobj(s * u_mat[:, i].reshape(dim_1, dim_1), dims=dims_1, copy=False)
+        Qobj(
+            (s * u_mat[:, i].reshape(dim_1, dim_1)),
+            dims=dims_1,
+            copy=False,
+        )
         for i, s in enumerate(s_mat)
         if s > tol
     ]
     ops_2 = [
-        Qobj(vh_mat_row.reshape(dim_2, dim_2), dims=dims_2, copy=False)
+        Qobj((vh_mat_row.reshape(dim_2, dim_2)), dims=dims_2, copy=False)
         for vh_mat_row, s in zip(vh_mat, s_mat)
         if s > tol
     ]
@@ -790,7 +798,7 @@ def reduce_to_proper_spaces(operator: Qobj, observable: Qobj) -> Qobj:
         new_data = unitary @ new_data @ unitary_dag
 
     return Qobj(
-        new_data,
+        fast_from_numpy(new_data),
         dims=operator._dims,
         isherm=operator.isherm,
         isunitary=False,
