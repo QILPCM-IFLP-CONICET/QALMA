@@ -104,12 +104,6 @@ if int(qutip_version[0]) < 5:
         elem = vals[0]
         return elem if all(elem == val for val in vals) else None
 
-    def to_csr_qobj(array: np.ndarray, atol: float = 1e-12) -> Qobj:
-        """Build a Qobj with CSR storage directly from a dense numpy array."""
-        dims = [[d] for d in array.shape]
-        array[np.abs(array) < atol] = 0
-        return Qobj(sp_csr_matrix(array), dims=dims, copy=False)
-
 else:
 
     def data_element_iterator(data) -> Iterator:
@@ -327,22 +321,6 @@ else:
         return (
             scalar if all(scalar == data[i, i] for i in range(data.shape[0])) else None
         )
-
-    if int(qutip_version[2]) < 2:
-
-        def to_csr_qobj(array: np.ndarray, atol: float = 1e-12) -> Qobj:
-            """Build a Qobj with CSR storage directly from a dense numpy array."""
-            dims = [[d] for d in array.shape]
-            array[np.abs(array) < atol] = 0
-            return Qobj(sp_csr_matrix(array), dims=dims, copy=False)
-
-    else:
-
-        def to_csr_qobj(array: np.ndarray, atol: float = 1e-12) -> Qobj:
-            """Build a Qobj with CSR storage directly from a dense numpy array."""
-            dims = [[d] for d in array.shape]
-            array[np.abs(array) < atol] = 0
-            return Qobj(sp_csr_matrix(array), dims=dims, copy=False)
 
 
 def data_has_nan(data) -> bool:
@@ -689,6 +667,13 @@ def schmidt_dec_rest_last_qutip_operator_hermitician(
         opsh_2.append(op_2h)
 
     return opsh_1, opsh_2
+
+
+def to_csr_qobj(array: np.ndarray, atol: float = 1e-12) -> Qobj:
+    """Build a Qobj with CSR storage directly from a dense numpy array."""
+    dims = [[d] for d in array.shape]
+    array[np.abs(array) < atol] = 0
+    return Qobj(sp_csr_matrix(array), dims=dims, copy=False)
 
 
 def decompose_qutip_operator(operator: Qobj, tol: float = 1e-10) -> List[Tuple]:
