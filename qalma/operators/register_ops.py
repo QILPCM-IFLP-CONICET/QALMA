@@ -204,7 +204,7 @@ def _(x_op: LocalOperator, y_val: complex) -> Operator:
         ScalarOperator,
     )
 )
-def _(x_op: LocalOperator, y_op: ScalarOperator) -> Operator:
+def local_plus_scalar_(x_op: LocalOperator, y_op: ScalarOperator) -> Operator:
     """
 
     Parameters
@@ -221,7 +221,6 @@ def _(x_op: LocalOperator, y_op: ScalarOperator) -> Operator:
     system = x_op.system.union(y_op.system)
     new_op = x_op.operator.copy()
     np.fill_diagonal(new_op, new_op.diagonal() + y_op.prefactor)
-
     return LocalOperator(x_op.site, new_op, system)
 
 
@@ -231,7 +230,7 @@ def _(x_op: LocalOperator, y_op: ScalarOperator) -> Operator:
         LocalOperator,
     )
 )
-def _(x_op: LocalOperator, y_op: LocalOperator):
+def local_plus_local(x_op: LocalOperator, y_op: LocalOperator):
     """
 
     Parameters
@@ -261,7 +260,7 @@ def _(x_op: LocalOperator, y_op: LocalOperator):
         for num_type in NUMERIC_TYPES
     ]
 )
-def _(x_op: LocalOperator, y_val: complex):
+def local_times_numer_(x_op: LocalOperator, y_val: complex):
     """
 
     Parameters
@@ -287,7 +286,7 @@ def _(x_op: LocalOperator, y_val: complex):
         for num_type in NUMERIC_TYPES
     ]
 )
-def _(y_val: complex, x_op: LocalOperator):
+def numer_times_local_(y_val: complex, x_op: LocalOperator):
     """
 
     Parameters
@@ -310,7 +309,7 @@ def _(y_val: complex, x_op: LocalOperator):
         ScalarOperator,
     )
 )
-def _(x_op: LocalOperator, y_op: ScalarOperator):
+def local_times_scalar_(x_op: LocalOperator, y_op: ScalarOperator):
     """
 
     Parameters
@@ -335,7 +334,7 @@ def _(x_op: LocalOperator, y_op: ScalarOperator):
         LocalOperator,
     )
 )
-def _(y_op: ScalarOperator, x_op: LocalOperator):
+def scalar_times_local_(y_op: ScalarOperator, x_op: LocalOperator):
     """
 
     Parameters
@@ -360,7 +359,7 @@ def _(y_op: ScalarOperator, x_op: LocalOperator):
         LocalOperator,
     )
 )
-def _(x_op: LocalOperator, y_op: LocalOperator):
+def local_times_local_(x_op: LocalOperator, y_op: LocalOperator):
     """
 
     Parameters
@@ -402,7 +401,7 @@ def _(x_op: LocalOperator, y_op: LocalOperator):
         ProductOperator,
     )
 )
-def _(x_op: ProductOperator, y_op: ProductOperator):
+def product_times_product_(x_op: ProductOperator, y_op: ProductOperator):
     """
 
     Parameters
@@ -495,7 +494,7 @@ def _(y_value: complex, x_op: ProductOperator):
         ScalarOperator,
     )
 )
-def _(x_op: ProductOperator, y_op: ScalarOperator):
+def Product_times_scalar_(x_op: ProductOperator, y_op: ScalarOperator):
     """
 
     Parameters
@@ -522,7 +521,7 @@ def _(x_op: ProductOperator, y_op: ScalarOperator):
         ProductOperator,
     )
 )
-def _(
+def Scalar_times_product_(
     y_op: ScalarOperator,
     x_op: ProductOperator,
 ):
@@ -552,7 +551,7 @@ def _(
         LocalOperator,
     )
 )
-def _(x_op: ProductOperator, y_op: LocalOperator):
+def product_times_local_(x_op: ProductOperator, y_op: LocalOperator):
     """
 
     Parameters
@@ -588,7 +587,7 @@ def _(x_op: ProductOperator, y_op: LocalOperator):
         ProductOperator,
     )
 )
-def _(y_op: LocalOperator, x_op: ProductOperator):
+def local_times_product_(y_op: LocalOperator, x_op: ProductOperator):
     """
 
     Parameters
@@ -1137,7 +1136,7 @@ def _(x_op: OneBodyOperator, y_op: ScalarOperator):
         LocalOperator,
     )
 )
-def _(x_op: OneBodyOperator, y_op: LocalOperator):
+def ob_plus_local_(x_op: OneBodyOperator, y_op: LocalOperator):
     """
 
     Parameters
@@ -1167,7 +1166,7 @@ def _(x_op: OneBodyOperator, y_op: LocalOperator):
         for num_type in NUMERIC_TYPES
     ]
 )
-def _(x_op: OneBodyOperator, y_value: complex):
+def one_body_times_numer_(x_op: OneBodyOperator, y_value: complex):
     """
 
     Parameters
@@ -1197,7 +1196,7 @@ def _(x_op: OneBodyOperator, y_value: complex):
         for num_type in NUMERIC_TYPES
     ]
 )
-def _(y_value: complex, x_op: OneBodyOperator):
+def numer_times_ob_(y_value: complex, x_op: OneBodyOperator):
     """
 
     Parameters
@@ -1272,41 +1271,6 @@ def _(y_op: ScalarOperator, x_op: OneBodyOperator):
     if len(terms) == 1:
         return terms[0]
     return OneBodyOperator(terms, system)
-
-
-# ######################
-#
-#   LocalOperator
-#
-# ######################
-
-
-@Operator.register_add_handler(
-    (
-        ScalarOperator,
-        LocalOperator,
-    )
-)
-def _(x_op: ScalarOperator, y_op: LocalOperator):
-    """
-
-    Parameters
-    ----------
-    x_op: ScalarOperator :
-
-    y_op: LocalOperator :
-
-
-    Returns
-    -------
-
-    """
-    if x_op.prefactor == 0:
-        return y_op
-
-    system = y_op.system or x_op.system
-    site = y_op.site
-    return LocalOperator(site, y_op.operator + x_op.prefactor, system)
 
 
 # ######################

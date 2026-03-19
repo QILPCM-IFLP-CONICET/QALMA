@@ -216,13 +216,11 @@ class GibbsProductDensityOperator(DensityOperatorMixin, Operator):
 
         self.prefactor = prefactor
         if isinstance(k, dict):
-            print("k from dict")
             assert system is not None
             self_system = self.system = cast(SystemDescriptor, system)
             k_by_site = k
             assert all(isinstance(k_loc, Qobj) for k_loc in k_by_site.values())
         else:
-            print("k from operator")
             k_operator: Operator = cast(Operator, k)
             k_operator = k_operator.simplify()
             system = k_operator.system.union(system)
@@ -231,10 +229,8 @@ class GibbsProductDensityOperator(DensityOperatorMixin, Operator):
             assert all(isinstance(k_loc, Qobj) for k_loc in k_by_site.values())
 
         if normalized:
-            print("assuming normalized")
             f_locals = {site: 0.0 for site in k_by_site}
         else:
-            print("must normalize")
 
             def safe_local_f(op_loc):
                 assert isinstance(op_loc, Qobj)

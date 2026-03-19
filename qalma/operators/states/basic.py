@@ -163,7 +163,6 @@ class DensityOperatorMixin:
         )
 
         local_states = collect_local_states(obs_objs, self)
-        print("local states for", local_states.keys())
         # local_states = {None: self}
 
         def do_evaluate_expect(obs):

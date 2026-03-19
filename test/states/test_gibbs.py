@@ -178,13 +178,9 @@ def test_product_gibbs_with_dict(key, k_gen):
 
 def do_test_log(rho):
     """Test the logm method."""
-    print("log test", type(rho), rho)
     rho_qutip = rho.to_qutip()
-    print("->qutip", type(rho_qutip), rho_qutip)
     ln_rho_neg = rho.logm()
-    print("log rho", type(ln_rho_neg), ln_rho_neg)
     ln_rho_neg_qutip = ln_rho_neg.to_qutip()
-    print("log rho qutip", type(ln_rho_neg_qutip), ln_rho_neg_qutip)
     rho_g, ln_z = safe_exp_and_normalize(ln_rho_neg_qutip)
     assert abs(ln_z) < QALMA_TOLERANCE**0.5
     check_operator_equality(rho_qutip, rho_g)

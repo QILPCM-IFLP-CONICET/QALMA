@@ -82,18 +82,12 @@ def relative_entropy(rho: Operator, sigma: Operator) -> float:
     """Compute the relative entropy"""
 
     log_rho = log_op(rho)
-    log_sigma = log_op(sigma)    
+    log_sigma = log_op(sigma)
     delta_log = (log_rho - log_sigma).simplify()
-    print("direct:", real((rho * delta_log).tr()))
+
     if hasattr(rho, "expect"):
-        print("expect:", real(rho.expect(delta_log)))
-    
-    if hasattr(rho, "expect"):
-        print(rho.expect)
         result = real(rho.expect(delta_log.to_qutip_operator()))
-        print("   @>", result)
     else:
-        print("rho is", type(rho), "delta_log is", type(delta_log), "use trace")
         result = real((rho * delta_log).tr())
     if result < 0:
         logging.warning("S(rho|sigma)=%.4f<0", result)

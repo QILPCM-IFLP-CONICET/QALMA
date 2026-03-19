@@ -226,21 +226,6 @@ class ProductOperator(Operator):
         # TODO: check if it worth to check that factors are not hermitician
         # up to a phase factor.
         if not all(ishermitian(loc_op) for loc_op in self.site_factors.values()):
-            print([ishermitian(loc_op) for loc_op in self.site_factors.values()])
-            print(
-                [
-                    np.allclose(loc_op, loc_op.T.conj())
-                    for loc_op in self.site_factors.values()
-                ]
-            )
-
-            print(
-                [
-                    loc_op
-                    for loc_op in self.site_factors.values()
-                    if not ishermitian(loc_op)
-                ]
-            )
             return False
         prefactor = self.prefactor
         if isinstance(prefactor, (int, float, np.float64)):

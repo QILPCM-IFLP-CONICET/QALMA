@@ -88,7 +88,6 @@ class Operator:  # pylint: disable=too-many-public-methods
     def __add__(self, term):
         # Use multiple dispatch to determine how to add
         dispatch_table = Operator.__add__dispatch__
-
         # First try with the cases stored in the dispatch table:
         func = dispatch_table.get((type(self), type(term)), None)
         if func is not None:
