@@ -72,11 +72,12 @@ class ProductOperator(Operator):
 
     @cached_property
     def site_factors_qutip(self) -> Dict[str, qutip.Qobj]:
-        result = {
-            key: qutip.Qobj(op, copy=False).tidyup().to("CSR")
-            for key, op in self.site_factors.items()
-        }
-        return result  # MappingProxyType(result)
+        result:Dict[str, qutip.Qobj] = {}
+        for key, op_ in self.site_factors.items():
+            op = op_.copy()
+            op[np.abs(op) < 1e-12] = 0
+            result[key] = qutip.Qobj(op, copy=False).to("CSR")
+        return result
 
     @cached_property
     def _dense_tensor(self):
