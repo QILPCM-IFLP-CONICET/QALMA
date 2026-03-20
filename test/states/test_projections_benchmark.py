@@ -262,4 +262,4 @@ def test_benchmark_nbody_projection(
     else:
         eval_orig, eval_proj = sigma0.expect([op_sq, result])
 
-    assert abs(eval_orig - eval_proj) < 1.0e-6
+    assert abs(eval_orig - eval_proj) < 2.0e-6

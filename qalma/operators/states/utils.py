@@ -29,6 +29,29 @@ from qalma.qutip_tools.tools import (
 )
 
 
+def _trivial_compute_epectation_values_product_op(obs):
+    result = obs.prefactor
+    for l_op in obs.site_factors.values():
+        result *= l_op.trace() / l_op.shape[0]
+    return result
+
+
+COMPUTE_EXPECTATION_VALUES_CALLBACKS = {
+    dict: lambda arg: {
+        key: compute_expectation_values(val) for key, val in arg.items()
+    },
+    list: lambda arg: [compute_expectation_values(val) for val in arg],
+    tuple: lambda arg: tuple(compute_expectation_values(val) for val in arg),
+    QuadraticFormOperator: lambda arg: compute_expectation_values(
+        arg.as_sum_of_products()
+    ),
+    LocalOperator: lambda arg: arg.operator.trace() / arg.operator.shape[0],
+    ProductOperator: _trivial_compute_epectation_values_product_op,
+    SumOperator: lambda arg: sum(compute_expectation_values(op) for op in arg.terms),
+    Qobj: lambda arg: arg.data.trace() / arg.data.shape[0],
+}
+
+
 def acts_over_order(elem):
     """
     Return the number of sites where the
@@ -42,21 +65,26 @@ def acts_over_order(elem):
 
 def compute_expectation_values(
     obs: Operator | Iterable[Operator] | Dict[Any, Operator],
-    state: Optional[DensityOperatorProtocol],
+    state: Optional[DensityOperatorProtocol] = None,
 ):
     """
     Compute the expectation value of an operator or operators in an iterable object,
     relative to the state `state`.
     """
     if state is None:
-        target_obs = obs
-        while hasattr(target_obs, "__getitem__"):
-            if hasattr(target_obs, "values"):
-                target_obs = tuple(target_obs.values())
-            target_obs = target_obs[0]
-            if hasattr(target_obs, "system"):
-                break
-        state = ProductDensityOperator({}, system=cast(Operator, target_obs).system)
+        callback = COMPUTE_EXPECTATION_VALUES_CALLBACKS.get(type(obs), None)
+        if callback is not None:
+            return callback(obs)
+        if isinstance(obs, SumOperator):
+            return sum(compute_expectation_values(term) for term in obs.terms)
+        elif hasattr(obs, "expect"):
+            return 1.0
+        elif isinstance(obs, Operator):
+            data = obs.to_qutip().data
+            return data.trace() / data.shape[0]
+        elif hasattr(obs, "__getitem__"):
+            return [compute_expectation_values(elem) for elem in obs]
+        raise TypeError("type(obs) is not a valid type.")
     return state.expect(obs)
 
 

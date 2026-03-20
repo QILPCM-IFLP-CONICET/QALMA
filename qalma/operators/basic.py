@@ -406,6 +406,7 @@ class LocalOperator(Operator):
     Operator acting over a single site.
     """
 
+    _to_qutip_cache: Dict[Optional[Tuple[str, ...]], Qobj]
     operator: np.ndarray
     site: str
 
@@ -425,6 +426,7 @@ class LocalOperator(Operator):
         if isinstance(local_operator, Qobj):
             self.__dict__["operator_qutip"] = local_operator
 
+        self._to_qutip_cache = {}
         self.system = system
 
     def __bool__(self):
@@ -594,12 +596,17 @@ class LocalOperator(Operator):
 
     def to_qutip(self, block: Optional[Tuple[str, ...]] = None):
         """Convert to a Qutip object"""
+        cached = self._to_qutip_cache.get(block, None)
+        if cached is not None:
+            return cached
+
         site = self.site
         system = self.system
         sites = system.sites
         dimensions = system.dimensions
         operator = self.operator
         # Ensure that block at least contains site
+        orig_block = block
         if block is None:
             block = tuple(sorted(sites))
             if len(block) > 8:
@@ -617,7 +624,8 @@ class LocalOperator(Operator):
             operator = self.operator_qutip
         # Build factors
         factors_dict = (operator if s == site else sites[s]["identity"] for s in block)
-        return qutip.tensor(*factors_dict)
+        self._to_qutip_cache[orig_block] = result = qutip.tensor(*factors_dict)
+        return result
 
     def tr(self):
         result = self.partial_trace(frozenset())

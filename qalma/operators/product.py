@@ -34,8 +34,9 @@ from .basic import LocalOperator, Operator
 class ProductOperator(Operator):
     """Product of operators acting over different sites"""
 
-    site_factors: Dict[str, np.ndarray]
+    _to_qutip_cache: Dict[Optional[Tuple[str, ...]], Qobj]
     prefactor: complex
+    site_factors: Dict[str, np.ndarray]
     system: SystemDescriptor
 
     def __init__(
@@ -74,6 +75,7 @@ class ProductOperator(Operator):
             self.dimensions = {
                 name: site["dimension"] for name, site in system.sites.items()
             }
+        self._to_qutip_cache = {}
 
     @cached_property
     def site_factors_qutip(self) -> Dict[str, Qobj]:
@@ -428,10 +430,15 @@ class ProductOperator(Operator):
         By default (`block=None`) returns a qutip object
         acting over all the sites, in lexicographical order.
         """
+        cached = self._to_qutip_cache.get(block, None)
+        if cached is not None:
+            return cached
+
         sites_op = self.site_factors_qutip
         system = self.system
         sites = system.sites if system else {}
         # Ensure that block has the sites in the operator.
+        orig_block = block
         if block is None:
             if system is not None:
                 block = tuple(sorted(sites))
@@ -454,8 +461,10 @@ class ProductOperator(Operator):
             (sites_op[site] if site in sites_op else sites[site]["identity"])
             for site in block
         )
-
-        return self.prefactor * qutip.tensor(*factors)
+        self._to_qutip_cache[orig_block] = result = self.prefactor * qutip.tensor(
+            *factors
+        )
+        return result
 
     def to_qutip_operator(self) -> Operator:
         """

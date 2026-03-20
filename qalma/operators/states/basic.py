@@ -4,7 +4,6 @@ Density operator classes.
 
 import logging
 import pickle
-from functools import cache
 from typing import Any, Iterable, Optional, Protocol, Tuple, Union, cast
 
 import numpy as np
@@ -459,7 +458,6 @@ class ProductDensityOperator(DensityOperatorMixin, ProductOperator):
             local_states, np.real(self.prefactor), subsystem, normalize=False
         )
 
-    @cache
     def to_qutip(self, block: Optional[Tuple[str, ...]] = None):
         prefactor = self.prefactor
         if prefactor == 0 or len(self.system.dimensions) == 0:
