@@ -9,13 +9,13 @@ from functools import cached_property, reduce
 from typing import Dict, Iterable, Optional, Tuple, Union
 
 import numpy as np
-import qutip  # type: ignore[import-untyped]
 from qutip import Qobj
 
 from qalma.model import SystemDescriptor
 from qalma.qutip_tools.tools import (
     _to_array,
     empty_op,
+    fast_tensor,
     is_diagonal_op,
     is_scalar_op,
     ishermitian,
@@ -382,7 +382,7 @@ class ProductOperator(Operator):
             # TODO: check if we can do more using numpy
             prefactor *= (
                 state
-                * qutip.tensor([self.site_factors_qutip[site] for site in env_tuple])
+                * fast_tensor([self.site_factors_qutip[site] for site in env_tuple])
             ).tr()
             sites_op = {site: op_q for site, op_q in sites_ops.items() if site in sites}
             result = ProductOperator(sites_op, prefactor, system)
@@ -461,7 +461,7 @@ class ProductOperator(Operator):
             (sites_op[site] if site in sites_op else sites[site]["identity"])
             for site in block
         )
-        self._to_qutip_cache[orig_block] = result = self.prefactor * qutip.tensor(
+        self._to_qutip_cache[orig_block] = result = self.prefactor * fast_tensor(
             *factors
         )
         return result
@@ -609,7 +609,7 @@ class ScalarOperator(ProductOperator):
             return self.prefactor
 
         factors = (sites[site]["identity"] for site in block)
-        return self.prefactor * qutip.tensor(*factors)
+        return self.prefactor * fast_tensor(*factors)
 
     def to_qutip_operator(self):
         """

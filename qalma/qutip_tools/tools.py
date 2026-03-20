@@ -753,9 +753,9 @@ def fast_tensor(*factors):
     convert everthing to CSR to speedup the computation
     """
     if all(isinstance(factor.data, Qutip_Dense) for factor in factors):
-        return tensor(*factors)
-    return tensor((factor.to(Qutip_CSR) for factor in factors))
-    
+        return qutip_tensor(*factors)
+    return qutip_tensor((factor.to(Qutip_CSR) for factor in factors))
+
 
 def get_proper_spaces(spectrum: Iterable) -> List[List[int]]:
     """

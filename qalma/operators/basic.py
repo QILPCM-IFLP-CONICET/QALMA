@@ -14,6 +14,7 @@ from qalma.model import SystemDescriptor
 from qalma.qutip_tools.tools import (
     _to_array,
     empty_op,
+    fast_tensor,
     is_diagonal_op,
     is_scalar_op,
     ishermitian,
@@ -624,7 +625,7 @@ class LocalOperator(Operator):
             operator = self.operator_qutip
         # Build factors
         factors_dict = (operator if s == site else sites[s]["identity"] for s in block)
-        self._to_qutip_cache[orig_block] = result = qutip.tensor(*factors_dict)
+        self._to_qutip_cache[orig_block] = result = fast_tensor(*factors_dict)
         return result
 
     def tr(self):
