@@ -80,7 +80,7 @@ def compute_expectation_values(
         elif hasattr(obs, "expect"):
             return 1.0
         elif isinstance(obs, Operator):
-            data = obs.to_qutip().data
+            data = obs.to_qutip(tuple()).data
             return data.trace() / data.shape[0]
         elif hasattr(obs, "__getitem__"):
             return [compute_expectation_values(elem) for elem in obs]
