@@ -10,6 +10,7 @@ from typing import Dict, Iterable, Optional, Tuple, Union
 
 import numpy as np
 import qutip  # type: ignore[import-untyped]
+from qutip import Qobj
 
 from qalma.model import SystemDescriptor
 from qalma.qutip_tools.tools import (
@@ -57,6 +58,9 @@ class ProductOperator(Operator):
                 if not isinstance(local_op, (int, float, complex))
             }
 
+        if all(isinstance(value, Qobj) for value in sites_operators.values()):
+            self.__dict__["site_factors_qutip"] = sites_operators
+
         sites_operators = {key: _to_array(op) for key, op in sites_operators.items()}
         self.site_factors = sites_operators
         if any(empty_op(op) for op in sites_operators.values()):
@@ -72,7 +76,7 @@ class ProductOperator(Operator):
             }
 
     @cached_property
-    def site_factors_qutip(self) -> Dict[str, qutip.Qobj]:
+    def site_factors_qutip(self) -> Dict[str, Qobj]:
         return {key: to_qobj(op.copy()) for key, op in self.site_factors.items()}
 
     @cached_property

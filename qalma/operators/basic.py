@@ -422,6 +422,9 @@ class LocalOperator(Operator):
             local_operator = system.site_identity(site) * local_operator
 
         self.operator = _to_array(local_operator)
+        if isinstance(local_operator, Qobj):
+            self.__dict__["operator_qutip"] = local_operator
+
         self.system = system
 
     def __bool__(self):
