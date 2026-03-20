@@ -45,6 +45,7 @@ COMPUTE_EXPECTATION_VALUES_CALLBACKS = {
     QuadraticFormOperator: lambda arg: compute_expectation_values(
         arg.as_sum_of_products()
     ),
+    ScalarOperator: lambda arg: arg.prefactor,
     LocalOperator: lambda arg: arg.operator.trace() / arg.operator.shape[0],
     ProductOperator: _trivial_compute_epectation_values_product_op,
     SumOperator: lambda arg: sum(compute_expectation_values(op) for op in arg.terms),
