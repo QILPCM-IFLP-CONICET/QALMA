@@ -19,8 +19,8 @@ from qutip import (  # type: ignore[import-untyped]
     qeye,
     tensor as qutip_tensor,
 )
-from qutip.core.data.csr import fast_from_scipy
-from qutip.core.data.dense import fast_from_numpy
+from qutip.core.data.csr import CSR as Qutip_CSR, fast_from_scipy
+from qutip.core.data.dense import Dense as Qutip_Dense, fast_from_numpy
 from scipy.linalg import norm as scipy_norm, svd
 from scipy.sparse import csr_matrix as sp_csr_matrix
 from scipy.sparse.linalg import ArpackNoConvergence
@@ -746,6 +746,16 @@ def decompose_qutip_operator_hermitician(
         return result
     return []
 
+
+def fast_tensor(*factors):
+    """
+    If some of the factors are not in Dense representation,
+    convert everthing to CSR to speedup the computation
+    """
+    if all(isinstance(factor.data, Qutip_Dense) for factor in factors):
+        return tensor(*factors)
+    return tensor((factor.to(Qutip_CSR) for factor in factors))
+    
 
 def get_proper_spaces(spectrum: Iterable) -> List[List[int]]:
     """
