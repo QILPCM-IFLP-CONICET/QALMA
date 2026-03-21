@@ -86,7 +86,6 @@ def compute_expectation_values(
         elif hasattr(obs, "__getitem__"):
             return [compute_expectation_values(elem) for elem in obs]
         raise TypeError("type(obs) is not a valid type.")
-
     return state.expect(obs)
 
 
