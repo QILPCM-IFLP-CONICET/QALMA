@@ -382,7 +382,7 @@ class ProductOperator(Operator):
             # TODO: check if we can do more using numpy
             prefactor *= (
                 state
-                * fast_tensor([self.site_factors_qutip[site] for site in env_tuple])
+                * fast_tensor(*(self.site_factors_qutip[site] for site in env_tuple))
             ).tr()
             sites_op = {site: op_q for site, op_q in sites_ops.items() if site in sites}
             result = ProductOperator(sites_op, prefactor, system)
