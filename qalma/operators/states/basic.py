@@ -299,12 +299,15 @@ class ProductDensityOperator(DensityOperatorMixin, ProductOperator):
             local_zs = {}
         else:
             local_states = {key: _to_array(val) for key, val in local_states.items()}
-            local_zs = {site: state.trace() for site, state in local_states.items()}
+            
             if normalize:
+                local_zs = {site: state.trace() for site, state in local_states.items()}
                 assert (z > 0 for z in local_zs.values())
                 local_states = {
                     site: sigma / local_zs[site] for site, sigma in local_states.items()
                 }
+            else:
+                local_zs = {site: 1. for site, state in local_states.items()}
 
         # Complete the scalar factors using the system
         if system is None:
@@ -325,7 +328,6 @@ class ProductDensityOperator(DensityOperatorMixin, ProductOperator):
                         local_identities[dimension] = local_id
                     local_states[site] = local_id
 
-        # super().__init__(local_states, prefactor=weight, system=system)
         self._to_qutip_cache = {}
         self.site_factors = local_states
         self.system = system
