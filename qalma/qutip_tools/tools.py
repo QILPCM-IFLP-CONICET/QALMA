@@ -13,9 +13,10 @@ import numpy as np
 # type: ignore[import-untyped]
 from numpy import ndarray, zeros as np_zeros
 from numpy.linalg import eigh
+from packaging.version import parse as parse_version
 from qutip import (  # type: ignore[import-untyped]
     Qobj,
-    __version__ as qutip_version,
+    __version__ as qutip_version_string,
     qeye,
     tensor as qutip_tensor,
 )
@@ -23,7 +24,9 @@ from qutip.core.data.csr import CSR as Qutip_CSR, fast_from_scipy
 from qutip.core.data.dense import Dense as Qutip_Dense, fast_from_numpy
 from scipy.linalg import norm as scipy_norm, svd
 from scipy.sparse import csr_matrix as sp_csr_matrix
-from scipy.sparse.linalg import ArpackNoConvergence
+from scipy.sparse.linalg import ArpackError, ArpackNoConvergence
+
+qutip_version = parse_version(qutip_version_string)
 
 
 def ishermitian(array: np.ndarray):
@@ -48,7 +51,7 @@ def _to_array(op) -> np.ndarray:
     )
 
 
-if int(qutip_version[0]) < 5:
+if qutip_version < parse_version("5.0.0"):
 
     def data_element_iterator(data) -> Iterator:
         """
@@ -105,6 +108,13 @@ if int(qutip_version[0]) < 5:
         vals = [val for val, a, b in zip(data.data, *data.nonzero()) if a == b]
         elem = vals[0]
         return elem if all(elem == val for val in vals) else None
+
+    def fast_tensor(*factors):
+        """
+        If some of the factors are not in Dense representation,
+        convert everthing to CSR to speedup the computation
+        """
+        return qutip_tensor(*factors)
 
 else:
 
@@ -174,8 +184,7 @@ else:
 
         # Diagonal format
         if hasattr(data, "num_diag"):
-            # For 5.0 and 5.1
-            if int(qutip_version[2]) < 2:
+            if qutip_version < parse_version("5.2.0"):
                 yield from do_dia_5_0(data)
             # For 5.2
             else:
@@ -323,6 +332,22 @@ else:
         return (
             scalar if all(scalar == data[i, i] for i in range(data.shape[0])) else None
         )
+
+    if qutip_version < parse_version("5.2.0"):
+
+        def fast_tensor(*factors):
+            """
+            If some of the factors are not in Dense representation,
+            convert everthing to CSR to speedup the computation
+            """
+            return qutip_tensor(*factors)
+
+    else:
+
+        def fast_tensor(*factors):
+            if all(isinstance(factor.data, Qutip_Dense) for factor in factors):
+                return qutip_tensor(*factors)
+            return qutip_tensor((factor.to(Qutip_CSR) for factor in factors))
 
 
 def data_has_nan(data) -> bool:
@@ -747,16 +772,6 @@ def decompose_qutip_operator_hermitician(
     return []
 
 
-def fast_tensor(*factors):
-    """
-    If some of the factors are not in Dense representation,
-    convert everthing to CSR to speedup the computation
-    """
-    if all(isinstance(factor.data, Qutip_Dense) for factor in factors):
-        return qutip_tensor(*factors)
-    return qutip_tensor((factor.to(Qutip_CSR) for factor in factors))
-
-
 def get_proper_spaces(spectrum: Iterable) -> List[List[int]]:
     """
     Given a diagonal operator, find the proper spaces
@@ -902,6 +917,8 @@ def safe_exp_and_normalize(operator: Qobj) -> Tuple[Qobj, float]:
             if len(err_arpack.eigenvalues)
             else 0.0
         )
+    except ArpackError:
+        return operator * 0 + 1, 0
 
     op_exp = (operator - k_0).expm()
     op_exp_tr = op_exp.tr()
