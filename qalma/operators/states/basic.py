@@ -320,11 +320,15 @@ class ProductDensityOperator(DensityOperatorMixin, ProductOperator):
                     local_id = local_identities.get(dimension, None)
                     local_zs[site] = dimension
                     if local_id is None:
-                        local_id = qutip_qeye(dimension) / dimension
+                        local_id = np.zeros((dimension, dimension,))
+                        np.fill_diagonal(local_id, 1./ dimension)
                         local_identities[dimension] = local_id
                     local_states[site] = local_id
 
-        super().__init__(local_states, prefactor=weight, system=system)
+        # super().__init__(local_states, prefactor=weight, system=system)
+        self._to_qutip_cache = {}
+        self.site_factors = local_states
+        self.system = system
         self.local_fs = {site: -np.log(z) for site, z in local_zs.items()}
 
     def __mul__(self, a):
@@ -445,7 +449,7 @@ class ProductDensityOperator(DensityOperatorMixin, ProductOperator):
         return OneBodyOperator(terms, system, False)
 
     def partial_trace(self, sites: Union[frozenset, SystemDescriptor]):
-        sites_op = self.site_factors_qutip
+        sites_op = self.site_factors
         if isinstance(sites, SystemDescriptor):
             subsystem = sites
             sites = frozenset(sites.sites.keys())

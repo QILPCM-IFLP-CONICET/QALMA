@@ -706,9 +706,10 @@ def schmidt_dec_rest_last_qutip_operator_hermitician(
 
 def to_qobj(array: np.ndarray, atol: float = 1e-12) -> Qobj:
     """Build a Qobj with CSR storage directly from a dense numpy array."""
-    dims = [[d] for d in array.shape]
+    shape = array.shape
+    dims = [[d] for d in shape]
     zero_pos = np.abs(array) < atol
-    if np.count_nonzero(zero_pos) or dims[0][0]<64:
+    if shape[0]<64 or np.count_nonzero(zero_pos):
         array[zero_pos] = 0
         return Qobj(fast_from_scipy(sp_csr_matrix(array)), dims=dims, copy=False)
     return Qobj(fast_from_numpy(array), dims=dims, copy=False)
