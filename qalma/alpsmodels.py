@@ -4,7 +4,7 @@ Function to read xml alps libraries to produce model descriptors.
 
 import logging
 import xml.etree.ElementTree as ET
-from typing import Optional
+from typing import Iterable, Optional
 
 import qutip  # type: ignore[import-untyped]
 
@@ -433,16 +433,14 @@ class ModelDescriptor:
         return True
 
 
-def qutip_model_from_dims(dims, model_name="qutip"):
+def qutip_model_from_dims(dims: Iterable, model_name="qutip") -> ModelDescriptor:
     """
     Produce a basic model descriptor from the dimensions
     """
-    site_basis_cache = {}
     site_basis = {}
-    for i, d in enumerate(dims):
-        name = f"qutip_{i}"
-        curr_site_basis = site_basis_cache.get(d, None)
-        if curr_site_basis is None:
+    for d in dims:
+        name = f"dim={d}"
+        if name not in site_basis:
             identity_operator = qutip.qeye(d)
             curr_site_basis = {
                 "name": name,

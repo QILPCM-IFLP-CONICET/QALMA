@@ -5,9 +5,9 @@ Define SystemDescriptors and different kind of operators
 import logging
 import pickle
 import re
-from typing import Optional, Tuple
+from typing import Dict, Optional, Tuple
 
-from qalma.alpsmodels import ModelDescriptor
+from qalma.alpsmodels import ModelDescriptor, qutip_model_from_dims
 from qalma.geometry import GraphDescriptor
 from qalma.settings import LATTICE_LIB_FILE, MODEL_LIB_FILE
 from qalma.utils import eval_expr, replace_variable_type
@@ -737,3 +737,19 @@ def build_system(
     assert model is not None
     assert graph is not None
     return SystemDescriptor(graph, model, parms)
+
+
+def build_system_from_dims(dims_by_name: Dict[str, int]) -> SystemDescriptor:
+    """
+    Build a System from the dimension of each site
+    """
+    model = qutip_model_from_dims(dims_by_name.values())
+    sitebasis = model.site_basis
+    sites = {name: sitebasis[f"dim={dim}"] for name, dim in dims_by_name.items()}
+    graph = GraphDescriptor(
+        "disconnected graph",
+        {name: {"type": f"dim={dim}"} for name, dim in dims_by_name.items()},
+        {},
+        {},
+    )
+    return SystemDescriptor(graph, model, sites=sites)
