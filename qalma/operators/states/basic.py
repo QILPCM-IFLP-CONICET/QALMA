@@ -13,7 +13,7 @@ from qutip import (  # type: ignore[import-untyped]
     tensor as qutip_tensor,
 )
 
-from qalma.model import SystemDescriptor
+from qalma.model import SystemDescriptor, build_system_from_dims
 from qalma.operators.arithmetic import OneBodyOperator, SumOperator
 from qalma.operators.basic import (
     LocalOperator,
@@ -311,6 +311,7 @@ class ProductDensityOperator(DensityOperatorMixin, ProductOperator):
             dimensions = {
                 site: operator.data.shape[0] for site, operator in local_states.items()
             }
+            system = build_system_from_dims(dimensions)
             # TODO: build a system
         else:
             dimensions = system.dimensions
