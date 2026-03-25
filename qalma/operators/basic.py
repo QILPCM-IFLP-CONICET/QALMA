@@ -132,6 +132,7 @@ class Operator:  # pylint: disable=too-many-public-methods
 
     def __sub__(self, operand):
         from qalma.operators.product import ScalarOperator
+
         if operand is self:
             return ScalarOperator(0, self.system)
         if operand is None:
