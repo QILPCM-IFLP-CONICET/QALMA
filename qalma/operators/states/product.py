@@ -3,8 +3,7 @@ Density operator classes.
 """
 
 import logging
-from functools import cached_property
-from typing import Optional, Tuple, Union, cast
+from typing import Any, Optional, Tuple, Union, cast
 
 import numpy as np
 from numpy.typing import NDArray
@@ -23,34 +22,15 @@ from qalma.operators.product import (
     ScalarOperator,
 )
 from qalma.operators.states.basic import DensityOperatorMixin
+from qalma.qutip_tools.tools import (
+    _to_array,
+)
 
 
 class ProductDensityOperator(DensityOperatorMixin, ProductOperator):
     """An uncorrelated density operator."""
 
     prefactor: complex  # must be float
-
-    @cached_property
-    def _dense(self) -> dict:
-        """
-        Override ProductOperator._dense to include *every* site in the
-        system, not only those explicitly stored in site_factors.
-
-        Sites absent from site_factors get the maximally mixed state
-        (identity / d), which is consistent with the semantics of
-        ProductDensityOperator: missing sites are implicitly identity.
-
-        This means _dense is a complete site -> (d,d) ndarray mapping,
-        which is exactly what the inner loops of expect() need to avoid
-        ever touching Qobj.
-        """
-        d: dict = {}
-        for site, op in self.site_factors.items():
-            d[site] = np.asarray(op.full(), dtype=np.complex128, order="C")
-        for site, dim in self.system.dimensions.items():
-            if site not in d:
-                d[site] = np.eye(dim, dtype=np.complex128) / dim
-        return d
 
     def __init__(
         self,
@@ -61,13 +41,14 @@ class ProductDensityOperator(DensityOperatorMixin, ProductOperator):
     ):
         assert weight >= 0
 
-        # Build the local partition functions and normalized
+        # Build the local partition functions and normalize
         # if required
         if weight == 0:
             local_states = {}
             local_zs = {}
         else:
-            local_zs = {site: state.tr() for site, state in local_states.items()}
+            local_states = {key: _to_array(val) for key, val in local_states.items()}
+            local_zs = {site: state.trace() for site, state in local_states.items()}
             if not normalized:
                 assert (z > 0 for z in local_zs.values())
                 local_states = {
@@ -95,11 +76,41 @@ class ProductDensityOperator(DensityOperatorMixin, ProductOperator):
         super().__init__(local_states, prefactor=weight, system=system)
         self.local_fs = {site: -np.log(z) for site, z in local_zs.items()}
 
+    def __mul__(self, a):
+        if isinstance(a, (float, np.float64)):
+            if a >= 0:
+                return ProductDensityOperator(
+                    self.site_factors, self.prefactor * a, self.system, False
+                )
+            logging.warning(
+                (
+                    "Multiplication of a non positive number by a "
+                    "density operator returns a regular operator."
+                )
+            )
+            return ProductOperator(self.site_factors, 1, self.system) * a
+        return ProductOperator(self.site_factors, 1, self.system) * a
+
     def __neg__(self):
         logging.warning("Negate a DensityOperator leads to a regular operator.")
         return ProductOperator(self.site_factors, -1, self.system)
 
-    def expect(self, obs_objs):
+    def __rmul__(self, a):
+        if isinstance(a, (float, np.float64)):
+            if a >= 0:
+                return ProductDensityOperator(
+                    self.site_factors, self.prefactor * a, self.system, False
+                )
+            logging.warning(
+                (
+                    "Multiplication of a non positive number by "
+                    "a density operator returns a regular operator."
+                )
+            )
+            return ProductOperator(self.site_factors, 1, self.system) * a
+        return a * ProductOperator(self.site_factors, 1, self.system)
+
+    def expect(self: Any, obs_objs: Any) -> Any:
         """
         Compute the expectation value of an operator or a sequence of
         operators.
@@ -114,10 +125,8 @@ class ProductDensityOperator(DensityOperatorMixin, ProductOperator):
         """
         if isinstance(obs_objs, LocalOperator):
             site = obs_objs.site
-            op_dense = np.asarray(
-                obs_objs.operator.full(), dtype=np.complex128, order="C"
-            )
-            return self._trace2(self._dense[site], op_dense)
+            op_dense = obs_objs.operator
+            return self._trace2(self.site_factors[site], op_dense)
 
         if isinstance(obs_objs, ProductOperator):
             obs_prod = cast(ProductOperator, obs_objs)
@@ -125,7 +134,7 @@ class ProductDensityOperator(DensityOperatorMixin, ProductOperator):
             if not result:
                 return complex(0)
 
-            rhos = self._dense  # dict[site -> (d,d)]
+            rhos = self.site_factors  # dict[site -> (d,d)]
 
             # --- Fast path: homogeneous system, batched einsum -----------
             try:
@@ -140,8 +149,7 @@ class ProductDensityOperator(DensityOperatorMixin, ProductOperator):
                 for site, obs_op in obs_prod.site_factors.items():
                     if not result:
                         break
-                    op_dense = np.asarray(obs_op.full(), dtype=np.complex128, order="C")
-                    result *= self._trace2(rhos[site], op_dense)
+                    result *= self._trace2(rhos[site], obs_op)
 
             return result
 
@@ -171,29 +179,29 @@ class ProductDensityOperator(DensityOperatorMixin, ProductOperator):
             )
 
         system = self.system
-        site_factors = self.site_factors
+        sites_op = self.site_factors_qutip
         terms = tuple(
             LocalOperator(site, log_qutip(loc_op), system)
-            for site, loc_op in site_factors.items()
+            for site, loc_op in sites_op.items()
         )
         if system:
             norm = -sum(
                 np.log(dim)
                 for site, dim in system.dimensions.items()
-                if site not in self.site_factors
+                if site not in sites_op
             )
             return OneBodyOperator(terms, system, False) + ScalarOperator(norm, system)
         return OneBodyOperator(terms, system, False)
 
     def partial_trace(self, sites: Union[frozenset, SystemDescriptor]):
-        site_factors = self.site_factors
+        sites_op = self.site_factors_qutip
         if isinstance(sites, SystemDescriptor):
             subsystem = sites
             sites = frozenset(sites.sites.keys())
         else:
             subsystem = self.system.subsystem(sites)
 
-        local_states = {site: site_factors[site] for site in sites}
+        local_states = {site: sites_op[site] for site in sites}
 
         return ProductDensityOperator(
             local_states, np.real(self.prefactor), subsystem, normalized=True
@@ -204,20 +212,20 @@ class ProductDensityOperator(DensityOperatorMixin, ProductOperator):
         if prefactor == 0 or len(self.system.dimensions) == 0:
             return np.exp(-sum(np.log(dim) for dim in self.system.dimensions.values()))
 
-        site_factors = self.site_factors
+        sites_op = self.site_factors_qutip
         dimensions = self.system.dimensions
         if block is None:
             block = tuple(sorted(self.system.sites))
         else:
             block = block + tuple(
-                (site for site in sorted(site_factors) if site not in block)
+                (site for site in sorted(sites_op) if site not in block)
             )
 
         return qutip_tensor(
             [
                 (
-                    site_factors[site]
-                    if site in site_factors
+                    sites_op[site]
+                    if site in sites_op
                     else qutip_qeye(dimensions[site]) / dimensions[site]
                 )
                 for site in block

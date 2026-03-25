@@ -122,7 +122,7 @@ def _(x_op: GibbsProductDensityOperator, y_op: float):
         return ProductDensityOperator({}, weight=0, system=x_op.system, normalized=True)
     if y_op == 1:
         return x_op
-    if 0 < y_op < 1:
+    if 0 < y_op:
         return GibbsProductDensityOperator(
             x_op.k_by_site,
             x_op.system,
@@ -142,7 +142,7 @@ def _(y_op: float, x_op: GibbsProductDensityOperator):
         return ProductDensityOperator({}, weight=0, system=x_op.system, normalized=True)
     if y_op == 1:
         return x_op
-    if 0 < y_op < 1:
+    if 0 < y_op:
         return GibbsProductDensityOperator(
             x_op.k_by_site,
             x_op.system,
