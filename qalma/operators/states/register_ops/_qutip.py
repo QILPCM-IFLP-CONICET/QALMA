@@ -18,7 +18,6 @@ Registered operations:
 
 from qalma.operators.arithmetic import OneBodyOperator, SumOperator
 from qalma.operators.basic import Operator
-from qalma.operators.qutip import QutipOperator
 from qalma.operators.states.arithmetic import MixtureDensityOperator
 from qalma.operators.states.product import ProductDensityOperator
 from qalma.operators.states.qutip import QutipDensityOperator
@@ -29,19 +28,7 @@ from ._types import (
     COMPLEX_NUMERIC_TYPES,
     REAL_NUMERIC_TYPES,
 )
-
-
-def _wrapper(qutip_density, prefactor=1) -> QutipOperator:
-    """
-    Discard the prefactor and build a new qutip operator
-    """
-    result = QutipOperator(
-        qutip_density.operator,
-        qutip_density.system,
-        qutip_density.site_names,
-        prefactor=prefactor,
-    )
-    return result
+from ._wrappers import _wrapper_qutip as _wrapper
 
 
 @Operator.register_add_handler(
@@ -152,7 +139,6 @@ def _(x_op: QutipDensityOperator, y_op: QutipDensityOperator):
     )
 
 
-
 @Operator.register_add_handler(
     [(QutipDensityOperator, type_op) for type_op in BASIC_OPERATOR_TYPES]
 )
@@ -160,6 +146,7 @@ def _(x_op: QutipDensityOperator, y_op: QutipDensityOperator):
 @Operator.register_add_handler((QutipDensityOperator, OneBodyOperator))
 def add_qdo_sum(x_op: QutipDensityOperator, y_op: Operator):
     return _wrapper(x_op) + y_op
+
 
 #### Multiply by numbers
 

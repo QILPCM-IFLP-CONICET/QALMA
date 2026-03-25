@@ -183,7 +183,7 @@ def _(x_op: GibbsProductDensityOperator, y_op: GibbsProductDensityOperator):
         for type_op in (
             DensityOperatorMixin,
             ProductDensityOperator,
-#            MixtureDensityOperator,
+            #            MixtureDensityOperator,
         )
     ]
 )
@@ -197,7 +197,7 @@ def _(x_op: GibbsProductDensityOperator, y_op: DensityOperatorMixin):
         for type_op in (
             DensityOperatorMixin,
             ProductDensityOperator,
-#            MixtureDensityOperator,
+            #            MixtureDensityOperator,
         )
     ]
 )

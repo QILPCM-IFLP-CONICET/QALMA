@@ -34,6 +34,9 @@ from ._types import (
     NON_PRODUCT_BASIC_OPERATOR_TYPES,
     REAL_NUMERIC_TYPES,
 )
+from ._wrappers import _wrapper_gibbs as _wrapper, _wrapper_gibbs_product
+
+# TODO: consider a shortcut
 
 
 @Operator.register_add_handler(
@@ -47,7 +50,7 @@ def gdo_add_real_(x_op: GibbsDensityOperator, y_op: float):
         return MixtureDensityOperator(
             (ProductDensityOperator({}, y_op, system), x_op), system
         )
-    return x_op.to_qutip_operator() + y_op
+    return _wrapper(x_op) + ScalarOperator(0, system=x_op.system)
 
 
 @Operator.register_add_handler(
@@ -58,7 +61,7 @@ def gdo_add_complex_(x_op: GibbsDensityOperator, y_op: float):
         return x_op + y_op.real
     if y_op == 0:
         return x_op
-    return x_op.to_qutip_operator() + y_op
+    return _wrapper(x_op) + ScalarOperator(0, system=x_op.system)
 
 
 @Operator.register_add_handler(
@@ -110,9 +113,7 @@ def _(y_op: MixtureDensityOperator, x_op: GibbsDensityOperator):
 @Operator.register_add_handler((GibbsDensityOperator, SumOperator))
 @Operator.register_add_handler((GibbsDensityOperator, OneBodyOperator))
 def add_gdo_sum_(x_op: GibbsDensityOperator, y_op: Operator):
-
-    result = x_op.to_qutip_operator() + y_op
-    return result
+    return _wrapper(x_op) + y_op
 
 
 # ####### Multiplication ###################
@@ -124,14 +125,14 @@ def add_gdo_sum_(x_op: GibbsDensityOperator, y_op: Operator):
 @Operator.register_mul_handler(
     [(GibbsDensityOperator, type_op) for type_op in REAL_NUMERIC_TYPES]
 )
-def _(x_op: GibbsDensityOperator, y_op: float):
+def mul_gibbs_times_float(x_op: GibbsDensityOperator, y_op: float):
     if y_op == 0:
         return GibbsDensityOperator(
             ScalarOperator(0, x_op.system), x_op.system, prefactor=0, normalized=False
         )
     if y_op == 1:
         return x_op
-    if 0 < y_op < 1:
+    if 0 < y_op:
         return GibbsDensityOperator(
             x_op.k,
             x_op.system,
@@ -139,8 +140,7 @@ def _(x_op: GibbsDensityOperator, y_op: float):
             normalized=True,
         )
     # Generic
-    print("    converting to qutip density operator")
-    return x_op.to_qutip_operator() * y_op
+    return _wrapper(x_op, y_op)
 
 
 @Operator.register_mul_handler(
@@ -153,7 +153,7 @@ def _(y_op: float, x_op: GibbsDensityOperator):
         )
     if y_op == 1:
         return x_op
-    if 0 < y_op < 1:
+    if 0 < y_op:
         return GibbsDensityOperator(
             x_op.k,
             x_op.system,
@@ -161,21 +161,25 @@ def _(y_op: float, x_op: GibbsDensityOperator):
             normalized=x_op.normalized,
         )
     # Generic
-    return x_op.to_qutip_operator() * y_op
+    return _wrapper(x_op, y_op)
 
 
 @Operator.register_mul_handler(
     [(GibbsDensityOperator, type_op) for type_op in COMPLEX_NUMERIC_TYPES]
 )
-def _(x_op: GibbsDensityOperator, y_op: float):
-    return x_op.to_qutip_operator() * y_op
+def _(x_op: GibbsDensityOperator, y_op: complex):
+    if y_op.imag == 0:
+        return mul_gibbs_times_float(x_op, y_op.real)
+    return _wrapper(x_op, y_op)
 
 
 @Operator.register_mul_handler(
     [(type_op, GibbsDensityOperator) for type_op in COMPLEX_NUMERIC_TYPES]
 )
-def _(y_op: float, x_op: GibbsDensityOperator):
-    return x_op.to_qutip_operator() * y_op
+def _(y_op: complex, x_op: GibbsDensityOperator):
+    if y_op.imag == 0:
+        return mul_gibbs_times_float(x_op, y_op.real)
+    return _wrapper(x_op, y_op)
 
 
 # With other DensityOperators:
@@ -183,17 +187,17 @@ def _(y_op: float, x_op: GibbsDensityOperator):
 
 @Operator.register_mul_handler((GibbsDensityOperator, GibbsDensityOperator))
 def _(x_op: GibbsDensityOperator, y_op: GibbsDensityOperator):
-    return x_op.to_qutip_operator() * y_op.to_qutip_operator()
+    return _wrapper(x_op) * _wrapper(y_op)
 
 
 @Operator.register_mul_handler((GibbsProductDensityOperator, GibbsDensityOperator))
 def _(x_op: GibbsProductDensityOperator, y_op: GibbsDensityOperator):
-    return x_op.to_qutip_operator() * y_op.to_qutip_operator()
+    return _wrapper_gibbs_product(x_op) * _wrapper(y_op)
 
 
 @Operator.register_mul_handler((GibbsDensityOperator, GibbsProductDensityOperator))
 def _(x_op: GibbsDensityOperator, y_op: GibbsProductDensityOperator):
-    return x_op.to_qutip_operator() * y_op.to_qutip_operator()
+    return _wrapper(x_op) * _wrapper_gibbs_product(y_op)
 
 
 @Operator.register_mul_handler(
@@ -202,12 +206,11 @@ def _(x_op: GibbsDensityOperator, y_op: GibbsProductDensityOperator):
         for type_op in (
             DensityOperatorMixin,
             ProductDensityOperator,
-#            MixtureDensityOperator,
         )
     ]
 )
 def _(x_op: GibbsDensityOperator, y_op: DensityOperatorMixin):
-    return x_op.to_qutip_operator() * y_op
+    return _wrapper(x_op) * y_op
 
 
 @Operator.register_mul_handler(
@@ -216,12 +219,11 @@ def _(x_op: GibbsDensityOperator, y_op: DensityOperatorMixin):
         for type_op in (
             DensityOperatorMixin,
             ProductDensityOperator,
-#            MixtureDensityOperator,
         )
     ]
 )
 def _(x_op: DensityOperatorMixin, y_op: GibbsDensityOperator):
-    return x_op * y_op.to_qutip_operator()
+    return x_op * _wrapper(y_op)
 
 
 ## With Basic Operators
@@ -229,34 +231,37 @@ def _(x_op: DensityOperatorMixin, y_op: GibbsDensityOperator):
 
 @Operator.register_mul_handler(
     [
-        (GibbsDensityOperator, type_op) for type_op in NON_PRODUCT_BASIC_OPERATOR_TYPES
-          if type_op is not SumOperator
-     ]
+        (GibbsDensityOperator, type_op)
+        for type_op in NON_PRODUCT_BASIC_OPERATOR_TYPES
+        if type_op is not SumOperator
+    ]
 )
 @Operator.register_mul_handler((GibbsDensityOperator, SumOperator))
 def _(x_op: GibbsDensityOperator, y_op: Operator):
-    return x_op.to_qutip_operator() * y_op
+    return _wrapper(x_op) * y_op
 
 
 @Operator.register_mul_handler(
-    [(type_op, GibbsDensityOperator) for type_op in NON_PRODUCT_BASIC_OPERATOR_TYPES
-     if type_op is not SumOperator
-     ]
+    [
+        (type_op, GibbsDensityOperator)
+        for type_op in NON_PRODUCT_BASIC_OPERATOR_TYPES
+        if type_op is not SumOperator
+    ]
 )
 @Operator.register_mul_handler((SumOperator, GibbsDensityOperator))
 def _(x_op: Operator, y_op: GibbsDensityOperator):
-    return x_op * y_op.to_qutip_operator()
+    return x_op * _wrapper(y_op)
 
 
 @Operator.register_mul_handler((GibbsDensityOperator, ScalarOperator))
 @Operator.register_mul_handler((GibbsDensityOperator, LocalOperator))
 @Operator.register_mul_handler((GibbsDensityOperator, ProductOperator))
 def _(x_op: GibbsDensityOperator, y_op: Operator):
-    return x_op.to_qutip_operator() * y_op
+    return _wrapper(x_op) * y_op
 
 
 @Operator.register_mul_handler((ScalarOperator, GibbsDensityOperator))
 @Operator.register_mul_handler((LocalOperator, GibbsDensityOperator))
 @Operator.register_mul_handler((ProductOperator, GibbsDensityOperator))
 def _(x_op: Operator, y_op: GibbsDensityOperator):
-    return x_op * y_op.to_qutip_operator()
+    return x_op * _wrapper(y_op)

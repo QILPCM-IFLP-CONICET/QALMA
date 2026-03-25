@@ -17,29 +17,19 @@ Registered operations:
 
 from typing import cast
 
-from qalma.operators.arithmetic import OneBodyOperator,SumOperator
+from qalma.operators.arithmetic import OneBodyOperator, SumOperator
 from qalma.operators.basic import LocalOperator, Operator
 from qalma.operators.product import ProductOperator, ScalarOperator
 from qalma.operators.states.arithmetic import MixtureDensityOperator
 from qalma.operators.states.product import ProductDensityOperator
 
 from ._types import BASIC_OPERATOR_TYPES, COMPLEX_NUMERIC_TYPES, REAL_NUMERIC_TYPES
-
-
-def _as_product_op(y_op: ProductDensityOperator, prefactor=1) -> ProductOperator:
-    """
-    Convert a ProductDensityOperator into a ProductOperator
-    Missing factors in  ProductDensityOperator are not treated
-    as the identity operator, but as a prefactor 1/dim_local.
-    """
-    result = ProductOperator(y_op.sites_op, prefactor=prefactor, system=y_op.system)
-    assert y_op.to_qutip() * prefactor == result.to_qutip()
-    return result
+from ._wrappers import _wrapper_product as _as_product_op
 
 
 @Operator.register_add_handler((ProductDensityOperator, ProductDensityOperator))
 def _(x_op: ProductDensityOperator, y_op: ProductDensityOperator):
-    return MixtureDensityOperator((x_op, y_op) , x_op.system * y_op.system)
+    return MixtureDensityOperator((x_op, y_op), x_op.system * y_op.system)
 
 
 @Operator.register_add_handler((ProductDensityOperator, ScalarOperator))
@@ -99,7 +89,12 @@ def _(x_op: Operator, y_op: ProductDensityOperator):
 )
 def _(x_op: float, y_op: ProductDensityOperator):
     if x_op == 0:
-        return y_op
+        return ProductDensityOperator(
+            {},
+            weight=x_op,
+            system=y_op.system,
+            normalized=True,
+        )
     if x_op > 0:
         return ProductDensityOperator(
             y_op.sites_op,
@@ -115,7 +110,12 @@ def _(x_op: float, y_op: ProductDensityOperator):
 )
 def _(y_op: ProductDensityOperator, x_op: float):
     if x_op == 0:
-        return y_op
+        return ProductDensityOperator(
+            {},
+            weight=x_op,
+            system=y_op.system,
+            normalized=True,
+        )
     if x_op > 0:
         return ProductDensityOperator(
             y_op.sites_op,
@@ -195,5 +195,3 @@ def _(x_op: SumOperator, y_op: ProductDensityOperator):
         tuple(term * y_op for term in x_op.terms),
         system,
     )
-
-

@@ -22,16 +22,7 @@ from ._types import (
     REAL_NUMERIC_TYPES,
     SUM_TYPES,
 )
-
-
-def _mixture_to_sum(op: MixtureDensityOperator):
-    """
-    Shorcut to convert a MixtureDensityOperator into a SumOperator
-    """
-    terms = tuple((term * (-1)) * (-term.prefactor) for term in op.terms)
-    result = SumOperator(terms, system=op.system, isherm=True)
-    return result
-
+from ._wrappers import _wrapper_sum as _mixture_to_sum
 
 # Numbers
 

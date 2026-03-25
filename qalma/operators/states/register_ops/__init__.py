@@ -6,21 +6,18 @@ are organised by the density operator type that drives each group of handlers:
 
   _types.py        shared operator type tuples
   _mixture.py      MixtureDensityOperator
-  _non_product.py  DensityOperatorMixin, QutipDensityOperator, GibbsDensityOperator
   _product.py      ProductDensityOperator
   _gibbs_product.py        GibbsProductDensityOperator
   _gibbs.py        GibbsDensityOperator
+  _qutip.py        QutipDensityOperator
 
-Import order matters: _mixture and _non_product must be registered before
-_product, _gibbs_product and _gibbs, because the product/Gibbs handlers delegate to the
-more general ones via operator arithmetic.
 """
-import qalma.operators.basic
-import qalma.operators.states.basic
+
+import qalma.operators.basic  # noqa: F401
+import qalma.operators.states.basic  # noqa: F401
+
 from . import _gibbs  # noqa: F401
 from . import _gibbs_product  # noqa: F401
 from . import _mixture  # noqa: F401
-from . import _non_product  # noqa: F401
 from . import _product  # noqa: F401
 from . import _qutip  # noqa: F401
-

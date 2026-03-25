@@ -53,6 +53,7 @@ def do_test_expect(rho, sigma_dict):
             if sigma is None:
                 continue
 
+            print("    sigma=", name)
             if hasattr(sigma, "data"):
                 rho_obs_result = (obs_op.to_qutip() * sigma).tr()
             else:
@@ -78,6 +79,9 @@ def do_test_instance(rho) -> None:
 
     """
     rho_times_two = 2 * rho
+    assert hasattr(
+        rho_times_two, "expect"
+    ), f"2*{type(rho)} produced {type(rho_times_two)}."
     rho_qutip = rho.to_qutip()
     assert abs(rho.tr() - 1) < QALMA_TOLERANCE
     assert abs(rho_qutip.tr() - 1) < QALMA_TOLERANCE
