@@ -24,9 +24,11 @@ from qalma.operators import (
 from qalma.operators.arithmetic import iterable_to_operator
 from qalma.operators.states.basic import (
     DensityOperatorProtocol,
-    ProductDensityOperator,
 )
 from qalma.operators.states.gibbs import GibbsDensityOperator
+from qalma.operators.states.product import (
+    ProductDensityOperator,
+)
 from qalma.settings import MAXIMUM_GIBBS_EXACT_PARTIAL_TRACE
 
 

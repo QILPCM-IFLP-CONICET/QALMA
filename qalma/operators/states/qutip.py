@@ -12,9 +12,6 @@ import numpy as np
 from qutip import Qobj, tensor as tensor_qutip  # type: ignore[import-untyped]
 
 from qalma.model import SystemDescriptor
-from qalma.operators.basic import (
-    Operator,
-)
 from qalma.operators.product import ScalarOperator
 from qalma.operators.qutip import QutipOperator
 from qalma.operators.states.basic import (
@@ -40,91 +37,10 @@ class QutipDensityOperator(DensityOperatorMixin, QutipOperator):
         super().__init__(qoperator, system, names, prefactor)
         self.normalize()
 
-    def __add__(self, operand) -> Operator:
-        if isinstance(operand, (int, float, np.float64)):
-            if operand >= 0:
-                return QutipDensityOperator(
-                    self.operator * self.prefactor + operand,
-                    self.system,
-                )
-            return QutipOperator(
-                self.operator * self.prefactor + operand,
-                self.system,
-            )
-        if isinstance(operand, (complex, np.complex128)):
-            return QutipOperator(
-                self.operator * self.prefactor + operand,
-                self.system,
-            )
-
-        # TODO: check me again
-        assert operand.system == self.system, (
-            f"\nself({type(self)}).system:\n{self.system}\n "
-            f"and operand({type(operand)}).system:\n{operand.system}\n "
-            "are not the same."
-        )
-        block = tuple(sorted(self.system.sites))
-        names = {name: pos for pos, name in enumerate(block)}
-
-        if hasattr(operand, "expect"):
-            p1 = self.prefactor
-            p2 = operand.prefactor
-            prefactor = p1 + p2
-
-            result_qutip = self.to_qutip(block) * (p1 / prefactor) + operand.to_qutip(
-                block
-            ) * (p2 / prefactor)
-            return QutipDensityOperator(result_qutip, self.system, names, prefactor)
-        result_qutip = self.to_qutip(block) * self.prefactor + operand.to_qutip(block)
-
-        return QutipOperator(result_qutip, self.system, names)
-
-    def __mul__(self, operand) -> Operator:
-        try:
-            return self.join_states(operand)
-        except ValueError:
-            pass
-        self.normalize()
-        op_b = QutipOperator(self.operator, names=self.site_names, system=self.system)
-        return op_b * operand
-
     def __neg__(self):
         logging.warning("Negate a DensityOperator leads to a regular operator.")
         self.normalize()
         return QutipOperator(self.operator, self.system, self.site_names, -1)
-
-    def __radd__(self, operand) -> Operator:
-        if isinstance(operand, (int, float, np.float64)):
-            if operand >= 0:
-                return QutipDensityOperator(
-                    self.operator * self.prefactor + operand,
-                    self.system,
-                )
-            return QutipOperator(
-                self.operator * self.prefactor + operand,
-                self.system,
-            )
-        if isinstance(operand, (complex, np.complex128)):
-            return QutipOperator(
-                self.operator * self.prefactor + operand,
-                self.system,
-            )
-
-        # TODO: check me again
-        op_qo = operand.to_qutip()
-        if isinstance(operand, DensityOperatorMixin):
-            op_qo = op_qo * self.prefactor
-            return QutipDensityOperator(op_qo, self.system or op_qo.system)
-        return QutipOperator(op_qo, self.system or op_qo.system)
-
-    def __rmul__(self, operand):
-        try:
-            return self.join_states(operand)
-        except ValueError:
-            pass
-        self.normalize()
-        op_b = QutipOperator(self.operator, names=self.site_names, system=self.system)
-        return operand * op_b
 
     def join_states(self, other: DensityOperatorProtocol | complex):
         """

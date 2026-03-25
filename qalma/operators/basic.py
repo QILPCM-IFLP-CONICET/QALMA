@@ -131,6 +131,10 @@ class Operator:  # pylint: disable=too-many-public-methods
         return -(self.to_qutip_operator())
 
     def __sub__(self, operand):
+        from qalma.operators.product import ScalarOperator
+
+        if operand is self:
+            return ScalarOperator(0, self.system)
         if operand is None:
             raise ValueError("None can not be an operand")
         neg_op = -operand

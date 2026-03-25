@@ -11,11 +11,11 @@ import qalma.settings as qalma_settings
 from qalma.operators import Operator
 from qalma.operators.arithmetic import iterable_to_operator
 from qalma.operators.simplify import collect_nbody_terms
-from qalma.operators.states.basic import (
-    ProductDensityOperator,
-)
 from qalma.operators.states.gibbs import (
     GibbsProductDensityOperator,
+)
+from qalma.operators.states.product import (
+    ProductDensityOperator,
 )
 
 USE_PARALLEL = qalma_settings.USE_PARALLEL

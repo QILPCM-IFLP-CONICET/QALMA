@@ -8,11 +8,9 @@ from functools import reduce
 from typing import Dict, Iterable, List, Optional, Tuple, Union
 
 from numpy import imag, log as np_log, real
-from qutip import Qobj, qeye, tensor  # type: ignore[import-untyped]
+from qutip import Qobj, tensor  # type: ignore[import-untyped]
 
-from qalma.alpsmodels import qutip_model_from_dims
-from qalma.geometry import GraphDescriptor
-from qalma.model import SystemDescriptor
+from qalma.model import SystemDescriptor, build_system_from_dims
 from qalma.operators.basic import (
     LocalOperator,
     Operator,
@@ -58,32 +56,20 @@ class QutipOperator(Operator):
         names: Optional[Dict[str, int]] = None,
         prefactor=1,
     ):
+        # If build from a scalar:
         if not isinstance(qoperator, Qobj):
             prefactor = prefactor * qoperator
+            qoperator = None
             names = {}
-            if system is None:
-                graph = GraphDescriptor("Empty graph", {}, {}, {})
-                model = qutip_model_from_dims({})
-                system = SystemDescriptor(graph, model, sites={})
-            qoperator = qeye(1)
-        elif system is None:
-            dims = qoperator.dims[0]
-            model = qutip_model_from_dims(dims)
+
+        dims = [] if qoperator is None else qoperator.dims[0]
+        if system is None:
             if names is None:
                 names = {f"qutip_{i}": i for i in range(len(dims))}
-            sitebasis = model.site_basis
-            sites = {s: sitebasis[f"qutip_{i}"] for i, s in enumerate(names)}
-
-            graph = GraphDescriptor(
-                "disconnected graph",
-                {s: {"type": f"qutip_{i}"} for i, s in enumerate(sites)},
-                {},
-                {},
-            )
-            system = SystemDescriptor(graph, model, sites=sites)
+            dims_names = {name: dims[pos] for name, pos in names.items()}
+            system = build_system_from_dims(dims_names)
         else:
-            # If qoperator is nontrivial, ensure that names points to each factor of qoperator.
-            dims = qoperator.dims[0]
+            # Check that names is correct, and compatible
             if names is None:
                 names = {s: i for i, s in enumerate(system.sites)}
             elif len(names) != len(dims):
