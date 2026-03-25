@@ -1612,8 +1612,8 @@ def sum_qutip_operator_plus_number(x_op: QutipOperator, y_val: Union[complex, Qo
         for num_type in NUMERIC_TYPES
     ]
 )
-def sum_qutip_operator_mul_number(x_op: QutipOperator, y_val: Union[complex, Qobj]):
-    """Sum an operator and a number  or a Qobj
+def mul_qutip_operator_mul_number(x_op: QutipOperator, y_val: Union[complex, Qobj]):
+    """Multiply an operator and a number  or a Qobj
 
     Parameters
     ----------

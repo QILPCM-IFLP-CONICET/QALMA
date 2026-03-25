@@ -10,13 +10,15 @@ from qalma.operators.states.arithmetic import MixtureDensityOperator
 from qalma.operators.states.basic import (
     DensityOperatorMixin,
     DensityOperatorProtocol,
-    ProductDensityOperator,
 )
 from qalma.operators.states.gibbs import (
     GibbsDensityOperator,
     GibbsProductDensityOperator,
 )
+from qalma.operators.states.product import ProductDensityOperator
 from qalma.operators.states.qutip import QutipDensityOperator
+
+_register_ops.SEEN = 1
 
 __all__ = [
     "DensityOperatorMixin",
