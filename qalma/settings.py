@@ -30,7 +30,7 @@ MODEL_LIB_FILE = f"{ROOT_DIR}/lib/models.xml"
 # set the level of verbosity in the warnings and error messages
 VERBOSITY_LEVEL = 2
 QALMA_INFER_ARITHMETICS = False
-QALMA_ALLOW_OVERWRITE_BINDINGS = True
+QALMA_ALLOW_OVERWRITE_BINDINGS = False
 QALMA_TOLERANCE = float(os.environ.get("QALMA_TOLERANCE", "1.0e-14"))
 USE_PARALLEL = bool(os.environ.get("USE_PARALLEL", 0))
 PARALLEL_MAX_WORKERS = int(os.environ.get("QALMA_MAX_WORKERS", 8))

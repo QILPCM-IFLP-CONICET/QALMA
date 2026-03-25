@@ -17,7 +17,7 @@ Registered operations:
   - ScalarOp/LocalOp/ProductOp * Gibbs  ->  (convert, then mul)
 """
 
-from qalma.operators.arithmetic import SumOperator
+from qalma.operators.arithmetic import OneBodyOperator, SumOperator
 from qalma.operators.basic import LocalOperator, Operator
 from qalma.operators.product import ProductOperator, ScalarOperator
 from qalma.operators.states.arithmetic import MixtureDensityOperator
@@ -108,6 +108,7 @@ def _(y_op: MixtureDensityOperator, x_op: GibbsDensityOperator):
     [(GibbsDensityOperator, type_op) for type_op in BASIC_OPERATOR_TYPES]
 )
 @Operator.register_add_handler((GibbsDensityOperator, SumOperator))
+@Operator.register_add_handler((GibbsDensityOperator, OneBodyOperator))
 def add_gdo_sum_(x_op: GibbsDensityOperator, y_op: Operator):
 
     result = x_op.to_qutip_operator() + y_op
@@ -201,7 +202,7 @@ def _(x_op: GibbsDensityOperator, y_op: GibbsProductDensityOperator):
         for type_op in (
             DensityOperatorMixin,
             ProductDensityOperator,
-            MixtureDensityOperator,
+#            MixtureDensityOperator,
         )
     ]
 )
@@ -215,7 +216,7 @@ def _(x_op: GibbsDensityOperator, y_op: DensityOperatorMixin):
         for type_op in (
             DensityOperatorMixin,
             ProductDensityOperator,
-            MixtureDensityOperator,
+#            MixtureDensityOperator,
         )
     ]
 )
@@ -227,7 +228,10 @@ def _(x_op: DensityOperatorMixin, y_op: GibbsDensityOperator):
 
 
 @Operator.register_mul_handler(
-    [(GibbsDensityOperator, type_op) for type_op in NON_PRODUCT_BASIC_OPERATOR_TYPES]
+    [
+        (GibbsDensityOperator, type_op) for type_op in NON_PRODUCT_BASIC_OPERATOR_TYPES
+          if type_op is not SumOperator
+     ]
 )
 @Operator.register_mul_handler((GibbsDensityOperator, SumOperator))
 def _(x_op: GibbsDensityOperator, y_op: Operator):
@@ -235,7 +239,9 @@ def _(x_op: GibbsDensityOperator, y_op: Operator):
 
 
 @Operator.register_mul_handler(
-    [(type_op, GibbsDensityOperator) for type_op in NON_PRODUCT_BASIC_OPERATOR_TYPES]
+    [(type_op, GibbsDensityOperator) for type_op in NON_PRODUCT_BASIC_OPERATOR_TYPES
+     if type_op is not SumOperator
+     ]
 )
 @Operator.register_mul_handler((SumOperator, GibbsDensityOperator))
 def _(x_op: Operator, y_op: GibbsDensityOperator):

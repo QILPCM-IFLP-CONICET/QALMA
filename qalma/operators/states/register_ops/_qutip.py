@@ -16,6 +16,7 @@ Registered operations:
   - ProductDensity         * QutipDensityOperator   -> (cast, then mul)
 """
 
+from qalma.operators.arithmetic import OneBodyOperator, SumOperator
 from qalma.operators.basic import Operator
 from qalma.operators.qutip import QutipOperator
 from qalma.operators.states.arithmetic import MixtureDensityOperator
@@ -24,6 +25,7 @@ from qalma.operators.states.qutip import QutipDensityOperator
 
 from ._types import (
     ANY_OPERATOR_TYPES,
+    BASIC_OPERATOR_TYPES,
     COMPLEX_NUMERIC_TYPES,
     REAL_NUMERIC_TYPES,
 )
@@ -149,6 +151,15 @@ def _(x_op: QutipDensityOperator, y_op: QutipDensityOperator):
         x_op.system * y_op.system,
     )
 
+
+
+@Operator.register_add_handler(
+    [(QutipDensityOperator, type_op) for type_op in BASIC_OPERATOR_TYPES]
+)
+@Operator.register_add_handler((QutipDensityOperator, SumOperator))
+@Operator.register_add_handler((QutipDensityOperator, OneBodyOperator))
+def add_qdo_sum(x_op: QutipDensityOperator, y_op: Operator):
+    return _wrapper(x_op) + y_op
 
 #### Multiply by numbers
 

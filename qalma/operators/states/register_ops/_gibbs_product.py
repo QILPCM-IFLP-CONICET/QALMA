@@ -14,7 +14,7 @@ Registered operations:
   - ScalarOp/LocalOp/ProductOp * GibbsProductDensityOperator  ->  (convert, then mul)
 """
 
-from qalma.operators.arithmetic import SumOperator
+from qalma.operators.arithmetic import OneBodyOperator, SumOperator
 from qalma.operators.basic import LocalOperator, Operator
 from qalma.operators.product import ProductOperator, ScalarOperator
 from qalma.operators.states.arithmetic import MixtureDensityOperator
@@ -82,6 +82,7 @@ def _gpd_add_gpd_(x_op: GibbsProductDensityOperator, y_op: DensityOperatorMixin)
     [(GibbsProductDensityOperator, type_op) for type_op in BASIC_OPERATOR_TYPES]
 )
 @Operator.register_add_handler((GibbsProductDensityOperator, SumOperator))
+@Operator.register_add_handler((GibbsProductDensityOperator, OneBodyOperator))
 def _(x_op: GibbsProductDensityOperator, y_op: Operator):
     return x_op.to_product_state() + y_op
 
@@ -182,7 +183,7 @@ def _(x_op: GibbsProductDensityOperator, y_op: GibbsProductDensityOperator):
         for type_op in (
             DensityOperatorMixin,
             ProductDensityOperator,
-            MixtureDensityOperator,
+#            MixtureDensityOperator,
         )
     ]
 )
@@ -196,7 +197,7 @@ def _(x_op: GibbsProductDensityOperator, y_op: DensityOperatorMixin):
         for type_op in (
             DensityOperatorMixin,
             ProductDensityOperator,
-            MixtureDensityOperator,
+#            MixtureDensityOperator,
         )
     ]
 )

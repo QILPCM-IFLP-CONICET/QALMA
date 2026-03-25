@@ -18,7 +18,6 @@ from qalma.operators.states.gibbs import (
 from qalma.operators.states.product import ProductDensityOperator
 from qalma.operators.states.qutip import QutipDensityOperator
 
-_register_ops.SEEN = 1
 
 __all__ = [
     "DensityOperatorMixin",

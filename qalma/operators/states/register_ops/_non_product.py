@@ -43,13 +43,13 @@ def _unwrap(y_op: DensityOperatorMixin) -> Operator:
     return y_op_basic
 
 
-@Operator.register_add_handler(
-    [
-        (type_1, type_2)
-        for type_1 in DENSITY_OPERATOR_BASIC_TYPES
-        for type_2 in DENSITY_OPERATOR_BASIC_TYPES
-    ]
-)
+#@Operator.register_add_handler(
+#    [
+#        (type_1, type_2)
+#        for type_1 in DENSITY_OPERATOR_BASIC_TYPES
+#        for type_2 in DENSITY_OPERATOR_BASIC_TYPES
+#    ]
+#)
 def add_generic_states_(x_op, y_op):
     system = x_op.system * y_op.system
     return MixtureDensityOperator((x_op, y_op), system)
@@ -69,29 +69,29 @@ def sum_add_npdo_(x_op: Operator, y_op: DensityOperatorMixin):
     return x_op + _unwrap(y_op)
 
 
-@Operator.register_mul_handler(
-    [
-        (type_1, type_2)
-        for type_1 in BASIC_OPERATOR_TYPES
-        for type_2 in NON_PRODUCT_DENSITY_OPERATOR_BASIC_TYPES
-    ]
-)
-@Operator.register_mul_handler(
-    [(SumOperator, type_2) for type_2 in NON_PRODUCT_DENSITY_OPERATOR_BASIC_TYPES]
-)
+#@Operator.register_mul_handler(
+#    [
+#        (type_1, type_2)
+#        for type_1 in BASIC_OPERATOR_TYPES
+#        for type_2 in NON_PRODUCT_DENSITY_OPERATOR_BASIC_TYPES
+#    ]
+#)
+#@Operator.register_mul_handler(
+#    [(SumOperator, type_2) for type_2 in NON_PRODUCT_DENSITY_OPERATOR_BASIC_TYPES]
+#)
 def _(x_op: Operator, y_op: DensityOperatorMixin):
     return x_op * _unwrap(y_op)
 
 
-@Operator.register_mul_handler(
-    [
-        (type_2, type_1)
-        for type_1 in BASIC_OPERATOR_TYPES
-        for type_2 in NON_PRODUCT_DENSITY_OPERATOR_BASIC_TYPES
-    ]
-)
-@Operator.register_mul_handler(
-    [(type_2, SumOperator) for type_2 in NON_PRODUCT_DENSITY_OPERATOR_BASIC_TYPES]
-)
+#@Operator.register_mul_handler(
+#    [
+#        (type_2, type_1)
+#        for type_1 in BASIC_OPERATOR_TYPES
+#        for type_2 in NON_PRODUCT_DENSITY_OPERATOR_BASIC_TYPES
+#    ]
+#)
+#@Operator.register_mul_handler(
+#    [(type_2, SumOperator) for type_2 in NON_PRODUCT_DENSITY_OPERATOR_BASIC_TYPES]
+#)
 def _(y_op: DensityOperatorMixin, x_op: Operator):
     return _unwrap(y_op) * x_op

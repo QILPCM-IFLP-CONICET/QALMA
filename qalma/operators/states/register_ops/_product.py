@@ -17,7 +17,7 @@ Registered operations:
 
 from typing import cast
 
-from qalma.operators.arithmetic import SumOperator
+from qalma.operators.arithmetic import OneBodyOperator,SumOperator
 from qalma.operators.basic import LocalOperator, Operator
 from qalma.operators.product import ProductOperator, ScalarOperator
 from qalma.operators.states.arithmetic import MixtureDensityOperator
@@ -35,6 +35,11 @@ def _as_product_op(y_op: ProductDensityOperator, prefactor=1) -> ProductOperator
     result = ProductOperator(y_op.sites_op, prefactor=prefactor, system=y_op.system)
     assert y_op.to_qutip() * prefactor == result.to_qutip()
     return result
+
+
+@Operator.register_add_handler((ProductDensityOperator, ProductDensityOperator))
+def _(x_op: ProductDensityOperator, y_op: ProductDensityOperator):
+    return MixtureDensityOperator((x_op, y_op) , x_op.system * y_op.system)
 
 
 @Operator.register_add_handler((ProductDensityOperator, ScalarOperator))
@@ -80,6 +85,7 @@ def prd_add_complex_(x_op: ProductDensityOperator, y_op: float):
 @Operator.register_add_handler(
     [(type_1, ProductDensityOperator) for type_1 in BASIC_OPERATOR_TYPES]
 )
+@Operator.register_add_handler((OneBodyOperator, ProductDensityOperator))
 @Operator.register_add_handler((SumOperator, ProductDensityOperator))
 def _(x_op: Operator, y_op: ProductDensityOperator):
     return x_op + _as_product_op(y_op)
@@ -171,6 +177,7 @@ def _(x_op: ProductDensityOperator, y_op: ProductDensityOperator):
     return ProductOperator(sites_op, 1, system)
 
 
+@Operator.register_mul_handler((ProductDensityOperator, OneBodyOperator))
 @Operator.register_mul_handler((ProductDensityOperator, SumOperator))
 def _(x_op: ProductDensityOperator, y_op: SumOperator):
     system = x_op.system * y_op.system if x_op.system else y_op.system
@@ -181,9 +188,12 @@ def _(x_op: ProductDensityOperator, y_op: SumOperator):
 
 
 @Operator.register_mul_handler((SumOperator, ProductDensityOperator))
+@Operator.register_mul_handler((OneBodyOperator, ProductDensityOperator))
 def _(x_op: SumOperator, y_op: ProductDensityOperator):
     system = x_op.system * y_op.system if x_op.system else y_op.system
     return SumOperator(
         tuple(term * y_op for term in x_op.terms),
         system,
     )
+
+

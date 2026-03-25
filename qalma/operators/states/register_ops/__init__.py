@@ -15,7 +15,8 @@ Import order matters: _mixture and _non_product must be registered before
 _product, _gibbs_product and _gibbs, because the product/Gibbs handlers delegate to the
 more general ones via operator arithmetic.
 """
-
+import qalma.operators.basic
+import qalma.operators.states.basic
 from . import _gibbs  # noqa: F401
 from . import _gibbs_product  # noqa: F401
 from . import _mixture  # noqa: F401
@@ -23,7 +24,3 @@ from . import _non_product  # noqa: F401
 from . import _product  # noqa: F401
 from . import _qutip  # noqa: F401
 
-SEEN = 0
-
-if SEEN:
-    1 / 0

@@ -29,7 +29,6 @@ BASIC_OPERATOR_TYPES = (
     LocalOperator,
     ProductOperator,
     QutipOperator,
-    OneBodyOperator,
     QuadraticFormOperator,
 )
 
