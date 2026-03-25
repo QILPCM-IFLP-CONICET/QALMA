@@ -23,10 +23,12 @@ from qalma.operators.quadratic import QuadraticFormOperator
 from qalma.operators.qutip import QutipOperator
 from qalma.operators.states.basic import (
     DensityOperatorProtocol,
-    ProductDensityOperator,
 )
 from qalma.operators.states.gibbs import (
     GibbsProductDensityOperator,
+)
+from qalma.operators.states.product import (
+    ProductDensityOperator,
 )
 from qalma.operators.states.utils import (
     acts_over_order,

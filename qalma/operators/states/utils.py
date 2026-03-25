@@ -21,6 +21,8 @@ from qalma.operators.quadratic import QuadraticFormOperator
 from qalma.operators.qutip import QutipOperator
 from qalma.operators.states.basic import (
     DensityOperatorProtocol,
+)
+from qalma.operators.states.product import (
     ProductDensityOperator,
 )
 from qalma.operators.states.qutip import QutipDensityOperator
@@ -305,7 +307,7 @@ def safe_exp_and_normalize_localop(operator: LocalOperator):
         ProductDensityOperator(
             local_states=local_states,
             system=system,
-            normalize=False,
+            normalized=True,
         ),
         logz,
     )
@@ -359,7 +361,7 @@ def safe_exp_and_normalize_sumop(
         ProductDensityOperator(
             local_states=local_states,
             system=system,
-            normalize=False,
+            normalized=True,
         ),
         logz,
     )

@@ -19,8 +19,8 @@ from qalma.operators.product import (
 )
 from qalma.operators.states.basic import (
     DensityOperatorMixin,
-    ProductDensityOperator,
 )
+from qalma.operators.states.product import ProductDensityOperator
 from qalma.operators.states.utils import k_by_site_from_operator
 from qalma.qutip_tools.tools import is_diagonal_op, safe_exp_and_normalize
 
@@ -46,6 +46,7 @@ class GibbsDensityOperator(DensityOperatorMixin, Operator):
         symmetry_projections: Tuple[Callable, ...] = tuple(),
     ):
         self.symmetry_projections = symmetry_projections
+
         if prefactor == 0:
             self.k = ScalarOperator(0, k.system)
             self.f_global = 0.0
@@ -67,28 +68,15 @@ class GibbsDensityOperator(DensityOperatorMixin, Operator):
         self.system = system if system is not None else k.system
         self._meanfield = meanfield
 
-    def __mul__(self, operand):
-        if isinstance(operand, (int, float, np.float64)) and operand >= 0:
-            return GibbsDensityOperator(
-                self.k,
-                self.system,
-                self.prefactor * operand,
-                normalized=self.normalized,
-            )
-        return self.to_qutip_operator() * operand
-
     def __neg__(self):
         return -(self.to_qutip_operator())
 
-    def __rmul__(self, operand):
-        if isinstance(operand, (int, float, np.float64)) and operand >= 0.0:
-            return GibbsDensityOperator(
-                self.k,
-                self.system,
-                self.prefactor * operand,
-                normalized=self.normalized,
-            )
-        return operand * self.to_qutip_operator()
+    def __repr__(self):
+        tqo = self.to_qutip_operator()
+        result = "Gibbs operator"
+        result += f"\n->as Qutip Operator {type(tqo)}\n"
+        result += repr(tqo)
+        return result
 
     def __truediv__(self, operand):
         if isinstance(operand, (int, float, complex)):
@@ -261,28 +249,8 @@ class GibbsProductDensityOperator(DensityOperatorMixin, Operator):
         self.free_energies = f_locals
         self.k_by_site = k_by_site
 
-    def __mul__(self, operand):
-        if isinstance(operand, (int, float)):
-            if operand > 0:
-                return GibbsProductDensityOperator(
-                    self.k_by_site, self.system, self.prefactor * operand, True
-                )
-        return self.to_product_state() * operand
-
     def __neg__(self):
         return -(self.to_product_state())
-
-    def __rmul__(self, operand):
-        if isinstance(operand, (int, float)):
-            if operand > 0:
-                return GibbsProductDensityOperator(
-                    self.k_by_site, self.system, self.prefactor * operand, True
-                )
-        return operand * self.to_product_state()
-
-    # @cached_property
-    # def _sites_op(self):
-    #    return self.to_product_state()._sites_op
 
     def __repr__(self):
         result = "Gibbs Product density operator:\n"
@@ -353,7 +321,7 @@ class GibbsProductDensityOperator(DensityOperatorMixin, Operator):
             local_states,
             self.prefactor,
             system=self.system,
-            normalize=True,
+            normalized=False,
         )
 
     def to_qutip(self, block: Optional[Tuple[str, ...]] = None):
