@@ -44,6 +44,7 @@ class ProductOperator(Operator):
         sites_operators: dict,
         prefactor: complex = 1.0,
         system: Optional[SystemDescriptor] = None,
+        _qutip_factors: Optional[Dict[str, Qobj]] = None,
     ):
         assert system is not None
         remove_numbers = False
@@ -61,6 +62,8 @@ class ProductOperator(Operator):
 
         if all(isinstance(value, Qobj) for value in sites_operators.values()):
             self.__dict__["site_factors_qutip"] = sites_operators
+        elif _qutip_factors is not None:
+            self.__dict__["site_factors_qutip"] = _qutip_factors
 
         sites_operators = {key: _to_array(op) for key, op in sites_operators.items()}
         self.site_factors = sites_operators
@@ -290,6 +293,7 @@ class ProductOperator(Operator):
     def partial_trace(self, sites: Union[frozenset, SystemDescriptor]):
         full_system_sites = self.system.sites
         dimensions = self.dimensions
+
         if isinstance(sites, SystemDescriptor):
             subsystem = sites
             sites = frozenset(sites.sites.keys())
@@ -301,6 +305,7 @@ class ProductOperator(Operator):
         prefactors = [
             sites_op[s].trace() if s in sites_op else dimensions[s] for s in sites_out
         ]
+
         sites_op = {s: o for s, o in sites_op.items() if s in sites}
         prefactor = self.prefactor
         for factor in prefactors:
@@ -310,7 +315,12 @@ class ProductOperator(Operator):
 
         if len(sites_op) == 0:
             return ScalarOperator(prefactor, subsystem)
-        return ProductOperator(sites_op, prefactor, subsystem)
+        qutip_factors = self.__dict__.get("site_factors_qutip", None)
+        if qutip_factors is not None:
+            qutip_factors = {site: qutip_factors[site] for site in sites if site in qutip_factors}
+        return ProductOperator(
+            sites_op, prefactor, subsystem, _qutip_factors=qutip_factors
+        )
 
     def reduce(self, sites: Iterable, state=None) -> Operator:
         """

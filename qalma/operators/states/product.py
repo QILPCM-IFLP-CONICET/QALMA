@@ -3,11 +3,12 @@ Density operator classes.
 """
 
 import logging
-from typing import Any, Optional, Tuple, Union, cast
+from typing import Any, Dict, Optional, Tuple, Union, cast
 
 import numpy as np
 from numpy.typing import NDArray
 from qutip import (  # type: ignore[import-untyped]
+    Qobj,
     qeye as qutip_qeye,
     tensor as qutip_tensor,
 )
@@ -34,10 +35,11 @@ class ProductDensityOperator(DensityOperatorMixin, ProductOperator):
 
     def __init__(
         self,
-        local_states: dict,
+        local_states: Dict[str, Any],
         weight: float = 1.0,
         system: Optional[SystemDescriptor] = None,
         normalized: bool = False,
+        _qutip_factors: Optional[Dict[str, Qobj]] = None,
     ):
         assert weight >= 0
 
@@ -49,7 +51,10 @@ class ProductDensityOperator(DensityOperatorMixin, ProductOperator):
         else:
             local_states = {key: _to_array(val) for key, val in local_states.items()}
             local_zs = {site: state.trace() for site, state in local_states.items()}
-            if not normalized:
+            if normalized:
+                if _qutip_factors is not None:
+                    self.__dict__["site_factors_qutip"] = _qutip_factors
+            else:
                 assert (z > 0 for z in local_zs.values())
                 local_states = {
                     site: sigma / local_zs[site] for site, sigma in local_states.items()
@@ -194,17 +199,29 @@ class ProductDensityOperator(DensityOperatorMixin, ProductOperator):
         return OneBodyOperator(terms, system, False)
 
     def partial_trace(self, sites: Union[frozenset, SystemDescriptor]):
-        sites_op = self.site_factors_qutip
+        sites_op = self.site_factors
         if isinstance(sites, SystemDescriptor):
             subsystem = sites
             sites = frozenset(sites.sites.keys())
         else:
             subsystem = self.system.subsystem(sites)
 
-        local_states = {site: sites_op[site] for site in sites}
+        local_states: Dict[str, np.ndarray] = {
+            str(site): sites_op[site] for site in sites
+        }
+
+        qutip_factors: Optional[Dict[str, Qobj]] = self.__dict__.get(
+            "site_factors_qutip", None
+        )
+        if qutip_factors is not None:
+            qutip_factors = {site: qutip_factors[site] for site in sites if site in qutip_factors}
 
         return ProductDensityOperator(
-            local_states, np.real(self.prefactor), subsystem, normalized=True
+            local_states,
+            np.real(self.prefactor),
+            subsystem,
+            normalized=True,
+            _qutip_factors=qutip_factors,
         )
 
     def to_qutip(self, block: Optional[Tuple[str, ...]] = None):
