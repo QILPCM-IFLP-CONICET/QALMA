@@ -214,7 +214,9 @@ class ProductDensityOperator(DensityOperatorMixin, ProductOperator):
             "site_factors_qutip", None
         )
         if qutip_factors is not None:
-            qutip_factors = {site: qutip_factors[site] for site in sites if site in qutip_factors}
+            qutip_factors = {
+                site: qutip_factors[site] for site in sites if site in qutip_factors
+            }
 
         return ProductDensityOperator(
             local_states,

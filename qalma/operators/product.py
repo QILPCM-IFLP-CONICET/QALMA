@@ -317,7 +317,9 @@ class ProductOperator(Operator):
             return ScalarOperator(prefactor, subsystem)
         qutip_factors = self.__dict__.get("site_factors_qutip", None)
         if qutip_factors is not None:
-            qutip_factors = {site: qutip_factors[site] for site in sites if site in qutip_factors}
+            qutip_factors = {
+                site: qutip_factors[site] for site in sites if site in qutip_factors
+            }
         return ProductOperator(
             sites_op, prefactor, subsystem, _qutip_factors=qutip_factors
         )
