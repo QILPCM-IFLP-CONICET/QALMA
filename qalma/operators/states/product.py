@@ -171,7 +171,11 @@ class ProductDensityOperator(DensityOperatorMixin, ProductOperator):
         if isinstance(obs_objs, dict):
             return {key: self.expect(val) for key, val in obs_objs.items()}
 
-        # Fallback for QuadraticFormOperator and any other type
+        # Fallback: we know we'll need Qobj representations down the call
+        # chain (via to_qutip). Warm the cache now on self so that
+        # partial_trace children can inherit it via the existing
+        # _qutip_factors mechanism in __init__.
+        _ = self.site_factors_qutip
         return super().expect(obs_objs)
 
     def logm(self):
