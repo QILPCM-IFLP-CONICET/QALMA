@@ -143,6 +143,7 @@ class ProductDensityOperator(DensityOperatorMixin, ProductOperator):
 
             # --- Fast path: homogeneous system, batched einsum -----------
             try:
+                raise ValueError
                 obs_sites, obs_tensor = obs_prod._dense_tensor  # (N, d, d)
                 rho_tensor = np.stack([rhos[s] for s in obs_sites])  # (N, d, d)
                 # traces[i] = Tr(rho_i @ obs_i), no intermediate matrices
@@ -162,7 +163,7 @@ class ProductDensityOperator(DensityOperatorMixin, ProductOperator):
             obs_sum = cast(SumOperator, obs_objs)
             return cast(
                 NDArray,
-                sum(cast(NDArray, self.expect(term)) for term in obs_sum.terms),
+                sum(cast(NDArray, self.expect(term)) for term in obs_sum.terms if term.prefactor),
             )
 
         if isinstance(obs_objs, (tuple, list)):
