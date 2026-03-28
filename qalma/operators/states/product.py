@@ -142,20 +142,25 @@ class ProductDensityOperator(DensityOperatorMixin, ProductOperator):
             rhos = self.site_factors  # dict[site -> (d,d)]
 
             # --- Fast path: homogeneous system, batched einsum -----------
-            try:
-                raise ValueError
-                obs_sites, obs_tensor = obs_prod._dense_tensor  # (N, d, d)
-                rho_tensor = np.stack([rhos[s] for s in obs_sites])  # (N, d, d)
-                # traces[i] = Tr(rho_i @ obs_i), no intermediate matrices
-                traces = np.einsum("nij,nji->n", rho_tensor, obs_tensor)
-                result *= complex(traces.prod())
-            except (ValueError, KeyError):
-                # Heterogeneous dims or a site not in rhos: fall back to
-                # a per-site loop that is still numpy-only (no Qobj).
-                for site, obs_op in obs_prod.site_factors.items():
-                    if not result:
-                        break
-                    result *= self._trace2(rhos[site], obs_op)
+            # try:
+            #    raise ValueError
+            #    obs_sites, obs_tensor = obs_prod._dense_tensor  # (N, d, d)
+            #    rho_tensor = np.stack([rhos[s] for s in obs_sites])  # (N, d, d)
+            #    # traces[i] = Tr(rho_i @ obs_i), no intermediate matrices
+            #    traces = np.einsum("nij,nji->n", rho_tensor, obs_tensor)
+            #    result *= complex(traces.prod())
+            # except (ValueError, KeyError):
+            # Heterogeneous dims or a site not in rhos: fall back to
+            # a per-site loop that is still numpy-only (no Qobj).
+            #    for site, obs_op in obs_prod.site_factors.items():
+            #        if not result:
+            #            break
+            #        result *= self._trace2(rhos[site], obs_op)
+
+            for site, obs_op in obs_prod.site_factors.items():
+                if not result:
+                    break
+                result *= self._trace2(rhos[site], obs_op)
 
             return result
 
