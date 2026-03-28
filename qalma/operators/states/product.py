@@ -163,7 +163,11 @@ class ProductDensityOperator(DensityOperatorMixin, ProductOperator):
             obs_sum = cast(SumOperator, obs_objs)
             return cast(
                 NDArray,
-                sum(cast(NDArray, self.expect(term)) for term in obs_sum.terms if term.prefactor),
+                sum(
+                    cast(NDArray, self.expect(term))
+                    for term in obs_sum.terms
+                    if term.prefactor
+                ),
             )
 
         if isinstance(obs_objs, (tuple, list)):

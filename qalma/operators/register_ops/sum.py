@@ -143,7 +143,7 @@ def _(x_op: SumOperator, y_op: SumOperator):
             xy_term = x_term * y_term
             xy_acts_over = xy_term.acts_over()
             if xy_acts_over in block_terms:
-                xy_term = (block_terms[xy_acts_over] + xy_term).simplify()
+                xy_term = block_terms[xy_acts_over] + xy_term
             block_terms[xy_acts_over] = xy_term
     terms = tuple(block_terms.values())
     if len(terms) == 0:
