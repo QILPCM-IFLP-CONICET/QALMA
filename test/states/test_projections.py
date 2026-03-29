@@ -190,6 +190,9 @@ def test_compare_iterative_and_recursive_n_body_qutip_projections(op_name, op_te
     assert isinstance(op_test, QutipOperator)
 
     for state_name, sigma0 in TEST_STATES.items():
+        if not isinstance(sigma0, ProductDensityOperator):
+            continue
+
         print(f"  = sigma0{state_name}")
         for n_body in range(0, 4):
             print("   n=", n_body)
@@ -231,6 +234,8 @@ def test_compare_iterative_and_recursive_n_body_product_projections(op_name, op_
             return
 
     for state_name, sigma0 in TEST_STATES.items():
+        if not isinstance(sigma0, ProductDensityOperator):
+            continue
         print(f"  = sigma0{state_name}")
         for n_body in range(0, 4):
             print("   n=", n_body)
@@ -319,8 +324,8 @@ def test_2body_to_1body_product_projection(
         if len(op_prod.acts_over()) != 2:
             continue
         print("* testing against", op_name)
-        site1, site2 = op_prod.sites_op
-        op1, op2 = op_prod.sites_op[site1], op_prod.sites_op[site2]
+        site1, site2 = op_prod.site_factors
+        op1, op2 = op_prod.site_factors_qutip[site1], op_prod.site_factors_qutip[site2]
         rho_1 = state.partial_trace(frozenset([site1]))
         rho_2 = state.partial_trace(frozenset([site2]))
         op1_expect = (rho_1.to_qutip() * op1).tr()

@@ -47,7 +47,7 @@ def project_boundary_term(term, sigma: ProductDensityOperator, sites: frozenset)
     if all(site in sites for site in acts_over):
         return term
 
-    local_states = sigma.sites_op
+    local_states = sigma.site_factors_qutip
     local_states = {site: local_states[site] for site in environment}
 
     if isinstance(term, SumOperator):
@@ -58,11 +58,13 @@ def project_boundary_term(term, sigma: ProductDensityOperator, sites: frozenset)
         )
     if isinstance(term, ProductOperator):
         prefactor = term.prefactor
-        sites_op = term.sites_op
+        site_factors_qutip = term.site_factors_qutip
         for site in environment:
-            prefactor = prefactor * (sites_op[site] * local_states[site]).tr()
-        sites_op = {site: op for site, op in sites_op.items() if site in sites}
-        return ProductOperator(sites_op, prefactor, system)
+            prefactor = prefactor * (site_factors_qutip[site] * local_states[site]).tr()
+        site_factors_qutip = {
+            site: op for site, op in site_factors_qutip.items() if site in sites
+        }
+        return ProductOperator(site_factors_qutip, prefactor, system)
     if isinstance(term, QutipOperator):
         block = tuple(sites) + tuple(environment)
         qutip_op = term.to_qutip(block)

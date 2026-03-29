@@ -3,11 +3,10 @@ Classes to represent density operators as Gibbs states $rho=e^{-k}$.
 
 """
 
-from functools import cached_property
 from typing import Callable, Dict, Iterable, Optional, Tuple, Union, cast
 
 import numpy as np
-import qutip
+from qutip import Qobj
 
 from qalma.model import SystemDescriptor
 from qalma.operators.arithmetic import OneBodyOperator
@@ -61,6 +60,7 @@ class GibbsDensityOperator(DensityOperatorMixin, Operator):
 
         assert prefactor > 0
         self.k = k
+        assert isinstance(k, Operator)
         self.f_global = 0.0
         self._free_energy = 0.0
         self.prefactor = prefactor
@@ -97,11 +97,6 @@ class GibbsDensityOperator(DensityOperatorMixin, Operator):
         """
         return self.k.acts_over().intersection(self.system.sites)
 
-    # def expect(
-    #    self, obs_objs: Union[Operator, Iterable]
-    # ) -> Union[np.ndarray, dict, Number]:
-    #    return self.to_qutip_operator().expect(obs_objs)
-
     @property
     def free_energy(self):
         """compute the free energy"""
@@ -115,7 +110,7 @@ class GibbsDensityOperator(DensityOperatorMixin, Operator):
         self._free_energy = value
         return self._free_energy
 
-    def logm(self):
+    def logm(self) -> Operator:
         self.normalize()
         k = self.k
         return -k
@@ -170,7 +165,7 @@ class GibbsDensityOperator(DensityOperatorMixin, Operator):
             result = (-self.k).to_qutip(block).expm()
         else:
             k_qutip = self.k.to_qutip(block)
-            if not isinstance(k_qutip, qutip.Qobj):
+            if not isinstance(k_qutip, Qobj):
                 return 1.0
             result, log_prefactor = safe_exp_and_normalize(-k_qutip)
             self.k = self.k + log_prefactor
@@ -194,16 +189,9 @@ class GibbsProductDensityOperator(DensityOperatorMixin, Operator):
     free_energies: Dict[str, float]
     isherm: bool = True
 
-    @cached_property
-    def _dense(self) -> dict:
-        """
-        Proxy to ProductState._dense
-        """
-        return self.to_product_state()._dense
-
     def __init__(
         self,
-        k: Union[Operator, dict],
+        k: Union[Operator, Dict[str, Operator]],
         system: Optional[SystemDescriptor] = None,
         prefactor: complex = 1,
         normalized: bool = False,
@@ -219,22 +207,22 @@ class GibbsProductDensityOperator(DensityOperatorMixin, Operator):
             assert system is not None
             self_system = self.system = cast(SystemDescriptor, system)
             k_by_site = k
+            assert all(isinstance(k_loc, Qobj) for k_loc in k_by_site.values())
         else:
             k_operator: Operator = cast(Operator, k)
             k_operator = k_operator.simplify()
-            if system:
-                system = k_operator.system.union(system)
-            else:
-                system = k_operator.system
-            self_system = self.system = cast(SystemDescriptor, system)
+            system = k_operator.system.union(system)
+            self_system = self.system = system
             k_by_site = k_by_site_from_operator(k_operator)
+            assert all(isinstance(k_loc, Qobj) for k_loc in k_by_site.values())
 
         if normalized:
             f_locals = {site: 0.0 for site in k_by_site}
         else:
 
             def safe_local_f(op_loc):
-                spectrum = -(op_loc.eigenenergies())
+                assert isinstance(op_loc, Qobj)
+                spectrum = (-op_loc).eigenenergies()
                 f0 = max(spectrum)
                 spectrum = spectrum - f0
                 return -np.log(sum(np.exp(spectrum))) - f0
@@ -265,10 +253,11 @@ class GibbsProductDensityOperator(DensityOperatorMixin, Operator):
         return -(self.to_product_state())
 
     def __repr__(self):
-        tpo = self.to_product_state()
-        result = "Gibbs Product Operator"
-        result += f"\n->as Product Density Operator {type(tpo)}\n"
-        result += repr(tpo)
+        result = "Gibbs Product density operator:\n"
+        result += "\n".join(
+            f"{site}:exp(-1*{op})" for site, op in self.k_by_site.items()
+        )
+        result += f"\n free energies:{self.free_energies}"
         return result
 
     def acts_over(self) -> frozenset:
@@ -290,7 +279,7 @@ class GibbsProductDensityOperator(DensityOperatorMixin, Operator):
                 return False
         return True
 
-    def logm(self):
+    def logm(self) -> Operator:
         terms = tuple(
             LocalOperator(site, -loc_op, self.system)
             for site, loc_op in self.k_by_site.items()

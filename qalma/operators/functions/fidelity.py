@@ -41,7 +41,7 @@ def fidelity_product_states(rho1: ProductOperator, rho2: ProductOperator) -> flo
     radicand = rho1 * rho2
 
     result = 0.5 * np.log(radicand.prefactor)
-    for factor in radicand.sites_op.values():
+    for factor in radicand.site_factors_qutip.values():
         result += np.log(sum(abs(factor.eigenenergies()) ** 0.5))
 
     return np.exp(result)

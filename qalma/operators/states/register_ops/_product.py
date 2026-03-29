@@ -2,7 +2,7 @@
 Arithmetic handlers involving ProductDensityOperator.
 
 The strategy is to treat a ProductDensityOperator as a plain ProductOperator
-for arithmetic purposes, delegating via `ProductOperator(y_op.sites_op, ...)`.
+for arithmetic purposes, delegating via `ProductOperator(y_op.site_factors, ...)`.
 
 Registered operations:
   - number                 + ProductDensity            ->  (cast, then add)
@@ -34,7 +34,7 @@ def _(x_op: ProductDensityOperator, y_op: ProductDensityOperator):
 
 @Operator.register_add_handler((ProductDensityOperator, ScalarOperator))
 def _(x_op: ProductDensityOperator, y_op: ScalarOperator):
-    site_op = x_op.sites_op.copy()
+    site_op = x_op.site_factors.copy()
     prefactor = x_op.prefactor
     system = x_op.system or y_op.system
     if len(site_op) == 0:
@@ -97,7 +97,7 @@ def _(x_op: float, y_op: ProductDensityOperator):
         )
     if x_op > 0:
         return ProductDensityOperator(
-            y_op.sites_op,
+            y_op.site_factors,
             weight=cast(float, y_op.prefactor) * x_op,
             system=y_op.system,
             normalized=True,
@@ -118,7 +118,7 @@ def _(y_op: ProductDensityOperator, x_op: float):
         )
     if x_op > 0:
         return ProductDensityOperator(
-            y_op.sites_op,
+            y_op.site_factors,
             weight=cast(float, y_op.prefactor) * x_op,
             system=y_op.system,
             normalized=True,
@@ -168,13 +168,13 @@ def _(y_op: ProductDensityOperator, x_op: Operator):
 @Operator.register_mul_handler((ProductDensityOperator, ProductDensityOperator))
 def _(x_op: ProductDensityOperator, y_op: ProductDensityOperator):
     system = x_op.system * y_op.system if x_op.system else y_op.system
-    sites_op = x_op.sites_op.copy()
-    for site, factor in y_op.sites_op.items():
-        if site in sites_op:
-            sites_op[site] *= factor
+    site_factors = x_op.site_factors.copy()
+    for site, factor in y_op.site_factors.items():
+        if site in site_factors:
+            site_factors[site] *= factor
         else:
-            sites_op[site] = factor
-    return ProductOperator(sites_op, 1, system)
+            site_factors[site] = factor
+    return ProductOperator(site_factors, 1, system)
 
 
 @Operator.register_mul_handler((ProductDensityOperator, OneBodyOperator))

@@ -184,11 +184,11 @@ def test_type_operator():
     assert isinstance((SX_A + SY_B) * 2.0, OneBodyOperator)
     assert isinstance(SY_B + SX_A, OneBodyOperator)
     assert isinstance(SX_ASY_B, ProductOperator)
-    assert len(SX_ASY_B.sites_op) == 2
+    assert len(SX_ASY_B.site_factors) == 2
     assert isinstance(SX_AsyB_times_2, ProductOperator)
     assert isinstance(OP_GLOBAL, SumOperator)
     assert isinstance(SX_A + SY_B, SumOperator)
-    assert len(SX_AsyB_times_2.sites_op) == 2
+    assert len(SX_AsyB_times_2.site_factors) == 2
 
     OP_GLOBAL.prefactor = 2
     assert SX_A2.prefactor == 1

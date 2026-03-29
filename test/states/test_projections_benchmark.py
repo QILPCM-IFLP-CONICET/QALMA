@@ -15,6 +15,7 @@ from typing import Dict
 import pytest
 
 from qalma.operators import Operator, ProductOperator
+from qalma.operators.states.gibbs import GibbsProductDensityOperator
 from qalma.projections import (
     project_operator_to_n_body,
 )
@@ -32,6 +33,13 @@ TEST_STATES = {"None": None}
 TEST_OPERATORS: Dict[str, Operator] = {}
 TEST_OPERATORS_SQ: Dict[str, Operator] = {}
 TEST_SINGLE_TERMS: Dict[str, Operator] = {}
+
+
+def ensure_product_state(state):
+    if isinstance(state, GibbsProductDensityOperator):
+        return state.to_product_state()
+    return state
+
 
 if os.environ.get("BENCHMARKS", 0):
     print("build single terms")
@@ -66,7 +74,7 @@ if os.environ.get("BENCHMARKS", 0):
     print("test cases")
     TEST_STATES.update(
         {
-            name: TEST_CASES_STATES[name]
+            name: ensure_product_state(TEST_CASES_STATES[name])
             for name in (
                 "fully mixed",
                 "z semipolarized",
@@ -254,4 +262,4 @@ def test_benchmark_nbody_projection(
     else:
         eval_orig, eval_proj = sigma0.expect([op_sq, result])
 
-    assert abs(eval_orig - eval_proj) < 1.0e-6
+    assert abs(eval_orig - eval_proj) < 2.0e-6

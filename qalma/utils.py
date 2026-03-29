@@ -255,7 +255,7 @@ def operator_to_wolfram(operator) -> str:
     if isinstance(operator, LocalOperator):
         local_site = operator.site
         factors = [
-            operator.operator if site == local_site else get_site_identity(site)
+            operator.operator_qutip if site == local_site else get_site_identity(site)
             for site in sorted(dimensions)
         ]
         factors_str = [operator_to_wolfram(factor) for factor in factors]
@@ -264,7 +264,7 @@ def operator_to_wolfram(operator) -> str:
 
     if isinstance(operator, ProductOperator):
         factors = [
-            operator.sites_op.get(site, get_site_identity(site))
+            operator.site_factors_qutip.get(site, get_site_identity(site))
             for site in sorted(dimensions)
         ]
         factors_str = [operator_to_wolfram(factor) for factor in factors]

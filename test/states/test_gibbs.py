@@ -155,10 +155,10 @@ def test_product_gibbs_with_dict(key, k_gen):
 
     local_gen_dic = {}
     if isinstance(k_gen, LocalOperator):
-        local_gen_dic[k_gen.site] = k_gen.operator
+        local_gen_dic[k_gen.site] = k_gen.operator_qutip
     elif isinstance(k_gen, ProductOperator):
-        if len(k_gen.sites_op) != 0:
-            site, op = k_gen.sites_op.items()
+        if len(k_gen.site_factors) != 0:
+            site, op = k_gen.site_factors_qutip.items()
             local_gen_dic[site] = op
     elif isinstance(k_gen, QutipOperator):
         (site,) = k_gen.site_names
@@ -167,7 +167,7 @@ def test_product_gibbs_with_dict(key, k_gen):
     elif isinstance(k_gen, SumOperator):
         for term in k_gen.flat().terms:
             if isinstance(term, LocalOperator):
-                local_gen_dic[term.site] = term.operator
+                local_gen_dic[term.site] = term.operator_qutip
             elif isinstance(term, ProductOperator):
                 site, op = term.sites_op.items()
                 local_gen_dic[site] = op

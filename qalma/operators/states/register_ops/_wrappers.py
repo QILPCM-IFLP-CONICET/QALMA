@@ -70,7 +70,7 @@ def _wrapper_product(
     Missing factors in  ProductDensityOperator are not treated
     as the identity operator, but as a prefactor 1/dim_local.
     """
-    return ProductOperator(y_op.sites_op, prefactor=prefactor, system=y_op.system)
+    return ProductOperator(y_op.site_factors, prefactor=prefactor, system=y_op.system)
 
 
 def _wrapper_gibbs(

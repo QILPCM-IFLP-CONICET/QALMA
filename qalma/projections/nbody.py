@@ -24,6 +24,9 @@ from qalma.operators.qutip import QutipOperator
 from qalma.operators.states.basic import (
     DensityOperatorProtocol,
 )
+from qalma.operators.states.gibbs import (
+    GibbsProductDensityOperator,
+)
 from qalma.operators.states.product import (
     ProductDensityOperator,
 )
@@ -86,7 +89,7 @@ def _project_product_operator_to_one_body(
     if not prefactor:
         return ScalarOperator(0, system)
 
-    sites_op = full_operator.sites_op
+    sites_op = full_operator.site_factors_qutip
     n_sites = len(sites_op)
     if n_sites <= 1:
         return full_operator
@@ -164,7 +167,7 @@ def _project_qutip_operator_to_one_body(
         # At this point, it must be a product density operator
         state_prod = cast(ProductDensityOperator, state_ref)
         meanvalue = cast(complex, state_prod.expect(full_operator))
-        sites_op_state = state_prod.sites_op
+        sites_op_state = state_prod.site_factors_qutip
         sites_op_state = {key: sites_op_state[key] for key in block}
         reduced_ops = (
             [ScalarOperator((1 - block_size) * meanvalue, system)] if meanvalue else []
@@ -205,7 +208,7 @@ def _project_product_operator_combinatorial(
 
     # Trivial case
     src_operator: ProductOperator = cast(ProductOperator, full_operator)
-    sites_op = src_operator.sites_op
+    sites_op = src_operator.site_factors_qutip
     n_factors = len(sites_op)
     if n_factors <= n_max:
         return full_operator
@@ -274,7 +277,7 @@ def _project_product_operator_recursive(
 
     # Trivial case
     src_operator: ProductOperator = cast(ProductOperator, full_operator)
-    sites_op = src_operator.sites_op
+    sites_op = src_operator.site_factors_qutip
     n_factors = len(sites_op)
     if n_factors <= n_max:
         return full_operator
@@ -285,7 +288,7 @@ def _project_product_operator_recursive(
             return ScalarOperator(0, full_operator.system)
 
         system = full_operator.system
-        rhos = sigma_ref._dense  # dict[site -> (d,d)]
+        rhos = sigma_ref.site_factors  # dict[site -> (d,d)]
 
         averages: dict = {}
         for site, l_op in sites_op.items():
@@ -759,6 +762,8 @@ def project_to_n_body_operator(
     if isinstance(full_operator, (OneBodyOperator, LocalOperator)):
         return full_operator
 
+    if isinstance(sigma, GibbsProductDensityOperator):
+        sigma = sigma.to_product_state()
     if isinstance(full_operator, SumOperator):
         return project_sum_operator(full_operator, n_max, sigma)
 

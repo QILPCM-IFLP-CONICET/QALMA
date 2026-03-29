@@ -17,6 +17,7 @@ from qalma.operators.product import (
     ProductOperator,
     ScalarOperator,
 )
+from qalma.qutip_tools.tools import to_qobj
 
 # from qalma.operators.simplify import simplify_sum_operator
 
@@ -48,12 +49,12 @@ def spectral_norm(operator: Operator) -> float:
         return abs(operator.prefactor)
     if isinstance(operator, LocalOperator):
         if operator.isherm:
-            return max(abs(operator.operator.eigenenergies()))
-        op_qutip = operator.operator
+            return max(abs(to_qobj(operator.operator).eigenenergies()))
+        op_qutip = to_qobj(operator.operator)
         return max(abs((op_qutip.dag() * op_qutip).eigenenergies())) ** 0.5
     if isinstance(operator, ProductOperator):
         result = abs(operator.prefactor)
-        for loc_op in operator.sites_op.values():
+        for loc_op in operator.site_factors_qutip.values():
             if loc_op.isherm:
                 result *= max(abs(loc_op.eigenenergies()))
             else:
@@ -71,7 +72,7 @@ def spectral_norm(operator: Operator) -> float:
 
 def log_op(operator: Operator) -> Operator:
     """The logarithm of an operator"""
-
+    assert isinstance(operator, Operator)
     if hasattr(operator, "logm"):
         return operator.logm()
     return operator.to_qutip_operator().logm()
@@ -83,8 +84,9 @@ def relative_entropy(rho: Operator, sigma: Operator) -> float:
     log_rho = log_op(rho)
     log_sigma = log_op(sigma)
     delta_log = (log_rho - log_sigma).simplify()
+
     if hasattr(rho, "expect"):
-        result = real(rho.expect(delta_log))
+        result = real(rho.expect(delta_log.to_qutip_operator()))
     else:
         result = real((rho * delta_log).tr())
     if result < 0:
