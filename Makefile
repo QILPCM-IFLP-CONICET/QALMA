@@ -127,7 +127,7 @@ benchmark-clean:
 	rm -R .benchmarks
 
 benchmark-show:
-	python test/compare_benchmarks.py --threshold=1
+	python test/compare_benchmarks.py
 
 
 mypy:
