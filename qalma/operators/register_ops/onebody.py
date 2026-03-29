@@ -25,7 +25,7 @@ def _(x_op: OneBodyOperator, y_op: OneBodyOperator):
         return ScalarOperator(0, system)
     if len(terms) == 1:
         return terms[0]
-    isherm = (x_op.isherm and y_op.isherm) or None
+    isherm = (x_op._isherm and y_op._isherm) or None
     return OneBodyOperator(terms, system, isherm=isherm)
 
 
