@@ -12,6 +12,7 @@ from qutip import (  # type: ignore[import-untyped]
     qeye as qutip_qeye,
     tensor as qutip_tensor,
 )
+from scipy.linalg import logm as scp_logm
 
 from qalma.model import SystemDescriptor
 from qalma.operators.arithmetic import OneBodyOperator, SumOperator
@@ -189,18 +190,11 @@ class ProductDensityOperator(DensityOperatorMixin, ProductOperator):
         return super().expect(obs_objs)
 
     def logm(self):
-        def log_qutip(loc_op):
-            evals, evecs = loc_op.eigenstates()
-            evals[abs(evals) < 1.0e-30] = 1.0e-30
-            return sum(
-                np.log(e_val) * e_vec * e_vec.dag()
-                for e_val, e_vec in zip(evals, evecs)
-            )
 
         system = self.system
-        sites_op = self.site_factors_qutip
+        sites_op = self.site_factors
         terms = tuple(
-            LocalOperator(site, log_qutip(loc_op), system)
+            LocalOperator(site, scp_logm(loc_op), system)
             for site, loc_op in sites_op.items()
         )
         if system:

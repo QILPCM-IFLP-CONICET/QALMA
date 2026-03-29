@@ -10,6 +10,7 @@ from typing import Dict, Iterable, Optional, Tuple, Union
 
 import numpy as np
 from qutip import Qobj
+from scipy.linalg import expm as scp_expm, logm as scp_logm
 
 from qalma.model import SystemDescriptor
 from qalma.qutip_tools.tools import (
@@ -179,14 +180,16 @@ class ProductOperator(Operator):
         return ProductOperator(sites_op_dag, prefactor, self.system)
 
     def expm(self):
-        sites_op = self.site_factors_qutip
+        sites_op = self.site_factors
         n_ops = len(sites_op)
         if n_ops == 0:
             return ScalarOperator(np.exp(self.prefactor), self.system)
+
         if n_ops == 1:
             site, operator = next(iter(sites_op.items()))
+
             result = LocalOperator(
-                site, (self.prefactor * operator).expm(), self.system
+                site, scp_expm(self.prefactor * operator), self.system
             )
             return result
         result = super().expm()
@@ -251,18 +254,10 @@ class ProductOperator(Operator):
         # pylint: disable=import-outside-toplevel
         from qalma.operators.arithmetic import OneBodyOperator
 
-        def log_qutip(loc_op):
-            evals, evecs = loc_op.eigenstates()
-            evals[abs(evals) < 1.0e-30] = 1.0e-30
-            return sum(
-                np.log(e_val) * e_vec * e_vec.dag()
-                for e_val, e_vec in zip(evals, evecs)
-            )
-
         system = self.system
         terms = tuple(
-            LocalOperator(site, log_qutip(loc_op), system)
-            for site, loc_op in self.site_factors_qutip.items()
+            LocalOperator(site, scp_logm(loc_op), system)
+            for site, loc_op in self.site_factors.items()
         )
         result = OneBodyOperator(terms, system, False)
         result = result + ScalarOperator(np.log(self.prefactor), system)
