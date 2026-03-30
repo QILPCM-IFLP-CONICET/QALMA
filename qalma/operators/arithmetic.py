@@ -4,10 +4,10 @@
 Classes and functions for operator arithmetic.
 """
 
-import logging
 from typing import Iterable, Optional, Set, Tuple, Union
 
 import numpy as np
+from scipy.linalg import eigvals, expm as scp_expm
 
 from qalma.model import SystemDescriptor
 from qalma.operators.basic import (
@@ -382,10 +382,6 @@ class OneBodyOperator(SumOperator):
         )
 
     def expm(self):
-        # Import here to avoid circular dependency
-        # pylint: disable=import-outside-toplevel
-        from qalma.operators.functions import eigenvalues
-
         sites_op = {}
         ln_prefactor = 0
         for term in self.simplify().terms:
@@ -395,23 +391,13 @@ class OneBodyOperator(SumOperator):
             if isinstance(term, ScalarOperator):
                 ln_prefactor += term.prefactor
                 continue
-            operator_qt = term.operator_qutip
-            try:
-                k_0 = max(
-                    np.real(
-                        eigenvalues(operator_qt, sparse=True, sort="high", eigvals=3)
-                    )
-                )
-            except ValueError:
-                k_0 = max(np.real(eigenvalues(operator_qt, sort="high")))
+            operator = term.operator
+            k_0 = max(np.real(eigvals(operator)))
 
-            operator_qt = operator_qt - k_0
+            operator = operator.copy()
+            np.fill_diagonal(operator, operator.diagonal() - k_0)
             ln_prefactor += k_0
-            if hasattr(operator_qt, "expm"):
-                sites_op[term.site] = operator_qt.expm()
-            else:
-                logging.warning("%s evaluated as a number", type(operator_qt))
-                sites_op[term.site] = np.exp(operator_qt)
+            sites_op[term.site] = scp_expm(operator)
 
         prefactor = np.exp(ln_prefactor)
         return ProductOperator(sites_op, prefactor=prefactor, system=self.system)

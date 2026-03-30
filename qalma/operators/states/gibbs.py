@@ -19,6 +19,7 @@ from qalma.operators.product import (
 )
 from qalma.operators.states.basic import (
     DensityOperatorMixin,
+    DensityOperatorProtocol,
 )
 from qalma.operators.states.product import ProductDensityOperator
 from qalma.operators.states.utils import k_by_site_from_operator
@@ -268,9 +269,11 @@ class GibbsProductDensityOperator(DensityOperatorMixin, Operator):
         return frozenset(site for site in self.k_by_site)
 
     def expect(
-        self, obs_objs: Union[Operator, Iterable]
+        self,
+        obs_objs: Union[Operator, Iterable],
+        _local_states: Optional[Dict[frozenset, DensityOperatorProtocol]] = None,
     ) -> Union[np.ndarray, dict, complex]:
-        return (self.to_product_state()).expect(obs_objs)
+        return (self.to_product_state()).expect(obs_objs, _local_states=_local_states)
 
     @property
     def isdiagonal(self) -> bool:

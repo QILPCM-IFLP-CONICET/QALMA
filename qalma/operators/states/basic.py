@@ -4,7 +4,7 @@ Density operator classes.
 
 import logging
 import pickle
-from typing import Iterable, Optional, Protocol, Tuple, Union, cast
+from typing import Dict, Iterable, Optional, Protocol, Tuple, Union, cast
 
 import numpy as np
 from numpy.typing import NDArray
@@ -101,7 +101,9 @@ class DensityOperatorMixin:
         raise NotImplementedError
 
     def expect(
-        self, obs_objs: Union[Operator, Iterable]
+        self,
+        obs_objs: Union[Operator, Iterable],
+        _local_states: Optional[Dict[frozenset, "DensityOperatorProtocol"]] = None,
     ) -> Union[NDArray, dict, complex]:
         """Compute the expectation value of an observable"""
         # TODO: explode that expectation values of operators just requires the
@@ -111,7 +113,9 @@ class DensityOperatorMixin:
             reduced_state_by_block,
         )
 
-        local_states = collect_local_states(obs_objs, self)
+        _local_states = collect_local_states(
+            obs_objs, self, _local_states=_local_states
+        )
         # local_states = {None: self}
 
         def do_evaluate_expect(obs):
@@ -121,7 +125,7 @@ class DensityOperatorMixin:
             which in typical cases is the most expensive part of
             the evaluation.
             """
-            nonlocal local_states
+            nonlocal _local_states
 
             if isinstance(obs, dict):
                 return {
@@ -147,7 +151,7 @@ class DensityOperatorMixin:
             # it means that we already try with the implementation of the
             # subclasses. Then, let's rely in the generic implementation:
             # convert everything to qutip and evaluate the trace:
-            local_state_acts_over = reduced_state_by_block(obs, local_states)
+            local_state_acts_over = reduced_state_by_block(obs, _local_states)
             if obs_objs is obs:
                 block = tuple(sorted(acts_over))
                 return (
@@ -214,7 +218,9 @@ class DensityOperatorProtocol(Protocol):
         """rmul method"""
 
     def expect(
-        self, obs: Union[Operator, Iterable]
+        self,
+        obs: Union[Operator, Iterable],
+        _local_states: Optional[Dict[frozenset, "DensityOperatorProtocol"]] = None,
     ) -> Union[np.ndarray, dict, complex]:
         """Compute expectation values"""
 

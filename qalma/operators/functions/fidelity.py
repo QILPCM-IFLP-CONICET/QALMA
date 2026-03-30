@@ -3,6 +3,7 @@ Fidelity and related functions.
 """
 
 import numpy as np
+from scipy.linalg import eigvals as scp_eigvals
 
 from qalma.operators import ProductOperator
 
@@ -20,12 +21,7 @@ def fidelity(rho1, rho2) -> float:
         if isinstance(rho2, ProductOperator):
             return fidelity_product_states(rho1, rho2)
 
-    # print("general routine for fidelity")
     radicand = (rho1 * rho2).to_qutip_operator()
-    # print("rho1=", operator_to_wolfram(rho1),";")
-    # print("rho2=", operator_to_wolfram(rho2),";")
-    # print("radicand=", operator_to_wolfram(radicand),";")
-
     return sum(abs(radicand.eigenenergies()) ** 0.5)
 
 
@@ -41,7 +37,7 @@ def fidelity_product_states(rho1: ProductOperator, rho2: ProductOperator) -> flo
     radicand = rho1 * rho2
 
     result = 0.5 * np.log(radicand.prefactor)
-    for factor in radicand.site_factors_qutip.values():
-        result += np.log(sum(abs(factor.eigenenergies()) ** 0.5))
+    for factor in radicand.site_factors.values():
+        result += np.log(sum(abs(scp_eigvals(factor)) ** 0.5))
 
     return np.exp(result)

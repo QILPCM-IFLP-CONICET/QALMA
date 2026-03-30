@@ -131,7 +131,9 @@ def collect_blocks_for_expect(obs_objs: Union[Operator, Iterable]) -> List[froze
 
 
 def collect_local_states(
-    obs_objs: Union[Operator, Iterable], global_state
+    obs_objs: Union[Operator, Iterable],
+    global_state,
+    _local_states: Optional[Dict[frozenset, DensityOperatorProtocol]] = None,
 ) -> Dict[frozenset, DensityOperatorProtocol]:
     """
     Build a dict of local states required to compute the expectation values of the observable
@@ -152,21 +154,22 @@ def collect_local_states(
 
     """
     assert obs_objs is not None
-    local_states: Dict[frozenset, DensityOperatorProtocol] = {}
+    if _local_states is None:
+        _local_states = {}
     block_objts = collect_blocks_for_expect(obs_objs)
     for obj_block in (frozenset(blk) for blk in block_objts):
-        if obj_block in local_states:
+        if obj_block in _local_states:
             continue
         parent_state = global_state
         for block, candidate in sorted(
-            local_states.items(),
+            _local_states.items(),
             key=lambda x: (len(x[0]) if x[0] is not None else 0),
         ):
             if block is not None and obj_block.issubset(block):
                 parent_state = candidate
                 break
-        local_states[obj_block] = parent_state.partial_trace(obj_block)
-    return local_states
+        _local_states[obj_block] = parent_state.partial_trace(obj_block)
+    return _local_states
 
 
 def k_by_site_from_operator(k: Operator) -> Dict[str, Operator]:
