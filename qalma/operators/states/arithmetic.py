@@ -8,7 +8,7 @@ implemented though the class MixtureDensityOperator.
 
 import logging
 import pickle
-from typing import Iterable, Optional, Set, Tuple, Union, cast
+from typing import Dict, Iterable, Optional, Set, Tuple, Union, cast
 
 import numpy as np
 
@@ -22,6 +22,7 @@ from qalma.operators.product import (
 )
 from qalma.operators.states.basic import (
     DensityOperatorMixin,
+    DensityOperatorProtocol,
 )
 
 
@@ -52,7 +53,9 @@ class MixtureDensityOperator(DensityOperatorMixin, SumOperator):
         return frozenset(sites)
 
     def expect(
-        self, obs_objs: Union[Operator, Iterable]
+        self,
+        obs_objs: Union[Operator, Iterable],
+        _local_states: Optional[Dict[frozenset, DensityOperatorProtocol]] = None,
     ) -> Union[np.ndarray, dict, complex]:
 
         def compute_results(curr_obs, sub_averages, prefactors):

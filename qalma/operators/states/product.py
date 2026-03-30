@@ -23,7 +23,7 @@ from qalma.operators.product import (
     ProductOperator,
     ScalarOperator,
 )
-from qalma.operators.states.basic import DensityOperatorMixin
+from qalma.operators.states.basic import DensityOperatorMixin, DensityOperatorProtocol
 from qalma.qutip_tools.tools import (
     _to_array,
 )
@@ -116,7 +116,11 @@ class ProductDensityOperator(DensityOperatorMixin, ProductOperator):
             return ProductOperator(self.site_factors, 1, self.system) * a
         return a * ProductOperator(self.site_factors, 1, self.system)
 
-    def expect(self: Any, obs_objs: Any) -> Any:
+    def expect(
+        self: Any,
+        obs_objs: Any,
+        _local_states: Optional[Dict[frozenset, "DensityOperatorProtocol"]] = None,
+    ) -> Any:
         """
         Compute the expectation value of an operator or a sequence of
         operators.
@@ -170,24 +174,29 @@ class ProductDensityOperator(DensityOperatorMixin, ProductOperator):
             return cast(
                 NDArray,
                 sum(
-                    cast(NDArray, self.expect(term))
+                    cast(NDArray, self.expect(term, _local_states=_local_states))
                     for term in obs_sum.terms
                     if term.prefactor
                 ),
             )
 
         if isinstance(obs_objs, (tuple, list)):
-            return np.array([self.expect(elem) for elem in obs_objs])
+            return np.array(
+                [self.expect(elem, _local_states=_local_states) for elem in obs_objs]
+            )
 
         if isinstance(obs_objs, dict):
-            return {key: self.expect(val) for key, val in obs_objs.items()}
+            return {
+                key: self.expect(val, _local_states=_local_states)
+                for key, val in obs_objs.items()
+            }
 
         # Fallback: we know we'll need Qobj representations down the call
         # chain (via to_qutip). Warm the cache now on self so that
         # partial_trace children can inherit it via the existing
         # _qutip_factors mechanism in __init__.
         _ = self.site_factors_qutip
-        return super().expect(obs_objs)
+        return super().expect(obs_objs, _local_states=_local_states)
 
     def logm(self):
 
