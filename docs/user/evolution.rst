@@ -1,5 +1,5 @@
 Simulating Quantum Evolution
-===========================
+============================
 
 Use the `qalma.evolution` package to evolve quantum states.
 

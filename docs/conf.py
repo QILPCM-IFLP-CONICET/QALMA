@@ -5,6 +5,7 @@ import sys
 
 sys.path.insert(0, os.path.abspath(".."))
 
+
 # -- Project information -----------------------------------------------------
 
 project = "QALMA"
@@ -38,7 +39,7 @@ exclude_patterns = ["_build", "Thumbs.db", ".DS_Store"]
 # -- Options for HTML output -------------------------------------------------
 
 html_theme = "alabaster"
-html_static_path = ["_static"]
+html_static_path = ['_static'] if os.path.isdir('_static') else []
 
 # -- Autodoc settings --------------------------------------------------------
 

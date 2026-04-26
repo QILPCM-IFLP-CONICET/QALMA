@@ -214,12 +214,16 @@ def adaptive_projected_evolution(
 
     Parameters
     ----------
+
     ham : Operator
         The Hamiltonian operator
+
     k0 : Operator
         The initial condition
+
     t_span: np.array
         the times for with the evolution is computed
+
     order:
         the order of the solution
 
@@ -249,6 +253,7 @@ def adaptive_projected_evolution(
         * `"always"`: update the basis on each step
         * `"never"` : the basis stays fixed.
         Default: adaptive
+
     store_states: bool
         If True, always store the states.
 
@@ -256,6 +261,7 @@ def adaptive_projected_evolution(
     -------
     Simulation:
         A Simulation object storing the results of the simulation.
+
     """
     checkpoint_name = f"__adaptative_{order}_{n_body}_{uuid.uuid4()}.pkl"
     t_0 = t_span[0]
