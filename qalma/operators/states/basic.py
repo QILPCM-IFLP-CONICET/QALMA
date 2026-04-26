@@ -33,51 +33,58 @@ class DensityOperatorMixin:
 
     So, for example,
 
-    ```
-    rho = .3 * ProductDensityOperator({"site1": qutip.qeye(2) + qutip.sigmax(),
+    .. code-block:: python
+
+        rho = .3 * ProductDensityOperator({"site1": qutip.qeye(2) + qutip.sigmax(),
                                        "site2": qutip.qeye(2)})
-    ```
+
 
     acts under operations with other operators like
 
-    ```
-    rho = ProductOperator({"site1": .5*(qutip.qeye(2) + qutip.sigmax()),
+    .. code-block:: python
+
+        rho = ProductOperator({"site1": .5*(qutip.qeye(2) + qutip.sigmax()),
                            "site2": .5*qutip.qeye(2)})
-    ```
+
 
     If now we introduce a `sigma` operator
 
-    ```
-    sigma = .7 ProductDensityOperator({"site1": qutip.qeye(2),
+    .. code-block:: python
+
+        sigma = .7 ProductDensityOperator({"site1": qutip.qeye(2),
                                        "site2": qutip.qeye(2) +
                                        qutip.sigmax()})
-    ```
+
 
     the mixture
 
-    ```
-    mix = rho + sigma
-    ```
+    .. code-block:: python
+
+        mix = rho + sigma
+
 
     and another operator `A`
 
-    ```
-    A=ProductOperator({"site1": qutip.sigmax(), "site2": qutip.sigmax()})
-    ```
+    .. code-block:: python
+
+        A = ProductOperator({"site1": qutip.sigmax(), "site2": qutip.sigmax()})
+
 
     we obtain the equality
 
-    ```
-    (mix * A).tr() == .3 * (A * rho).tr() + .7 * (A* sigma)
-    ```
+    .. code-block:: python
+
+        (mix * A).tr() == .3 * (A * rho).tr() + .7 * (A* sigma)
+
 
     Notice that algebraic operations does not check if the prefactors
     of all the terms adds to 1.
     To be sure about the normalization, use the method `expect`:
 
-    ```
-    mix.expect(A)== (mix * A).tr()/sum([t.prefactor for t in A.terms])
-    ```
+    .. code-block:: python
+
+        mix.expect(A) == (mix * A).tr()/sum([t.prefactor for t in A.terms])
+
 
     """
 
