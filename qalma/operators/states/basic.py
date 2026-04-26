@@ -21,7 +21,7 @@ class DensityOperatorMixin:
     """
     DensityOperatorMixin is a Mixing class that
     contributes operator subclasses with the method
-    `expect`.
+    ``expect``.
 
     Notice that the `prefactor` attribute of these classes
     is only taken into account when density operators are combined
@@ -47,7 +47,7 @@ class DensityOperatorMixin:
                            "site2": .5*qutip.qeye(2)})
 
 
-    If now we introduce a `sigma` operator
+    If now we introduce a ``sigma`` operator
 
     .. code-block:: python
 
@@ -63,7 +63,7 @@ class DensityOperatorMixin:
         mix = rho + sigma
 
 
-    and another operator `A`
+    and another operator ``A``
 
     .. code-block:: python
 
@@ -79,7 +79,7 @@ class DensityOperatorMixin:
 
     Notice that algebraic operations does not check if the prefactors
     of all the terms adds to 1.
-    To be sure about the normalization, use the method `expect`:
+    To be sure about the normalization, use the method ``expect``:
 
     .. code-block:: python
 
