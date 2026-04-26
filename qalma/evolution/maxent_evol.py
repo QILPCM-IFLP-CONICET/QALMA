@@ -235,7 +235,9 @@ def adaptive_projected_evolution(
 
     as a linear combination of a an operator basis
 
-    k = sum phi_a(t) Q_a
+    .. math:
+
+        k = sum phi_a(t) Q_a
 
     chosen adaptively along the evolution.
 
@@ -275,10 +277,10 @@ def adaptive_projected_evolution(
 
     update_condition: str (case insensitive)
         The condition to update the basis. One of
-        * `"adaptive"` (default) update the basis when the accuracy goal
+        * ``"adaptive"`` (default) update the basis when the accuracy goal
           can not be reached.
-        * `"always"`: update the basis on each step
-        * `"never"` : the basis stays fixed.
+        * `"always"``: update the basis on each step
+        * ``"never"``: the basis stays fixed.
         Default: adaptive
 
     store_states: bool
