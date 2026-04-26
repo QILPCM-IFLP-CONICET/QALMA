@@ -260,18 +260,22 @@ def variational_quadratic_mfa(
 
     Decompose ham as a quadratic form
 
-    ```
-    ham = sum_a w_a Q_a^2 + L + delta_ham
-    ```
-    Then keep `numfields` terms of the sum with maximal weights,
+    .. codeblock:: python
+
+        ham = sum_a w_a Q_a^2 + L + delta_ham
+    
+    Then keep ``numfields`` terms of the sum with maximal weights,
     and look for a variational mean field state
-    ```
-    sigma \propto exp(-\sum_a phi_a Q_a + L)
-    ```
-    for real values of `phi_a`.
+    
+    .. codeblock:: python
+
+        sigma \propto exp(-\sum_a phi_a Q_a + L)
+
+    for real values of ``phi_a``.
 
     Parameters
     ----------
+
     ham : Operator
         The generator of the exact state rho=exp(-ham).
     numfields : int, optional

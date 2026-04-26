@@ -6,15 +6,16 @@ as  HDF5 files.
 
 To serialize a Simulation object, use the method `save_hdf5`:
 
-```
-sim.save_hdf5(filename)
-```
+.. codeblock:: python
 
-To load back the simulation, use the classmethod `load_hdf5`:
+    sim.save_hdf5(filename)
 
-```
-sim = Simulation.load_hdf5(filename)
-```
+
+To load back the simulation, use the classmethod ``load_hdf5``:
+
+.. codeblock:: python
+
+    sim = Simulation.load_hdf5(filename)
 
 """
 
