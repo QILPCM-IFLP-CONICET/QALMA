@@ -31,77 +31,70 @@ def qutip_me_solve(
     options: Optional[Dict[str, Any]] = None,
 ) -> Simulation:
     """
-    Compute the solution of the Schrödinger equation using qutip.mesolve
+    Compute the solution of the Schrödinger equation using qutip.mesolve.
 
     Parameters
     ----------
-
     H : Operator
         Possibly time-dependent system Liouvillian or Hamiltonian as a Qobj or
         QobjEvo. List of [:obj:`.Qobj`, :obj:`.Coefficient`] or callable that
         can be made into :obj:`.QobjEvo` are also accepted.
-
     rho0 : Operator
-        initial density matrix or state vector (ket).
-
-    tlist : *list* / *array*
-        list of times for :math:`t`.
-
-    c_ops : list[Operator] | dict[Any, Operator]
-            | Callable[[float, "Qobj"], Any], optional
+        Initial density matrix or state vector (ket).
+    tlist : array_like
+        List of times for :math:`t`.
+    c_ops : list[Operator] or dict[Any, Operator] or Callable, optional
         Single collapse operator, or list of collapse operators, or a list
-        of Liouvillian superoperators. None (default) is equivalent to an empty
-        list.
-
-    e_ops : list[Operator] | dict[Any, Operator]
-            | Callable[[float, "Qobj"], Any], optional
+        of Liouvillian superoperators. None (default) is equivalent to an
+        empty list.
+    e_ops : list[Operator] or dict[Any, Operator] or Callable, optional
         Single operator, or list or dict of operators, for which to evaluate
-        expectation values. Operator can be Qobj, QobjEvo or callables with the
-        signature `f(t: float, state: Qobj) -> Any`.
-
+        expectation values. Callable must have signature
+        ``f(t: float, state: Qobj) -> Any``.
     args : dict[str, Any], optional
-        dictionary of parameters for time-dependent Hamiltonians and
+        Dictionary of parameters for time-dependent Hamiltonians and
         collapse operators.
-
     options : dict[str, Any], optional
-        Dictionary of options for the solver.
+        Dictionary of options for the solver. Supported keys:
 
-        - | store_final_state : bool
-          | Whether or not to store the final state of the evolution in the
+        ``store_final_state`` : bool
+            Whether or not to store the final state of the evolution in the
             result class.
-        - | store_states : bool, None
-          | Whether or not to store the state vectors or density matrices.
-            On `None` the states will be saved if no expectation operators are
-            given.
-        - | normalize_output : bool
-          | Normalize output state to hide ODE numerical errors. Only normalize
-            the state if the initial state is already normalized.
-        - | progress_bar : str {'text', 'enhanced', 'tqdm', ''}
-          | How to present the solver progress.
-            'tqdm' uses the python module of the same name and raise an error
-            if not installed. Empty string or False will disable the bar.
-        - | progress_kwargs : dict
-          | kwargs to pass to the progress_bar. Qutip's bars use `chunk_size`.
-        - | method : str ["adams", "bdf", "lsoda", "dop853", "vern9", etc.]
-          | Which differential equation integration method to use.
-        - | atol, rtol : float
-          | Absolute and relative tolerance of the ODE integrator.
-        - | nsteps : int
-          | Maximum number of (internally defined) steps allowed in one
-          ``tlist`` step.
-        - | max_step : float
-          | Maximum length of one internal step. When using pulses, it
+        ``store_states`` : bool or None
+            Whether or not to store the state vectors or density matrices.
+            On ``None`` the states will be saved if no expectation operators
+            are given.
+        ``normalize_output`` : bool
+            Normalize output state to hide ODE numerical errors. Only
+            normalizes if the initial state is already normalized.
+        ``progress_bar`` : {'text', 'enhanced', 'tqdm', ''}
+            How to present the solver progress. ``'tqdm'`` raises an error
+            if the module is not installed. Empty string or ``False`` disables
+            the bar.
+        ``progress_kwargs`` : dict
+            Kwargs to pass to the progress_bar. Qutip's bars use
+            ``chunk_size``.
+        ``method`` : str
+            Differential equation integration method. One of
+            ``'adams'``, ``'bdf'``, ``'lsoda'``, ``'dop853'``,
+            ``'vern9'``, etc.
+        ``atol``, ``rtol`` : float
+            Absolute and relative tolerance of the ODE integrator.
+        ``nsteps`` : int
+            Maximum number of internally defined steps allowed in one
+            ``tlist`` step.
+        ``max_step`` : float
+            Maximum length of one internal step. When using pulses, it
             should be less than half the width of the thinnest pulse.
 
-        Other options could be supported depending on the integration method,
+        Other options may be supported depending on the integration method,
         see `Integrator <./classes.html#classes-ode>`_.
 
     Returns
     -------
-
-    Simulation:
-       A simulation object storing the parameters and results of the simulation.
-
+    Simulation
+        A Simulation object storing the parameters and results of the
+        simulation.
     """
     system = None
     if isinstance(H, Operator):

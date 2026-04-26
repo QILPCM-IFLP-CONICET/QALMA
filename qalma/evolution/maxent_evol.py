@@ -282,6 +282,7 @@ def adaptive_projected_evolution(
           can not be reached.
         * ``"always"``: update the basis on each step
         * ``"never"``: the basis stays fixed.
+
         Default: adaptive
 
     store_states: bool

@@ -71,6 +71,9 @@ def fn_hij_tensor(basis: List[Operator], sp: Callable, generator: Operator) -> N
 
     For each pair of basis operators (op1, op2), the matrix element is defined
     as:
+
+    .. code-block:: python
+
         Hij = sp(op1, commutator(-1j * generator, op2))
 
 
@@ -79,9 +82,11 @@ def fn_hij_tensor(basis: List[Operator], sp: Callable, generator: Operator) -> N
 
     basis : List[Operator]
         A list of basis operators..
+
     sp : Callable
         A callable that defines a scalar product function between two
         operators.
+
     generator : Operator
         The operator (e.g., Hamiltonian) for which the commutators
         are computed.
@@ -111,11 +116,15 @@ def fn_hij_tensor_with_errors(
 
     For each pair of basis operators (op1, op2), the matrix element is defined
     as:
+
+    .. code-block:: python
+
         Hij = sp(op1, commutator(-1j * generator, op2))
 
 
     Parameters
     ----------
+
     basis : List[Operator]
         A list of basis operators..
     sp : Callable
@@ -127,9 +136,11 @@ def fn_hij_tensor_with_errors(
 
     Returns
     -------
+
     local_h_ij : ndarray
         A real-valued NumPy array representing the Hamiltonian matrix in the
-        given basis.        .
+        given basis.
+
     errors_w : ndarray
         coefficients to span the norm of the orthogonal projection.
 
