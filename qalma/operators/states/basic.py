@@ -32,6 +32,7 @@ class DensityOperatorMixin:
     density operators are handled as positive operators of trace 1.
 
     So, for example,
+
     ```
     rho = .3 * ProductDensityOperator({"site1": qutip.qeye(2) + qutip.sigmax(),
                                        "site2": qutip.qeye(2)})

@@ -19,7 +19,7 @@ from qalma.meanfield import (
 from qalma.operators import (
     Operator,
 )
-from qalma.operators.states import GibbsDensityOperator, GibbsProductDensityOperator
+from qalma.operators.states import DensityOperatorProtocol, GibbsDensityOperator, GibbsProductDensityOperator
 from qalma.projections import n_body_projection
 from qalma.scalarprod import (
     HierarchicalOperatorBasis,
@@ -33,7 +33,28 @@ from .simulation import Simulation
 # function used to safely and robustly map K-states to states
 
 
-def compute_mean_field_state(k, sigma, **kwargs):
+def compute_mean_field_state(k:Operator, sigma:DensityOperatorProtocol, **kwargs)->Tuple[Operator, DensityOperatorProtocol]:
+    """
+    Build the generator associated to the mean field state.
+    
+    Parameters
+    ----------
+
+    k: Operator
+       the generator to be approximated by a OneBodyOperator 
+    sigma: DensityOperatorProtocol
+       A reference state to start the search of a generator
+
+    Return
+    ------
+  
+    generator: Operator
+       The computed generator
+    
+    sigma_result: DensityOperatorProtocol
+       The associated state.
+
+    """
     sigma_result = variational_quadratic_mfa(k, sigma_ref=sigma)
     generator = -sigma_result.logm()
     assert generator.isherm, "generator should be hermitician"

@@ -151,8 +151,7 @@ Output::
 
 Output::
    Exp(H)=
-
-.. math::
+   .. math::
    \left(\begin{array}{cc}0.250 & 0 & 0 & 0\\0 & -0.250 & 0.500 & 0\\0 & 0.500 & -0.250 & 0\\0 & 0 & 0 & 0.250\end{array}\right)_{1[0],1[1]} + \left(\begin{array}{cc}0.250 & 0 & 0 & 0\\0 & -0.250 & 0.500 & 0\\0 & 0.500 & -0.250 & 0\\0 & 0 & 0 & 0.250\end{array}\right)_{1[1],1[2]} + \left(\begin{array}{cc}0.250 & 0 & 0 & 0\\0 & -0.250 & 0.500 & 0\\0 & 0.500 & -0.250 & 0\\0 & 0 & 0 & 0.250\end{array}\right)_{1[2],1[3]} + \left(\begin{array}{cc}0.250 & 0 & 0 & 0\\0 & -0.250 & 0.500 & 0\\0 & 0.500 & -0.250 & 0\\0 & 0 & 0 & 0.250\end{array}\right)_{1[0],1[3]} + \left(\begin{array}{cc}1 & 0\\0 & -1\end{array}\right)_{1[0]} + \left(\begin{array}{cc}1 & 0\\0 & -1\end{array}\right)_{1[1]} + \left(\begin{array}{cc}1 & 0\\0 & -1\end{array}\right)_{1[2]} + \left(\begin{array}{cc}1 & 0\\0 & -1\end{array}\right)_{1[3]}
 
 

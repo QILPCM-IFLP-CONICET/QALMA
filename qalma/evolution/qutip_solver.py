@@ -35,6 +35,7 @@ def qutip_me_solve(
 
     Parameters
     ----------
+
     H : Operator
         Possibly time-dependent system Liouvillian or Hamiltonian as a Qobj or
         QobjEvo. List of [:obj:`.Qobj`, :obj:`.Coefficient`] or callable that
@@ -42,18 +43,22 @@ def qutip_me_solve(
 
     rho0 : Operator
         initial density matrix or state vector (ket).
+
     tlist : *list* / *array*
         list of times for :math:`t`.
+
     c_ops : list[Operator] | dict[Any, Operator]
             | Callable[[float, "Qobj"], Any], optional
         Single collapse operator, or list of collapse operators, or a list
         of Liouvillian superoperators. None (default) is equivalent to an empty
         list.
+
     e_ops : list[Operator] | dict[Any, Operator]
             | Callable[[float, "Qobj"], Any], optional
         Single operator, or list or dict of operators, for which to evaluate
         expectation values. Operator can be Qobj, QobjEvo or callables with the
         signature `f(t: float, state: Qobj) -> Any`.
+
     args : dict[str, Any], optional
         dictionary of parameters for time-dependent Hamiltonians and
         collapse operators.
@@ -93,6 +98,7 @@ def qutip_me_solve(
 
     Returns
     -------
+
     Simulation:
        A simulation object storing the parameters and results of the simulation.
 

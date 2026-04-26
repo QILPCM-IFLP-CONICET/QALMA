@@ -76,6 +76,7 @@ def fn_hij_tensor(basis: List[Operator], sp: Callable, generator: Operator) -> N
 
     Parameters
     ----------
+
     basis : List[Operator]
         A list of basis operators..
     sp : Callable
@@ -87,9 +88,11 @@ def fn_hij_tensor(basis: List[Operator], sp: Callable, generator: Operator) -> N
 
     Returns
     -------
+
     ndarray:
         A real-valued NumPy array representing the Hamiltonian matrix in the
         given basis.
+
     """
 
     generator_j = -1j * generator
