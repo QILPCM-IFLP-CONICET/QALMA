@@ -19,7 +19,11 @@ from qalma.meanfield import (
 from qalma.operators import (
     Operator,
 )
-from qalma.operators.states import DensityOperatorProtocol, GibbsDensityOperator, GibbsProductDensityOperator
+from qalma.operators.states import (
+    GibbsDensityOperator,
+    GibbsProductDensityOperator,
+    ProductDensityOperator,
+)
 from qalma.projections import n_body_projection
 from qalma.scalarprod import (
     HierarchicalOperatorBasis,
@@ -33,25 +37,27 @@ from .simulation import Simulation
 # function used to safely and robustly map K-states to states
 
 
-def compute_mean_field_state(k:Operator, sigma:DensityOperatorProtocol, **kwargs)->Tuple[Operator, DensityOperatorProtocol]:
+def compute_mean_field_state(
+    k: Operator, sigma: ProductDensityOperator, **kwargs
+) -> Tuple[Operator, ProductDensityOperator]:
     """
     Build the generator associated to the mean field state.
-    
+
     Parameters
     ----------
 
     k: Operator
-       the generator to be approximated by a OneBodyOperator 
-    sigma: DensityOperatorProtocol
+       the generator to be approximated by a OneBodyOperator
+    sigma: ProductDensityOperator
        A reference state to start the search of a generator
 
     Return
     ------
-  
+
     generator: Operator
        The computed generator
-    
-    sigma_result: DensityOperatorProtocol
+
+    sigma_result: ProductDensityOperator
        The associated state.
 
     """
