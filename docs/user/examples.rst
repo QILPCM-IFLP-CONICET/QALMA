@@ -1,19 +1,35 @@
 Examples
 ========
 
-.. code-block:: python
+The ``examples/`` directory in the repository contains Jupyter notebooks
+that demonstrate QALMA's main features. Below is a short description of
+each; click the link to open the rendered notebook.
 
-   # Load model and build system
-   from qalma.alpsmodels import model_from_alps_xml
-   system = model_from_alps_xml("example.xml")
+.. note::
 
-   # Build Hamiltonian and evolve
-   H = system.build_operator("hamiltonian")
-   from qalma.evolution import evolve
-   result = evolve(H, initial_state=...)
+   The notebooks are not executed during the documentation build
+   (``nbsphinx_execute = "never"``). To run them locally, install QALMA
+   with its optional dependencies and launch Jupyter from the repository
+   root.
 
-   # Compute mean-field Gibbs state
-   from qalma.operators.states.meanfield import compute_gibbs_state
-   gibbs = compute_gibbs_state(H, beta=1.0)
+.. toctree::
+   :maxdepth: 1
+   :glob:
 
-# Add more end-to-end or advanced examples as needed.
+   ../../examples/*.ipynb
+
+If no notebooks appear above, copy or symlink the ``examples/`` directory
+into ``docs/examples/`` and rebuild.
+
+Running the examples locally
+----------------------------
+
+.. code-block:: bash
+
+   pip install qalma[dev]
+   cd examples
+   jupyter notebook
+
+.. seealso::
+
+   :doc:`quickstart` for a self-contained introduction without notebooks.
