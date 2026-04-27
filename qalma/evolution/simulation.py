@@ -90,9 +90,30 @@ def store_system(group, system):
 
 
 def store_state(key, state, group, system=None):
+    """
+    Serialize a single state operator into an HDF5 group.
+
+    The state is pickled and stored as a variable-length byte dataset
+    under ``key`` in ``group``, with gzip compression. If ``system`` is
+    provided, the system reference is temporarily detached before pickling
+    to avoid duplicating the system object across every stored state.
+
+    Parameters
+    ----------
+    key : str
+        Dataset name to use within ``group``.
+    state : Operator
+        The density operator or state to store.
+    group : h5py.Group
+        HDF5 group in which the dataset will be created.
+    system : SystemDescriptor or None, optional
+        If provided, the state's system reference is cleared before
+        pickling and restored afterwards, reducing file size.
+    """
     if system is not None:
 
         def serialize_state(rho):
+            """Pickle ``rho`` after temporarily clearing its system reference."""
             state_sys = rho.system
             rho._set_system_(None)
             data = pickle.dumps(rho)
@@ -102,6 +123,7 @@ def store_state(key, state, group, system=None):
     else:
 
         def serialize_state(rho):
+            """Pickle ``rho`` with its system reference intact."""
             return pickle.dumps(rho)
 
     group.create_dataset(
@@ -181,6 +203,22 @@ class Simulation:
 
     @classmethod
     def load(cls, filename: str):
+        """
+        Load a simulation from a file, trying HDF5 first then pickle.
+
+        Attempts to deserialize from an HDF5 file via :meth:`load_hdf5`.
+        If the file is not a valid HDF5 file, falls back to unpickling.
+
+        Parameters
+        ----------
+        filename : str
+            Path to the file to load.
+
+        Returns
+        -------
+        Simulation or None
+            The loaded simulation, or ``None`` if neither format succeeds.
+        """
         try:
             sim = cls.load_hdf5(filename)
         except OSError:
@@ -246,7 +284,25 @@ class SimulationHDF5(Simulation):
     """
 
     class StateList:
+        """
+        Lazy list of states backed by an HDF5 file.
+
+        Provides list-like access (index, iteration, append, extend) to
+        states stored in the ``states`` group of the HDF5 file, loading
+        each state on demand rather than all at once. This avoids saturating
+        memory for long simulations with many stored states.
+        """
+
         def __init__(self, filename, system):
+            """
+            Parameters
+            ----------
+            filename : str
+                Path to the HDF5 file containing the simulation.
+            system : SystemDescriptor
+                System descriptor used to restore state references after
+                unpickling.
+            """
             self.filename = filename
             with h5py.File(filename, "r") as f:
                 self.system = system_from_hdf5(f)
@@ -284,6 +340,14 @@ class SimulationHDF5(Simulation):
                 return len(group)
 
         def append(self, elem):
+            """
+            Append a state to the end of the HDF5 states group.
+
+            Parameters
+            ----------
+            elem : Operator
+                The state to append.
+            """
             with h5py.File(self.filename, "r+") as f:
                 group = f.get("states", None)
                 if group is None:
@@ -296,6 +360,14 @@ class SimulationHDF5(Simulation):
                 self[key] = elem
 
         def extend(self, elems):
+            """
+            Append multiple states to the HDF5 states group.
+
+            Parameters
+            ----------
+            elems : Iterable[Operator]
+                The states to append, in order.
+            """
             with h5py.File(self.filename, "r+") as f:
                 group = f["states"]
                 if group is None:
