@@ -51,6 +51,23 @@ class QuadraticFormOperator(Operator):
     offset: Optional[Operator]
 
     def __init__(self, basis, weights, system=None, linear_term=None, offset=None):
+        """
+        Parameters
+        ----------
+        basis : tuple[Operator, ...]
+            Tuple of Hermitian one-body operators :math:`Q_\\alpha`. Each
+            contributes a term :math:`w_\\alpha Q_\\alpha^2` to the operator.
+        weights : tuple[complex, ...]
+            Scalar weights :math:`w_\\alpha`, one per basis element.
+        system : SystemDescriptor or None, optional
+            Descriptor of the full lattice system. Inferred from ``basis``
+            if not provided.
+        linear_term : OneBodyOperator, LocalOperator, ScalarOperator, or None, optional
+            The one-body part :math:`L` of the operator. Default is ``None``.
+        offset : Operator or None, optional
+            Additional remainder term :math:`\\delta Q` not captured by the
+            quadratic or linear parts. Default is ``None``.
+        """
         # If the system is not given, infer it from the terms
         if offset:
             offset = offset.simplify()
@@ -254,6 +271,18 @@ class QuadraticFormOperator(Operator):
         return result
 
     def dag(self):
+        """
+        Return the adjoint :math:`O^\\dagger`.
+
+        Conjugates the weights and takes the adjoint of the linear term
+        and offset. The basis elements are assumed Hermitian so they are
+        unchanged.
+
+        Returns
+        -------
+        QuadraticFormOperator
+            The adjoint operator.
+        """
         # pylint: disable=protected-access
         linear_term = self.linear_term
         linear_term = None if linear_term is None else linear_term.dag()
@@ -270,6 +299,18 @@ class QuadraticFormOperator(Operator):
         return result
 
     def flat(self):
+        """
+        Convert to a flat sum of product operators.
+
+        Delegates to :meth:`as_sum_of_products` and then flattens the
+        resulting :class:`~qalma.operators.arithmetic.SumOperator`.
+
+        Returns
+        -------
+        Operator
+            A flat :class:`~qalma.operators.arithmetic.SumOperator` with
+            no nested sums.
+        """
         return self.as_sum_of_products().flat()
 
     @property
@@ -288,6 +329,14 @@ class QuadraticFormOperator(Operator):
 
     @property
     def isherm(self):
+        """
+        ``True`` if the operator is Hermitian.
+
+        Checks that all weights are real and that the linear term and offset
+        (if present) are Hermitian. If inconclusive, converts to a sum of
+        products and delegates the check. The result is cached in
+        ``_isherm``.
+        """
         isherm = self._isherm
         if isherm is not None:
             return isherm
@@ -316,11 +365,31 @@ class QuadraticFormOperator(Operator):
         return isherm
 
     def n_body_sector(self) -> int:
+        """
+        Return the n-body sector of the operator.
+
+        Returns
+        -------
+        int
+            Always at least ``2`` (the quadratic terms). Returns
+            ``max(2, offset.n_body_sector())`` if an offset is present.
+        """
         if self.offset is None:
             return 2
         return max(2, self.offset.n_body_sector())
 
     def num_terms(self) -> int:
+        """
+        Return the total number of terms in the operator.
+
+        Counts the quadratic terms plus any terms in the linear part and
+        offset.
+
+        Returns
+        -------
+        int
+            Total number of summands.
+        """
         num_terms = len(self.weights)
         if self.linear_term:
             num_terms += self.linear_term.num_terms()
@@ -329,7 +398,23 @@ class QuadraticFormOperator(Operator):
         return num_terms
 
     def partial_trace(self, sites: Union[frozenset, SystemDescriptor]):
+        """
+        Compute the partial trace over the complement of ``sites``.
 
+        Traces out the linear term and offset analytically. For the
+        quadratic terms :math:`w_\\alpha Q_\\alpha^2`, expands each as a
+        product and takes the partial trace term by term.
+
+        Parameters
+        ----------
+        sites : frozenset[str] or SystemDescriptor
+            Sites to *keep*. All other sites are traced out.
+
+        Returns
+        -------
+        Operator
+            The reduced operator on the subsystem defined by ``sites``.
+        """
         if not isinstance(sites, SystemDescriptor):
             sites = self.system.subsystem(sites)
 
@@ -534,6 +619,19 @@ def simplify_quadratic_form(
         changed = True
 
     def simplify_other_terms(term):
+        """
+        Simplify ``term``, optionally projecting onto its Hermitian part.
+
+        Parameters
+        ----------
+        term : Operator or None
+            The term to simplify. Returns ``None`` unchanged.
+
+        Returns
+        -------
+        Operator or None
+            The simplified (and optionally Hermitian-projected) term.
+        """
         nonlocal changed
         if term is None:
             return term

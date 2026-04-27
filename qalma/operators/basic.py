@@ -44,6 +44,7 @@ class Operator:  # pylint: disable=too-many-public-methods
         """Register a function to implement add"""
 
         def register_func(func):
+            """Register ``func`` as the add handler for ``key`` and return it."""
             if isinstance(key[0], (list, tuple)):
                 keys = key
             else:
@@ -67,6 +68,7 @@ class Operator:  # pylint: disable=too-many-public-methods
         """Register a function to implement mul"""
 
         def register_func(func):
+            """Register ``func`` as the mul handler for ``key`` and return it."""
             if isinstance(key[0], (list, tuple)):
                 keys = key
             else:
@@ -421,7 +423,17 @@ class LocalOperator(Operator):
         local_operator,
         system: Optional[SystemDescriptor] = None,
     ):
-        assert isinstance(site, str)
+        """
+        Parameters
+        ----------
+        site : str
+            Name of the site on which this operator acts.
+        local_operator : np.ndarray, Qobj, or scalar
+            The local matrix. Scalars are interpreted as multiples of the
+            site identity.
+        system : SystemDescriptor
+            Descriptor of the full lattice system. Must not be ``None``.
+        """
         assert system is not None
         self.site = site
         if isinstance(local_operator, (int, float, complex)):
@@ -457,6 +469,14 @@ class LocalOperator(Operator):
         return to_qobj(self.operator.copy())
 
     def acts_over(self) -> frozenset:
+        """
+        Return the singleton set containing the site of this operator.
+
+        Returns
+        -------
+        frozenset[str]
+            ``frozenset({self.site})``.
+        """
         return frozenset((self.site,))
 
     def dag(self):
@@ -469,6 +489,14 @@ class LocalOperator(Operator):
         return LocalOperator(self.site, operator.T.conj(), self.system)
 
     def expm(self):
+        """
+        Return the matrix exponential :math:`e^O` of the local operator.
+
+        Returns
+        -------
+        LocalOperator
+            A local operator on the same site with matrix :math:`e^O`.
+        """
         return LocalOperator(self.site, self.operator_qutip.expm(), self.system)
 
     def hermitician_part(self):
@@ -480,6 +508,14 @@ class LocalOperator(Operator):
         return LocalOperator(self.site, op, self.system)
 
     def inv(self):
+        """
+        Return the inverse operator :math:`O^{-1}`.
+
+        Returns
+        -------
+        LocalOperator
+            A local operator on the same site with matrix :math:`O^{-1}`.
+        """
         operator = self.operator_qutip
         system = self.system
         site = self.site
@@ -491,14 +527,29 @@ class LocalOperator(Operator):
 
     @cached_property
     def isherm(self) -> bool:
+        """``True`` if the local matrix is Hermitian."""
         return ishermitian(self.operator)
 
     @cached_property
     def isdiagonal(self) -> bool:
+        """``True`` if the local matrix is diagonal."""
         return is_diagonal_op(self.operator)
 
     def logm(self):
+        """
+        Return the matrix logarithm of the local operator.
+
+        Computed via eigendecomposition. Eigenvalues below ``1e-50`` are
+        clamped to avoid numerical divergence in the logarithm.
+
+        Returns
+        -------
+        LocalOperator
+            A local operator on the same site with matrix :math:`\\log O`.
+        """
+
         def log_qutip(loc_op):
+            """Compute matrix log via eigendecomposition, clamping near-zero eigenvalues."""
             evals, evecs = loc_op.eigenstates()
             evals[abs(evals) < 1.0e-50] = 1.0e-50
             return sum(
@@ -526,6 +577,25 @@ class LocalOperator(Operator):
         return result
 
     def partial_trace(self, sites: Union[frozenset, SystemDescriptor]):
+        """
+        Compute the partial trace over the complement of ``sites``.
+
+        If the operator's site is not in ``sites``, returns a
+        :class:`~qalma.operators.product.ScalarOperator` with value
+        :math:`\\mathrm{Tr}(O) \\cdot \\prod_{j \\notin \\{i\\} \\cup \\text{sites}} d_j`.
+        Otherwise returns a :class:`LocalOperator` scaled by the same
+        dimensional prefactor.
+
+        Parameters
+        ----------
+        sites : frozenset[str] or SystemDescriptor
+            Sites to *keep*. All other sites are traced out.
+
+        Returns
+        -------
+        Operator
+            The reduced operator on the subsystem defined by ``sites``.
+        """
         # pylint: disable=import-outside-toplevel
 
         system = self.system
@@ -588,6 +658,19 @@ class LocalOperator(Operator):
         return ScalarOperator(scalar_val, system)
 
     def simplify(self):
+        """
+        Return a simpler equivalent operator if the local matrix is scalar.
+
+        If the local matrix is a multiple of the identity, returns a
+        :class:`~qalma.operators.product.ScalarOperator`. Otherwise returns
+        ``self`` unchanged.
+
+        Returns
+        -------
+        Operator
+            A :class:`~qalma.operators.product.ScalarOperator` if the matrix
+            is proportional to the identity, otherwise ``self``.
+        """
         # TODO: reduce multiples of the identity to ScalarOperators
         # pylint: disable=import-outside-toplevel
         operator = self.operator
@@ -633,6 +716,15 @@ class LocalOperator(Operator):
         return result
 
     def tr(self):
+        """
+        Return the trace of the operator over the full system.
+
+        Returns
+        -------
+        complex
+            :math:`\\mathrm{Tr}(O) \\cdot \\prod_{j \\neq i} d_j`, where
+            the product runs over all sites not acted on by this operator.
+        """
         result = self.partial_trace(frozenset())
         return result.prefactor
 

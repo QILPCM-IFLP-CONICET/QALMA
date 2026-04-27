@@ -96,6 +96,25 @@ def model_from_alps_xml(filename=MODEL_LIB_FILE, name="spin", parms=None):
         parms = {}
 
     def process_basis(node, parms):
+        """
+        Parse a ``<BASIS>`` node and return a :class:`ModelDescriptor`.
+
+        Processes parameters, constraints, site bases, and pre-populates
+        empty bond and global operator descriptors.
+
+        Parameters
+        ----------
+        node : xml.etree.ElementTree.Element
+            The ``<BASIS>`` XML node to parse.
+        parms : dict
+            Parameters inherited from the parent context.
+
+        Returns
+        -------
+        ModelDescriptor
+            A descriptor with site bases, constraints, and empty operator
+            tables.
+        """
         parms = process_parms(node, parms)
         constraints = {}
         sitebasis = {}
@@ -150,6 +169,25 @@ def model_from_alps_xml(filename=MODEL_LIB_FILE, name="spin", parms=None):
         return operators
 
     def process_bond_operators(operators: dict, _parms: dict):
+        """
+        Populate ``operators`` with all ``<BONDOPERATOR>`` nodes in the model.
+
+        Each bond operator is stored as a string expression with source and
+        target placeholders (``@src``, ``@dst``, etc.) ready for later
+        evaluation against concrete site operators.
+
+        Parameters
+        ----------
+        operators : dict
+            Dictionary to populate in-place with bond operator expressions.
+        _parms : dict
+            Parameters (currently unused, reserved for future use).
+
+        Returns
+        -------
+        dict
+            The updated ``operators`` dictionary.
+        """
         for node in models.findall("./BONDOPERATOR"):
             descriptor = node.attrib
             name = descriptor["name"]
@@ -165,6 +203,25 @@ def model_from_alps_xml(filename=MODEL_LIB_FILE, name="spin", parms=None):
         return operators
 
     def process_global_operators(operators: dict, parms: dict):
+        """
+        Populate ``operators`` with all ``<GLOBALOPERATOR>`` nodes.
+
+        Each global operator is stored as a dict with keys
+        ``"site terms"``, ``"bond terms"``, and ``"loop terms"``,
+        each containing a list of processed term descriptors.
+
+        Parameters
+        ----------
+        operators : dict
+            Dictionary to populate in-place.
+        parms : dict
+            Parameters used when processing individual terms.
+
+        Returns
+        -------
+        dict
+            The updated ``operators`` dictionary.
+        """
         for node in models.findall("./GLOBALOPERATOR"):
             descriptor = node.attrib
             name = descriptor["name"]
@@ -188,6 +245,25 @@ def model_from_alps_xml(filename=MODEL_LIB_FILE, name="spin", parms=None):
         return operators
 
     def process_site_term(node, parms):
+        """
+        Parse a ``<SITETERM>`` node into a term descriptor dict.
+
+        Returns a dict with keys ``"expr"`` (the operator expression with
+        site placeholder replaced by ``_local``), ``"type"`` (the site
+        type), and ``"parms"`` (parameters local to this term).
+
+        Parameters
+        ----------
+        node : xml.etree.ElementTree.Element
+            The ``<SITETERM>`` XML node.
+        parms : dict
+            Parameters inherited from the parent context.
+
+        Returns
+        -------
+        dict
+            Term descriptor with keys ``"expr"``, ``"type"``, ``"parms"``.
+        """
         parms_overwrite = process_parms(node, parms)
         parms = {
             key: val
@@ -205,6 +281,24 @@ def model_from_alps_xml(filename=MODEL_LIB_FILE, name="spin", parms=None):
         return {"expr": expr, "type": node_type, "parms": parms}
 
     def process_bondterm(node, parms):
+        """
+        Parse a ``<BONDTERM>`` node into a term descriptor dict.
+
+        Source and target site placeholders are replaced by ``@src`` and
+        ``@dst`` tokens for later evaluation.
+
+        Parameters
+        ----------
+        node : xml.etree.ElementTree.Element
+            The ``<BONDTERM>`` XML node.
+        parms : dict
+            Parameters inherited from the parent context.
+
+        Returns
+        -------
+        dict
+            Term descriptor with keys ``"expr"``, ``"type"``, ``"parms"``.
+        """
         parms_overwrite = process_parms(node, parms)
         parms = {
             key: val
@@ -226,6 +320,24 @@ def model_from_alps_xml(filename=MODEL_LIB_FILE, name="spin", parms=None):
         return {"expr": expr, "type": bond_type, "parms": parms}
 
     def process_loopterm(node, parms):
+        """
+        Parse a ``<LOOPTERM>`` node into a term descriptor dict.
+
+        Vertex name placeholders are replaced by ``@[vertex_name]`` tokens.
+
+        Parameters
+        ----------
+        node : xml.etree.ElementTree.Element
+            The ``<LOOPTERM>`` XML node.
+        parms : dict
+            Parameters inherited from the parent context.
+
+        Returns
+        -------
+        dict
+            Term descriptor with keys ``"expr"``, ``"type"``,
+            ``"indices"``, and ``"parms"``.
+        """
         parms_overwrite = process_parms(node, parms)
         parms = {
             key: val
@@ -245,6 +357,28 @@ def model_from_alps_xml(filename=MODEL_LIB_FILE, name="spin", parms=None):
         return result
 
     def process_sitebasis(node, parms) -> dict:
+        """
+        Parse a ``<SITEBASIS>`` node into a local basis descriptor.
+
+        Builds the local Hilbert space from the quantum number definitions,
+        constructs the matrix representation of every site operator using
+        the quantum number selection rules, and loads any additional
+        ``<SITEOPERATOR>`` entries compatible with this basis.
+
+        Parameters
+        ----------
+        node : xml.etree.ElementTree.Element
+            The ``<SITEBASIS>`` XML node.
+        parms : dict
+            Parameters inherited from the parent context.
+
+        Returns
+        -------
+        dict
+            A site basis descriptor with keys ``"name"``, ``"qn"``,
+            ``"dimension"``, ``"identity"``, ``"operators"``,
+            ``"parms"``, and ``"localstates"``.
+        """
         basis_name = node.attrib.get("name", "")
         parms = process_parms(node, parms)
         quantumnumbers = {}
@@ -334,6 +468,26 @@ def model_from_alps_xml(filename=MODEL_LIB_FILE, name="spin", parms=None):
         }
 
     def process_hamiltonian(ham, parms):
+        """
+        Parse a ``<HAMILTONIAN>`` node and return a :class:`ModelDescriptor`.
+
+        Processes the associated ``<BASIS>``, then collects all site, bond,
+        and loop terms and stores them under the ``"Hamiltonian"`` key of
+        the descriptor's global operators.
+
+        Parameters
+        ----------
+        ham : xml.etree.ElementTree.Element
+            The ``<HAMILTONIAN>`` XML node.
+        parms : dict
+            Parameters inherited from the caller.
+
+        Returns
+        -------
+        ModelDescriptor
+            A fully populated descriptor including the Hamiltonian term
+            lists and updated parameters.
+        """
         parms = process_parms(ham, parms)
         site_terms = []
         bond_terms = []
@@ -401,6 +555,28 @@ class ModelDescriptor:
         parms: Optional[dict] = None,
         name: Optional[str] = "",
     ):
+        """
+        Parameters
+        ----------
+        site_basis : dict
+            Mapping from site-type name to the local basis descriptor dict
+            produced by ``process_sitebasis``. Each value contains the
+            keys ``"dimension"``, ``"identity"``, ``"operators"``, etc.
+        constraints : dict or None, optional
+            Global quantum number constraints, e.g.
+            ``{"Sz": "0"}``. Default is an empty dict.
+        bond_op_descr : dict or None, optional
+            Bond operator expression descriptors keyed by operator name.
+            Default is an empty dict.
+        global_op_descr : dict or None, optional
+            Global operator descriptors (site terms, bond terms, loop terms)
+            keyed by operator name. Default is an empty dict.
+        parms : dict or None, optional
+            Model parameters (e.g. ``{"Jz": 1.0, "S": 0.5}``).
+            Default is an empty dict.
+        name : str or None, optional
+            Human-readable name of the model. Default is ``""``.
+        """
         self.site_basis = site_basis
         self.constraints = constraints or {}
         self.bond_ops = bond_op_descr or {}

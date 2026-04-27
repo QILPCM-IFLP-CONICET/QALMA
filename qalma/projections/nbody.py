@@ -73,6 +73,25 @@ def np_prod(a, initial=None):
 
 
 def one_body_product_projection(full_operator, sigma_ref):
+    """
+    Project a :class:`~qalma.operators.product.ProductOperator` onto the
+    one-body operator subspace relative to ``sigma_ref``.
+
+    Delegates to :func:`_project_product_operator_to_one_body`.
+
+    Parameters
+    ----------
+    full_operator : ProductOperator
+        The many-body product operator to project.
+    sigma_ref : ProductDensityOperator or None
+        Reference product state defining the projection. If ``None``,
+        the maximally mixed state is assumed.
+
+    Returns
+    -------
+    Operator
+        The one-body approximation of ``full_operator``.
+    """
     return _project_product_operator_to_one_body(full_operator, sigma_ref)
 
 
@@ -116,6 +135,25 @@ def one_body_qutip_projection(
     full_operator: QutipOperator,
     state_ref: Optional[ProductDensityOperator] = None,
 ):
+    """
+    Project a :class:`~qalma.operators.qutip.QutipOperator` onto the
+    one-body operator subspace relative to ``state_ref``.
+
+    Delegates to :func:`_project_qutip_operator_to_one_body`.
+
+    Parameters
+    ----------
+    full_operator : QutipOperator
+        The many-body QuTiP operator to project.
+    state_ref : ProductDensityOperator or None, optional
+        Reference product state defining the projection. If ``None``,
+        the maximally mixed state is assumed.
+
+    Returns
+    -------
+    Operator
+        The one-body approximation of ``full_operator``.
+    """
     return _project_qutip_operator_to_one_body(full_operator, state_ref)
 
 
@@ -251,6 +289,27 @@ def n_body_product_projection(
     n_max: int,
     sigma_ref: Optional[ProductDensityOperator],
 ) -> Operator:
+    """
+    Project a :class:`~qalma.operators.product.ProductOperator` onto the
+    n-body operator subspace relative to ``sigma_ref``.
+
+    Delegates to :func:`_project_product_operator_recursive`.
+
+    Parameters
+    ----------
+    full_operator : ProductOperator
+        The many-body product operator to project.
+    n_max : int
+        Maximum number of sites in each term of the projected operator.
+    sigma_ref : ProductDensityOperator or None
+        Reference product state defining the projection. If ``None``,
+        the maximally mixed state is assumed.
+
+    Returns
+    -------
+    Operator
+        The n-body approximation of ``full_operator``.
+    """
     return _project_product_operator_recursive(full_operator, n_max, sigma_ref)
 
 
@@ -383,6 +442,28 @@ def _project_qutip_operator_combinatorial(
 
 
 def n_body_qutip_projection(full_operator: QutipOperator, n_max=2, sigma_ref=None):
+    """
+    Project a :class:`~qalma.operators.qutip.QutipOperator` onto the
+    n-body operator subspace relative to ``sigma_ref``.
+
+    Delegates to :func:`_project_qutip_operator_recursive`.
+
+    Parameters
+    ----------
+    full_operator : QutipOperator
+        The many-body QuTiP operator to project.
+    n_max : int, optional
+        Maximum number of sites in each term of the projected operator.
+        Default is ``2``.
+    sigma_ref : ProductDensityOperator or None, optional
+        Reference product state defining the projection. If ``None``,
+        the maximally mixed state is assumed.
+
+    Returns
+    -------
+    Operator
+        The n-body approximation of ``full_operator``.
+    """
     return _project_qutip_operator_recursive(full_operator, n_max, sigma_ref)
 
 

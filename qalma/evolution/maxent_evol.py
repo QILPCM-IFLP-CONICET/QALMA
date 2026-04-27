@@ -19,7 +19,11 @@ from qalma.meanfield import (
 from qalma.operators import (
     Operator,
 )
-from qalma.operators.states import GibbsDensityOperator, GibbsProductDensityOperator
+from qalma.operators.states import (
+    GibbsDensityOperator,
+    GibbsProductDensityOperator,
+    ProductDensityOperator,
+)
 from qalma.projections import n_body_projection
 from qalma.scalarprod import (
     HierarchicalOperatorBasis,
@@ -33,14 +37,51 @@ from .simulation import Simulation
 # function used to safely and robustly map K-states to states
 
 
-def compute_mean_field_state(k, sigma, **kwargs):
+def compute_mean_field_state(
+    k: Operator, sigma: ProductDensityOperator, **kwargs
+) -> Tuple[Operator, ProductDensityOperator]:
+    """
+    Build the generator associated to the mean field state.
+
+    Parameters
+    ----------
+
+    k: Operator
+       the generator to be approximated by a OneBodyOperator
+    sigma: ProductDensityOperator
+       A reference state to start the search of a generator
+
+    Return
+    ------
+
+    generator: Operator
+       The computed generator
+
+    sigma_result: ProductDensityOperator
+       The associated state.
+
+    """
     sigma_result = variational_quadratic_mfa(k, sigma_ref=sigma)
     generator = -sigma_result.logm()
     assert generator.isherm, "generator should be hermitician"
     return generator, sigma_result
 
 
-def compute_n_body_sector(k: Operator):
+def compute_n_body_sector(k: Operator) -> int:
+    """
+    Return the n-body sector of the operator ``k``.
+
+    Parameters
+    ----------
+    k : Operator
+        The operator whose n-body sector is queried.
+
+    Returns
+    -------
+    int
+        The maximum number of sites on which any term of ``k`` acts
+        non-trivially.
+    """
     return k.n_body_sector()
 
 
@@ -80,6 +121,44 @@ def occupation_factor(phi: NDArray, threshold: float = 0.995) -> int:
 def update_basis(
     k, sigma, ham, order, n_body, extra_observables, k_ref=None
 ) -> Tuple[OperatorBasis, Operator, Operator]:
+    """
+    Build a hierarchical operator basis adapted to the current state ``k``.
+
+    Computes the mean-field approximation of ``k`` to define a reference
+    generator ``k_ref``, then constructs a :class:`HierarchicalOperatorBasis`
+    using the covariant scalar product with respect to ``sigma``. The basis
+    is projected onto the ``n_body`` sector at each hierarchical level.
+
+    Parameters
+    ----------
+    k : Operator
+        The current generator :math:`K(t)`.
+    sigma : ProductDensityOperator
+        The current reference state, used to define the scalar product
+        and the mean-field approximation.
+    ham : Operator
+        The Hamiltonian, used to build the hierarchical basis via iterated
+        commutators.
+    order : int
+        The order of the hierarchical basis (number of commutator levels).
+    n_body : int
+        Maximum n-body sector for the projection. Negative values disable
+        the projection.
+    extra_observables : Iterable[Operator]
+        Additional operators to append to the basis.
+    k_ref : Operator or None, optional
+        If provided, skip the mean-field computation and use this as the
+        reference generator directly.
+
+    Returns
+    -------
+    new_basis : OperatorBasis
+        The updated hierarchical basis.
+    sigma : ProductDensityOperator
+        The updated mean-field reference state.
+    k_ref_new : Operator
+        The reference generator used to seed the basis.
+    """
     if k_ref is None:
         k_ref_new, sigma = compute_mean_field_state(k, sigma)
         k_ref_new = k_ref_new + sigma.expect(k - k_ref_new)
@@ -111,6 +190,44 @@ def update_basis(
 def update_basis_heavy(
     k, sigma, ham, order, n_body, extra_observables, k_ref=None
 ) -> Tuple[OperatorBasis, Operator, Operator]:
+    """
+    Build a hierarchical basis with a two-pass n-body projection.
+
+    Like :func:`update_basis` but applies the n-body projection as a
+    post-processing step over the full (unprojected) hierarchical basis,
+    reusing the pre-computed Gram matrix and generator matrix. This avoids
+    recomputing expensive tensor contractions while still enforcing the
+    n-body truncation.
+
+    Parameters
+    ----------
+    k : Operator
+        The current generator :math:`K(t)`.
+    sigma : ProductDensityOperator
+        The current reference state, used to define the scalar product
+        and the mean-field approximation.
+    ham : Operator
+        The Hamiltonian, used to build the hierarchical basis via iterated
+        commutators.
+    order : int
+        The order of the hierarchical basis (number of commutator levels).
+    n_body : int
+        Maximum n-body sector for the second-pass projection.
+    extra_observables : Iterable[Operator]
+        Additional operators to append to the basis.
+    k_ref : Operator or None, optional
+        If provided, skip the mean-field computation and use this as the
+        reference generator directly.
+
+    Returns
+    -------
+    new_basis : OperatorBasis
+        The updated basis with n-body projection applied.
+    sigma : ProductDensityOperator
+        The updated mean-field reference state.
+    k_ref_new : Operator
+        The reference generator used to seed the basis.
+    """
     if k_ref is None:
         k_ref_new, sigma = compute_mean_field_state(k, sigma)
         k_ref_new = k_ref_new + sigma.expect(k - k_ref_new)
@@ -156,6 +273,49 @@ def update_basis_heavy(
 def update_basis_light(
     k, sigma, ham, order, n_body, extra_observables, k_ref=None
 ) -> Tuple[OperatorBasis, Operator, Operator]:
+    """
+    Build a hierarchical basis seeded from the mean-field approximation.
+
+    Lighter alternative to :func:`update_basis`: constructs the
+    :class:`HierarchicalOperatorBasis` using ``k_ref`` (the mean-field
+    approximation of ``k``) as the seed instead of ``k`` itself, and
+    omits the per-level n-body projection. The current generator ``k``
+    is prepended to the basis as an extra element.
+
+    This trades accuracy for speed: the basis adapts to the mean-field
+    structure rather than the full generator, which is cheaper to build
+    but may require more basis updates to maintain accuracy.
+
+    Parameters
+    ----------
+    k : Operator
+        The current generator :math:`K(t)`.
+    sigma : ProductDensityOperator
+        The current reference state, used to define the scalar product
+        and the mean-field approximation.
+    ham : Operator
+        The Hamiltonian, used to build the hierarchical basis via iterated
+        commutators.
+    order : int
+        The order of the hierarchical basis (number of commutator levels).
+    n_body : int
+        Maximum n-body sector (passed for interface compatibility; not used
+        for per-level projection in this variant).
+    extra_observables : Iterable[Operator]
+        Additional operators to prepend to the basis alongside ``k``.
+    k_ref : Operator or None, optional
+        If provided, skip the mean-field computation and use this as the
+        reference generator directly.
+
+    Returns
+    -------
+    new_basis : OperatorBasis
+        The updated hierarchical basis seeded from ``k_ref``.
+    sigma : ProductDensityOperator
+        The updated mean-field reference state.
+    k_ref_new : Operator
+        The reference generator used to seed the basis.
+    """
     if k_ref is None:
         k_ref_new, sigma = compute_mean_field_state(k, sigma)
         k_ref_new = k_ref_new + sigma.expect(k - k_ref_new)
@@ -208,18 +368,24 @@ def adaptive_projected_evolution(
 
     as a linear combination of a an operator basis
 
-    k = sum phi_a(t) Q_a
+    .. math::
+
+        k = sum phi_a(t) Q_a
 
     chosen adaptively along the evolution.
 
     Parameters
     ----------
+
     ham : Operator
         The Hamiltonian operator
+
     k0 : Operator
         The initial condition
+
     t_span: np.array
         the times for with the evolution is computed
+
     order:
         the order of the solution
 
@@ -244,18 +410,23 @@ def adaptive_projected_evolution(
 
     update_condition: str (case insensitive)
         The condition to update the basis. One of
-        * `"adaptive"` (default) update the basis when the accuracy goal
+
+        * ``"adaptive"`` (default) update the basis when the accuracy goal
           can not be reached.
-        * `"always"`: update the basis on each step
-        * `"never"` : the basis stays fixed.
+        * ``"always"``: update the basis on each step
+        * ``"never"``: the basis stays fixed.
+
         Default: adaptive
+
     store_states: bool
         If True, always store the states.
 
     Returns
     -------
+
     Simulation:
         A Simulation object storing the results of the simulation.
+
     """
     checkpoint_name = f"__adaptative_{order}_{n_body}_{uuid.uuid4()}.pkl"
     t_0 = t_span[0]
@@ -318,6 +489,7 @@ def adaptive_projected_evolution(
     if e_ops is None:
 
         def call_on_success_evol(t, k):
+            """Store the state ``k`` at time ``t``."""
             states.append(k)
 
     elif hasattr(e_ops, "__call__"):
@@ -327,6 +499,7 @@ def adaptive_projected_evolution(
             e_ops = {pos: e_op for pos, e_op in enumerate(cast(Iterable, e_ops))}
 
         def call_on_success_evol(t, k):
+            """Evaluate observables at time ``t`` and optionally store ``k``."""
             curr_e_ops = GibbsDensityOperator(k).expect(e_ops)
             for key, val in curr_e_ops.items():
                 expect_ops.setdefault(key, []).append(val)
@@ -335,6 +508,7 @@ def adaptive_projected_evolution(
 
     ####  Basis update ########
     def call_update_basis(local_evol_parms) -> bool:
+        """Update the basis and reference state in ``local_evol_parms``."""
         k_t = local_evol_parms["k_t"].simplify()
         start_basis_time = datetime.now()
         basis, sigma_ref, k_ref = basis_update_callback(
@@ -534,8 +708,45 @@ def projected_evolution(ham, k0, t_span, order, n_body: int = -1) -> Simulation:
 
 
 def trim_and_project_function(sigma, n_body, tol=1e-6):
+    """
+    Build a projection function that trims and projects operators.
+
+    Returns a callable that, given an operator, first projects it onto the
+    ``n_body`` sector and then removes terms whose contribution is below
+    ``tol`` relative to the scalar product defined by ``sigma``.
+
+    Parameters
+    ----------
+    sigma : ProductDensityOperator
+        Reference state defining the covariant scalar product used for
+        trimming.
+    n_body : int
+        Maximum n-body sector for the projection.
+    tol : float, optional
+        Tolerance for trimming small terms. Default is ``1e-6``.
+
+    Returns
+    -------
+    Callable[[Operator], Operator]
+        A function that accepts an :class:`Operator` and returns its
+        projected and trimmed version.
+    """
 
     def trim_and_project(op_b):
+        """
+        Project ``op_b`` onto the n-body sector and trim small terms.
+
+        Parameters
+        ----------
+        op_b : Operator
+            The operator to project and trim.
+
+        Returns
+        -------
+        Operator
+            The projected and trimmed operator, enforcing Hermiticity if
+            the input was Hermitian.
+        """
         print(
             "   trim and project ",
             op_b.num_terms(),

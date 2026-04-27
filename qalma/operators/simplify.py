@@ -105,9 +105,12 @@ def group_terms_by_blocks(operator: Operator, fn: Optional[Callable] = None):
     simplifications.
 
     For example
-    ```
-    group_terms_by_blocks(operator, lambda op:op.to_qutip_operator())
-    ```
+
+
+    .. codeblock:: python
+
+        group_terms_by_blocks(operator, lambda op:op.to_qutip_operator())
+
     convert these many-body terms into Qutip operators,
     which for small blocks could provide a more efficient
     representation.

@@ -116,21 +116,28 @@ def gram_matrix_serial(basis, sp: Callable):
     Computes the Gram matrix of a given operator basis using a scalar product.
 
     The Gram matrix is symmetric and defined as:
+
+    .. code-block:: python
+
         Gij = sp(op1, op2)
-    where `sp` is the scalar product function and `op1, op2` are operators from
+
+    where ``sp`` is the scalar product function and `op1, op2` are operators from
     the basis.
 
     Parameters
     ----------
 
-        basis: A list of basis operators.
-        sp: A callable that defines a scalar product function between two
-        operators.
+    basis: A list of basis operators.
+
+    sp: A callable that defines a scalar product function between two
+    operators.
 
     Return
     ------
-        A symmetric NumPy array representing the Gram matrix, with entries
-        rounded to 14 decimal places.
+
+    A symmetric NumPy array representing the Gram matrix, with entries
+    rounded to 14 decimal places.
+
     """
     if hasattr(sp, "compute_gram_matrix"):  # and all(b_i.isherm for b_i in basis):
         return sp.compute_gram_matrix(basis)
