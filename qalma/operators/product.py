@@ -33,7 +33,28 @@ from .basic import LocalOperator, Operator
 
 
 class ProductOperator(Operator):
-    """Product of operators acting over different sites"""
+    """
+    Tensor product of local operators acting on different sites.
+
+    Represents an operator of the form
+
+    .. math::
+
+        \\lambda \\bigotimes_{i \\in S} O_i
+
+    where :math:`\\lambda` is a scalar prefactor, :math:`S` is a subset of
+    lattice sites, and each :math:`O_i` is a local operator acting on site
+    :math:`i`. Sites not in :math:`S` are implicitly acted on by the identity.
+
+    Attributes
+    ----------
+    prefactor : complex
+        Global scalar prefactor :math:`\\lambda`.
+    site_factors : dict[str, np.ndarray]
+        Mapping from site name to local operator matrix (numpy array).
+    system : SystemDescriptor
+        Descriptor of the full lattice system.
+    """
 
     _to_qutip_cache: Dict[Optional[Tuple[str, ...]], Qobj]
     prefactor: complex
@@ -47,6 +68,20 @@ class ProductOperator(Operator):
         system: Optional[SystemDescriptor] = None,
         _qutip_factors: Optional[Dict[str, Qobj]] = None,
     ):
+        """
+        Parameters
+        ----------
+        sites_operators : dict[str, np.ndarray or Qobj or scalar]
+            Mapping from site name to local operator. Scalar values are
+            absorbed into ``prefactor`` and removed from the dict.
+        prefactor : complex, optional
+            Global scalar prefactor. Default is 1.0.
+        system : SystemDescriptor
+            Descriptor of the full lattice system. Must not be ``None``.
+        _qutip_factors : dict[str, Qobj], optional
+            Pre-computed QuTiP representations of the local factors.
+            Used internally to avoid redundant conversions.
+        """
         assert system is not None
         remove_numbers = False
         for site, local_op in sites_operators.items():
@@ -83,6 +118,15 @@ class ProductOperator(Operator):
 
     @cached_property
     def site_factors_qutip(self) -> Dict[str, Qobj]:
+        """
+        QuTiP representations of the local site factors.
+
+        Returns
+        -------
+        dict[str, Qobj]
+            Mapping from site name to the corresponding :class:`qutip.Qobj`
+            local operator. Computed once and cached.
+        """
         return {key: to_qobj(op.copy()) for key, op in self.site_factors.items()}
 
     @cached_property
@@ -122,14 +166,37 @@ class ProductOperator(Operator):
         return complex((a * b.T).sum())
 
     def __bool__(self):
+        """
+        Return ``True`` if the operator is non-zero.
+
+        An operator is considered zero if its prefactor is zero or if any
+        local factor is the zero matrix.
+        """
         return bool(self.prefactor) and all(
             factor.any() for factor in self.site_factors.values()
         )
 
     def __neg__(self):
+        """Return the negation of the operator."""
         return ProductOperator(self.site_factors, -self.prefactor, self.system)
 
     def __pow__(self, exp):
+        """
+        Return the operator raised to the power ``exp``.
+
+        Each local factor is raised independently to ``exp``, and the
+        prefactor is raised to ``exp`` as well.
+
+        Parameters
+        ----------
+        exp : int or float
+            The exponent.
+
+        Returns
+        -------
+        ProductOperator
+            The operator :math:`(\\lambda \\bigotimes O_i)^{\\text{exp}}`.
+        """
         return ProductOperator(
             {s: op**exp for s, op in self.site_factors_qutip.items()},
             self.prefactor**exp,
@@ -167,11 +234,27 @@ class ProductOperator(Operator):
         return "$" + "\\otimes".join(factors_latex) + "$"
 
     def acts_over(self) -> frozenset:
+        """
+        Return the set of sites on which this operator acts non-trivially.
+
+        Returns
+        -------
+        frozenset[str]
+            Site names with a non-identity local factor.
+        """
         return frozenset(site for site in self.site_factors)
 
     def dag(self):
         """
-        Return the adjoint operator
+        Return the adjoint (Hermitian conjugate) of the operator.
+
+        Each local factor is conjugate-transposed and the prefactor is
+        complex-conjugated.
+
+        Returns
+        -------
+        ProductOperator
+            The operator :math:`(\\lambda \\bigotimes O_i)^\\dagger`.
         """
         sites_op_dag = {key: op.T.conj() for key, op in self.site_factors.items()}
         prefactor = self.prefactor
@@ -180,6 +263,18 @@ class ProductOperator(Operator):
         return ProductOperator(sites_op_dag, prefactor, self.system)
 
     def expm(self):
+        """
+        Return the matrix exponential :math:`e^{\\lambda O}`.
+
+        For single-site operators the exponential is computed exactly via
+        :func:`scipy.linalg.expm`. For multi-site operators falls back to
+        the base-class implementation.
+
+        Returns
+        -------
+        Operator
+            The matrix exponential of the operator.
+        """
         sites_op = self.site_factors
         n_ops = len(sites_op)
         if n_ops == 0:
@@ -196,6 +291,18 @@ class ProductOperator(Operator):
         return result
 
     def flat(self):
+        """
+        Reduce the operator to the simplest equivalent type.
+
+        Returns
+        -------
+        ScalarOperator
+            If the operator has no site factors.
+        LocalOperator
+            If the operator acts on exactly one site.
+        ProductOperator
+            Otherwise, returns ``self`` unchanged.
+        """
         nfactors = len(self.site_factors)
         if nfactors == 0:
             return ScalarOperator(self.prefactor, self.system)
@@ -205,6 +312,15 @@ class ProductOperator(Operator):
         return self
 
     def hermitician_part(self):
+        """
+        Return the Hermitian part of the operator, :math:`(O + O^\\dagger)/2`.
+
+        Returns
+        -------
+        Operator
+            The Hermitian part. Returns ``self`` if the operator is already
+            Hermitian.
+        """
         from qalma.operators import SumOperator
 
         if self.isherm:
@@ -219,6 +335,17 @@ class ProductOperator(Operator):
         )
 
     def inv(self):
+        """
+        Return the inverse operator :math:`O^{-1}`.
+
+        Each local factor is inverted independently and the prefactor is
+        reciprocated.
+
+        Returns
+        -------
+        Operator
+            The inverse of the operator.
+        """
         sites_op = self.site_factors_qutip
         system = self.system
         prefactor = self.prefactor
@@ -232,6 +359,12 @@ class ProductOperator(Operator):
 
     @cached_property
     def isherm(self) -> bool:
+        """
+        ``True`` if the operator is Hermitian.
+
+        An operator is Hermitian if all local factors are Hermitian and the
+        prefactor is real (up to ``QALMA_TOLERANCE``).
+        """
         # TODO: check if it worth to check that factors are not hermitician
         # up to a phase factor.
         if not all(ishermitian(loc_op) for loc_op in self.site_factors.values()):
@@ -245,12 +378,31 @@ class ProductOperator(Operator):
 
     @cached_property
     def isdiagonal(self) -> bool:
+        """
+        ``True`` if the operator is diagonal in the site-local basis.
+
+        Returns ``True`` only when every local factor is a diagonal matrix.
+        """
         for factor_op in self.site_factors.values():
             if not is_diagonal_op(factor_op):
                 return False
         return True
 
     def logm(self):
+        """
+        Return the matrix logarithm of the operator.
+
+        Uses the identity :math:`\\log(\\lambda \\bigotimes_i O_i) =
+        \\log\\lambda + \\sum_i \\log O_i` valid when the local factors
+        commute. Each local logarithm is computed via
+        :func:`scipy.linalg.logm`.
+
+        Returns
+        -------
+        Operator
+            The matrix logarithm as a :class:`OneBodyOperator` plus a
+            scalar term.
+        """
         # pylint: disable=import-outside-toplevel
         from qalma.operators.arithmetic import OneBodyOperator
 
@@ -264,8 +416,26 @@ class ProductOperator(Operator):
         return result
 
     def norm(self, ord=None):
-        """The norm of the operator"""
+        """
+        Return the norm of the operator.
 
+        The norm is computed as the product of the prefactor and the local
+        norms. For Frobenius and nuclear norms, an additional factor
+        accounting for the identity contribution from sites not in
+        ``site_factors`` is included.
+
+        Parameters
+        ----------
+        ord : str or None, optional
+            Order of the norm. Supported values are ``None`` (operator norm),
+            ``'fro'`` (Frobenius), and ``'nuc'`` (nuclear). Default is
+            ``None``.
+
+        Returns
+        -------
+        float
+            The norm of the operator.
+        """
         result = self.prefactor
         for op_loc in self.site_factors_qutip.values():
             result *= norm(op_loc, ord)
@@ -286,6 +456,20 @@ class ProductOperator(Operator):
         return result
 
     def partial_trace(self, sites: Union[frozenset, SystemDescriptor]):
+        """
+        Compute the partial trace over the complement of ``sites``.
+
+        Parameters
+        ----------
+        sites : frozenset[str] or SystemDescriptor
+            Sites to *keep*. All other sites are traced out.
+
+        Returns
+        -------
+        Operator
+            The reduced operator acting on the subsystem defined by ``sites``.
+            Returns a :class:`ScalarOperator` if all sites are traced out.
+        """
         full_system_sites = self.system.sites
         dimensions = self.dimensions
 
@@ -327,17 +511,18 @@ class ProductOperator(Operator):
         by the dimension of the subsystem traced out.
 
         Parameters
-        ==========
-        sites: Iterable
+        ----------
+        sites : Iterable[str]
+            Sites to *keep* after the reduction.
+        state : DensityOperator or None, optional
+            State relative to which the reduction is performed. If ``None``,
+            the reduction is the partial trace normalized by the dimension of
+            the traced-out subsystem.
 
-        state: Optional[DensityOperatorProtocol]
-               The state relative to which make the reduction.
-
-        Return
-        ======
-
-        The reduced operator.
-
+        Returns
+        -------
+        Operator
+            The reduced operator acting on the subsystem defined by ``sites``.
         """
         acts_over = self.acts_over()
         prefactor = self.prefactor
@@ -432,10 +617,22 @@ class ProductOperator(Operator):
 
     def to_qutip(self, block: Optional[Tuple[str, ...]] = None):
         """
-        return a qutip object acting over the sites listed in
-        `block`.
-        By default (`block=None`) returns a qutip object
+        Return a QuTiP object acting over the sites listed in ``block``.
+
+        By default (``block=None``) returns a :class:`qutip.Qobj`
         acting over all the sites, in lexicographical order.
+
+        Parameters
+        ----------
+        block : tuple[str, ...] or None, optional
+            Ordered list of site names defining the tensor-product structure
+            of the returned object. Sites not present in ``site_factors``
+            contribute an identity factor. Default is ``None``.
+
+        Returns
+        -------
+        qutip.Qobj
+            Full tensor-product operator over ``block``.
         """
         cached = self._to_qutip_cache.get(block, None)
         if cached is not None:
@@ -475,9 +672,13 @@ class ProductOperator(Operator):
 
     def to_qutip_operator(self) -> Operator:
         """
-        Return a QutipOperator representation.
-        If the operator is scalar, returns a ScalarOperator.
-        Otherwise, returns a QutipOperator.
+        Return a :class:`QutipOperator` representation of this operator.
+
+        Returns
+        -------
+        Operator
+            A :class:`ScalarOperator` if the prefactor or site factors are
+            zero, otherwise a :class:`QutipOperator`.
         """
         prefactor = self.prefactor
         if not (prefactor and self.site_factors_qutip):
@@ -485,11 +686,33 @@ class ProductOperator(Operator):
         return super().to_qutip_operator()
 
     def tr(self):
+        """
+        Return the trace of the operator over the full system.
+
+        Returns
+        -------
+        complex
+            The trace :math:`\\mathrm{Tr}(\\lambda \\bigotimes_i O_i)`.
+        """
         result = self.partial_trace(frozenset())
         return result.prefactor
 
     def tidyup(self, atol=None):
-        """remove tiny elements of the operator"""
+        """
+        Return a copy of the operator with small matrix elements zeroed out.
+
+        Parameters
+        ----------
+        atol : float or None, optional
+            Absolute tolerance below which elements are set to zero.
+            Passed directly to :meth:`qutip.Qobj.tidyup`. Default is
+            QuTiP's internal tolerance.
+
+        Returns
+        -------
+        ProductOperator
+            Cleaned-up operator.
+        """
         tidy_site_operators = {
             name: op_s.tidyup(atol) for name, op_s in self.site_factors_qutip.items()
         }
@@ -497,16 +720,32 @@ class ProductOperator(Operator):
 
 
 class ScalarOperator(ProductOperator):
-    """A product operator that acts trivially on every subsystem"""
+    """
+    A product operator that acts as a scalar multiple of the identity.
+
+    Represents :math:`\\lambda \\, \\mathbb{I}` where :math:`\\lambda` is a
+    complex scalar and :math:`\\mathbb{I}` is the identity on the full system.
+    This is a special case of :class:`ProductOperator` with no non-trivial
+    site factors.
+
+    Parameters
+    ----------
+    prefactor : complex
+        The scalar value :math:`\\lambda`.
+    system : SystemDescriptor
+        Descriptor of the full lattice system.
+    """
 
     def __init__(self, prefactor, system):
         assert system is not None
         super().__init__({}, prefactor, system)
 
     def __bool__(self):
+        """Return ``True`` if the scalar is non-zero."""
         return bool(self.prefactor)
 
     def __neg__(self):
+        """Return the negation of the scalar operator."""
         return ScalarOperator(-self.prefactor, self.system)
 
     def __repr__(self):
@@ -527,20 +766,49 @@ class ScalarOperator(ProductOperator):
         )
 
     def acts_over(self) -> frozenset:
+        """
+        Return the empty set — a scalar operator acts trivially on all sites.
+
+        Returns
+        -------
+        frozenset
+            Always the empty frozenset.
+        """
         return frozenset()
 
     def dag(self):
+        """
+        Return the adjoint of the scalar operator.
+
+        Returns
+        -------
+        ScalarOperator
+            A scalar operator with the complex-conjugated prefactor.
+            Returns ``self`` if the prefactor is real.
+        """
         if isinstance(self.prefactor, complex):
             return ScalarOperator(self.prefactor.conjugate(), self.system)
         return self
 
     def hermitician_part(self):
+        """
+        Return the Hermitian part of the scalar operator.
+
+        Returns
+        -------
+        ScalarOperator
+            A scalar operator with the real part of the prefactor.
+            Returns ``self`` if already Hermitian.
+        """
         if self.isherm:
             return self
         return ScalarOperator(np.real(self.prefactor), self.system)
 
     @property
     def isherm(self):
+        """
+        ``True`` if the scalar prefactor is real (up to ``QALMA_TOLERANCE``).
+        """
         prefactor = self.prefactor
         return not (
             isinstance(prefactor, complex) and abs(prefactor.imag) > QALMA_TOLERANCE
@@ -548,14 +816,36 @@ class ScalarOperator(ProductOperator):
 
     @property
     def isdiagonal(self) -> bool:
+        """``True`` always — the identity is diagonal in any basis."""
         return True
 
     def logm(self):
+        """
+        Return the matrix logarithm of the scalar operator.
+
+        Returns
+        -------
+        ScalarOperator
+            A scalar operator with prefactor :math:`\\log(\\lambda)`.
+        """
         return ScalarOperator(np.log(self.prefactor), self.system)
 
     def norm(self, ord=None):
-        """The norm of the operator"""
+        """
+        Return the norm of the scalar operator.
 
+        Parameters
+        ----------
+        ord : str or None, optional
+            Order of the norm. Supported values are ``None`` (operator norm),
+            ``'fro'`` (Frobenius), and ``'nuc'`` (nuclear). Default is
+            ``None``.
+
+        Returns
+        -------
+        float
+            The norm :math:`|\\lambda| \\cdot \\|\\mathbb{I}\\|_{\\text{ord}}`.
+        """
         result = self.prefactor
         if ord in ("fro", "nuc"):
             dim_factor = 1.0
@@ -570,31 +860,48 @@ class ScalarOperator(ProductOperator):
 
     def reduce(self, sites: Iterable, state=None) -> Operator:
         """
-        Partial trace of the product of the operator and the density operator
-        acting on the subsystem which is traced out.
-        If the state is not provided, the result is the partial trace, divided
-        by the dimension of the subsystem traced out.
+        Return ``self`` unchanged — reducing a scalar leaves it invariant.
 
         Parameters
-        ==========
-        sites: Iterable
+        ----------
+        sites : Iterable[str]
+            Ignored. Included for interface compatibility.
+        state : optional
+            Ignored. Included for interface compatibility.
 
-        state: Optional[DensityOperatorProtocol]
-               The state relative to which make the reduction.
-
-        Return
-        ======
-
-        The reduced operator.
-
+        Returns
+        -------
+        ScalarOperator
+            ``self``.
         """
         return self
 
     def simplify(self):
-        """simplify a scalar operator"""
+        """
+        Return ``self`` — a scalar operator is already in its simplest form.
+
+        Returns
+        -------
+        ScalarOperator
+            ``self``.
+        """
         return self
 
     def tidyup(self, atol=None):
+        """
+        Return a zeroed scalar if the prefactor is below tolerance.
+
+        Parameters
+        ----------
+        atol : float or None, optional
+            Absolute tolerance. Defaults to ``QALMA_TOLERANCE``.
+
+        Returns
+        -------
+        ScalarOperator
+            A zero scalar operator if ``|prefactor| < atol``, otherwise
+            ``self``.
+        """
         if atol is None:
             atol = QALMA_TOLERANCE
         if abs(self.prefactor) < atol:
@@ -603,10 +910,19 @@ class ScalarOperator(ProductOperator):
 
     def to_qutip(self, block: Optional[Tuple[str, ...]] = None):
         """
-        return a qutip object acting over the sites listed in
-        `block`.
-        By default (`block=None`) returns a qutip object
-        acting over all the sites, in lexicographical order.
+        Return a QuTiP identity operator scaled by the prefactor.
+
+        Parameters
+        ----------
+        block : tuple[str, ...] or None, optional
+            Ordered list of site names defining the tensor-product structure.
+            Default is all sites in lexicographical order.
+
+        Returns
+        -------
+        qutip.Qobj or complex
+            :math:`\\lambda \\, \\mathbb{I}_{\\text{block}}`. Returns the
+            bare scalar if ``block`` is an empty tuple.
         """
         system = self.system
         sites = system.sites
@@ -620,7 +936,11 @@ class ScalarOperator(ProductOperator):
 
     def to_qutip_operator(self):
         """
-        Produce a Qutip representation of the operator.
-        For ScalarOperators, just return self.
+        Return ``self`` — a scalar operator is its own QuTiP representation.
+
+        Returns
+        -------
+        ScalarOperator
+            ``self``.
         """
         return self
