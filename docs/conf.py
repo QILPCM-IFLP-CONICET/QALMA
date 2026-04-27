@@ -80,7 +80,7 @@ intersphinx_mapping = {
 
 # -- nbsphinx ----------------------------------------------------------------
 
-nbsphinx_execute = "never"   # set to "auto" once RTD has ALPS installed
+nbsphinx_execute = "never"  # set to "auto" once RTD has ALPS installed
 nbsphinx_allow_errors = False
 
 # -- MathJax -----------------------------------------------------------------
@@ -108,7 +108,10 @@ nitpick_ignore = [
     ("py:attr", "qalma.operators.states.gibbs.GibbsDensityOperator.k"),
     ("py:attr", "qalma.operators.states.gibbs.GibbsDensityOperator.normalized"),
     ("py:attr", "qalma.operators.states.gibbs.GibbsProductDensityOperator.isherm"),
-    ("py:attr", "qalma.operators.states.gibbs.GibbsProductDensityOperator.free_energies"),
+    (
+        "py:attr",
+        "qalma.operators.states.gibbs.GibbsProductDensityOperator.free_energies",
+    ),
     ("py:attr", "qalma.operators.states.gibbs.GibbsProductDensityOperator.k_by_site"),
 ]
 
