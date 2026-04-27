@@ -5,10 +5,9 @@ The main entry point is :func:`qalma.alpsmodels.model_from_alps_xml`, which read
 
 .. autofunction:: qalma.alpsmodels.model_from_alps_xml
 
-Once loaded, you can build system objects via:
+Once loaded, you can build system objects via ``qalma.model.build_system``
 
-.. autofunction:: qalma.model.build_system
-
+		  
 .. autoclass:: qalma.model.SystemDescriptor
    :members:
    :inherited-members:
