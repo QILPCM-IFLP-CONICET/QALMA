@@ -1,3 +1,9 @@
+"""
+Routines to implement different kind of linear and non-linear projections
+on operator objects.
+
+"""
+
 from .nbody import (
     ProjectingOperatorFunction,
     n_body_projection,

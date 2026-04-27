@@ -56,16 +56,17 @@ docs = [
  
 # ── Configuración de interrogate ─────────────────────────────────────────────
 [tool.interrogate]
-ignore-init-method = false
+ignore-init-method = true
 ignore-init-module = false
 ignore-magic = true        # ignora __repr__, __str__, etc.
 ignore-semiprivate = false
 ignore-private = false
-fail-under = 0             # subir gradualmente: 40 → 60 → 80 → 100
+fail-under = 80             # subir gradualmente: 40 → 60 → 80 → 100
 verbose = 1
 quiet = false
 color = true
- 
+
+
 # ── Configuración de pydocstyle ───────────────────────────────────────────────
 [tool.pydocstyle]
 convention = "numpy"
