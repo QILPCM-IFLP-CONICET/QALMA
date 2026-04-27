@@ -547,6 +547,7 @@ class LocalOperator(Operator):
         LocalOperator
             A local operator on the same site with matrix :math:`\\log O`.
         """
+
         def log_qutip(loc_op):
             """Compute matrix log via eigendecomposition, clamping near-zero eigenvalues."""
             evals, evecs = loc_op.eigenstates()

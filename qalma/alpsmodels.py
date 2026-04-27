@@ -115,6 +115,7 @@ def model_from_alps_xml(filename=MODEL_LIB_FILE, name="spin", parms=None):
             A descriptor with site bases, constraints, and empty operator
             tables.
         """
+        parms = process_parms(node, parms)
         constraints = {}
         sitebasis = {}
         for constraint_node in node.findall("./CONSTRAINT"):
@@ -263,6 +264,15 @@ def model_from_alps_xml(filename=MODEL_LIB_FILE, name="spin", parms=None):
         dict
             Term descriptor with keys ``"expr"``, ``"type"``, ``"parms"``.
         """
+        parms_overwrite = process_parms(node, parms)
+        parms = {
+            key: val
+            for key, val in parms_overwrite.items()
+            if val != parms.get(key, None)
+        }
+
+        descriptor = node.attrib
+        site = descriptor.get("site", "i")
         node_type = descriptor.get("type", "0")
         expr = "".join(line.strip() for line in node.itertext())
         expr = expr.replace(f"({site})", "_local")
@@ -289,6 +299,16 @@ def model_from_alps_xml(filename=MODEL_LIB_FILE, name="spin", parms=None):
         dict
             Term descriptor with keys ``"expr"``, ``"type"``, ``"parms"``.
         """
+        parms_overwrite = process_parms(node, parms)
+        parms = {
+            key: val
+            for key, val in parms_overwrite.items()
+            if val != parms.get(key, None)
+        }
+
+        descriptor = node.attrib
+        src = descriptor["source"]
+        dst = descriptor["target"]
         bond_type = descriptor.get("type", None)
         expr = "".join(line.strip() for line in node.itertext())
         expr = expr.replace("'", "_prima")
@@ -318,6 +338,15 @@ def model_from_alps_xml(filename=MODEL_LIB_FILE, name="spin", parms=None):
             Term descriptor with keys ``"expr"``, ``"type"``,
             ``"indices"``, and ``"parms"``.
         """
+        parms_overwrite = process_parms(node, parms)
+        parms = {
+            key: val
+            for key, val in parms_overwrite.items()
+            if val != parms.get(key, None)
+        }
+
+        descriptor = node.attrib
+        indices = tuple(v for v in descriptor["indices"].split(" ") if v)
         loop_type = descriptor.get("type", None)
         expr = "".join(line.strip() for line in node.itertext())
         expr = expr.replace("'", "_prima")
@@ -350,6 +379,7 @@ def model_from_alps_xml(filename=MODEL_LIB_FILE, name="spin", parms=None):
             ``"dimension"``, ``"identity"``, ``"operators"``,
             ``"parms"``, and ``"localstates"``.
         """
+        basis_name = node.attrib.get("name", "")
         parms = process_parms(node, parms)
         quantumnumbers = {}
         operators_descr = {}
@@ -458,6 +488,7 @@ def model_from_alps_xml(filename=MODEL_LIB_FILE, name="spin", parms=None):
             A fully populated descriptor including the Hamiltonian term
             lists and updated parameters.
         """
+        parms = process_parms(ham, parms)
         site_terms = []
         bond_terms = []
         loop_terms = []
@@ -546,6 +577,7 @@ class ModelDescriptor:
         name : str or None, optional
             Human-readable name of the model. Default is ``""``.
         """
+        self.site_basis = site_basis
         self.constraints = constraints or {}
         self.bond_ops = bond_op_descr or {}
         self.global_ops = global_op_descr or {}
