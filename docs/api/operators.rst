@@ -17,10 +17,6 @@ qalma.operators
    :undoc-members:
    :show-inheritance:
 
-.. automodule:: qalma.operators.product
-   :members:
-   :undoc-members:
-   :show-inheritance:
 
 .. automodule:: qalma.operators.qutip
    :members:
@@ -36,9 +32,3 @@ qalma.operators
    :members:
    :undoc-members:
    :show-inheritance:
-
-.. toctree::
-   :hidden:
-   :caption: Submodules
-
-   operators/states
