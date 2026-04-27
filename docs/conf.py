@@ -79,7 +79,7 @@ intersphinx_mapping = {
 
 # -- nbsphinx ----------------------------------------------------------------
 
-nbsphinx_execute = "never"   # cambiar a "auto" cuando RTD tenga ALPS instalado
+nbsphinx_execute = "never"  # cambiar a "auto" cuando RTD tenga ALPS instalado
 nbsphinx_allow_errors = False
 
 # -- MathJax -----------------------------------------------------------------
