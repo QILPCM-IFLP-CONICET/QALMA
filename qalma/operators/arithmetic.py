@@ -24,7 +24,37 @@ from qalma.settings import QALMA_TOLERANCE
 
 class SumOperator(Operator):
     """
-    Represents a linear combination of operators
+    Linear combination of operators.
+
+    Represents a sum of the form
+
+    .. math::
+
+        O = \\sum_k O_k
+
+    where each term :math:`O_k` is an arbitrary :class:`Operator`. Terms may
+    act on overlapping or disjoint subsets of sites.
+
+    Parameters
+    ----------
+    term_tuple : tuple[Operator, ...]
+        Non-empty tuple of operators to be summed.
+    system : SystemDescriptor
+        Descriptor of the full lattice system. Must not be ``None``.
+    isherm : bool or None, optional
+        If known, whether the sum is Hermitian. ``None`` defers the check.
+    isdiag : bool or None, optional
+        If known, whether the sum is diagonal. ``None`` defers the check.
+    simplified : bool, optional
+        If ``True``, marks the operator as already simplified, skipping
+        redundant simplification calls. Default is ``False``.
+
+    Attributes
+    ----------
+    terms : tuple[Operator, ...]
+        The individual summands.
+    system : SystemDescriptor
+        The full lattice system.
     """
 
     terms: Tuple[Operator]
@@ -56,6 +86,14 @@ class SumOperator(Operator):
         self._simplified = simplified
 
     def __bool__(self):
+        """
+        Return ``True`` if at least one term is non-zero.
+
+        Returns
+        -------
+        bool
+            ``False`` only if the term list is empty or every term is zero.
+        """
         if len(self.terms) == 0:
             return False
 
@@ -64,6 +102,28 @@ class SumOperator(Operator):
         return False
 
     def __pow__(self, exp):
+        """
+        Return the operator raised to a non-negative integer power.
+
+        Computed by repeated multiplication. Negative or non-integer
+        exponents raise :class:`TypeError`.
+
+        Parameters
+        ----------
+        exp : int
+            Non-negative integer exponent.
+
+        Returns
+        -------
+        Operator
+            The operator :math:`O^{\\text{exp}}`. Returns the scalar ``1``
+            for ``exp == 0``.
+
+        Raises
+        ------
+        TypeError
+            If ``exp`` is negative or not an integer.
+        """
         isherm = self._isherm
         if isinstance(exp, int):
             if exp == 0:
@@ -89,6 +149,7 @@ class SumOperator(Operator):
         )
 
     def __neg__(self):
+        """Return the negation of each term."""
         return SumOperator(tuple(-t for t in self.terms), self.system, self._isherm)
 
     def __repr__(self):
@@ -107,6 +168,19 @@ class SumOperator(Operator):
         return f"${result}$"
 
     def _set_system_(self, system=None):
+        """
+        Set the system descriptor for this operator and all its terms.
+
+        Parameters
+        ----------
+        system : SystemDescriptor or None, optional
+            The system descriptor to assign.
+
+        Returns
+        -------
+        SumOperator
+            ``self``, with the system updated in-place.
+        """
         self.system = system
         for term in self.terms:
             # pylint: disable=protected-access
@@ -114,6 +188,15 @@ class SumOperator(Operator):
         return self
 
     def acts_over(self) -> frozenset:
+        """
+        Return the union of sites over which any term acts non-trivially.
+
+        Returns
+        -------
+        frozenset[str]
+            All sites with at least one non-identity local factor across
+            all terms.
+        """
         result: Set[str] = set()
         system_size = len(self.system.sites)
         for term in self.terms:
@@ -124,15 +207,31 @@ class SumOperator(Operator):
         return frozenset(result)
 
     def dag(self):
-        """return the adjoint operator"""
+        """
+        Return the adjoint operator :math:`O^\\dagger`.
+
+        Returns
+        -------
+        SumOperator
+            Sum of the adjoints of each term. Returns ``self`` if the
+            operator is already marked as Hermitian.
+        """
         if self._isherm:
             return self
         return SumOperator(tuple(term.dag() for term in self.terms), self.system)
 
     def flat(self):
         """
-        Use the associativity to write the sum of sums
-        as a sum of non sum terms.
+        Flatten nested sums using associativity.
+
+        Any term that is itself a :class:`SumOperator` is expanded in-place,
+        producing a single-level sum of non-sum terms.
+
+        Returns
+        -------
+        SumOperator
+            A flat sum with no :class:`SumOperator` terms, or ``self`` if
+            no flattening was needed.
         """
         terms = []
         changed = False
@@ -157,6 +256,15 @@ class SumOperator(Operator):
         return self
 
     def hermitician_part(self):
+        """
+        Return the Hermitian part :math:`(O + O^\\dagger)/2`.
+
+        Returns
+        -------
+        SumOperator
+            A sum of the Hermitian parts of each term, marked as Hermitian.
+            Returns ``self`` if already marked as Hermitian.
+        """
         if self._isherm is True:
             return self
         return SumOperator(
@@ -167,6 +275,14 @@ class SumOperator(Operator):
 
     @property
     def isherm(self) -> bool:
+        """
+        ``True`` if the operator is Hermitian.
+
+        First checks each term individually. If all terms are Hermitian,
+        returns ``True``. Otherwise applies a more aggressive test: simplifies
+        the anti-Hermitian part and checks whether its Frobenius norm vanishes
+        (up to ``QALMA_TOLERANCE``). The result is cached in ``_isherm``.
+        """
         isherm = self._isherm
 
         def aggresive_hermitician_test(non_hermitian_tuple: Tuple[Operator, ...]):
@@ -210,6 +326,12 @@ class SumOperator(Operator):
 
     @property
     def isdiagonal(self) -> bool:
+        """
+        ``True`` if all terms are diagonal in the site-local basis.
+
+        Simplifies the operator first if not already simplified, then checks
+        each term. The result is cached in ``_isdiagonal``.
+        """
         if self._isdiagonal is None:
             simplified = self if self._simplified else self.simplify()
             try:
@@ -220,6 +342,12 @@ class SumOperator(Operator):
 
     @property
     def is_zero(self) -> bool:
+        """
+        ``True`` if the operator simplifies to zero.
+
+        Simplifies the operator and checks whether all resulting terms are
+        zero. Sets ``_isherm = True`` if the operator is confirmed zero.
+        """
         simplify_self = self if self._simplified else self.simplify()
         if hasattr(simplify_self, "terms"):
             result = all(term.is_zero for term in simplify_self.terms)
@@ -230,13 +358,43 @@ class SumOperator(Operator):
         return result
 
     def n_body_sector(self) -> int:
+        """
+        Return the maximum n-body sector among all terms.
+
+        Returns
+        -------
+        int
+            The largest ``n`` such that some term acts non-trivially on
+            exactly ``n`` sites.
+        """
         return max(term.n_body_sector() for term in self.terms)
 
     def num_terms(self) -> int:
+        """
+        Return the number of terms in the sum.
+
+        Returns
+        -------
+        int
+            Length of ``self.terms``.
+        """
         return len(self.terms)
 
     def partial_trace(self, sites: Union[frozenset, SystemDescriptor]):
-        """Compute the partial trace"""
+        """
+        Compute the partial trace over the complement of ``sites``.
+
+        Parameters
+        ----------
+        sites : frozenset[str] or SystemDescriptor
+            Sites to *keep*. All other sites are traced out.
+
+        Returns
+        -------
+        Operator
+            The reduced operator acting on the subsystem defined by
+            ``sites``. Zero terms are dropped before returning.
+        """
         if not isinstance(sites, SystemDescriptor):
             sites = self.system.subsystem(sites)
         new_terms = tuple((term.partial_trace(sites) for term in self.terms))
@@ -252,30 +410,40 @@ class SumOperator(Operator):
 
     def reduce(self, sites: Iterable, state=None):
         """
-        Partial trace of the product of the operator and the density operator
-        acting on the subsystem which is traced out.
-        If the state is not provided, the result is the partial trace, divided
-        by the dimension of the subsystem traced out.
+        Reduce the operator to a subsystem, optionally weighted by a state.
+
+        Applies :meth:`reduce` to each term and assembles the result. If
+        ``state`` is ``None``, the reduction is a partial trace normalized
+        by the dimension of the traced-out subsystem.
 
         Parameters
-        ==========
-        sites: Iterable
+        ----------
+        sites : Iterable[str]
+            Sites to *keep* after the reduction.
+        state : DensityOperator or None, optional
+            State relative to which the reduction is performed.
 
-        state: Optional[DensityOperatorProtocol]
-               The state relative to which make the reduction.
-
-        Return
-        ======
-
-        The reduced operator.
-
+        Returns
+        -------
+        Operator
+            The reduced operator acting on the subsystem defined by ``sites``.
         """
         new_terms = (term.reduce(sites, state) for term in self.terms)
         return iterable_to_operator(new_terms, self.system, isherm=self._isherm)
 
     def simplify(self):
-        """Simplify the operator"""
+        """
+        Simplify the operator by grouping and combining like terms.
 
+        Groups terms by the block of sites they act on. Terms acting on the
+        same block are added together. Returns a simpler operator type when
+        possible (e.g. a single term becomes that term directly).
+
+        Returns
+        -------
+        Operator
+            A simplified equivalent operator.
+        """
         if self._simplified:
             return self
         if len(self.terms) == 1:
@@ -287,7 +455,21 @@ class SumOperator(Operator):
         return group_terms_by_blocks(self.flat())
 
     def to_qutip(self, block: Optional[Tuple[str, ...]] = None):
-        """Produce a qutip compatible object"""
+        """
+        Return the QuTiP representation of the sum.
+
+        Parameters
+        ----------
+        block : tuple[str, ...] or None, optional
+            Ordered list of site names defining the tensor-product structure
+            of the returned :class:`qutip.Qobj`. Defaults to all system
+            sites in lexicographical order.
+
+        Returns
+        -------
+        qutip.Qobj
+            The sum of the QuTiP representations of all terms.
+        """
         terms = self.terms
         system = self.system
         assert all(system.contains(term.system) for term in terms)
@@ -305,10 +487,33 @@ class SumOperator(Operator):
         return result
 
     def tr(self):
+        """
+        Return the trace of the operator over the full system.
+
+        Returns
+        -------
+        complex
+            The sum of the traces of all terms.
+        """
         return sum(t.tr() for t in self.terms)
 
     def tidyup(self, atol=None):
-        """Removes small elements from the quantum object."""
+        """
+        Return a copy with small matrix elements zeroed out.
+
+        Applies :meth:`tidyup` to each term and drops zero terms.
+
+        Parameters
+        ----------
+        atol : float or None, optional
+            Absolute tolerance passed to each term's ``tidyup``. Defaults
+            to QuTiP's internal tolerance.
+
+        Returns
+        -------
+        Operator
+            Cleaned-up operator with zero terms removed.
+        """
         tidy_terms = [term.tidyup(atol) for term in self.terms]
         tidy_terms = tuple((term for term in tidy_terms if term))
         return iterable_to_operator(tidy_terms, self.system, isherm=self._isherm)
@@ -318,7 +523,40 @@ NBodyOperator = SumOperator
 
 
 class OneBodyOperator(SumOperator):
-    """A linear combination of local operators"""
+    """
+    Linear combination of local (single-site) operators.
+
+    A special case of :class:`SumOperator` restricted to terms that each
+    act on at most one site. Represents operators of the form
+
+    .. math::
+
+        O = \\lambda_0 \\mathbb{I} + \\sum_i O_i
+
+    where each :math:`O_i` is a :class:`LocalOperator` acting on site
+    :math:`i` and :math:`\\lambda_0` is an optional scalar term.
+
+    During construction, terms are automatically simplified and grouped by
+    site: multiple local operators on the same site are added together into
+    a single :class:`LocalOperator`.
+
+    Parameters
+    ----------
+    terms : tuple[Operator, ...]
+        Tuple of local operators and optional scalar operators.
+    system : SystemDescriptor
+        Descriptor of the full lattice system. Must not be ``None``.
+    check_and_convert : bool, optional
+        If ``True`` (default), validates and simplifies terms during
+        construction. Set to ``False`` only when terms are already
+        guaranteed to be simplified local operators.
+    isherm : bool or None, optional
+        Whether the operator is Hermitian. ``None`` defers the check.
+    isdiag : bool or None, optional
+        Whether the operator is diagonal. ``None`` defers the check.
+    simplified : bool, optional
+        Whether the operator is already simplified. Default is ``False``.
+    """
 
     def __init__(
         self,
@@ -329,9 +567,6 @@ class OneBodyOperator(SumOperator):
         isdiag: Optional[bool] = None,
         simplified: Optional[bool] = False,
     ):
-        """
-        if check_and_convert is True,
-        """
         assert isinstance(terms, tuple)
         assert system is not None
 
@@ -372,9 +607,18 @@ class OneBodyOperator(SumOperator):
         return "  " + "\n  +".join("(" + repr(term) + ")" for term in self.terms)
 
     def __neg__(self):
+        """Return the negation of the operator."""
         return OneBodyOperator(tuple(-term for term in self.terms), self.system)
 
     def dag(self):
+        """
+        Return the adjoint :math:`O^\\dagger`.
+
+        Returns
+        -------
+        OneBodyOperator
+            Sum of the adjoints of each local term.
+        """
         return OneBodyOperator(
             tuple(term.dag() for term in self.terms),
             system=self.system,
@@ -382,6 +626,24 @@ class OneBodyOperator(SumOperator):
         )
 
     def expm(self):
+        """
+        Return the matrix exponential :math:`e^O`.
+
+        Exploits the fact that local operators on different sites commute:
+
+        .. math::
+
+            e^{\\lambda_0 + \\sum_i O_i} = e^{\\lambda_0} \\bigotimes_i e^{O_i}
+
+        Each local exponential is computed via :func:`scipy.linalg.expm`.
+        The diagonal of each local operator is shifted to avoid numerical
+        overflow before exponentiation.
+
+        Returns
+        -------
+        ProductOperator
+            The matrix exponential as a product of local exponentials.
+        """
         sites_op = {}
         ln_prefactor = 0
         for term in self.simplify().terms:
@@ -403,6 +665,15 @@ class OneBodyOperator(SumOperator):
         return ProductOperator(sites_op, prefactor=prefactor, system=self.system)
 
     def hermitician_part(self):
+        """
+        Return the Hermitian part :math:`(O + O^\\dagger)/2`.
+
+        Returns
+        -------
+        OneBodyOperator
+            Sum of the Hermitian parts of each local term, marked as
+            Hermitian. Returns ``self`` if already Hermitian.
+        """
         if self._isherm is True:
             return self
         return OneBodyOperator(
@@ -412,6 +683,16 @@ class OneBodyOperator(SumOperator):
         )
 
     def simplify(self):
+        """
+        Simplify by grouping local operators acting on the same site.
+
+        Returns
+        -------
+        Operator
+            A simplified :class:`OneBodyOperator`, or a single
+            :class:`ScalarOperator` / :class:`LocalOperator` if only one
+            term remains after grouping.
+        """
         if self._simplified:
             return self
         terms = self.terms
@@ -431,7 +712,33 @@ class OneBodyOperator(SumOperator):
 
     @staticmethod
     def _simplify_terms(terms, system):
-        """Group terms by subsystem and process scalar terms"""
+        """
+        Group terms by subsystem and combine local operators on the same site.
+
+        Scalar terms are summed into a single :class:`ScalarOperator`.
+        :class:`LocalOperator` terms on the same site are added together.
+        :class:`QutipOperator` terms are converted to :class:`LocalOperator`
+        before grouping.
+
+        Parameters
+        ----------
+        terms : Iterable[Operator]
+            Input terms to simplify and group.
+        system : SystemDescriptor
+            The full lattice system.
+
+        Returns
+        -------
+        tuple[Operator, ...]
+            Simplified and grouped terms.
+        SystemDescriptor
+            The (possibly updated) system descriptor.
+
+        Raises
+        ------
+        ValueError
+            If any term is not a scalar, local, or QuTiP operator.
+        """
         simply_terms = [term.simplify() for term in terms]
         terms = []
         terms_by_subsystem = {}
@@ -481,7 +788,19 @@ class OneBodyOperator(SumOperator):
         return tuple(terms), system
 
     def tidyup(self, atol=None):
-        """Removes small elements from the quantum object."""
+        """
+        Return a copy with small matrix elements zeroed out.
+
+        Parameters
+        ----------
+        atol : float or None, optional
+            Absolute tolerance passed to each term's ``tidyup``.
+
+        Returns
+        -------
+        OneBodyOperator
+            Cleaned-up operator with zero terms removed.
+        """
         tidy_terms = [term.tidyup(atol) for term in self.terms]
         tidy_terms = tuple((term for term in tidy_terms if term))
         return OneBodyOperator(
@@ -491,7 +810,29 @@ class OneBodyOperator(SumOperator):
 
 def iterable_to_operator(terms: Iterable[Operator], system, **kwargs) -> Operator:
     """
-    Convert a tuple or list of operators in an operator.
+    Convert an iterable of operators into a single operator.
+
+    Returns the simplest possible type: a :class:`ScalarOperator` for an
+    empty iterable, the single term directly for a one-element iterable,
+    or a :class:`SumOperator` otherwise.
+
+    Parameters
+    ----------
+    terms : Iterable[Operator]
+        Operators to combine.
+    system : SystemDescriptor
+        The full lattice system, passed to :class:`SumOperator` or
+        :class:`ScalarOperator` if needed.
+    **kwargs
+        Additional keyword arguments forwarded to :class:`SumOperator`
+        (e.g. ``isherm``, ``isdiag``, ``simplified``).
+
+    Returns
+    -------
+    Operator
+        A :class:`ScalarOperator` (zero) if ``terms`` is empty, the single
+        element if ``terms`` has one item, or a :class:`SumOperator`
+        otherwise.
     """
     terms_tuple = tuple(terms)
     if len(terms_tuple) == 0:
