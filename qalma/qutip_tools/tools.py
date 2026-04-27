@@ -791,14 +791,14 @@ def reduce_to_proper_spaces(operator: Qobj, observable: Qobj) -> Qobj:
 
     If ``observable`` is of the form
 
-    .. codeblock:: python
+    .. code-block:: python
 
         Q =  sum_i  lambda_i Pi_i
 
     with ``Pi_i`` a set of orthogonal projectors,
     for an ``operator`` ``T``, this function returns
 
-    .. codeblock:: python
+    .. code-block:: python
 
         Delta(T) = sum_i  Pi_i T P_i
 

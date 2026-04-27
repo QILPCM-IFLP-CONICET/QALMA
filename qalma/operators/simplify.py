@@ -107,7 +107,7 @@ def group_terms_by_blocks(operator: Operator, fn: Optional[Callable] = None):
     For example
 
 
-    .. codeblock:: python
+    .. code-block:: python
 
         group_terms_by_blocks(operator, lambda op:op.to_qutip_operator())
 
