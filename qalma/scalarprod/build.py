@@ -18,7 +18,7 @@ from .covar import CovariantScalarProductFunction
 def fetch_kubo_scalar_product(sigma: Operator, threshold=0) -> Callable:
     """
     Build a KMB scalar product function
-    associated to the state `sigma`
+    associated to the state ``sigma``
     """
     evals_evecs = sorted(zip(*sigma.eigenstates()), key=lambda x: -x[0])
     w = 1
@@ -50,7 +50,7 @@ def fetch_kubo_scalar_product(sigma: Operator, threshold=0) -> Callable:
 def fetch_kubo_int_scalar_product(sigma: Operator) -> Callable:
     """
     Build a KMB scalar product function
-    associated to the state `sigma`, from
+    associated to the state ``sigma``, from
     its integral form.
     """
 
@@ -79,17 +79,27 @@ def fetch_covar_scalar_product(sigma: DensityOperatorProtocol) -> Callable:
     operator.
 
     The scalar product for two operators op1 and op2 is defined as:
-        0.5 * Tr(sigma * {op1†, op2}),
-    where sigma is a density operator, {op1†, op2} is the anticommutator of
-    the Hermitian conjugate of op1 and op2, and Tr denotes the trace.
+
+    .. math::
+
+        0.5 * Tr(sigma * {op1^\dagger, op2}),
+
+    where sigma is a density operator, ${op1^\dagger, op2}$ is the
+    anticommutator of the Hermitian conjugate of ``op1`` and ``op2``,
+    and $Tr$ denotes the trace.
 
     Parameters:
+    -----------
+
         sigma: The density operator (quantum state) used to define the scalar
         product.
 
     Returns:
+    --------
+
         A function that takes two operators (op1, op2) and computes their
         covariance-based scalar product.
+
     """
     return CovariantScalarProductFunction(sigma)
 

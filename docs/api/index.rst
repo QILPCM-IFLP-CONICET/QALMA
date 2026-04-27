@@ -9,7 +9,6 @@ from the source docstrings.
 
    model
    operators
-   states
    evolution
    scalarprod
    projections

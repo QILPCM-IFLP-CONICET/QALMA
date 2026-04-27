@@ -14,12 +14,10 @@ each; click the link to open the rendered notebook.
 
 .. toctree::
    :maxdepth: 1
-   :glob:
 
-   ../../examples/*.ipynb
-
-If no notebooks appear above, copy or symlink the ``examples/`` directory
-into ``docs/examples/`` and rebuild.
+   ../examples/examples
+   ../examples/example_heisenberg_evolution
+   ../examples/example_maxent_evolution
 
 Running the examples locally
 ----------------------------
@@ -32,4 +30,4 @@ Running the examples locally
 
 .. seealso::
 
-   :doc:`quickstart` for a self-contained introduction without notebooks.
+   :doc:`../quickstart` for a self-contained introduction without notebooks.

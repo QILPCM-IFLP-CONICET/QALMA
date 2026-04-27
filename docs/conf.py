@@ -1,5 +1,6 @@
 import os
 import sys
+import warnings
 
 sys.path.insert(0, os.path.abspath(".."))
 
@@ -45,14 +46,14 @@ html_theme_options = {
     "sticky_navigation": True,
 }
 
-# -- Autodoc settings --------------------------------------------------------
+# -- Autodoc -----------------------------------------------------------------
 
 autoclass_content = "both"
 autodoc_member_order = "bysource"
 autodoc_typehints = "description"
 add_module_names = False
 
-# -- Napoleon settings (NumPy docstrings) ------------------------------------
+# -- Napoleon (NumPy docstrings) ---------------------------------------------
 
 napoleon_google_docstring = False
 napoleon_numpy_docstring = True
@@ -62,9 +63,9 @@ napoleon_preprocess_types = True
 
 # -- Autosummary -------------------------------------------------------------
 
-autosummary_generate = True
+autosummary_generate = False  # avoids re-indexing symbols already in automodule
 
-# -- Todo extension ----------------------------------------------------------
+# -- Todo --------------------------------------------------------------------
 
 todo_include_todos = True
 
@@ -74,12 +75,12 @@ intersphinx_mapping = {
     "python": ("https://docs.python.org/3", None),
     "numpy": ("https://numpy.org/doc/stable", None),
     "scipy": ("https://docs.scipy.org/doc/scipy", None),
-    "qutip": ("https://qutip.org/docs/latest", None),
+    "qutip": ("https://qutip.readthedocs.io/en/stable/", None),
 }
 
 # -- nbsphinx ----------------------------------------------------------------
 
-nbsphinx_execute = "never"  # cambiar a "auto" cuando RTD tenga ALPS instalado
+nbsphinx_execute = "never"   # set to "auto" once RTD has ALPS installed
 nbsphinx_allow_errors = False
 
 # -- MathJax -----------------------------------------------------------------
@@ -94,3 +95,28 @@ mathjax3_config = {
         }
     }
 }
+
+# -- Warning suppression -----------------------------------------------------
+
+# Duplicate object descriptions arise from __init__.py re-exporting symbols
+# that autodoc already indexed in their submodules. Listed explicitly until
+# the __init__.py imports are refactored.
+nitpick_ignore = [
+    ("py:attr", "qalma.operators.arithmetic.SumOperator.terms"),
+    ("py:attr", "qalma.operators.product.ProductOperator.site_factors"),
+    ("py:attr", "qalma.operators.product.ProductOperator.system"),
+    ("py:attr", "qalma.operators.states.gibbs.GibbsDensityOperator.k"),
+    ("py:attr", "qalma.operators.states.gibbs.GibbsDensityOperator.normalized"),
+    ("py:attr", "qalma.operators.states.gibbs.GibbsProductDensityOperator.isherm"),
+    ("py:attr", "qalma.operators.states.gibbs.GibbsProductDensityOperator.free_energies"),
+    ("py:attr", "qalma.operators.states.gibbs.GibbsProductDensityOperator.k_by_site"),
+]
+
+suppress_warnings = ["ref.python"]
+
+# SyntaxWarning from LaTeX strings in notebook cell outputs (Python 3.12+)
+warnings.filterwarnings(
+    "ignore",
+    message=".*invalid escape sequence.*",
+    category=SyntaxWarning,
+)
