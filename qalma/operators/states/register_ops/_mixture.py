@@ -31,6 +31,12 @@ from ._wrappers import _wrapper_sum as _mixture_to_sum
     [(MixtureDensityOperator, type_num) for type_num in REAL_NUMERIC_TYPES]
 )
 def add_mixture_real_(x_op: MixtureDensityOperator, y_op: float):
+    """
+    Add a mixture operator with a real number.
+    If the number is non-negative, treat as a mixture with a maximally mixed state.
+    Otherwise, convert the mixture to a regular ``SumOperator``
+    and add it as an scalar.
+    """
     if y_op == 0:
         return x_op
     if y_op > 0:
@@ -42,6 +48,12 @@ def add_mixture_real_(x_op: MixtureDensityOperator, y_op: float):
     [(type_num, MixtureDensityOperator) for type_num in REAL_NUMERIC_TYPES]
 )
 def add_real_mixture_(y_op: float, x_op: MixtureDensityOperator):
+    """
+    Add a mixture operator with a real number.
+    If the number is non-negative, treat as a mixture with a maximally mixed state.
+    Otherwise, convert the mixture to a regular ``SumOperator``
+    and add it as an scalar.
+    """
     if y_op == 0:
         return x_op
     if y_op > 0:
@@ -53,6 +65,11 @@ def add_real_mixture_(y_op: float, x_op: MixtureDensityOperator):
     [(MixtureDensityOperator, type_num) for type_num in COMPLEX_NUMERIC_TYPES]
 )
 def add_mixture_complex_(x_op: MixtureDensityOperator, y_op: complex):
+    """
+    Add a mixture operator with a complex number.
+    Convert the mixture to a regular ``SumOperator``
+    and add it as an scalar.
+    """
     if y_op.imag == 0:
         return x_op + y_op.real
     return _mixture_to_sum(x_op) + y_op
@@ -62,6 +79,11 @@ def add_mixture_complex_(x_op: MixtureDensityOperator, y_op: complex):
     [(type_num, MixtureDensityOperator) for type_num in COMPLEX_NUMERIC_TYPES]
 )
 def add_complex_mixture_(y_op: complex, x_op: MixtureDensityOperator):
+    """
+    Add a mixture operator with a complex number.
+    Convert the mixture to a regular ``SumOperator``
+    and add it as an scalar.
+    """
     if y_op.imag == 0:
         return x_op + y_op.real
     return _mixture_to_sum(x_op) + y_op
@@ -74,6 +96,9 @@ def add_complex_mixture_(y_op: complex, x_op: MixtureDensityOperator):
     )
 )
 def _(x_op: MixtureDensityOperator, y_op: MixtureDensityOperator):
+    """
+    Add two mixture operators, and produce a new mixture.
+    """
     return MixtureDensityOperator(x_op.terms + y_op.terms, x_op.system * y_op.system)
 
 
@@ -96,6 +121,10 @@ def _(x_op: MixtureDensityOperator, y_op: MixtureDensityOperator):
     ]
 )
 def _(x_op: MixtureDensityOperator, y_op: Operator):
+    """
+    Convert the mixture into a SumOperator, and then add
+    the other operator
+    """
     # HACK to convert terms from a MixtureDensityOperator
     # to terms in a sum.
     #
@@ -122,6 +151,10 @@ def _(x_op: MixtureDensityOperator, y_op: Operator):
     ]
 )
 def _(x_op: Operator, y_op: MixtureDensityOperator):
+    """
+    Convert the mixture into a SumOperator, and then add
+    the other operator
+    """
     # HACK to convert terms from a MixtureDensityOperator
     # to terms in a sum.
     #
@@ -135,6 +168,9 @@ def _(x_op: Operator, y_op: MixtureDensityOperator):
     ]
 )
 def _(x_op: MixtureDensityOperator, y_op: DensityOperatorMixin):
+    """
+    Add a mixture with another density operator.
+    """
     terms = x_op.terms + (y_op,)
     # If there is just one term, return it:
     if len(terms) == 1:
@@ -155,6 +191,12 @@ def _(x_op: MixtureDensityOperator, y_op: DensityOperatorMixin):
     [(MixtureDensityOperator, type_num) for type_num in REAL_NUMERIC_TYPES]
 )
 def _(x_op: MixtureDensityOperator, y_op: float):
+    """
+    Multiply a ``MixtureDensityOperator`` with a real number. If the number is non-negative,
+    produce a new mixture with all the weights multiplied by the real factor.
+    If negative, first convert the ``MixtureDensityOperator`` to a regular operator,
+    and then evaluate the product.
+    """
     if y_op == 0:
         return ProductDensityOperator({}, weight=y_op, system=x_op.system)
     if y_op > 0:
@@ -170,6 +212,12 @@ def _(x_op: MixtureDensityOperator, y_op: float):
     [(type_num, MixtureDensityOperator) for type_num in REAL_NUMERIC_TYPES]
 )
 def _(y_op: float, x_op: MixtureDensityOperator):
+    """
+    Multiply a ``MixtureDensityOperator`` with a real number. If the number is non-negative,
+    produce a new mixture with all the weights multiplied by the real factor.
+    If negative, first convert the ``MixtureDensityOperator`` to a regular operator,
+    and then evaluate the product.
+    """
     if y_op == 0:
         return ProductDensityOperator({}, weight=y_op, system=x_op.system)
     if y_op > 0:
@@ -185,6 +233,11 @@ def _(y_op: float, x_op: MixtureDensityOperator):
     [(MixtureDensityOperator, type_num) for type_num in COMPLEX_NUMERIC_TYPES]
 )
 def _(x_op: MixtureDensityOperator, y_op: complex):
+    """
+    Multiply a ``MixtureDensityOperator`` with a complex number.
+    First convert the ``MixtureDensityOperator`` to a regular operator,
+    and then evaluate the product.
+    """
     if y_op.imag == 0:
         return x_op * y_op.real
     return _mixture_to_sum(x_op) * y_op
@@ -194,6 +247,11 @@ def _(x_op: MixtureDensityOperator, y_op: complex):
     [(type_num, MixtureDensityOperator) for type_num in COMPLEX_NUMERIC_TYPES]
 )
 def _(x_op: complex, y_op: MixtureDensityOperator):
+    """
+    Multiply a ``MixtureDensityOperator`` with a complex number.
+    First convert the ``MixtureDensityOperator`` to a regular operator,
+    and then evaluate the product.
+    """
     if x_op.imag == 0:
         return y_op * x_op.real
     return _mixture_to_sum(y_op) * x_op
@@ -206,6 +264,10 @@ def _(x_op: complex, y_op: MixtureDensityOperator):
     )
 )
 def _(x_op: MixtureDensityOperator, y_op: MixtureDensityOperator):
+    """
+    Multiply two ``MixtureDensityOperators``. Convert them to
+    regular ``SumOperators``, and return their product.
+    """
     # multiply by -1 convert a Mixture into a Sum operator
     if x_op is y_op:
         x_op_sum = _mixture_to_sum(x_op)
@@ -222,6 +284,11 @@ def _(x_op: MixtureDensityOperator, y_op: MixtureDensityOperator):
     ]
 )
 def any_times_mixture_(y_op: Operator, x_op: MixtureDensityOperator):
+    """
+    Multiply a ``MixtureDensityOperators`` with any other operator.
+    Convert it into a regular ``SumOperators``, and then return
+    its product  product with the other operand.
+    """
     return y_op * _mixture_to_sum(x_op)
 
 
@@ -236,4 +303,9 @@ def any_times_mixture_(y_op: Operator, x_op: MixtureDensityOperator):
     ]
 )
 def mixture_times_any_(x_op: MixtureDensityOperator, y_op: Operator):
+    """
+    Multiply a ``MixtureDensityOperators`` with any other operator.
+    Convert it into a regular ``SumOperators``, and then return
+    its product  product with the other operand.
+    """
     return _mixture_to_sum(x_op) * y_op
