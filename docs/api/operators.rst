@@ -40,6 +40,5 @@ qalma.operators
 .. toctree::
    :hidden:
    :caption: Submodules
-   :no-index:
 
    operators/states
