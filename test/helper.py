@@ -298,7 +298,7 @@ def check_equality(lhs, rhs, tolerance=1e-10):
         return True
 
     if isinstance(lhs, Iterable) and isinstance(rhs, Iterable):
-        assert len(lhs) != len(rhs)
+        assert len(lhs) == len(rhs)
         assert all(
             check_equality(lhs_item, rhs_item, tolerance)
             for lhs_item, rhs_item in zip(lhs, rhs)

@@ -29,11 +29,13 @@ from ._wrappers import _wrapper_product as _as_product_op
 
 @Operator.register_add_handler((ProductDensityOperator, ProductDensityOperator))
 def _(x_op: ProductDensityOperator, y_op: ProductDensityOperator):
+    """Multiply two product operators"""
     return MixtureDensityOperator((x_op, y_op), x_op.system * y_op.system)
 
 
 @Operator.register_add_handler((ProductDensityOperator, ScalarOperator))
 def _(x_op: ProductDensityOperator, y_op: ScalarOperator):
+    """Multiply a product operator with an scalar"""
     site_op = x_op.site_factors.copy()
     prefactor = x_op.prefactor
     system = x_op.system or y_op.system
@@ -51,6 +53,7 @@ def _(x_op: ProductDensityOperator, y_op: ScalarOperator):
     [(ProductDensityOperator, type_1) for type_1 in REAL_NUMERIC_TYPES]
 )
 def pdo_add_real_(x_op: ProductDensityOperator, y_op: float):
+    """Multiply a product operator with an scalar"""
     if y_op == 0:
         return x_op
     system = x_op.system
@@ -65,6 +68,7 @@ def pdo_add_real_(x_op: ProductDensityOperator, y_op: float):
     [(ProductDensityOperator, type_1) for type_1 in COMPLEX_NUMERIC_TYPES]
 )
 def prd_add_complex_(x_op: ProductDensityOperator, y_op: float):
+    """Multiply a product operator with a complex number"""
     if y_op.imag == 0:
         return x_op + y_op.real
     if y_op == 0:
@@ -78,6 +82,7 @@ def prd_add_complex_(x_op: ProductDensityOperator, y_op: float):
 @Operator.register_add_handler((OneBodyOperator, ProductDensityOperator))
 @Operator.register_add_handler((SumOperator, ProductDensityOperator))
 def _(x_op: Operator, y_op: ProductDensityOperator):
+    """Multiply a product operator sum operators"""
     return x_op + _as_product_op(y_op)
 
 
@@ -88,6 +93,7 @@ def _(x_op: Operator, y_op: ProductDensityOperator):
     [(type_1, ProductDensityOperator) for type_1 in REAL_NUMERIC_TYPES]
 )
 def _(x_op: float, y_op: ProductDensityOperator):
+    """Multiply a product operator with real numbers"""
     if x_op == 0:
         return ProductDensityOperator(
             {},
@@ -109,6 +115,7 @@ def _(x_op: float, y_op: ProductDensityOperator):
     [(ProductDensityOperator, type_1) for type_1 in REAL_NUMERIC_TYPES]
 )
 def _(y_op: ProductDensityOperator, x_op: float):
+    """Multiply a product operator with real numbers"""
     if x_op == 0:
         return ProductDensityOperator(
             {},
@@ -131,6 +138,7 @@ def _(y_op: ProductDensityOperator, x_op: float):
     [(type_1, ProductDensityOperator) for type_1 in COMPLEX_NUMERIC_TYPES]
 )
 def _(x_op: complex, y_op: ProductDensityOperator):
+    """Multiply a product operator with complex numbers"""
     if x_op.imag == 0.0:
         return y_op * x_op.real
     return _as_product_op(y_op) * x_op
@@ -146,6 +154,7 @@ def _(x_op: complex, y_op: ProductDensityOperator):
     ]
 )
 def _(y_op: ProductDensityOperator, x_op: complex):
+    """Multiply a product operator with complex numbers"""
     if x_op.imag == 0:
         return y_op * x_op.real
     return _as_product_op(y_op) * x_op
@@ -155,6 +164,7 @@ def _(y_op: ProductDensityOperator, x_op: complex):
     [(type_1, ProductDensityOperator) for type_1 in BASIC_OPERATOR_TYPES]
 )
 def _(x_op: Operator, y_op: ProductDensityOperator):
+    """Multiply a product operator with basic operators"""
     return x_op * _as_product_op(y_op)
 
 
@@ -162,11 +172,13 @@ def _(x_op: Operator, y_op: ProductDensityOperator):
     [(ProductDensityOperator, type_1) for type_1 in BASIC_OPERATOR_TYPES]
 )
 def _(y_op: ProductDensityOperator, x_op: Operator):
+    """Multiply a product operator with basic operators"""
     return _as_product_op(y_op) * x_op
 
 
 @Operator.register_mul_handler((ProductDensityOperator, ProductDensityOperator))
 def _(x_op: ProductDensityOperator, y_op: ProductDensityOperator):
+    """Multiply a product operator with a product density operator"""
     system = x_op.system * y_op.system if x_op.system else y_op.system
     site_factors = x_op.site_factors.copy()
     for site, factor in y_op.site_factors.items():
@@ -180,6 +192,7 @@ def _(x_op: ProductDensityOperator, y_op: ProductDensityOperator):
 @Operator.register_mul_handler((ProductDensityOperator, OneBodyOperator))
 @Operator.register_mul_handler((ProductDensityOperator, SumOperator))
 def _(x_op: ProductDensityOperator, y_op: SumOperator):
+    """product density operator with a sum operator"""
     system = x_op.system * y_op.system if x_op.system else y_op.system
     return SumOperator(
         tuple(x_op * term for term in y_op.terms),
@@ -190,6 +203,7 @@ def _(x_op: ProductDensityOperator, y_op: SumOperator):
 @Operator.register_mul_handler((SumOperator, ProductDensityOperator))
 @Operator.register_mul_handler((OneBodyOperator, ProductDensityOperator))
 def _(x_op: SumOperator, y_op: ProductDensityOperator):
+    """product density operator with a sum operator"""
     system = x_op.system * y_op.system if x_op.system else y_op.system
     return SumOperator(
         tuple(term * y_op for term in x_op.terms),

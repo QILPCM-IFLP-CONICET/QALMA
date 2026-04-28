@@ -81,6 +81,21 @@ def graph_from_alps_xml(
         return new_coords
 
     def process_coordinates(text: Optional[str] = None) -> Optional[list]:
+        """
+        Parse a space-separated coordinate string into a list of floats.
+
+        Parameters
+        ----------
+        text : str or None, optional
+            Space-separated coordinate expressions, possibly containing
+            parameter references. Returns ``None`` if ``text`` is empty
+            or ``None``.
+
+        Returns
+        -------
+        list[float] or None
+            Evaluated coordinate values, or ``None`` if no text is given.
+        """
         if text:
             coords_expr = [c for c in text.split(" ") if c != ""]
             try:
@@ -285,6 +300,25 @@ def graph_from_alps_xml(
         return default_parms
 
     def process_edge_unitcell(e_desc, _parms, dimension):
+        """
+        Parse an ``<EDGE>`` node from a ``<UNITCELL>`` into an edge descriptor.
+
+        Parameters
+        ----------
+        e_desc : xml.etree.ElementTree.Element
+            The ``<EDGE>`` XML node.
+        _parms : dict
+            Parameters (reserved for future use).
+        dimension : int
+            Spatial dimension of the unit cell, used to pad missing offsets
+            with zeros.
+
+        Returns
+        -------
+        dict
+            Edge descriptor with keys ``"src"``, ``"tgt"``,
+            ``"offset_src"``, and ``"offset_tgt"``.
+        """
         e_items = e_desc.attrib
         e_type = e_items.get("type", "0")
         e_src = e_items.get("source", "0")
@@ -315,6 +349,22 @@ def graph_from_alps_xml(
         return result
 
     def process_loop_graph(l_desc, _parms):
+        """
+        Parse a ``<LOOP>`` node from a ``<GRAPH>`` into a loop descriptor.
+
+        Parameters
+        ----------
+        l_desc : xml.etree.ElementTree.Element
+            The ``<LOOP>`` XML node.
+        _parms : dict
+            Parameters (reserved for future use).
+
+        Returns
+        -------
+        dict
+            Loop descriptor with keys ``"type"`` and ``"nodes"``, where
+            each node is a dict with key ``"vertex"``.
+        """
         l_items = l_desc.attrib
         l_type = l_items.get("type", "0")
         nodes = []
@@ -326,6 +376,27 @@ def graph_from_alps_xml(
         return {"type": l_type, "nodes": nodes}
 
     def process_loop_unitcell(l_desc, _parms, dimension):
+        """
+        Parse a ``<LOOP>`` node from a ``<UNITCELL>`` into a loop descriptor.
+
+        Like :func:`process_loop_graph` but also extracts per-node unit-cell
+        offsets and pads them to ``dimension`` components.
+
+        Parameters
+        ----------
+        l_desc : xml.etree.ElementTree.Element
+            The ``<LOOP>`` XML node.
+        _parms : dict
+            Parameters (reserved for future use).
+        dimension : int
+            Spatial dimension used to pad missing offset components with zeros.
+
+        Returns
+        -------
+        dict
+            Loop descriptor with keys ``"type"`` and ``"nodes"``, where each
+            node is a dict with keys ``"vertex"`` and ``"offset"``.
+        """
         l_items = l_desc.attrib
         l_type = l_items.get("type", "0")
         nodes = []
@@ -341,6 +412,25 @@ def graph_from_alps_xml(
         return {"type": l_type, "nodes": nodes}
 
     def process_unitcell(node, parms):
+        """
+        Parse a ``<UNITCELL>`` node into a unit-cell descriptor dict.
+
+        Processes vertices, edges, and loops, resolving parameter references.
+        Edges and loops are grouped by type into lists.
+
+        Parameters
+        ----------
+        node : xml.etree.ElementTree.Element
+            The ``<UNITCELL>`` XML node.
+        parms : dict
+            Parameters inherited from the parent context.
+
+        Returns
+        -------
+        dict
+            Unit-cell descriptor with keys ``"name"``, ``"dimension"``,
+            ``"vertices"``, ``"edges"``, and ``"loops"``.
+        """
         parms = process_parms(node, parms)
         vertices = {}
         edges = {}
@@ -412,6 +502,26 @@ class GraphDescriptor:
         lattice: Optional[dict] = None,
         parms: Optional[dict] = None,
     ):
+        """
+        Parameters
+        ----------
+        name : str
+            Human-readable name of the graph (e.g. ``"open chain"``).
+        nodes : dict
+            Mapping from node name to node attributes (type, coordinates, etc.).
+        edges : dict or None
+            Mapping from edge type to list of edge descriptors. Each descriptor
+            has keys ``"src"``, ``"tgt"``, and optionally ``"offset_src"`` /
+            ``"offset_tgt"`` for periodic lattices.
+        loops : dict or None
+            Mapping from loop type to list of loop descriptors. Each descriptor
+            has keys ``"type"`` and ``"nodes"``.
+        lattice : dict or None, optional
+            Unit-cell and Bravais lattice data for periodic lattices. ``None``
+            for finite graphs. Default is ``None``.
+        parms : dict or None, optional
+            Model parameters used when building the graph. Default is ``None``.
+        """
         self.name = name
         self.nodes = nodes
         self.edges = edges or {}

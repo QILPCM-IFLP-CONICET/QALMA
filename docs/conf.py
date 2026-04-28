@@ -53,6 +53,13 @@ autodoc_member_order = "bysource"
 autodoc_typehints = "description"
 add_module_names = False
 
+autodoc_default_options = {
+    'members': True,
+    'undoc-members': True,
+    'show-inheritance': True,
+    'imported-members': False,
+}
+
 # -- Napoleon (NumPy docstrings) ---------------------------------------------
 
 napoleon_google_docstring = False

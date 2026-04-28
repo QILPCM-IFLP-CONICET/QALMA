@@ -64,27 +64,38 @@ def _sp_worker(pair, basis, sp):
 
 
 def gram_matrix_parallel(basis, sp, num_workers=MAX_WORKERS, use_threads=USE_THREADS):
-    """
+    r"""
     Compute the Gram matrix of a set of operators in parallel using a scalar product.
 
-    This function evaluates all inner products ⟨b_i | b_j⟩ for i, j in `basis`
+    This function evaluates all inner products $\langle b_i | b_j \rangle$
+    for ``i, j`` in ``basis``
     and returns a real symmetric Gram matrix. Parallelization can be done via
     threads or processes.
 
     Parameters:
-        basis (List[Operator]): List of basis operators.
-        sp (Callable): Scalar product function taking two operators and returning a scalar.
-                       Must be a top-level, pickleable function if using processes.
-                       Notice that sp must be a top-level function, or in general,
-                       an object that can be stored with pickle. This does not include
-                       lambda functions.
-        num_workers (int or None): Number of worker threads or processes to use.
-                                   Defaults to the number of cores.
-        use_threads (bool): If True, uses threading instead of multiprocessing.
-                            Useful when the scalar product is I/O-bound or GIL-friendly.
+    -----------
+
+    basis: List[Operator]
+        List of basis operators.
+    sp: Callable
+        Scalar product function taking two operators and returning a scalar.
+        Must be a top-level, pickleable function if using processes.
+        Notice that sp must be a top-level function, or in general,
+        an object that can be stored with pickle. This does not include
+        lambda functions.
+    num_workers:  int or None
+        Number of worker threads or processes to use.
+        Defaults to the number of cores.
+    use_threads (bool):
+        If True, uses threading instead of multiprocessing.
+        Useful when the scalar product is I/O-bound or GIL-friendly.
 
     Returns:
-        np.ndarray: Symmetric real-valued Gram matrix of shape (len(basis), len(basis)).
+    --------
+
+    result: np.ndarray
+       Symmetric real-valued Gram matrix of shape (len(basis), len(basis)).
+
     """
     size = len(basis)
     result = np.zeros((size, size), dtype=float)

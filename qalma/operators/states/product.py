@@ -42,6 +42,27 @@ class ProductDensityOperator(DensityOperatorMixin, ProductOperator):
         normalized: bool = False,
         _qutip_factors: Optional[Dict[str, Qobj]] = None,
     ):
+        """
+        Parameters
+        ----------
+        local_states : dict[str, np.ndarray or Qobj]
+            Mapping from site name to local density matrix. If
+            ``normalized=False``, each matrix is divided by its trace.
+            Sites present in ``system`` but absent from ``local_states``
+            are filled with the maximally mixed state :math:`\\mathbb{I}/d`.
+        weight : float, optional
+            Non-negative scalar prefactor :math:`\\lambda`. Default is
+            ``1.0``.
+        system : SystemDescriptor or None, optional
+            Descriptor of the full lattice system. If ``None``, the system
+            is inferred from the dimensions of ``local_states``.
+        normalized : bool, optional
+            If ``True``, assumes each local matrix already has unit trace.
+            Default is ``False``.
+        _qutip_factors : dict[str, Qobj] or None, optional
+            Pre-computed QuTiP representations of the local factors.
+            Used internally to avoid redundant conversions.
+        """
         assert weight >= 0
 
         # Build the local partition functions and normalize
@@ -199,7 +220,26 @@ class ProductDensityOperator(DensityOperatorMixin, ProductOperator):
         return super().expect(obs_objs, _local_states=_local_states)
 
     def logm(self):
+        """
+        Return the matrix logarithm :math:`\\log\\rho`.
 
+        Exploits the product structure: since
+        :math:`\\rho = \\lambda \\bigotimes_i \\rho_i`, we have
+
+        .. math::
+
+            \\log\\rho = \\log\\lambda + \\sum_i \\log\\rho_i
+                       - \\sum_{j \\notin \\text{support}} \\log d_j\\, \\mathbb{I}
+
+        where the last sum accounts for identity factors from sites not in
+        ``site_factors``.
+
+        Returns
+        -------
+        Operator
+            The matrix logarithm as a :class:`~qalma.operators.arithmetic.OneBodyOperator`
+            plus a scalar offset.
+        """
         system = self.system
         sites_op = self.site_factors
         terms = tuple(
@@ -216,6 +256,23 @@ class ProductDensityOperator(DensityOperatorMixin, ProductOperator):
         return OneBodyOperator(terms, system, False)
 
     def partial_trace(self, sites: Union[frozenset, SystemDescriptor]):
+        """
+        Compute the partial trace over the complement of ``sites``.
+
+        For a product state the partial trace simply discards the local
+        factors of the traced-out sites, returning a new
+        :class:`ProductDensityOperator` on the reduced subsystem.
+
+        Parameters
+        ----------
+        sites : frozenset[str] or SystemDescriptor
+            Sites to *keep*. All other sites are traced out.
+
+        Returns
+        -------
+        ProductDensityOperator
+            The reduced product state on the subsystem defined by ``sites``.
+        """
         sites_op = self.site_factors
         if isinstance(sites, SystemDescriptor):
             subsystem = sites
@@ -244,6 +301,27 @@ class ProductDensityOperator(DensityOperatorMixin, ProductOperator):
         )
 
     def to_qutip(self, block: Optional[Tuple[str, ...]] = None):
+        """
+        Return the QuTiP tensor-product representation of the state.
+
+        Sites in ``block`` that are not in ``site_factors`` contribute an
+        identity factor :math:`\\mathbb{I}/d`. If ``block`` is ``None``,
+        all system sites are used in lexicographical order.
+
+        Parameters
+        ----------
+        block : tuple[str, ...] or None, optional
+            Ordered list of site names defining the tensor-product structure
+            of the returned :class:`qutip.Qobj`. Default is all sites in
+            lexicographical order.
+
+        Returns
+        -------
+        qutip.Qobj or float
+            The density matrix :math:`\\lambda \\bigotimes_i \\rho_i` over
+            ``block``. Returns a scalar if the weight is zero or the system
+            has no sites.
+        """
         prefactor = self.prefactor
         if prefactor == 0 or len(self.system.dimensions) == 0:
             return np.exp(-sum(np.log(dim) for dim in self.system.dimensions.values()))

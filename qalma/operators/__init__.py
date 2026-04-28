@@ -1,6 +1,12 @@
 # -*- coding: utf-8 -*-
 """
+:no-index:
+
 Operators
+=========
+
+Classes representing different kind of operators.
+
 """
 
 from qalma.operators import register_ops
