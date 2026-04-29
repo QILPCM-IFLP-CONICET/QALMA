@@ -39,7 +39,9 @@ BlockTermsDict = Dict[Tuple[str, ...], List[Operator]]
 def build_local_basis(
     terms_by_block: BlockTermsDict,
 ) -> LocalBasisDict:
-    """Build a local basis of operators from a list of two-body operators on
+    """Build a local basis from a list of two-body operators.
+
+    Build a local basis of operators from a list of two-body operators on
     each pair of sites.
     """
     basis_by_site: Dict[str, List[Qobj]] = {}
@@ -70,7 +72,9 @@ def build_local_basis(
 
 
 def orthonormal_hs_local_basis(local_generators_dict: LocalBasisDict) -> LocalBasisDict:
-    """From a set of operators associated to each site, build an
+    """Build a HS orthonormal basis of local operators.
+
+    From a set of operators associated to each site, build an
     orthonormalized basis of hermitian operators regarding the HS scalar
     product on each site.
     """
@@ -110,7 +114,9 @@ def orthonormal_hs_local_basis(local_generators_dict: LocalBasisDict) -> LocalBa
 
 
 def zero_expectation_value_basis(basis: LocalBasisDict, sigma_ref):
-    """Add an offset of each element of the local basis in a way that each
+    """Build a zero expectation value basis.
+
+    Add an offset of each element of the local basis in a way that each
     operator have zero mean regarding sigma_ref.
     """
     local_sigmas = sigma_ref.site_factors_qutip
@@ -128,7 +134,9 @@ def zero_expectation_value_basis(basis: LocalBasisDict, sigma_ref):
 def classify_terms(
     operator: Operator, sigma_ref
 ) -> Tuple[BlockTermsDict, List[Operator], List[Operator]]:
-    """Decompose `operator` as list of terms
+    """Decompose ``operator`` as a sum of two-site operators.
+
+    Decompose `operator` as list of terms
     associated to each pairs of sites,
     and offset terms
     operator = sum_{ij} sum_a q_ija +  sum_{b} offset_{b}.
@@ -449,9 +457,7 @@ def fill_array_from_block(
     block: Tuple[str, ...],
     terms: List[Operator],
 ) -> None:
-    """Full result_array with the coefficients obtained from the local
-    basis.
-    """
+    """Full result_array with the coefficients obtained from the local basis."""
     site1, site2 = block
     position_1 = positions[site1]
     position_2 = positions[site2]

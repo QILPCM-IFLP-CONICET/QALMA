@@ -61,7 +61,7 @@ def spectral_norm(operator: Operator) -> float:
 
 
 def log_op(operator: Operator) -> Operator:
-    """The logarithm of an operator."""
+    """Compute the logarithm of an operator."""
     assert isinstance(operator, Operator)
     if hasattr(operator, "logm"):
         return operator.logm()
