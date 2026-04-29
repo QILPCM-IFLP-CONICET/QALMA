@@ -1,5 +1,4 @@
-"""Basic unit test.
-"""
+"""Basic unit test."""
 
 import numpy as np
 import pytest
@@ -31,8 +30,7 @@ OPERATOR_TYPE_CASES_QUTIP = {
     ],
 )
 def test_arithmetic_operators(key1, test_operator1, key2, test_operator2):
-    """Test consistency of arithmetic expressions
-    """
+    """Test consistency of arithmetic expressions."""
     op1_qutip = OPERATOR_TYPE_CASES_QUTIP[key1]
     if key1 == key2:
         print("comparing unary operations for ", key1)
@@ -80,8 +78,7 @@ def test_arithmetic_operators(key1, test_operator1, key2, test_operator2):
     ],
 )
 def test_arithmetic_operators_with_numbers(key1, test_operator1, key2, value):
-    """Test consistency of arithmetic expressions
-    """
+    """Test consistency of arithmetic expressions."""
     op1_qutip = OPERATOR_TYPE_CASES_QUTIP[key1]
 
     print("add ", key1, " and ", key2)

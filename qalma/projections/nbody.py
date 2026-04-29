@@ -156,7 +156,7 @@ def _project_qutip_operator_to_one_body(
     full_operator: QutipOperator,
     state_ref: Optional[ProductDensityOperator] = None,
 ):
-    """Project `full_operator` over the one-body operator subspace,
+    r"""Project `full_operator` over the one-body operator subspace,
     relative to the state `state_ref`.
 
     The idea is that the projection of a product operator on the one-body
@@ -310,8 +310,10 @@ def _project_product_operator_recursive(
     n_max: int,
     sigma_ref: Optional[ProductDensityOperator],
 ) -> Operator:
-    """# reduce op1 (x) op2 (x) op3 ... # to <op1> Proj_{m}(op2 (x) op3) + #
-    Delta op1 (x) Proj_{m-1}(op2 (x) op3) # and sum the result.
+    """# reduce op1 (x) op2 (x) op3 ...
+
+    # to <op1> Proj_{m}(op2 (x) op3) + # Delta op1 (x) Proj_{m-1}(op2
+    (x) op3) # and sum the result.
 
     # Special case: n_max=0
     """

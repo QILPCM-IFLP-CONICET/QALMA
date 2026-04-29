@@ -52,7 +52,7 @@ def mf_quadratic_form_exponential(
     ham: Optional[Operator] = None,
 ) -> ProductDensityOperator:
     """Approximate `exp(-qf_op)` as `exp(-h_mf)`
-    with h_mf = k_0 + sum_a phi_a q_a
+    with h_mf = k_0 + sum_a phi_a q_a.
 
     Parameters
     ----------

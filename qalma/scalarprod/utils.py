@@ -12,9 +12,7 @@ from qalma.settings import QALMA_TOLERANCE
 def find_linearly_independent_rows(
     mat: NDArray, tol: float = QALMA_TOLERANCE
 ) -> Tuple[int]:
-    """Find indices of a maximal subset of linearly independent columns of the
-    matrix.
-    """
+    """Find indices of a maximal subset of linearly independent columns of the matrix."""
     tol = min(tol, min(row[i] for i, row in enumerate(mat)) * 0.25)
     r, inds = qr(mat, mode="r", pivoting=True)
     rank = np.linalg.matrix_rank(r, tol=tol)
@@ -23,7 +21,9 @@ def find_linearly_independent_rows(
 
 
 def iterator_transverse(tn_1: list, tn_2: list) -> Generator:
-    """Given two lists `tn_1`, `tn_2`, generate a list of indices `i`,`j` of
+    """Build a transverse iterator over elements of an upper triangular matrix.
+
+    Given two lists `tn_1`, `tn_2`, generate a list of indices `i`,`j` of
     the matrix `m[i,j]=tn_1[i]tn_2[j]` from the lower-right corner to the
     upper-left corner, going through (anti)-diagonals in alternating
     directions.
@@ -54,7 +54,9 @@ def iterator_transverse(tn_1: list, tn_2: list) -> Generator:
 
 
 def iterator_transverse_upper(tn_1: list) -> Generator:
-    """Given a list `tn_1`, generate a list of indices `i`,`j` of the matrix
+    """Iterate over upper-triangular indices going through anti-diagonals.
+
+    Given a list `tn_1`, generate a list of indices `i`,`j` of the matrix
     `m[i,j]=tn_1[i]tn_1[j]` from the lower-right corner to the upper-left
     corner, going through (anti)-diagonals in alternating directions, covering
     the strict upper-triangular submatrix.

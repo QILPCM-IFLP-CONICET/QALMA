@@ -123,7 +123,7 @@ def print_diff_table(
     reverse: bool = True,
 ):
     """rows: list of (key, b_ct, c_ct, d_ct, b_tt, c_tt, d_tt, b_nc, c_nc)
-    sort_idx: index into the tuple to sort by
+    sort_idx: index into the tuple to sort by.
     """
     filtered = [r for r in rows if abs(r[3]) >= min_delta or abs(r[6]) >= min_delta]
     filtered.sort(key=lambda r: r[sort_idx], reverse=reverse)

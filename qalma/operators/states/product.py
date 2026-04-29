@@ -40,7 +40,7 @@ class ProductDensityOperator(DensityOperatorMixin, ProductOperator):
         normalized: bool = False,
         _qutip_factors: Optional[Dict[str, Qobj]] = None,
     ):
-        """Parameters
+        r"""Parameters
         ----------
         local_states : dict[str, np.ndarray or Qobj]
             Mapping from site name to local density matrix. If
@@ -217,7 +217,7 @@ class ProductDensityOperator(DensityOperatorMixin, ProductOperator):
         return super().expect(obs_objs, _local_states=_local_states)
 
     def logm(self):
-        """Return the matrix logarithm :math:`\\log\\rho`.
+        r"""Return the matrix logarithm :math:`\\log\\rho`.
 
         Exploits the product structure: since
         :math:`\\rho = \\lambda \\bigotimes_i \\rho_i`, we have
@@ -298,7 +298,7 @@ class ProductDensityOperator(DensityOperatorMixin, ProductOperator):
         )
 
     def to_qutip(self, block: Optional[Tuple[str, ...]] = None):
-        """Return the QuTiP tensor-product representation of the state.
+        r"""Return the QuTiP tensor-product representation of the state.
 
         Sites in ``block`` that are not in ``site_factors`` contribute an
         identity factor :math:`\\mathbb{I}/d`. If ``block`` is ``None``,

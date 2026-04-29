@@ -1,5 +1,4 @@
-"""Basic unit test.
-"""
+"""Basic unit test."""
 
 from functools import reduce
 
@@ -22,14 +21,13 @@ from .helper import FULL_TEST_CASES, check_operator_equality
 
 
 def union_set(set_list):
-    """Union of a list of sets"""
+    """Union of a list of sets."""
     return reduce(lambda x, y: x.union(y), set_list, set())
 
 
 def compute_size(operator: Operator):
-    """Compute the initial number of
-    qutip operators needed to store
-    operator
+    """Compute the initial number of qutip operators needed to store
+    operator.
     """
     if isinstance(operator, ScalarOperator):
         return 0
@@ -52,7 +50,7 @@ def compute_size(operator: Operator):
 
 @pytest.mark.parametrize(["key", "operator"], list(FULL_TEST_CASES.items()))
 def test_simplify(key, operator):
-    """Test simplify operators"""
+    """Test simplify operators."""
     print("* check", key)
     simplify1 = operator.simplify()
     assert check_operator_equality(operator, simplify1, 1e-8), (

@@ -22,7 +22,9 @@ default_parms = {
 
 
 def draw_ellipse_around_points(p1, p2, ax, b_ratio=0.15):
-    """Draw an ellipse containing p1 and p2 located over the main axis,
+    """Draw an ellipse around the specified points.
+
+    Draw an ellipse containing p1 and p2 located over the main axis,
     symmetrically around the center.
     """
     # Compute center
@@ -61,7 +63,7 @@ def draw_operator(op, axis: PLTAxes) -> PLTAxes:
       If the operator acts on a single site, draws a disk on its coordinates.
       If is a SumOperator, flatten it and draw each term.
       For many-body operators, a line is drawn.
-    ax: mpl.Axis
+    axis: mpl.Axis
       the axis over which the operator is going to be drawn.
 
     Return
@@ -100,10 +102,12 @@ def draw_operator(op, axis: PLTAxes) -> PLTAxes:
 
 
 def eval_expr(expr: str, parms: dict):
-    """Evaluate the expression `expr` replacing the variables defined in
-    `parms`.
+    """Evaluate the expression `expr` using ``parms``.
 
-    expr can include python`s arithmetic expressions, and some
+    The function uses the Python ``eval`` method using the
+    ``parms`` dict as a context.
+
+    ``expr`` can include python`s arithmetic expressions, and some
     elementary functions.
     """
     # TODO: Improve the workflow in a way that numpy functions
@@ -185,7 +189,7 @@ def find_ref(node, root):
     Returns
     -------
     dict
-        the node corresponding to `node`.
+        the node corresponding to ``node``.
 
     """
     node_items = dict(node.items())
@@ -198,7 +202,9 @@ def find_ref(node, root):
 
 
 def operator_to_wolfram(operator) -> str:
-    """Produce a string with a Wolfram Mathematica expression representing the
+    """WL representation of the operator.
+
+    Produce a string with a Wolfram Mathematica expression representing the
     operator.
     """
     # pylint: disable=import-outside-toplevel
@@ -308,7 +314,7 @@ def matrix_to_wolfram(matr: np.ndarray):
 
 
 def next_name(dictionary: dict, s: int = 1, prefix: str = "") -> str:
-    """Produces a new key for the `dictionary` with a `prefix`"""
+    """Produce a new key for the ``dictionary`` with a ``prefix``."""
     name = f"{prefix}{s}"
     if name in dictionary:
         return next_name(dictionary, s + 1, prefix)
@@ -316,8 +322,10 @@ def next_name(dictionary: dict, s: int = 1, prefix: str = "") -> str:
 
 
 def replace_variable_type(val, e_type):
-    """If `val` is a str representing an unevaluated expression, replace
-    occurrences of `#` by `e_type`.
+    """Replace `#` by type in parametrized variable names.
+
+    If ``val`` is a str representing an unevaluated expression, replace
+    occurrences of ``#`` by ``e_type``.
     """
     if isinstance(val, str):
         return val.replace("#", f"{e_type}")

@@ -14,7 +14,9 @@ from .covar import CovariantScalarProductFunction
 
 
 def fetch_kubo_scalar_product(sigma: Operator, threshold=0) -> Callable:
-    """Build a KMB scalar product function associated to the state ``sigma``"""
+    """Build a KMB scalar product function associated to the state
+    ``sigma``.
+    """
     evals_evecs = sorted(zip(*sigma.eigenstates()), key=lambda x: -x[0])
     w = 1
     for i, val_vec in enumerate(evals_evecs):

@@ -327,7 +327,7 @@ class Operator:  # pylint: disable=too-many-public-methods
         return norm(self.to_qutip(), ord)
 
     def partial_trace(self, sites: Union[frozenset, SystemDescriptor]):
-        """Partial trace over sites not listed in `sites`"""
+        """Partial trace over sites not listed in `sites`."""
         raise NotImplementedError
 
     def reduce(self, sites: Iterable, state=None):
@@ -526,7 +526,7 @@ class LocalOperator(Operator):
         return is_diagonal_op(self.operator)
 
     def logm(self):
-        """Return the matrix logarithm of the local operator.
+        r"""Return the matrix logarithm of the local operator.
 
         Computed via eigendecomposition. Eigenvalues below ``1e-50`` are
         clamped to avoid numerical divergence in the logarithm.
@@ -568,7 +568,7 @@ class LocalOperator(Operator):
         return result
 
     def partial_trace(self, sites: Union[frozenset, SystemDescriptor]):
-        """Compute the partial trace over the complement of ``sites``.
+        r"""Compute the partial trace over the complement of ``sites``.
 
         If the operator's site is not in ``sites``, returns a
         :class:`~qalma.operators.product.ScalarOperator` with value
@@ -706,7 +706,7 @@ class LocalOperator(Operator):
         return result
 
     def tr(self):
-        """Return the trace of the operator over the full system.
+        r"""Return the trace of the operator over the full system.
 
         Returns
         -------

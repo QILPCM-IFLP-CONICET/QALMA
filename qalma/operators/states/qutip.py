@@ -30,7 +30,7 @@ class QutipDensityOperator(DensityOperatorMixin, QutipOperator):
         prefactor=1,
         normalized=False,
     ):
-        """Parameters
+        r"""Parameters
         ----------
         qoperator : Qobj
             The QuTiP density matrix. Normalized to unit trace on construction
@@ -105,7 +105,7 @@ class QutipDensityOperator(DensityOperatorMixin, QutipOperator):
         )
 
     def logm(self):
-        """Return the matrix logarithm :math:`\\log\\rho`.
+        r"""Return the matrix logarithm :math:`\\log\\rho`.
 
         Normalizes first, then computes the logarithm via eigendecomposition.
         Eigenvalues below ``1e-30`` are clamped to avoid divergence.

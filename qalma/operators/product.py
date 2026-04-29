@@ -31,7 +31,7 @@ from .basic import LocalOperator, Operator
 
 
 class ProductOperator(Operator):
-    """Tensor product of local operators acting on different sites.
+    r"""Tensor product of local operators acting on different sites.
 
     Represents an operator of the form
 
@@ -176,7 +176,7 @@ class ProductOperator(Operator):
         return ProductOperator(self.site_factors, -self.prefactor, self.system)
 
     def __pow__(self, exp):
-        """Return the operator raised to the power ``exp``.
+        r"""Return the operator raised to the power ``exp``.
 
         Each local factor is raised independently to ``exp``, and the
         prefactor is raised to ``exp`` as well.
@@ -240,7 +240,7 @@ class ProductOperator(Operator):
         return frozenset(site for site in self.site_factors)
 
     def dag(self):
-        """Return the adjoint (Hermitian conjugate) of the operator.
+        r"""Return the adjoint (Hermitian conjugate) of the operator.
 
         Each local factor is conjugate-transposed and the prefactor is
         complex-conjugated.
@@ -258,7 +258,7 @@ class ProductOperator(Operator):
         return ProductOperator(sites_op_dag, prefactor, self.system)
 
     def expm(self):
-        """Return the matrix exponential :math:`e^{\\lambda O}`.
+        r"""Return the matrix exponential :math:`e^{\\lambda O}`.
 
         For single-site operators the exponential is computed exactly via
         :func:`scipy.linalg.expm`. For multi-site operators falls back to
@@ -307,7 +307,7 @@ class ProductOperator(Operator):
         return self
 
     def hermitician_part(self):
-        """Return the Hermitian part of the operator, :math:`(O +
+        r"""Return the Hermitian part of the operator, :math:`(O +
         O^\\dagger)/2`.
 
         Returns
@@ -384,7 +384,7 @@ class ProductOperator(Operator):
         return True
 
     def logm(self):
-        """Return the matrix logarithm of the operator.
+        r"""Return the matrix logarithm of the operator.
 
         Uses the identity :math:`\\log(\\lambda \\bigotimes_i O_i) =
         \\log\\lambda + \\sum_i \\log O_i` valid when the local factors
@@ -680,7 +680,7 @@ class ProductOperator(Operator):
         return super().to_qutip_operator()
 
     def tr(self):
-        """Return the trace of the operator over the full system.
+        r"""Return the trace of the operator over the full system.
 
         Returns
         -------
@@ -714,7 +714,7 @@ class ProductOperator(Operator):
 
 
 class ScalarOperator(ProductOperator):
-    """A product operator that acts as a scalar multiple of the identity.
+    r"""A product operator that acts as a scalar multiple of the identity.
 
     Represents :math:`\\lambda \\, \\mathbb{I}` where :math:`\\lambda` is a
     complex scalar and :math:`\\mathbb{I}` is the identity on the full system.
@@ -815,7 +815,7 @@ class ScalarOperator(ProductOperator):
         return True
 
     def logm(self):
-        """Return the matrix logarithm of the scalar operator.
+        r"""Return the matrix logarithm of the scalar operator.
 
         Returns
         -------
@@ -826,7 +826,7 @@ class ScalarOperator(ProductOperator):
         return ScalarOperator(np.log(self.prefactor), self.system)
 
     def norm(self, ord=None):
-        """Return the norm of the scalar operator.
+        r"""Return the norm of the scalar operator.
 
         Parameters
         ----------
@@ -904,7 +904,7 @@ class ScalarOperator(ProductOperator):
         return self
 
     def to_qutip(self, block: Optional[Tuple[str, ...]] = None):
-        """Return a QuTiP identity operator scaled by the prefactor.
+        r"""Return a QuTiP identity operator scaled by the prefactor.
 
         Parameters
         ----------

@@ -15,7 +15,7 @@ from .simulation import Simulation
 def series_evolution(
     ham, k0, t_span, order, *, e_ops: Optional[Callable | Dict] = None
 ) -> Simulation:
-    """Compute the solution of the Schrödinger equation
+    """Compute the solution of the Schrödinger equation.
 
     dk
     -- = -i [H, k]

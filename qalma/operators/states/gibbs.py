@@ -1,4 +1,4 @@
-"""Classes to represent density operators as Gibbs states
+r"""Classes to represent density operators as Gibbs states.
 
 .. math::
 
@@ -30,7 +30,7 @@ from qalma.qutip_tools.tools import is_diagonal_op, safe_exp_and_normalize
 
 
 class GibbsDensityOperator(DensityOperatorMixin, Operator):
-    """Density operator of the form :math:`\\rho = \\lambda\\, e^{-K} / \\mathrm{Tr}(e^{-K})`.
+    r"""Density operator of the form :math:`\\rho = \\lambda\\, e^{-K} / \\mathrm{Tr}(e^{-K})`.
 
     Stores the operator implicitly through its generator :math:`K` rather
     than as an explicit matrix, enabling efficient representation of
@@ -160,7 +160,7 @@ class GibbsDensityOperator(DensityOperatorMixin, Operator):
 
     @property
     def free_energy(self):
-        """Free energy :math:`F = -\\log Z` where :math:`Z = \\mathrm{Tr}(e^{-K})`.
+        r"""Free energy :math:`F = -\\log Z` where :math:`Z = \\mathrm{Tr}(e^{-K})`.
 
         Triggers normalization on first access if not yet normalized.
 
@@ -188,7 +188,7 @@ class GibbsDensityOperator(DensityOperatorMixin, Operator):
         return self._free_energy
 
     def logm(self) -> Operator:
-        """Return the matrix logarithm :math:`\\log\\rho = -K`.
+        r"""Return the matrix logarithm :math:`\\log\\rho = -K`.
 
         Normalizes the operator first to ensure :math:`\\mathrm{Tr}(e^{-K})=1`.
 
@@ -203,7 +203,7 @@ class GibbsDensityOperator(DensityOperatorMixin, Operator):
         return -k
 
     def normalize(self) -> Operator:
-        """Normalize :math:`K` so that :math:`\\mathrm{Tr}(e^{-K}) = 1`.
+        r"""Normalize :math:`K` so that :math:`\\mathrm{Tr}(e^{-K}) = 1`.
 
         The normalization shifts :math:`K` by :math:`\\log Z` and stores
         :math:`F = -\\log Z` as the free energy. This is a no-op if the
@@ -267,7 +267,7 @@ class GibbsDensityOperator(DensityOperatorMixin, Operator):
         return self.partial_trace(sites)
 
     def to_qutip_operator(self):
-        """Return a :class:`QutipDensityOperator` representation.
+        r"""Return a :class:`QutipDensityOperator` representation.
 
         Computes the full matrix :math:`\\rho = e^{-K}/Z` as a
         :class:`qutip.Qobj` and wraps it in a
@@ -341,7 +341,7 @@ class GibbsDensityOperator(DensityOperatorMixin, Operator):
 
 
 class GibbsProductDensityOperator(DensityOperatorMixin, Operator):
-    """Product Gibbs state :math:`\\rho = \\lambda \\bigotimes_i \\rho_i`.
+    r"""Product Gibbs state :math:`\\rho = \\lambda \\bigotimes_i \\rho_i`.
 
     Represents a density operator that factorizes over sites:
 
@@ -469,7 +469,7 @@ class GibbsProductDensityOperator(DensityOperatorMixin, Operator):
         obs_objs: Union[Operator, Iterable],
         _local_states: Optional[Dict[frozenset, DensityOperatorProtocol]] = None,
     ) -> Union[np.ndarray, dict, complex]:
-        """Compute the expectation value :math:`\\langle O \\rangle_\\rho`.
+        r"""Compute the expectation value :math:`\\langle O \\rangle_\\rho`.
 
         Delegates to the :class:`ProductDensityOperator` representation,
         which computes expectation values efficiently using the product
@@ -508,7 +508,7 @@ class GibbsProductDensityOperator(DensityOperatorMixin, Operator):
         return True
 
     def logm(self) -> Operator:
-        """Return the matrix logarithm :math:`\\log\\rho = -\\sum_i K_i`.
+        r"""Return the matrix logarithm :math:`\\log\\rho = -\\sum_i K_i`.
 
         Exploits the product structure: since :math:`\\rho = \\bigotimes_i
         e^{-K_i}`, we have :math:`\\log\\rho = -\\sum_i K_i`.
@@ -583,7 +583,7 @@ class GibbsProductDensityOperator(DensityOperatorMixin, Operator):
         return self.partial_trace(sites)
 
     def to_product_state(self):
-        """Convert to an explicit :class:`ProductDensityOperator`.
+        r"""Convert to an explicit :class:`ProductDensityOperator`.
 
         Computes each local density matrix :math:`\\rho_i = e^{-K_i}` and
         assembles them into a :class:`ProductDensityOperator`.
@@ -605,7 +605,7 @@ class GibbsProductDensityOperator(DensityOperatorMixin, Operator):
         )
 
     def to_qutip(self, block: Optional[Tuple[str, ...]] = None):
-        """Return the QuTiP matrix representation of the product Gibbs state.
+        r"""Return the QuTiP matrix representation of the product Gibbs state.
 
         Delegates to :meth:`to_product_state` and then calls its
         :meth:`to_qutip` method.

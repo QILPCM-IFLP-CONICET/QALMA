@@ -1,5 +1,4 @@
-"""Basic unit test.
-"""
+"""Basic unit test."""
 
 import os
 from test.helper import alert
@@ -14,7 +13,7 @@ from qalma.utils import eval_expr
 
 
 def test_eval_expr():
-    """Test basic evaluation of expressions"""
+    """Test basic evaluation of expressions."""
     parms = {"a": "J", "J": 2, "subexpr": "a*J"}
     test_cases = [
         ("2+a", 4),

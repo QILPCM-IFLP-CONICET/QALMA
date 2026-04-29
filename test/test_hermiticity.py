@@ -1,5 +1,4 @@
-"""Basic unit test.
-"""
+"""Basic unit test."""
 
 import numpy as np
 import pytest

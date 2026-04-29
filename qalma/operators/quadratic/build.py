@@ -257,7 +257,7 @@ def build_quadratic_form_from_operator(
     isherm: Optional[bool] = None,
     sigma_ref=None,
 ) -> QuadraticFormOperator:
-    """Build a QuadraticFormOperator from `operator`"""
+    """Build a QuadraticFormOperator from `operator`."""
     if simplify:
         operator = operator.simplify()
 

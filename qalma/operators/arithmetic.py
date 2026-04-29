@@ -21,7 +21,7 @@ from qalma.settings import QALMA_TOLERANCE
 
 
 class SumOperator(Operator):
-    """Linear combination of operators.
+    r"""Linear combination of operators.
 
     Represents a sum of the form
 
@@ -100,7 +100,7 @@ class SumOperator(Operator):
         return False
 
     def __pow__(self, exp):
-        """Return the operator raised to a non-negative integer power.
+        r"""Return the operator raised to a non-negative integer power.
 
         Computed by repeated multiplication. Negative or non-integer
         exponents raise :class:`TypeError`.
@@ -205,7 +205,7 @@ class SumOperator(Operator):
         return frozenset(result)
 
     def dag(self):
-        """Return the adjoint operator :math:`O^\\dagger`.
+        r"""Return the adjoint operator :math:`O^\\dagger`.
 
         Returns
         -------
@@ -254,7 +254,7 @@ class SumOperator(Operator):
         return self
 
     def hermitician_part(self):
-        """Return the Hermitian part :math:`(O + O^\\dagger)/2`.
+        r"""Return the Hermitian part :math:`(O + O^\\dagger)/2`.
 
         Returns
         -------
@@ -519,7 +519,7 @@ NBodyOperator = SumOperator
 
 
 class OneBodyOperator(SumOperator):
-    """Linear combination of local (single-site) operators.
+    r"""Linear combination of local (single-site) operators.
 
     A special case of :class:`SumOperator` restricted to terms that each
     act on at most one site. Represents operators of the form
@@ -607,7 +607,7 @@ class OneBodyOperator(SumOperator):
         return OneBodyOperator(tuple(-term for term in self.terms), self.system)
 
     def dag(self):
-        """Return the adjoint :math:`O^\\dagger`.
+        r"""Return the adjoint :math:`O^\\dagger`.
 
         Returns
         -------
@@ -622,7 +622,7 @@ class OneBodyOperator(SumOperator):
         )
 
     def expm(self):
-        """Return the matrix exponential :math:`e^O`.
+        r"""Return the matrix exponential :math:`e^O`.
 
         Exploits the fact that local operators on different sites commute:
 
@@ -661,7 +661,7 @@ class OneBodyOperator(SumOperator):
         return ProductOperator(sites_op, prefactor=prefactor, system=self.system)
 
     def hermitician_part(self):
-        """Return the Hermitian part :math:`(O + O^\\dagger)/2`.
+        r"""Return the Hermitian part :math:`(O + O^\\dagger)/2`.
 
         Returns
         -------

@@ -1,4 +1,4 @@
-"""Benchmarks for the variational mean-field approximation — paper figures.
+r"""Benchmarks for the variational mean-field approximation — paper figures.
 
 Two families of tests:
 
@@ -45,8 +45,8 @@ from qalma.operators.states import ProductDensityOperator
 
 
 def build_nn_chain(L: int, parms: dict) -> Tuple[SystemDescriptor, object]:
-    """Spin-1/2 open chain with nearest-neighbor bonds only.
-    Uses 'open chain' latticegraph (simple1d unit cell, bond type 0).
+    """Spin-1/2 open chain with nearest-neighbor bonds only. Uses 'open chain'
+    latticegraph (simple1d unit cell, bond type 0).
 
     Parameters
     ----------
@@ -68,7 +68,7 @@ def build_j1j2_chain(L: int, J1: float, J2: float) -> Tuple[SystemDescriptor, ob
     """Spin-1/2 J1-J2 open chain.
     Uses 'nnn open chain lattice' (complex1d unit cell), which has:
       - bond type 0: nearest neighbors  (J1)
-      - bond type 1: next-nearest neighbors (J2)
+      - bond type 1: next-nearest neighbors (J2).
 
     Parameters
     ----------
@@ -172,6 +172,7 @@ EXACT_CASES = [
 @pytest.mark.parametrize("beta", [0.5, 1.0, 2.0])
 def test_exact_validation(label, parms, L_list, beta_list, L, beta):
     """Variational MF must improve over the fully mixed state.
+
     The mixed state is the trivial upper bound on S_rel.
     """
     if L not in L_list or beta not in beta_list:
@@ -233,6 +234,7 @@ def run_numfields_sweep(
     numfields_list: List[int] = NUMFIELDS_LIST,
 ) -> List[dict]:
     """Sweep numfields for a J1-J2 chain, using warm start between runs.
+
     Returns list of result dicts suitable for JSON serialization.
     """
     J2 = J2_ratio * abs(J1)
@@ -288,6 +290,7 @@ def run_numfields_sweep(
 @pytest.mark.parametrize("beta", [1.0, 2.0, 5.0])
 def test_numfields_convergence(J2_ratio, label, L, beta):
     """S_rel must be non-increasing as numfields grows.
+
     Tolerance of 1e-4 allows for numerical noise in the optimizer.
     """
     print(f"\n--- {label}  L={L}  beta={beta} ---")

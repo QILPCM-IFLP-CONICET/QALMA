@@ -1,5 +1,4 @@
-"""Basic unit test for states.
-"""
+"""Basic unit test for states."""
 
 from test.helper import (
     EXPECTATION_VALUE_TOLERANCE,

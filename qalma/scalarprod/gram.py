@@ -1,14 +1,17 @@
-"""Routines to build the Gram's matrix associated to a scalar product and a
-basis.
+"""Gram's matrix computation routines.
+
+Routines to build the associated to a scalar product and an
+operator basis.
 """
 
 import logging
-from typing import Callable, Tuple
+from typing import Callable, List, Tuple
 
 import numpy as np
 from numpy.typing import NDArray
 
 import qalma.settings as qalma_settings
+from qalma.operators import Operator
 from qalma.scalarprod.utils import find_linearly_independent_rows
 
 # from datetime import datetime
@@ -34,7 +37,9 @@ else:
 
 # ### Generic functions depending on the SP ###
 def _sp_worker(pair, basis, sp):
-    """Compute the real-valued part of the scalar product between two
+    """Compute an element of the Gram matrix.
+
+    Compute the real-valued part of the scalar product between two
     SumOperators belonging to some basis, provided these are hermitian.
 
     Parameters
@@ -62,9 +67,13 @@ def _sp_worker(pair, basis, sp):
         return (i, j, np.nan)
 
 
-def gram_matrix_parallel(basis, sp, num_workers=MAX_WORKERS, use_threads=USE_THREADS):
-    r"""Compute the Gram matrix of a set of operators in parallel using a scalar
-    product.
+def gram_matrix_parallel(
+    basis: List[Operator],
+    sp: Callable,
+    num_workers: int = MAX_WORKERS,
+    use_threads: bool = USE_THREADS,
+):
+    r"""Compute compute the Gram matrix for an operator basis (parallel implementation).
 
     This function evaluates all inner products $\langle b_i | b_j \rangle$
     for ``i, j`` in ``basis``
@@ -84,7 +93,7 @@ def gram_matrix_parallel(basis, sp, num_workers=MAX_WORKERS, use_threads=USE_THR
     num_workers:  int or None
         Number of worker threads or processes to use.
         Defaults to the number of cores.
-    use_threads (bool):
+    use_threads: bool
         If True, uses threading instead of multiprocessing.
         Useful when the scalar product is I/O-bound or GIL-friendly.
 
@@ -120,7 +129,9 @@ def gram_matrix_parallel(basis, sp, num_workers=MAX_WORKERS, use_threads=USE_THR
 
 
 def gram_matrix_serial(basis, sp: Callable):
-    """Computes the Gram matrix of a given operator basis using a scalar product.
+    """Compute compute the Gram matrix for an operator basis (serial implementation).
+
+    Computes the Gram matrix of a given operator basis using a scalar product.
 
     The Gram matrix is symmetric and defined as:
 
@@ -133,16 +144,18 @@ def gram_matrix_serial(basis, sp: Callable):
 
     Parameters
     ----------
-    basis: A list of basis operators.
-
-    sp: A callable that defines a scalar product function between two
+    basis: List[Operator]
+        A list of basis operators.
+    sp: Callable
+        A callable that defines a scalar product function between two
     operators.
 
     Return
     ------
 
-    A symmetric NumPy array representing the Gram matrix, with entries
-    rounded to 14 decimal places.
+    result: NDArray
+        A symmetric NumPy array representing the Gram matrix, with entries
+        rounded to 14 decimal places.
 
     """
     if hasattr(sp, "compute_gram_matrix"):  # and all(b_i.isherm for b_i in basis):
@@ -189,11 +202,11 @@ def merge_gram_matrices(
          The inverse of the upper-left block of the Gram Matrix
     g22: NDArray
          The bottom-right block of the Gram Matrix
-    g22: NDArray
+    g12: NDArray
          The cross block of the Gram Matrix
 
     Return values
-    =============
+    -------------
 
     gram_full: NDArray
         The gram matrix of the reduced basis

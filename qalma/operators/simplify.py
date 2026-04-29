@@ -337,7 +337,7 @@ def rewrite_nbody_term_using_qutip(
     isherm: Optional[bool] = None,
     isdiag: Optional[bool] = None,
 ) -> Operator:
-    """Do the decomposition work using qutip
+    """Do the decomposition work using qutip.
 
     Parameters
     ----------

@@ -7,8 +7,7 @@ from qalma.settings import LATTICE_LIB_FILE
 
 
 def build_ten_sites_lattice_file():
-    """Create a temporary lattice library file with an extra lattice
-    """
+    """Create a temporary lattice library file with an extra lattice."""
     doble_five = """
     <UNITCELL name="kagome-stripe-double" dimension="1" vertices="10">
     <VERTEX><COORDINATE>-.125   0</COORDINATE></VERTEX>
@@ -69,8 +68,9 @@ def build_ten_sites_lattice_file():
 
 def test_complex_model():
     """Test a complex model having ten sites.
-    The test creates a graph using XML language and then loads
-    it to generate a system.
+
+    The test creates a graph using XML language and then loads it to
+    generate a system.
     """
     latt_descr = graph_from_alps_xml(
         filename=build_ten_sites_lattice_file(),

@@ -45,7 +45,7 @@ class QuadraticFormOperator(Operator):
     offset: Optional[Operator]
 
     def __init__(self, basis, weights, system=None, linear_term=None, offset=None):
-        """Parameters
+        r"""Parameters
         ----------
         basis : tuple[Operator, ...]
             Tuple of Hermitian one-body operators :math:`Q_\\alpha`. Each
@@ -263,7 +263,7 @@ class QuadraticFormOperator(Operator):
         return result
 
     def dag(self):
-        """Return the adjoint :math:`O^\\dagger`.
+        r"""Return the adjoint :math:`O^\\dagger`.
 
         Conjugates the weights and takes the adjoint of the linear term
         and offset. The basis elements are assumed Hermitian so they are
@@ -389,7 +389,7 @@ class QuadraticFormOperator(Operator):
         return num_terms
 
     def partial_trace(self, sites: Union[frozenset, SystemDescriptor]):
-        """Compute the partial trace over the complement of ``sites``.
+        r"""Compute the partial trace over the complement of ``sites``.
 
         Traces out the linear term and offset analytically. For the
         quadratic terms :math:`w_\\alpha Q_\\alpha^2`, expands each as a

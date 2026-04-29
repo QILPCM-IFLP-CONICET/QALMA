@@ -1,5 +1,4 @@
-"""Test functions that implement the mean field approximation.
-"""
+"""Test functions that implement the mean field approximation."""
 
 from test.helper import CHAIN_SIZE, SX_A, SX_B, SX_TOTAL, SYSTEM, TEST_CASES_STATES
 

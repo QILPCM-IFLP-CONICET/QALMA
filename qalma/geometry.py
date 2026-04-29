@@ -1,5 +1,4 @@
-"""Graphs and conversions from ALPS
-================================
+"""Graphs and conversions from ALPS.
 
 ``GraphDescriptor`` stores information about the graph geometry
  over which the quantum system to be simulated is defined is stored.
@@ -12,8 +11,6 @@ used to define loop operators.
   ALPS XML library file.
 * ``graph_from_alps_xml``: create a ``GraphDescriptor`` from an ALPS XML
   library file and the parameters provided.
-
-
 """
 
 import logging

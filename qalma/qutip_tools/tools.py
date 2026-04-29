@@ -360,7 +360,7 @@ def empty_op(op) -> bool:
 
 
 def hermitician_part(op: Qobj, tol=None) -> Qobj:
-    """Returns the hermitician part of the operator `op`"""
+    """Returns the hermitician part of the operator `op`."""
     if op.isherm:
         return op
     return (op + op.dag()).tidyup(tol) * 0.5
@@ -459,7 +459,7 @@ def reshape_qutip_data(data, dims, bs=1) -> ndarray:
     """Reshape the data representing an operator with dimensions
     dims = [[dim1, dim2,...],[dim1, dim2,...]]
     as an array with shape
-    dims' = [[dim1,dim1],[dim2,dim3,... dim2,dim3,...]]
+    dims' = [[dim1,dim1],[dim2,dim3,... dim2,dim3,...]].
     """
     data_type = data_get_type(data)
 
@@ -488,7 +488,7 @@ def schmidt_dec_first_rest_qutip_operator(
     operator: Qobj, tol: float = 1e-10
 ) -> Tuple[List[Qobj], ...]:
     """Decompose a qutip operator acting over H_1 (x) H_2 (x) H_3 (x) as a sum
-    of terms of the form Q_{k} (x) Rest_{k}
+    of terms of the form Q_{k} (x) Rest_{k}.
     """
     dims = operator.dims[0]
     if len(dims) < 2:
@@ -522,7 +522,7 @@ def schmidt_dec_first_rest_qutip_operator_hermitician(
     operator: Qobj, tol: float = 1e-10
 ) -> Tuple[List[Qobj], ...]:
     """Decompose a hermitician qutip operator acting over H_1 (x) H_2 (x) H_3
-    (x) as a sum of terms of the form Q_{k} (x) Rest_{k}
+    (x) as a sum of terms of the form Q_{k} (x) Rest_{k}.
     """
     opsh_1 = []
     opsh_2 = []
@@ -615,7 +615,7 @@ def schmidt_dec_rest_last_qutip_operator_hermitician(
     operator: Qobj, tol: float = 1e-10
 ) -> Tuple[List[Qobj], ...]:
     """Decompose a qutip operator acting over H_1 (x) H_2 (x) H_3 (x) as a sum
-    of terms of the form Q_{k} (x) Rest_{k}
+    of terms of the form Q_{k} (x) Rest_{k}.
     """
     opsh_1 = []
     opsh_2 = []

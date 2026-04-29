@@ -1,5 +1,4 @@
-"""Basic unit test.
-"""
+"""Basic unit test."""
 
 from test.helper import (
     OPERATOR_TYPE_CASES,
@@ -34,8 +33,8 @@ nonquadratic_test_cases = [
 )
 def test_build_quadratic(operator_name, state_name):
     """Test the function build_quadratic_hermitician.
-    No assumptions on the hermiticity of the operator
-    are done.
+
+    No assumptions on the hermiticity of the operator are done.
     """
     state = TEST_CASES_STATES[state_name]
     operator = OPERATOR_TYPE_CASES[operator_name]
@@ -100,8 +99,8 @@ def test_build_quadratic(operator_name, state_name):
 
 @pytest.mark.parametrize(["name"], list((name,) for name in OPERATOR_TYPE_CASES))
 def test_build_quadratic_hermitician(name):
-    """Test the function build_quadratic_hermitician
-    if is assumed that the original operator is hermitician.
+    """Test the function build_quadratic_hermitician if is assumed that the
+    original operator is hermitician.
     """
 
     def self_adjoint_part(op_g):

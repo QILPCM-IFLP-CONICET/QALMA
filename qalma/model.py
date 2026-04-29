@@ -1,5 +1,6 @@
-"""System Descriptors. ===================
+"""System Descriptors.
 
+===================.
 A ``SystemDescriptor`` contains all the information relative to the
 system to be simulated.
 
@@ -263,7 +264,7 @@ class SystemDescriptor:
 
     def site_identity(self, site: str):  # -> Qobj
         """Returns the internal representation of the identity associated to
-        `site`
+        `site`.
         """
         return self.sites[site]["identity"]
 

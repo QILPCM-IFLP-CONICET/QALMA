@@ -353,7 +353,7 @@ def adaptive_projected_evolution(
     update_condition: str = "adaptive",
     store_states=False,
 ) -> Simulation:
-    """Compute the solution of the MaxEnt projected Schrödinger equation
+    """Compute the solution of the MaxEnt projected Schrödinger equation.
 
     dk
     -- = -i [H, k]
@@ -640,7 +640,7 @@ def adaptive_projected_evolution(
 
 
 def projected_evolution(ham, k0, t_span, order, n_body: int = -1) -> Simulation:
-    """Compute the solution of the MaxEnt projected Schrödinger equation
+    """Compute the solution of the MaxEnt projected Schrödinger equation.
 
     dk
     -- = -i [H, k]

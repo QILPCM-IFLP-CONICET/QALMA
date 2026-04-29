@@ -1,5 +1,4 @@
-"""Basic unit test for states.
-"""
+"""Basic unit test for states."""
 
 from test.helper import (
     OBSERVABLE_CASES,
@@ -107,7 +106,7 @@ def no_test_ternary_mixtures(name_rho, name_sigma, name_theta):
 
 @pytest.mark.parametrize(["name", "rho"], list(TEST_CASES_STATES.items()))
 def test_states(name, rho):
-    """Tests for state objects"""
+    """Tests for state objects."""
     # enumerate the name of each subsystem
     print(80 * "=", "\n")
     print("test states")

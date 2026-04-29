@@ -131,7 +131,7 @@ class OperatorBasis:
 
         operator_basis = self.operator_basis
 
-        gram = gram_matrix(operator_basis, self.sp)
+        gram = gram_matrix(list(operator_basis), self.sp)
 
         # Cholesky decomposition
         # G = L . L^\dagger
@@ -556,9 +556,9 @@ def append_basis(basis_1: OperatorBasis, basis_2: OperatorBasis | Iterable[Opera
     n2 = len(ops2)
 
     if same_sp:
-        g22 = basis_2_gram if basis_2_gram is not None else gram_matrix(ops2, sp)
+        g22 = basis_2_gram if basis_2_gram is not None else gram_matrix(list(ops2), sp)
     else:
-        g22 = gram_matrix(ops2, sp)
+        g22 = gram_matrix(list(ops2), sp)
     if hasattr(sp, "compute_cross_gram_matrix"):
         g12 = sp.compute_cross_gram_matrix(ops1, ops2)
     else:
@@ -745,7 +745,7 @@ def prepend_basis(
 
 def do_compute_cross_gram_matrix(sp, ops1, ops2, dtype=np.float128):
     """Compute the cross elements of the Gram's matrix between operators ops1
-    and ops2 regarding the scalar product `sp`
+    and ops2 regarding the scalar product `sp`.
     """
     g12 = np.empty(
         (

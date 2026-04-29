@@ -1,5 +1,4 @@
-"""Basic unit test for operator functions.
-"""
+"""Basic unit test for operator functions."""
 
 from test.helper import (
     CHAIN_SIZE,
@@ -53,7 +52,7 @@ def compare_spectrum(spectrum1, spectrum2, tol=QALMA_TOLERANCE):
 
 
 def qutip_relative_entropy(qutip_1, qutip_2):
-    """Compute the relative entropy"""
+    """Compute the relative entropy."""
     # if both operators are the same operator,
     # the relative entropy is 0.
     if qutip_1 is qutip_2 or qutip_1 == qutip_2:
@@ -91,9 +90,7 @@ def qutip_relative_entropy(qutip_1, qutip_2):
 
 @pytest.mark.parametrize(("name", "operator"), list(OPERATORS.items()))
 def test_decompose_hermitician(name, operator):
-    """Test the decomposition as Q=A+iB with
-    A=A.dag() and B=B.dag()
-    """
+    """Test the decomposition as Q=A+iB with A=A.dag() and B=B.dag()."""
     print("name", name, type(operator))
     op_re, op_im = hermitian_and_antihermitian_parts(operator)
     op_qutip = operator.to_qutip()
@@ -155,7 +152,7 @@ def test_relative_entropy(key_rho, key_sigma):
 
 
 def test_eigenvalues():
-    """Tests eigenvalues of different operator objects"""
+    """Tests eigenvalues of different operator objects."""
     spectrum = sorted(eigenvalues(SZ_TOTAL))
     for s in range(CHAIN_SIZE):
         min_err = min(abs(e_val - s + 0.5 * CHAIN_SIZE) for e_val in spectrum)
@@ -190,10 +187,8 @@ def test_eigenvalues():
 
 
 def test_log_op():
-    """Check log_op
-    Due to numerical errors, log_op(operator.expm())~operator
+    """Check log_op Due to numerical errors, log_op(operator.expm())~operator
     only if operator has an small spectral norm.
-
     """
     clean = True
     for name, operator in OPERATORS.items():
@@ -252,8 +247,7 @@ def test_log_op():
     [(name, operator) for name, operator in OPERATOR_TYPE_CASES.items()],
 )
 def test_spectral_norm(name, operator):
-    """Test the spectral norm
-    """
+    """Test the spectral norm."""
     tolerance = QALMA_TOLERANCE
     print("spectral norm of", name, "of type", type(operator))
     qutip_sn = spectral_norm(operator.to_qutip())

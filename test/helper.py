@@ -1,5 +1,4 @@
-"""Helper functions for pytests
-"""
+"""Helper functions for pytests."""
 
 import logging
 import os
@@ -267,7 +266,7 @@ FULL_TEST_CASES.update(TEST_CASES_STATES)
 
 
 def alert(verbosity, *args):
-    """Print a message depending on the verbosity level"""
+    """Print a message depending on the verbosity level."""
     if verbosity < VERBOSITY_LEVEL:
         print(*args)
 
@@ -314,7 +313,7 @@ def check_equality(lhs, rhs, tolerance=1e-10):
 
 
 def check_operator_equality(op1, op2, tolerance=1.0e-9):
-    """Check if two operators are numerically equal"""
+    """Check if two operators are numerically equal."""
     if isinstance(op2, qutip.Qobj):
         op1, op2 = op2, op1
 
@@ -336,7 +335,7 @@ def check_operator_equality(op1, op2, tolerance=1.0e-9):
 
 
 def expect_from_qutip(rho, obs):
-    """Compute expectation values or Qutip objects or iterables"""
+    """Compute expectation values or Qutip objects or iterables."""
     if isinstance(obs, Operator):
         return qutip.expect(rho, obs.to_qutip(tuple(obs.system.sites)))
     if isinstance(obs, dict):
@@ -345,7 +344,7 @@ def expect_from_qutip(rho, obs):
 
 
 def is_one_body_operator(operator) -> bool:
-    """Check if the operator is a one-body operator"""
+    """Check if the operator is a one-body operator."""
     if isinstance(operator, SumOperator):
         return all(is_one_body_operator(term) for term in operator.terms)
     if isinstance(operator, QuadraticFormOperator):
