@@ -1,6 +1,4 @@
-"""
-Density operator classes.
-"""
+"""Density operator classes."""
 
 import logging
 import pickle
@@ -18,8 +16,7 @@ from qalma.operators.quadratic import QuadraticFormOperator
 
 
 class DensityOperatorMixin:
-    """
-    DensityOperatorMixin is a Mixing class that
+    """DensityOperatorMixin is a Mixing class that
     contributes operator subclasses with the method
     ``expect``.
 
@@ -107,7 +104,7 @@ class DensityOperatorMixin:
         self.__dict__.update(state_dict)
 
     def dag(self) -> Operator:
-        """adjoint operator"""
+        """Adjoint operator"""
         return cast(Operator, self)
 
     def eigenstates(self) -> list:
@@ -135,8 +132,7 @@ class DensityOperatorMixin:
         # local_states = {None: self}
 
         def do_evaluate_expect(obs):
-            """
-            Inner function to evaluate expectation values. This method keeps
+            """Inner function to evaluate expectation values. This method keeps
             track of the states of the subsystems required in the evaluation,
             which in typical cases is the most expensive part of
             the evaluation.
@@ -182,7 +178,7 @@ class DensityOperatorMixin:
 
     @property
     def isherm(self):
-        """isherm property"""
+        """Isherm property"""
         return True
 
     def simplify(self):
@@ -211,9 +207,7 @@ class DensityOperatorMixin:
 
 
 class DensityOperatorProtocol(Protocol):
-    """
-    Minimal interface of DensityOperators
-    """
+    """Minimal interface of DensityOperators"""
 
     prefactor: complex
     system: SystemDescriptor
@@ -222,16 +216,16 @@ class DensityOperatorProtocol(Protocol):
         """Return a list of sites over which this operator acts"""
 
     def __add__(self, other):
-        """add method"""
+        """Add method"""
 
     def __radd__(self, other):
-        """radd method"""
+        """Radd method"""
 
     def __mul__(self, other):
-        """mul method"""
+        """Mul method"""
 
     def __rmul__(self, other):
-        """rmul method"""
+        """Rmul method"""
 
     def expect(
         self,
@@ -241,7 +235,7 @@ class DensityOperatorProtocol(Protocol):
         """Compute expectation values"""
 
     def partial_trace(self, sites: Union[frozenset, SystemDescriptor]):
-        """compute the partial trace"""
+        """Compute the partial trace"""
 
     def to_qutip(self, block: Optional[Tuple[str, ...]] = None):
         """Return a Qobj representation acting over block."""

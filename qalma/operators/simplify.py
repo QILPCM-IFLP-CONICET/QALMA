@@ -1,7 +1,5 @@
 # -*- coding: utf-8 -*-
-"""
-Functions to simplify sums of operators
-"""
+"""Functions to simplify sums of operators"""
 
 import logging
 from typing import Callable, Dict, List, Optional, Sequence, cast
@@ -131,8 +129,8 @@ def group_terms_by_blocks(operator: Operator, fn: Optional[Callable] = None):
     Operator
        A monomial operator or a sum operator, with terms acting
        in different blocks.
-    """
 
+    """
     if (
         not isinstance(operator, SumOperator)
         or getattr(operator, "_simplified", False)
@@ -158,9 +156,7 @@ def group_terms_by_blocks(operator: Operator, fn: Optional[Callable] = None):
     scalar_terms = []
 
     def apply_simplification_fn(op_in: Operator, fn: Optional[Callable]):
-        """
-
-        Parameters
+        """Parameters
         ----------
         op_in: Operator :
 
@@ -368,9 +364,7 @@ def rewrite_nbody_term_using_qutip(
     sites_identity: Dict[str, Qobj] = {}
 
     def op_or_identity(term, site):
-        """
-
-        Parameters
+        """Parameters
         ----------
         term :
 

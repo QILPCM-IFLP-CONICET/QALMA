@@ -1,6 +1,4 @@
-"""
-Run a simulation
-"""
+"""Run a simulation"""
 
 # custom library including basic linear algebra functions
 
@@ -53,9 +51,7 @@ plt.rcParams.update(
 
 
 def build_system(params):
-    """
-    Build the system and observables from the parms dict
-    """
+    """Build the system and observables from the parms dict"""
     system = SystemDescriptor(
         model=model_from_alps_xml(params["models_lib_file"], "spin"),
         graph=graph_from_alps_xml(
@@ -100,9 +96,7 @@ def build_system(params):
 
 
 def run_restricted_simulation(params, system_data, k_0, sigma_0):
-    """
-    Run the simulation
-    """
+    """Run the simulation"""
     print("run restricted simulation")
     hamiltonian = system_data["H"]
     obs_sz = sum(sz for sz in system_data["sz_ops"])
@@ -263,9 +257,7 @@ def run_restricted_simulation(params, system_data, k_0, sigma_0):
 
 
 def load_parameters():
-    """
-    Load the command line parameters
-    """
+    """Load the command line parameters"""
     parser = argparse.ArgumentParser(add_help=False)
 
     parser = argparse.ArgumentParser(
@@ -318,9 +310,7 @@ def load_parameters():
 
 
 def post_process(simulation_dict):
-    """
-    Generate graphics from the results
-    """
+    """Generate graphics from the results"""
     # Acá poner las rutinas que hacen los gráficos....
     params = simulation_dict["params"]
     plt.figure(figsize=(8, 6))
@@ -345,8 +335,7 @@ def post_process(simulation_dict):
 
 
 def initial_state(system_data):
-    """
-    Build the initial state and its generator from
+    """Build the initial state and its generator from
     the system data.
     """
     system = system_data["system"]
@@ -372,9 +361,7 @@ def initial_state(system_data):
 
 
 def main(parms):
-    """
-    Build the system and run the simulation
-    """
+    """Build the system and run the simulation"""
     system_data = build_system(parms)
     k_0, sigma_0 = initial_state(system_data)
     print("sigma_0", type(sigma_0))

@@ -1,6 +1,4 @@
-"""
-Module that implements a meanfield approximation of a Gibbsian state
-"""
+"""Module that implements a meanfield approximation of a Gibbsian state"""
 
 from typing import Callable, Optional
 
@@ -19,8 +17,7 @@ def project_meanfield(
     max_it: int = 100,
     proj_func: Callable = project_operator_to_n_body,
 ) -> Operator:
-    """
-    Look for a one-body operator kmf s.t
+    """Look for a one-body operator kmf s.t
     Tr (k_op-kmf)exp(-kmf)=0
 
     following a self-consistent, iterative process

@@ -1,6 +1,4 @@
-"""
-QuadraticFormOperator
-"""
+"""QuadraticFormOperator"""
 
 from .build import build_quadratic_form_from_operator
 from .quadratic import QuadraticFormOperator

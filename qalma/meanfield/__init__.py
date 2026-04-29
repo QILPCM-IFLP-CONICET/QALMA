@@ -1,5 +1,4 @@
-"""
-Meanfield module.
+"""Meanfield module.
 
 This module include functions used for implement different flavors of
 the meanfield approximation.

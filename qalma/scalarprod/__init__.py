@@ -1,6 +1,4 @@
-"""
-
-Routines to compute scalar products of operators and related functions,
+"""Routines to compute scalar products of operators and related functions,
 like orthogonalize sets of operators.
 
 """

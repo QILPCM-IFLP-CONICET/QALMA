@@ -1,6 +1,4 @@
-"""
-Different representations for operators
-"""
+"""Different representations for operators"""
 
 import logging
 from functools import cached_property, reduce
@@ -234,8 +232,7 @@ class Operator:  # pylint: disable=too-many-public-methods
         return result
 
     def acts_over(self) -> frozenset:
-        """
-        Return the list of sites over which the operator acts nontrivially.
+        """Return the list of sites over which the operator acts nontrivially.
         If this cannot be determined, return None.
         """
         raise NotImplementedError
@@ -249,7 +246,7 @@ class Operator:  # pylint: disable=too-many-public-methods
         return self.to_qutip_operator().dag()
 
     def flat(self):
-        """simplifies sums and products"""
+        """Simplifies sums and products"""
         return self
 
     def hermitician_part(self):
@@ -282,10 +279,7 @@ class Operator:  # pylint: disable=too-many-public-methods
         return self.to_qutip_operator().eigenstates()
 
     def expm(self) -> "Operator":
-        """
-        Compute the exponential of the Qutip representation of the operator
-        """
-
+        """Compute the exponential of the Qutip representation of the operator"""
         # Import here to avoid circular dependency
         # pylint: disable=import-outside-toplevel
         # type: ignore[import-untyped]
@@ -304,7 +298,7 @@ class Operator:  # pylint: disable=too-many-public-methods
         return QutipOperator(op_qutip, self.system, prefactor=np.exp(max_eval))
 
     def inv(self) -> "Operator":
-        """the inverse of the operator"""
+        """The inverse of the operator"""
         return self.to_qutip_operator().inv()
 
     def logm(self) -> "Operator":
@@ -312,8 +306,7 @@ class Operator:  # pylint: disable=too-many-public-methods
         return self.to_qutip_operator().logm()
 
     def n_body_sector(self) -> int:
-        """
-        The maximum number of factors of any term in
+        """The maximum number of factors of any term in
         a product state decomposition.
         """
         return len(self.acts_over())
@@ -324,7 +317,6 @@ class Operator:  # pylint: disable=too-many-public-methods
 
     def norm(self, ord: Optional[int | str | float] = None):
         """The norm of the operator"""
-
         return norm(self.to_qutip(), ord)
 
     def partial_trace(self, sites: Union[frozenset, SystemDescriptor]):
@@ -332,14 +324,13 @@ class Operator:  # pylint: disable=too-many-public-methods
         raise NotImplementedError
 
     def reduce(self, sites: Iterable, state=None):
-        """
-        Partial trace of the product of the operator and the density operator
+        """Partial trace of the product of the operator and the density operator
         acting on the subsystem which is traced out.
         If the state is not provided, the result is the partial trace, divided
         by the dimension of the subsystem traced out.
 
         Parameters
-        ==========
+        ----------
         sites: Iterable
 
         state: Optional[DensityOperatorProtocol]
@@ -354,8 +345,7 @@ class Operator:  # pylint: disable=too-many-public-methods
         raise NotImplementedError
 
     def _set_system_(self, system=None):
-        """
-        Change the system associated to the operator,
+        """Change the system associated to the operator,
         and references of other operators inside.
 
         In a multiprocess context, the `system` attribute of
@@ -404,14 +394,12 @@ class Operator:  # pylint: disable=too-many-public-methods
         return self.partial_trace(frozenset()).prefactor
 
     def tidyup(self, _atol=None):
-        """remove tiny elements of the operator"""
+        """Remove tiny elements of the operator"""
         return self
 
 
 class LocalOperator(Operator):
-    """
-    Operator acting over a single site.
-    """
+    """Operator acting over a single site."""
 
     _to_qutip_cache: Dict[Optional[Tuple[str, ...]], Qobj]
     operator: np.ndarray
@@ -423,8 +411,7 @@ class LocalOperator(Operator):
         local_operator,
         system: Optional[SystemDescriptor] = None,
     ):
-        """
-        Parameters
+        """Parameters
         ----------
         site : str
             Name of the site on which this operator acts.
@@ -433,6 +420,7 @@ class LocalOperator(Operator):
             site identity.
         system : SystemDescriptor
             Descriptor of the full lattice system. Must not be ``None``.
+
         """
         assert system is not None
         self.site = site
@@ -469,33 +457,31 @@ class LocalOperator(Operator):
         return to_qobj(self.operator.copy())
 
     def acts_over(self) -> frozenset:
-        """
-        Return the singleton set containing the site of this operator.
+        """Return the singleton set containing the site of this operator.
 
         Returns
         -------
         frozenset[str]
             ``frozenset({self.site})``.
+
         """
         return frozenset((self.site,))
 
     def dag(self):
-        """
-        Return the adjoint operator
-        """
+        """Return the adjoint operator"""
         operator = self.operator
         if self.isherm:
             return self
         return LocalOperator(self.site, operator.T.conj(), self.system)
 
     def expm(self):
-        """
-        Return the matrix exponential :math:`e^O` of the local operator.
+        """Return the matrix exponential :math:`e^O` of the local operator.
 
         Returns
         -------
         LocalOperator
             A local operator on the same site with matrix :math:`e^O`.
+
         """
         return LocalOperator(self.site, self.operator_qutip.expm(), self.system)
 
@@ -508,13 +494,13 @@ class LocalOperator(Operator):
         return LocalOperator(self.site, op, self.system)
 
     def inv(self):
-        """
-        Return the inverse operator :math:`O^{-1}`.
+        """Return the inverse operator :math:`O^{-1}`.
 
         Returns
         -------
         LocalOperator
             A local operator on the same site with matrix :math:`O^{-1}`.
+
         """
         operator = self.operator_qutip
         system = self.system
@@ -536,8 +522,7 @@ class LocalOperator(Operator):
         return is_diagonal_op(self.operator)
 
     def logm(self):
-        """
-        Return the matrix logarithm of the local operator.
+        """Return the matrix logarithm of the local operator.
 
         Computed via eigendecomposition. Eigenvalues below ``1e-50`` are
         clamped to avoid numerical divergence in the logarithm.
@@ -546,6 +531,7 @@ class LocalOperator(Operator):
         -------
         LocalOperator
             A local operator on the same site with matrix :math:`\\log O`.
+
         """
 
         def log_qutip(loc_op):
@@ -561,7 +547,6 @@ class LocalOperator(Operator):
 
     def norm(self, ord=None):
         """The norm of the operator"""
-
         result = norm(self.operator, ord)
         if ord in ("fro", "nuc"):
             dim_factor = 1.0
@@ -577,8 +562,7 @@ class LocalOperator(Operator):
         return result
 
     def partial_trace(self, sites: Union[frozenset, SystemDescriptor]):
-        """
-        Compute the partial trace over the complement of ``sites``.
+        """Compute the partial trace over the complement of ``sites``.
 
         If the operator's site is not in ``sites``, returns a
         :class:`~qalma.operators.product.ScalarOperator` with value
@@ -595,6 +579,7 @@ class LocalOperator(Operator):
         -------
         Operator
             The reduced operator on the subsystem defined by ``sites``.
+
         """
         # pylint: disable=import-outside-toplevel
 
@@ -622,14 +607,13 @@ class LocalOperator(Operator):
         return LocalOperator(site, local_op * prefactor, subsystem)
 
     def reduce(self, sites: Iterable, state=None) -> Operator:
-        """
-        Partial trace of the product of the operator and the density operator
+        """Partial trace of the product of the operator and the density operator
         acting on the subsystem which is traced out.
         If the state is not provided, the result is the partial trace, divided
         by the dimension of the subsystem traced out.
 
         Parameters
-        ==========
+        ----------
         sites: Iterable
 
         state: Optional[DensityOperatorProtocol]
@@ -658,8 +642,7 @@ class LocalOperator(Operator):
         return ScalarOperator(scalar_val, system)
 
     def simplify(self):
-        """
-        Return a simpler equivalent operator if the local matrix is scalar.
+        """Return a simpler equivalent operator if the local matrix is scalar.
 
         If the local matrix is a multiple of the identity, returns a
         :class:`~qalma.operators.product.ScalarOperator`. Otherwise returns
@@ -670,6 +653,7 @@ class LocalOperator(Operator):
         Operator
             A :class:`~qalma.operators.product.ScalarOperator` if the matrix
             is proportional to the identity, otherwise ``self``.
+
         """
         # TODO: reduce multiples of the identity to ScalarOperators
         # pylint: disable=import-outside-toplevel
@@ -716,18 +700,18 @@ class LocalOperator(Operator):
         return result
 
     def tr(self):
-        """
-        Return the trace of the operator over the full system.
+        """Return the trace of the operator over the full system.
 
         Returns
         -------
         complex
             :math:`\\mathrm{Tr}(O) \\cdot \\prod_{j \\neq i} d_j`, where
             the product runs over all sites not acted on by this operator.
+
         """
         result = self.partial_trace(frozenset())
         return result.prefactor
 
     def tidyup(self, atol=None):
-        """remove tiny elements of the operator"""
+        """Remove tiny elements of the operator"""
         return LocalOperator(self.site, self.operator_qutip.tidyup(atol), self.system)

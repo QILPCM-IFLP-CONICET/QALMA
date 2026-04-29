@@ -1,5 +1,4 @@
-"""
-Arithmetic operations with states.
+"""Arithmetic operations with states.
 
 Essentially, arithmetic operations with states involves just mixing of operators,
 implemented though the class MixtureDensityOperator.
@@ -27,15 +26,12 @@ from qalma.operators.states.basic import (
 
 
 class MixtureDensityOperator(DensityOperatorMixin, SumOperator):
-    """
-    A mixture of density operators
-    """
+    """A mixture of density operators"""
 
     terms: Tuple[Operator]
 
     def __init__(self, terms: tuple, system: Optional[SystemDescriptor] = None):
-        """
-        Parameters
+        """Parameters
         ----------
         terms : tuple[Operator, ...]
             Tuple of density operators to mix. Each term must have a
@@ -43,6 +39,7 @@ class MixtureDensityOperator(DensityOperatorMixin, SumOperator):
         system : SystemDescriptor or None, optional
             Descriptor of the full lattice system. Inferred from ``terms``
             if not provided.
+
         """
         super().__init__(terms, system, True)
 
@@ -52,8 +49,7 @@ class MixtureDensityOperator(DensityOperatorMixin, SumOperator):
         return SumOperator(new_terms, self.system, isherm=True)
 
     def acts_over(self) -> frozenset:
-        """
-        Return a set with the name of the
+        """Return a set with the name of the
         sites where the operator nontrivially acts
         """
         sites: Set[str] = set()
@@ -67,8 +63,7 @@ class MixtureDensityOperator(DensityOperatorMixin, SumOperator):
         obs_objs: Union[Operator, Iterable],
         _local_states: Optional[Dict[frozenset, DensityOperatorProtocol]] = None,
     ) -> Union[np.ndarray, dict, complex]:
-        """
-        Compute expectation values as a weighted sum over the mixture components.
+        """Compute expectation values as a weighted sum over the mixture components.
 
         For each component :math:`\\rho_k` with weight :math:`\\lambda_k`,
         computes :math:`\\langle O \\rangle = \\sum_k \\lambda_k \\langle O \\rangle_{\\rho_k}`.
@@ -84,6 +79,7 @@ class MixtureDensityOperator(DensityOperatorMixin, SumOperator):
         -------
         complex or np.ndarray or dict
             Expectation value(s) of the observable(s).
+
         """
 
         def compute_results(curr_obs, sub_averages, prefactors):
@@ -110,8 +106,7 @@ class MixtureDensityOperator(DensityOperatorMixin, SumOperator):
         return compute_results(obs_objs, averages, prefactors)
 
     def partial_trace(self, sites: Union[frozenset, SystemDescriptor]):
-        """
-        Compute the partial trace over the complement of ``sites``.
+        """Compute the partial trace over the complement of ``sites``.
 
         Applies partial trace to each component and returns a new
         :class:`MixtureDensityOperator` on the reduced subsystem.
@@ -125,19 +120,20 @@ class MixtureDensityOperator(DensityOperatorMixin, SumOperator):
         -------
         MixtureDensityOperator
             The reduced mixture on the subsystem defined by ``sites``.
+
         """
         new_terms = tuple(cast(Operator, t).partial_trace(sites) for t in self.terms)
         subsystem = new_terms[0].system
         return MixtureDensityOperator(new_terms, subsystem)
 
     def simplify(self):
-        """
-        Return ``self`` — mixture density operators are already in simplified form.
+        """Return ``self`` — mixture density operators are already in simplified form.
 
         Returns
         -------
         MixtureDensityOperator
             ``self``.
+
         """
         return self
 

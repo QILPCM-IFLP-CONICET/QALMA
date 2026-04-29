@@ -1,5 +1,4 @@
-"""
-Arithmetic bindings for SumOperator.
+"""Arithmetic bindings for SumOperator.
 
 Covers:
   - SumOperator +/* Number  (and reversed)

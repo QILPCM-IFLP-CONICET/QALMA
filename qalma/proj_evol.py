@@ -56,8 +56,7 @@ def project_k_to_sep(K, maxit=200):
 def project_operator(
     operator: Operator, basis: List[Operator], sp: Callable
 ) -> Operator:
-    """
-    Build the projection of `operator` over the space generated
+    """Build the projection of `operator` over the space generated
     by the orthonormal  `basis` of hermitician operators regarding the scalar product `sp`.
     """
     coeffs = (sp(basis_op, operator) for basis_op in basis)
@@ -65,14 +64,10 @@ def project_operator(
 
 
 class ProjectedEvolver:
-    """
-    Class that implements the projection evolver.
-
-    """
+    """Class that implements the projection evolver."""
 
     def __init__(self, op_basis: dict, sp: Callable, K0: Qobj = None, deep: int = 0):
-        """
-        `op_basis`: the basis of observables that we want to evolve
+        """`op_basis`: the basis of observables that we want to evolve
         `sp`: the scalar product that defines the notion of orthogonality
         `K0`: the initial `K=-log(rho(0))`. Used to build hierarchical basis
         `deep`: the number of elements in the recursive basis, equivalent to
@@ -84,8 +79,7 @@ class ProjectedEvolver:
         self.build_H_tensor(K0, deep)
 
     def build_H_tensor(self, K0=None, deep=0):
-        """
-        Build the matrix that evolves the orthogonal components
+        """Build the matrix that evolves the orthogonal components
         of K(t), as well as the orthogonal basis to expand it.
         """
         sp = self.sp
@@ -93,9 +87,7 @@ class ProjectedEvolver:
         Id = self.op_basis["Id"]
 
         def rhs(K):
-            """
-            Computes the commutator with H, and divides by 1j
-            """
+            """Computes the commutator with H, and divides by 1j"""
             return 1j * (K * H - H * K)
 
         # Build the orthogonal basis
@@ -128,8 +120,7 @@ class ProjectedEvolver:
         ).real
 
     def build_state_form_orth_components(self, phi):
-        """
-        reconstruct a global state from the components of
+        """Reconstruct a global state from the components of
         `K` in the orthogonal basis.
         """
         # Expensive step...
@@ -137,8 +128,7 @@ class ProjectedEvolver:
         return safe_exp_and_normalize(K)
 
     def evol_k_averages(self, K0, ts) -> dict:
-        """
-        Evolve the state exp(-K0) and compute
+        """Evolve the state exp(-K0) and compute
         the expectation values for the observables in
         `self.op_basis` for each time in `ts`
         Returns a dictionary with the time evolution
@@ -161,8 +151,7 @@ class ProjectedEvolver:
         return result
 
     def evol_k_orth_components(self, k0, ts):
-        """
-        Compute `phi_t`, a list with the components of K(t),
+        """Compute `phi_t`, a list with the components of K(t),
         regarding self.orth_basis, for each `t` in `ts`,
         provided K(0)=K0.
         """

@@ -1,6 +1,4 @@
-"""
-Density operator classes.
-"""
+"""Density operator classes."""
 
 import logging
 from typing import Any, Dict, Optional, Tuple, Union, cast
@@ -42,8 +40,7 @@ class ProductDensityOperator(DensityOperatorMixin, ProductOperator):
         normalized: bool = False,
         _qutip_factors: Optional[Dict[str, Qobj]] = None,
     ):
-        """
-        Parameters
+        """Parameters
         ----------
         local_states : dict[str, np.ndarray or Qobj]
             Mapping from site name to local density matrix. If
@@ -62,6 +59,7 @@ class ProductDensityOperator(DensityOperatorMixin, ProductOperator):
         _qutip_factors : dict[str, Qobj] or None, optional
             Pre-computed QuTiP representations of the local factors.
             Used internally to avoid redundant conversions.
+
         """
         assert weight >= 0
 
@@ -142,8 +140,7 @@ class ProductDensityOperator(DensityOperatorMixin, ProductOperator):
         obs_objs: Any,
         _local_states: Optional[Dict[frozenset, "DensityOperatorProtocol"]] = None,
     ) -> Any:
-        """
-        Compute the expectation value of an operator or a sequence of
+        """Compute the expectation value of an operator or a sequence of
         operators.
 
         Hot paths use dense numpy arithmetic and bypass Qobj overhead:
@@ -220,8 +217,7 @@ class ProductDensityOperator(DensityOperatorMixin, ProductOperator):
         return super().expect(obs_objs, _local_states=_local_states)
 
     def logm(self):
-        """
-        Return the matrix logarithm :math:`\\log\\rho`.
+        """Return the matrix logarithm :math:`\\log\\rho`.
 
         Exploits the product structure: since
         :math:`\\rho = \\lambda \\bigotimes_i \\rho_i`, we have
@@ -239,6 +235,7 @@ class ProductDensityOperator(DensityOperatorMixin, ProductOperator):
         Operator
             The matrix logarithm as a :class:`~qalma.operators.arithmetic.OneBodyOperator`
             plus a scalar offset.
+
         """
         system = self.system
         sites_op = self.site_factors
@@ -256,8 +253,7 @@ class ProductDensityOperator(DensityOperatorMixin, ProductOperator):
         return OneBodyOperator(terms, system, False)
 
     def partial_trace(self, sites: Union[frozenset, SystemDescriptor]):
-        """
-        Compute the partial trace over the complement of ``sites``.
+        """Compute the partial trace over the complement of ``sites``.
 
         For a product state the partial trace simply discards the local
         factors of the traced-out sites, returning a new
@@ -272,6 +268,7 @@ class ProductDensityOperator(DensityOperatorMixin, ProductOperator):
         -------
         ProductDensityOperator
             The reduced product state on the subsystem defined by ``sites``.
+
         """
         sites_op = self.site_factors
         if isinstance(sites, SystemDescriptor):
@@ -301,8 +298,7 @@ class ProductDensityOperator(DensityOperatorMixin, ProductOperator):
         )
 
     def to_qutip(self, block: Optional[Tuple[str, ...]] = None):
-        """
-        Return the QuTiP tensor-product representation of the state.
+        """Return the QuTiP tensor-product representation of the state.
 
         Sites in ``block`` that are not in ``site_factors`` contribute an
         identity factor :math:`\\mathbb{I}/d`. If ``block`` is ``None``,
@@ -321,6 +317,7 @@ class ProductDensityOperator(DensityOperatorMixin, ProductOperator):
             The density matrix :math:`\\lambda \\bigotimes_i \\rho_i` over
             ``block``. Returns a scalar if the weight is zero or the system
             has no sites.
+
         """
         prefactor = self.prefactor
         if prefactor == 0 or len(self.system.dimensions) == 0:

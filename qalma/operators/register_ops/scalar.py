@@ -1,5 +1,4 @@
-"""
-Arithmetic bindings for ScalarOperator.
+"""Arithmetic bindings for ScalarOperator.
 
 Covers:
   - ScalarOperator + ScalarOperator

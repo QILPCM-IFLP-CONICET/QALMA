@@ -1,5 +1,4 @@
-"""
-Arithmetic operator dispatch registrations.
+"""Arithmetic operator dispatch registrations.
 
 Submodules are imported in a specific order because the dispatch table uses
 last-write-wins for duplicate keys, and the base-class catch-all

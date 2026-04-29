@@ -1,5 +1,4 @@
-"""
-Routines to implement different kind of linear and non-linear projections
+"""Routines to implement different kind of linear and non-linear projections
 on operator objects.
 
 """

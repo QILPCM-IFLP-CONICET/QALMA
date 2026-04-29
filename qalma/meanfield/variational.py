@@ -1,5 +1,4 @@
-"""
-Variational Mean-field
+"""Variational Mean-field
 
 Build variational approximations to a Gibbsian state.
 
@@ -25,8 +24,7 @@ from qalma.settings import DEFAULT_MAX_NUMBER_OF_FIELDS, QALMA_TOLERANCE
 
 
 def compute_rel_entropy(state: ProductDensityOperator, ham: Operator) -> float:
-    """
-    Compute the relative entropy relative to the gibbs state exp(-ham)
+    """Compute the relative entropy relative to the gibbs state exp(-ham)
     from `state`.
 
     Parameters
@@ -40,6 +38,7 @@ def compute_rel_entropy(state: ProductDensityOperator, ham: Operator) -> float:
     -------
     float64
     The relative entropy S(sigma|exp(-ham))
+
     """
     if state is None:
         state = ProductDensityOperator({}, system=ham.system)
@@ -53,8 +52,7 @@ def mf_quadratic_form_exponential(
     callback_optimizer: Optional[Callable] = None,
     ham: Optional[Operator] = None,
 ) -> ProductDensityOperator:
-    """
-    Approximate `exp(-qf_op)` as `exp(-h_mf)`
+    """Approximate `exp(-qf_op)` as `exp(-h_mf)`
     with h_mf = k_0 + sum_a phi_a q_a
 
     Parameters
@@ -82,9 +80,7 @@ def mf_quadratic_form_exponential(
     """
 
     def build_test_state(coeffs: np.ndarray) -> ProductDensityOperator:
-        """
-        Build the test state from the coefficients.
-        """
+        """Build the test state from the coefficients."""
         terms = tuple((coef * gen for coef, gen in zip(coeffs, generators)))
         if k0 is not None:
             terms = (k0,) + terms
@@ -93,8 +89,7 @@ def mf_quadratic_form_exponential(
         return sigma_k.to_product_state()
 
     def test_state_re(coeffs: np.ndarray) -> float:
-        """
-        Target function. Computes the relative entropy
+        """Target function. Computes the relative entropy
         relative to the gibbs state exp(-ham)
         """
         test_state: ProductDensityOperator = build_test_state(coeffs)
@@ -143,8 +138,7 @@ def mf_quadratic_form_exponential(
 def reduced_quadratic_form_operator(
     qf_op: QuadraticFormOperator, num_terms: int
 ) -> QuadraticFormOperator:
-    """
-    Build a new quadratic form operator keeping only positive weights.
+    """Build a new quadratic form operator keeping only positive weights.
 
     Parameters
     ----------
@@ -190,8 +184,7 @@ def self_consistent_mf(
     max_steps: int = 10,
     callback: Optional[Callable] = None,
 ) -> Tuple[ProductDensityOperator, float]:
-    """
-    Starting from `sigma_ref` compute an approximation of
+    """Starting from `sigma_ref` compute an approximation of
     exp(-ham) following a self-consistent algorithm.
 
     Parameters
@@ -251,8 +244,7 @@ def variational_quadratic_mfa(
     sigma_ref: Optional[ProductDensityOperator] = None,
     **kwargs,
 ) -> ProductDensityOperator:
-    r"""
-    Find the Mean field approximation for the exponential
+    r"""Find the Mean field approximation for the exponential
     of an operator using a variational algorithm.
 
     At the end, improve the solution in a self-consistent
@@ -275,7 +267,6 @@ def variational_quadratic_mfa(
 
     Parameters
     ----------
-
     ham : Operator
         The generator of the exact state rho=exp(-ham).
     numfields : int, optional

@@ -1,6 +1,4 @@
-"""
-Functions used to run MaxEnt simulations.
-"""
+"""Functions used to run MaxEnt simulations."""
 
 from __future__ import annotations
 
@@ -40,12 +38,10 @@ from .simulation import Simulation
 def compute_mean_field_state(
     k: Operator, sigma: ProductDensityOperator, **kwargs
 ) -> Tuple[Operator, ProductDensityOperator]:
-    """
-    Build the generator associated to the mean field state.
+    """Build the generator associated to the mean field state.
 
     Parameters
     ----------
-
     k: Operator
        the generator to be approximated by a OneBodyOperator
     sigma: ProductDensityOperator
@@ -68,8 +64,7 @@ def compute_mean_field_state(
 
 
 def compute_n_body_sector(k: Operator) -> int:
-    """
-    Return the n-body sector of the operator ``k``.
+    """Return the n-body sector of the operator ``k``.
 
     Parameters
     ----------
@@ -81,20 +76,19 @@ def compute_n_body_sector(k: Operator) -> int:
     int
         The maximum number of sites on which any term of ``k`` acts
         non-trivially.
+
     """
     return k.n_body_sector()
 
 
 def occupation_factor(phi: NDArray, threshold: float = 0.995) -> int:
-    """
-    Compute an estimation of how spread is the operator over the basis.
+    """Compute an estimation of how spread is the operator over the basis.
 
     Return the number of terms in the partial sum  of the squared modules
     of the components of `phi` required to reach the `threshold`.
 
     Parameters
     ----------
-
     phi: NDArray
        an array of numerical coefficients.
     threshold: float
@@ -121,8 +115,7 @@ def occupation_factor(phi: NDArray, threshold: float = 0.995) -> int:
 def update_basis(
     k, sigma, ham, order, n_body, extra_observables, k_ref=None
 ) -> Tuple[OperatorBasis, Operator, Operator]:
-    """
-    Build a hierarchical operator basis adapted to the current state ``k``.
+    """Build a hierarchical operator basis adapted to the current state ``k``.
 
     Computes the mean-field approximation of ``k`` to define a reference
     generator ``k_ref``, then constructs a :class:`HierarchicalOperatorBasis`
@@ -158,6 +151,7 @@ def update_basis(
         The updated mean-field reference state.
     k_ref_new : Operator
         The reference generator used to seed the basis.
+
     """
     if k_ref is None:
         k_ref_new, sigma = compute_mean_field_state(k, sigma)
@@ -190,8 +184,7 @@ def update_basis(
 def update_basis_heavy(
     k, sigma, ham, order, n_body, extra_observables, k_ref=None
 ) -> Tuple[OperatorBasis, Operator, Operator]:
-    """
-    Build a hierarchical basis with a two-pass n-body projection.
+    """Build a hierarchical basis with a two-pass n-body projection.
 
     Like :func:`update_basis` but applies the n-body projection as a
     post-processing step over the full (unprojected) hierarchical basis,
@@ -227,6 +220,7 @@ def update_basis_heavy(
         The updated mean-field reference state.
     k_ref_new : Operator
         The reference generator used to seed the basis.
+
     """
     if k_ref is None:
         k_ref_new, sigma = compute_mean_field_state(k, sigma)
@@ -273,8 +267,7 @@ def update_basis_heavy(
 def update_basis_light(
     k, sigma, ham, order, n_body, extra_observables, k_ref=None
 ) -> Tuple[OperatorBasis, Operator, Operator]:
-    """
-    Build a hierarchical basis seeded from the mean-field approximation.
+    """Build a hierarchical basis seeded from the mean-field approximation.
 
     Lighter alternative to :func:`update_basis`: constructs the
     :class:`HierarchicalOperatorBasis` using ``k_ref`` (the mean-field
@@ -315,6 +308,7 @@ def update_basis_light(
         The updated mean-field reference state.
     k_ref_new : Operator
         The reference generator used to seed the basis.
+
     """
     if k_ref is None:
         k_ref_new, sigma = compute_mean_field_state(k, sigma)
@@ -359,8 +353,7 @@ def adaptive_projected_evolution(
     update_condition: str = "adaptive",
     store_states=False,
 ) -> Simulation:
-    """
-    Compute the solution of the MaxEnt projected Schrödinger equation
+    """Compute the solution of the MaxEnt projected Schrödinger equation
 
     dk
     -- = -i [H, k]
@@ -376,7 +369,6 @@ def adaptive_projected_evolution(
 
     Parameters
     ----------
-
     ham : Operator
         The Hamiltonian operator
 
@@ -423,7 +415,6 @@ def adaptive_projected_evolution(
 
     Returns
     -------
-
     Simulation:
         A Simulation object storing the results of the simulation.
 
@@ -647,8 +638,7 @@ def adaptive_projected_evolution(
 
 
 def projected_evolution(ham, k0, t_span, order, n_body: int = -1) -> Simulation:
-    """
-    Compute the solution of the MaxEnt projected Schrödinger equation
+    """Compute the solution of the MaxEnt projected Schrödinger equation
 
     dk
     -- = -i [H, k]
@@ -708,8 +698,7 @@ def projected_evolution(ham, k0, t_span, order, n_body: int = -1) -> Simulation:
 
 
 def trim_and_project_function(sigma, n_body, tol=1e-6):
-    """
-    Build a projection function that trims and projects operators.
+    """Build a projection function that trims and projects operators.
 
     Returns a callable that, given an operator, first projects it onto the
     ``n_body`` sector and then removes terms whose contribution is below
@@ -730,11 +719,11 @@ def trim_and_project_function(sigma, n_body, tol=1e-6):
     Callable[[Operator], Operator]
         A function that accepts an :class:`Operator` and returns its
         projected and trimmed version.
+
     """
 
     def trim_and_project(op_b):
-        """
-        Project ``op_b`` onto the n-body sector and trim small terms.
+        """Project ``op_b`` onto the n-body sector and trim small terms.
 
         Parameters
         ----------
@@ -746,6 +735,7 @@ def trim_and_project_function(sigma, n_body, tol=1e-6):
         Operator
             The projected and trimmed operator, enforcing Hermiticity if
             the input was Hermitian.
+
         """
         print(
             "   trim and project ",

@@ -1,5 +1,4 @@
-"""
-Handler registration for arithmetic operations involving density operator types.
+"""Handler registration for arithmetic operations involving density operator types.
 
 Importing this package registers all handlers as a side effect. The submodules
 are organised by the density operator type that drives each group of handlers:

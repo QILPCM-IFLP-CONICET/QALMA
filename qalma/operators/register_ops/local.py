@@ -1,5 +1,4 @@
-"""
-Arithmetic bindings for LocalOperator.
+"""Arithmetic bindings for LocalOperator.
 
 Covers:
   - LocalOperator + Number

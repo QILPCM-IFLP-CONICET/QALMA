@@ -1,5 +1,4 @@
-"""
-Arithmetic handlers involving ProductDensityOperator.
+"""Arithmetic handlers involving ProductDensityOperator.
 
 The strategy is to treat a ProductDensityOperator as a plain ProductOperator
 for arithmetic purposes, delegating via `ProductOperator(y_op.site_factors, ...)`.
@@ -192,7 +191,7 @@ def _(x_op: ProductDensityOperator, y_op: ProductDensityOperator):
 @Operator.register_mul_handler((ProductDensityOperator, OneBodyOperator))
 @Operator.register_mul_handler((ProductDensityOperator, SumOperator))
 def _(x_op: ProductDensityOperator, y_op: SumOperator):
-    """product density operator with a sum operator"""
+    """Product density operator with a sum operator"""
     system = x_op.system * y_op.system if x_op.system else y_op.system
     return SumOperator(
         tuple(x_op * term for term in y_op.terms),
@@ -203,7 +202,7 @@ def _(x_op: ProductDensityOperator, y_op: SumOperator):
 @Operator.register_mul_handler((SumOperator, ProductDensityOperator))
 @Operator.register_mul_handler((OneBodyOperator, ProductDensityOperator))
 def _(x_op: SumOperator, y_op: ProductDensityOperator):
-    """product density operator with a sum operator"""
+    """Product density operator with a sum operator"""
     system = x_op.system * y_op.system if x_op.system else y_op.system
     return SumOperator(
         tuple(term * y_op for term in x_op.terms),

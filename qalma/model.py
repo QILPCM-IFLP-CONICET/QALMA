@@ -1,5 +1,18 @@
-"""
-Define SystemDescriptors and different kind of operators
+"""System Descriptors.
+===================
+
+A ``SystemDescriptor`` contains all the information relative to
+the system to be simulated.
+
+``SystemDescriptor``s can be generated from information in ALPS xml
+file libraries by means of ``build_system``.
+
+An alternative is just to build the system through ``build_system_from_dims``
+which takes as argument a  dictionary, specifiying the names of the system sites
+as keys, and their corresponding dimensions as values.
+
+``build_spin_chain`` is a short-cut to build a spin chain lattice.
+
 """
 
 import logging
@@ -14,8 +27,7 @@ from qalma.utils import eval_expr, replace_variable_type
 
 
 class SystemDescriptor:
-    """
-    System Descriptor class.
+    """System Descriptor class.
 
     A SystemDescriptor represents a quantum system as a collection of
     Hilbert spaces associated to the nodes of a graph or lattice, and
@@ -135,8 +147,7 @@ class SystemDescriptor:
         self.__dict__.update(state_dict)
 
     def subsystem(self, sites: frozenset):
-        """
-        Build a subsystem including the sites listed
+        """Build a subsystem including the sites listed
         in sites
         """
         # Try to find the subsystem in the cache
@@ -203,9 +214,7 @@ class SystemDescriptor:
         return "System \textbf{" + self.name + "}"
 
     def contains(self, system):
-        """
-        Check if the object contains `system` as a subsystem.
-        """
+        """Check if the object contains `system` as a subsystem."""
         if self is system:
             return True
         block = frozenset(system.sites)
@@ -256,15 +265,13 @@ class SystemDescriptor:
         return result
 
     def site_identity(self, site: str):  # -> Qobj
-        """
-        Returns the internal representation of the identity associated
+        """Returns the internal representation of the identity associated
         to `site`
         """
         return self.sites[site]["identity"]
 
     def site_operator(self, name: str, site: str = ""):  # -> "Operator"
-        """
-        Return a global operator representing an operator `name`
+        """Return a global operator representing an operator `name`
         acting over the site `site`. By default, the name is assumed
         to specify both the name and site in the form `"name@site"`.
         """
@@ -292,7 +299,6 @@ class SystemDescriptor:
 
     def bond_operator(self, name: str, src: str, dst: str, skip=None):  # -> "Operator":
         """Bond operator by name and sites"""
-
         result_op = self.operators["global_operators"].get(
             (
                 name,
@@ -700,7 +706,7 @@ class SystemDescriptor:
 
 
 def build_spin_chain(length: int = 2, field=0.0):
-    """Build a spin chain of length `l`"""
+    """Build a nn spin chain of length ``l`` in an external magnetic field."""
     parameters = {"L": length, "a": 1, "h": field, "J": 1, "Jz0": 1, "Jxy0": 1}
     return build_system("chain lattice", "spin", **parameters)
 
@@ -712,8 +718,7 @@ def build_system(
     lattice_lib_file=LATTICE_LIB_FILE,
     **kwargs,
 ) -> SystemDescriptor:
-    """
-    Build a SystemDescriptor from the names of
+    """Build a SystemDescriptor from the names of
     the geometry and the model.
 
     lattice_lib_file: str
@@ -740,8 +745,19 @@ def build_system(
 
 
 def build_system_from_dims(dims_by_name: Dict[str, int]) -> SystemDescriptor:
-    """
-    Build a System from the dimension of each site
+    """Build a System from the dimension of each site
+
+    Parameters
+    ----------
+    dims_by_name: Dict[str, int]
+       a dictionary specifying the dimension of each site in the system.
+
+    Return
+    =======
+
+    system: SystemDescriptor
+        A system with the specified local sites.
+
     """
     model = qutip_model_from_dims(dims_by_name.values())
     sitebasis = model.site_basis

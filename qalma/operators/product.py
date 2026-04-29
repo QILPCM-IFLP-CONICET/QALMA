@@ -1,6 +1,4 @@
-"""
-Different representations for operators
-"""
+"""Different representations for operators"""
 
 import logging
 from functools import cached_property, reduce
@@ -33,8 +31,7 @@ from .basic import LocalOperator, Operator
 
 
 class ProductOperator(Operator):
-    """
-    Tensor product of local operators acting on different sites.
+    """Tensor product of local operators acting on different sites.
 
     Represents an operator of the form
 
@@ -54,6 +51,7 @@ class ProductOperator(Operator):
         Mapping from site name to local operator matrix (numpy array).
     system : SystemDescriptor
         Descriptor of the full lattice system.
+
     """
 
     _to_qutip_cache: Dict[Optional[Tuple[str, ...]], Qobj]
@@ -68,8 +66,7 @@ class ProductOperator(Operator):
         system: Optional[SystemDescriptor] = None,
         _qutip_factors: Optional[Dict[str, Qobj]] = None,
     ):
-        """
-        Parameters
+        """Parameters
         ----------
         sites_operators : dict[str, np.ndarray or Qobj or scalar]
             Mapping from site name to local operator. Scalar values are
@@ -81,6 +78,7 @@ class ProductOperator(Operator):
         _qutip_factors : dict[str, Qobj], optional
             Pre-computed QuTiP representations of the local factors.
             Used internally to avoid redundant conversions.
+
         """
         assert system is not None
         remove_numbers = False
@@ -118,21 +116,20 @@ class ProductOperator(Operator):
 
     @cached_property
     def site_factors_qutip(self) -> Dict[str, Qobj]:
-        """
-        QuTiP representations of the local site factors.
+        """QuTiP representations of the local site factors.
 
         Returns
         -------
         dict[str, Qobj]
             Mapping from site name to the corresponding :class:`qutip.Qobj`
             local operator. Computed once and cached.
+
         """
         return {key: to_qobj(op.copy()) for key, op in self.site_factors.items()}
 
     @cached_property
     def _dense_tensor(self):
-        """
-        Stacked dense representation for *homogeneous* systems, i.e. where
+        """Stacked dense representation for *homogeneous* systems, i.e. where
         every site has the same local Hilbert-space dimension d.
 
         Returns ``(sites, tensor)`` where:
@@ -156,8 +153,7 @@ class ProductOperator(Operator):
 
     @staticmethod
     def _trace2(a: np.ndarray, b: np.ndarray) -> complex:
-        """
-        Tr(a @ b) without allocating an intermediate matrix.
+        """Tr(a @ b) without allocating an intermediate matrix.
 
         Equivalent to ``np.einsum('ij,ji->', a, b)`` but avoids einsum's
         fixed Python overhead, which dominates for the small matrices (d=2,3,4)
@@ -166,8 +162,7 @@ class ProductOperator(Operator):
         return complex((a * b.T).sum())
 
     def __bool__(self):
-        """
-        Return ``True`` if the operator is non-zero.
+        """Return ``True`` if the operator is non-zero.
 
         An operator is considered zero if its prefactor is zero or if any
         local factor is the zero matrix.
@@ -181,8 +176,7 @@ class ProductOperator(Operator):
         return ProductOperator(self.site_factors, -self.prefactor, self.system)
 
     def __pow__(self, exp):
-        """
-        Return the operator raised to the power ``exp``.
+        """Return the operator raised to the power ``exp``.
 
         Each local factor is raised independently to ``exp``, and the
         prefactor is raised to ``exp`` as well.
@@ -196,6 +190,7 @@ class ProductOperator(Operator):
         -------
         ProductOperator
             The operator :math:`(\\lambda \\bigotimes O_i)^{\\text{exp}}`.
+
         """
         return ProductOperator(
             {s: op**exp for s, op in self.site_factors_qutip.items()},
@@ -213,7 +208,7 @@ class ProductOperator(Operator):
         return result
 
     def _repr_latex(self):
-        """latex representation"""
+        """Latex representation"""
         factors_latex = []
         for site, qutip_op in self.site_factors_qutip.items():
             # pylint: disable=protected-access
@@ -234,19 +229,18 @@ class ProductOperator(Operator):
         return "$" + "\\otimes".join(factors_latex) + "$"
 
     def acts_over(self) -> frozenset:
-        """
-        Return the set of sites on which this operator acts non-trivially.
+        """Return the set of sites on which this operator acts non-trivially.
 
         Returns
         -------
         frozenset[str]
             Site names with a non-identity local factor.
+
         """
         return frozenset(site for site in self.site_factors)
 
     def dag(self):
-        """
-        Return the adjoint (Hermitian conjugate) of the operator.
+        """Return the adjoint (Hermitian conjugate) of the operator.
 
         Each local factor is conjugate-transposed and the prefactor is
         complex-conjugated.
@@ -255,6 +249,7 @@ class ProductOperator(Operator):
         -------
         ProductOperator
             The operator :math:`(\\lambda \\bigotimes O_i)^\\dagger`.
+
         """
         sites_op_dag = {key: op.T.conj() for key, op in self.site_factors.items()}
         prefactor = self.prefactor
@@ -263,8 +258,7 @@ class ProductOperator(Operator):
         return ProductOperator(sites_op_dag, prefactor, self.system)
 
     def expm(self):
-        """
-        Return the matrix exponential :math:`e^{\\lambda O}`.
+        """Return the matrix exponential :math:`e^{\\lambda O}`.
 
         For single-site operators the exponential is computed exactly via
         :func:`scipy.linalg.expm`. For multi-site operators falls back to
@@ -274,6 +268,7 @@ class ProductOperator(Operator):
         -------
         Operator
             The matrix exponential of the operator.
+
         """
         sites_op = self.site_factors
         n_ops = len(sites_op)
@@ -291,8 +286,7 @@ class ProductOperator(Operator):
         return result
 
     def flat(self):
-        """
-        Reduce the operator to the simplest equivalent type.
+        """Reduce the operator to the simplest equivalent type.
 
         Returns
         -------
@@ -302,6 +296,7 @@ class ProductOperator(Operator):
             If the operator acts on exactly one site.
         ProductOperator
             Otherwise, returns ``self`` unchanged.
+
         """
         nfactors = len(self.site_factors)
         if nfactors == 0:
@@ -312,14 +307,14 @@ class ProductOperator(Operator):
         return self
 
     def hermitician_part(self):
-        """
-        Return the Hermitian part of the operator, :math:`(O + O^\\dagger)/2`.
+        """Return the Hermitian part of the operator, :math:`(O + O^\\dagger)/2`.
 
         Returns
         -------
         Operator
             The Hermitian part. Returns ``self`` if the operator is already
             Hermitian.
+
         """
         from qalma.operators import SumOperator
 
@@ -335,8 +330,7 @@ class ProductOperator(Operator):
         )
 
     def inv(self):
-        """
-        Return the inverse operator :math:`O^{-1}`.
+        """Return the inverse operator :math:`O^{-1}`.
 
         Each local factor is inverted independently and the prefactor is
         reciprocated.
@@ -345,6 +339,7 @@ class ProductOperator(Operator):
         -------
         Operator
             The inverse of the operator.
+
         """
         sites_op = self.site_factors_qutip
         system = self.system
@@ -359,8 +354,7 @@ class ProductOperator(Operator):
 
     @cached_property
     def isherm(self) -> bool:
-        """
-        ``True`` if the operator is Hermitian.
+        """``True`` if the operator is Hermitian.
 
         An operator is Hermitian if all local factors are Hermitian and the
         prefactor is real (up to ``QALMA_TOLERANCE``).
@@ -378,8 +372,7 @@ class ProductOperator(Operator):
 
     @cached_property
     def isdiagonal(self) -> bool:
-        """
-        ``True`` if the operator is diagonal in the site-local basis.
+        """``True`` if the operator is diagonal in the site-local basis.
 
         Returns ``True`` only when every local factor is a diagonal matrix.
         """
@@ -389,8 +382,7 @@ class ProductOperator(Operator):
         return True
 
     def logm(self):
-        """
-        Return the matrix logarithm of the operator.
+        """Return the matrix logarithm of the operator.
 
         Uses the identity :math:`\\log(\\lambda \\bigotimes_i O_i) =
         \\log\\lambda + \\sum_i \\log O_i` valid when the local factors
@@ -402,6 +394,7 @@ class ProductOperator(Operator):
         Operator
             The matrix logarithm as a :class:`OneBodyOperator` plus a
             scalar term.
+
         """
         # pylint: disable=import-outside-toplevel
         from qalma.operators.arithmetic import OneBodyOperator
@@ -416,8 +409,7 @@ class ProductOperator(Operator):
         return result
 
     def norm(self, ord=None):
-        """
-        Return the norm of the operator.
+        """Return the norm of the operator.
 
         The norm is computed as the product of the prefactor and the local
         norms. For Frobenius and nuclear norms, an additional factor
@@ -435,6 +427,7 @@ class ProductOperator(Operator):
         -------
         float
             The norm of the operator.
+
         """
         result = self.prefactor
         for op_loc in self.site_factors_qutip.values():
@@ -456,8 +449,7 @@ class ProductOperator(Operator):
         return result
 
     def partial_trace(self, sites: Union[frozenset, SystemDescriptor]):
-        """
-        Compute the partial trace over the complement of ``sites``.
+        """Compute the partial trace over the complement of ``sites``.
 
         Parameters
         ----------
@@ -469,6 +461,7 @@ class ProductOperator(Operator):
         Operator
             The reduced operator acting on the subsystem defined by ``sites``.
             Returns a :class:`ScalarOperator` if all sites are traced out.
+
         """
         full_system_sites = self.system.sites
         dimensions = self.dimensions
@@ -504,8 +497,7 @@ class ProductOperator(Operator):
         )
 
     def reduce(self, sites: Iterable, state=None) -> Operator:
-        """
-        Partial trace of the product of the operator and the density operator
+        """Partial trace of the product of the operator and the density operator
         acting on the subsystem which is traced out.
         If the state is not provided, the result is the partial trace, divided
         by the dimension of the subsystem traced out.
@@ -523,6 +515,7 @@ class ProductOperator(Operator):
         -------
         Operator
             The reduced operator acting on the subsystem defined by ``sites``.
+
         """
         acts_over = self.acts_over()
         prefactor = self.prefactor
@@ -581,14 +574,13 @@ class ProductOperator(Operator):
         return result
 
     def simplify(self) -> Operator:
-        """
-        Simplifies a product operator
-           - first, collect all the scalar factors and
-             absorbe them in the prefactor.
-           - If the prefactor vanishes, or all the factors are scalars,
-             return a ScalarOperator.
-           - If there is just one nontrivial factor, return a LocalOperator.
-           - If no reduction is possible, return self.
+        """Simplifies a product operator
+        - first, collect all the scalar factors and
+          absorbe them in the prefactor.
+        - If the prefactor vanishes, or all the factors are scalars,
+          return a ScalarOperator.
+        - If there is just one nontrivial factor, return a LocalOperator.
+        - If no reduction is possible, return self.
         """
         # Remove multiples of the identity
         nontrivial_factors = {}
@@ -616,8 +608,7 @@ class ProductOperator(Operator):
         return self
 
     def to_qutip(self, block: Optional[Tuple[str, ...]] = None):
-        """
-        Return a QuTiP object acting over the sites listed in ``block``.
+        """Return a QuTiP object acting over the sites listed in ``block``.
 
         By default (``block=None``) returns a :class:`qutip.Qobj`
         acting over all the sites, in lexicographical order.
@@ -633,6 +624,7 @@ class ProductOperator(Operator):
         -------
         qutip.Qobj
             Full tensor-product operator over ``block``.
+
         """
         cached = self._to_qutip_cache.get(block, None)
         if cached is not None:
@@ -671,14 +663,14 @@ class ProductOperator(Operator):
         return result
 
     def to_qutip_operator(self) -> Operator:
-        """
-        Return a :class:`QutipOperator` representation of this operator.
+        """Return a :class:`QutipOperator` representation of this operator.
 
         Returns
         -------
         Operator
             A :class:`ScalarOperator` if the prefactor or site factors are
             zero, otherwise a :class:`QutipOperator`.
+
         """
         prefactor = self.prefactor
         if not (prefactor and self.site_factors_qutip):
@@ -686,20 +678,19 @@ class ProductOperator(Operator):
         return super().to_qutip_operator()
 
     def tr(self):
-        """
-        Return the trace of the operator over the full system.
+        """Return the trace of the operator over the full system.
 
         Returns
         -------
         complex
             The trace :math:`\\mathrm{Tr}(\\lambda \\bigotimes_i O_i)`.
+
         """
         result = self.partial_trace(frozenset())
         return result.prefactor
 
     def tidyup(self, atol=None):
-        """
-        Return a copy of the operator with small matrix elements zeroed out.
+        """Return a copy of the operator with small matrix elements zeroed out.
 
         Parameters
         ----------
@@ -712,6 +703,7 @@ class ProductOperator(Operator):
         -------
         ProductOperator
             Cleaned-up operator.
+
         """
         tidy_site_operators = {
             name: op_s.tidyup(atol) for name, op_s in self.site_factors_qutip.items()
@@ -720,8 +712,7 @@ class ProductOperator(Operator):
 
 
 class ScalarOperator(ProductOperator):
-    """
-    A product operator that acts as a scalar multiple of the identity.
+    """A product operator that acts as a scalar multiple of the identity.
 
     Represents :math:`\\lambda \\, \\mathbb{I}` where :math:`\\lambda` is a
     complex scalar and :math:`\\mathbb{I}` is the identity on the full system.
@@ -734,6 +725,7 @@ class ScalarOperator(ProductOperator):
         The scalar value :math:`\\lambda`.
     system : SystemDescriptor
         Descriptor of the full lattice system.
+
     """
 
     def __init__(self, prefactor, system):
@@ -766,39 +758,39 @@ class ScalarOperator(ProductOperator):
         )
 
     def acts_over(self) -> frozenset:
-        """
-        Return the empty set — a scalar operator acts trivially on all sites.
+        """Return the empty set — a scalar operator acts trivially on all sites.
 
         Returns
         -------
         frozenset
             Always the empty frozenset.
+
         """
         return frozenset()
 
     def dag(self):
-        """
-        Return the adjoint of the scalar operator.
+        """Return the adjoint of the scalar operator.
 
         Returns
         -------
         ScalarOperator
             A scalar operator with the complex-conjugated prefactor.
             Returns ``self`` if the prefactor is real.
+
         """
         if isinstance(self.prefactor, complex):
             return ScalarOperator(self.prefactor.conjugate(), self.system)
         return self
 
     def hermitician_part(self):
-        """
-        Return the Hermitian part of the scalar operator.
+        """Return the Hermitian part of the scalar operator.
 
         Returns
         -------
         ScalarOperator
             A scalar operator with the real part of the prefactor.
             Returns ``self`` if already Hermitian.
+
         """
         if self.isherm:
             return self
@@ -806,9 +798,7 @@ class ScalarOperator(ProductOperator):
 
     @property
     def isherm(self):
-        """
-        ``True`` if the scalar prefactor is real (up to ``QALMA_TOLERANCE``).
-        """
+        """``True`` if the scalar prefactor is real (up to ``QALMA_TOLERANCE``)."""
         prefactor = self.prefactor
         return not (
             isinstance(prefactor, complex) and abs(prefactor.imag) > QALMA_TOLERANCE
@@ -820,19 +810,18 @@ class ScalarOperator(ProductOperator):
         return True
 
     def logm(self):
-        """
-        Return the matrix logarithm of the scalar operator.
+        """Return the matrix logarithm of the scalar operator.
 
         Returns
         -------
         ScalarOperator
             A scalar operator with prefactor :math:`\\log(\\lambda)`.
+
         """
         return ScalarOperator(np.log(self.prefactor), self.system)
 
     def norm(self, ord=None):
-        """
-        Return the norm of the scalar operator.
+        """Return the norm of the scalar operator.
 
         Parameters
         ----------
@@ -845,6 +834,7 @@ class ScalarOperator(ProductOperator):
         -------
         float
             The norm :math:`|\\lambda| \\cdot \\|\\mathbb{I}\\|_{\\text{ord}}`.
+
         """
         result = self.prefactor
         if ord in ("fro", "nuc"):
@@ -859,8 +849,7 @@ class ScalarOperator(ProductOperator):
         return result
 
     def reduce(self, sites: Iterable, state=None) -> Operator:
-        """
-        Return ``self`` unchanged — reducing a scalar leaves it invariant.
+        """Return ``self`` unchanged — reducing a scalar leaves it invariant.
 
         Parameters
         ----------
@@ -873,23 +862,23 @@ class ScalarOperator(ProductOperator):
         -------
         ScalarOperator
             ``self``.
+
         """
         return self
 
     def simplify(self):
-        """
-        Return ``self`` — a scalar operator is already in its simplest form.
+        """Return ``self`` — a scalar operator is already in its simplest form.
 
         Returns
         -------
         ScalarOperator
             ``self``.
+
         """
         return self
 
     def tidyup(self, atol=None):
-        """
-        Return a zeroed scalar if the prefactor is below tolerance.
+        """Return a zeroed scalar if the prefactor is below tolerance.
 
         Parameters
         ----------
@@ -901,6 +890,7 @@ class ScalarOperator(ProductOperator):
         ScalarOperator
             A zero scalar operator if ``|prefactor| < atol``, otherwise
             ``self``.
+
         """
         if atol is None:
             atol = QALMA_TOLERANCE
@@ -909,8 +899,7 @@ class ScalarOperator(ProductOperator):
         return self
 
     def to_qutip(self, block: Optional[Tuple[str, ...]] = None):
-        """
-        Return a QuTiP identity operator scaled by the prefactor.
+        """Return a QuTiP identity operator scaled by the prefactor.
 
         Parameters
         ----------
@@ -923,6 +912,7 @@ class ScalarOperator(ProductOperator):
         qutip.Qobj or complex
             :math:`\\lambda \\, \\mathbb{I}_{\\text{block}}`. Returns the
             bare scalar if ``block`` is an empty tuple.
+
         """
         system = self.system
         sites = system.sites
@@ -935,12 +925,12 @@ class ScalarOperator(ProductOperator):
         return self.prefactor * fast_tensor(*factors)
 
     def to_qutip_operator(self):
-        """
-        Return ``self`` — a scalar operator is its own QuTiP representation.
+        """Return ``self`` — a scalar operator is its own QuTiP representation.
 
         Returns
         -------
         ScalarOperator
             ``self``.
+
         """
         return self

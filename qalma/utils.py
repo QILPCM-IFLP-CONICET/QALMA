@@ -1,6 +1,4 @@
-"""
-Utility functions to import and process ALPS specification files.
-"""
+"""Utility functions to import and process ALPS specification files."""
 
 import logging
 
@@ -24,8 +22,7 @@ default_parms = {
 
 
 def draw_ellipse_around_points(p1, p2, ax, b_ratio=0.15):
-    """
-    Draw an ellipse containing p1 and p2 located over the main axis,
+    """Draw an ellipse containing p1 and p2 located over the main axis,
     symmetrically around the center.
     """
     # Compute center
@@ -56,12 +53,10 @@ def draw_ellipse_around_points(p1, p2, ax, b_ratio=0.15):
 
 
 def draw_operator(op, axis: PLTAxes) -> PLTAxes:
-    """
-    Draw the operator op over the axis.
+    """Draw the operator op over the axis.
 
     Parameters
     ----------
-
     op: Operator
       If the operator acts on a single site, draws a disk on its coordinates.
       If is a SumOperator, flatten it and draw each term.
@@ -73,6 +68,7 @@ def draw_operator(op, axis: PLTAxes) -> PLTAxes:
     ------
     mpl.Axis
       the axis over which the operator was drawn.
+
     """
     # TODO: handle 3D graphs
     from qalma.operators import SumOperator
@@ -104,8 +100,7 @@ def draw_operator(op, axis: PLTAxes) -> PLTAxes:
 
 
 def eval_expr(expr: str, parms: dict):
-    """
-    Evaluate the expression `expr` replacing the variables defined in `parms`.
+    """Evaluate the expression `expr` replacing the variables defined in `parms`.
     expr can include python`s arithmetic expressions, and some elementary
     functions.
     """
@@ -175,8 +170,7 @@ def eval_expr(expr: str, parms: dict):
 
 
 def find_ref(node, root):
-    """
-    Find a node in the root
+    """Find a node in the root
 
     Parameters
     ----------
@@ -202,8 +196,7 @@ def find_ref(node, root):
 
 
 def operator_to_wolfram(operator) -> str:
-    """
-    Produce a string with a Wolfram Mathematica expression
+    """Produce a string with a Wolfram Mathematica expression
     representing the operator.
     """
     # pylint: disable=import-outside-toplevel
@@ -313,8 +306,7 @@ def matrix_to_wolfram(matr: np.ndarray):
 
 
 def next_name(dictionary: dict, s: int = 1, prefix: str = "") -> str:
-    """
-    Produces a new key for the `dictionary` with a
+    """Produces a new key for the `dictionary` with a
     `prefix`
     """
     name = f"{prefix}{s}"
@@ -324,8 +316,7 @@ def next_name(dictionary: dict, s: int = 1, prefix: str = "") -> str:
 
 
 def replace_variable_type(val, e_type):
-    """
-    if `val` is a str representing an unevaluated
+    """If `val` is a str representing an unevaluated
     expression, replace occurrences of `#` by
     `e_type`.
     """

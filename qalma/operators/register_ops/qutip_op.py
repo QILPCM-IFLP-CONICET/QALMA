@@ -1,5 +1,4 @@
-"""
-Arithmetic bindings for QutipOperator.
+"""Arithmetic bindings for QutipOperator.
 
 Covers:
   - QutipOperator + any Operator

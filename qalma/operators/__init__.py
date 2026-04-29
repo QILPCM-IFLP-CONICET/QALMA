@@ -1,6 +1,5 @@
 # -*- coding: utf-8 -*-
-"""
-:no-index:
+""":no-index:
 
 Operators
 =========

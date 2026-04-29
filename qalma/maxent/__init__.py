@@ -1,3 +1,1 @@
-"""
-Max-Ent simulations
-"""
+"""Max-Ent simulations"""

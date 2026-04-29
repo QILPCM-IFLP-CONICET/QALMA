@@ -1,6 +1,4 @@
-"""
-Shared constants for operator arithmetic registration.
-"""
+"""Shared constants for operator arithmetic registration."""
 
 from numbers import Number
 

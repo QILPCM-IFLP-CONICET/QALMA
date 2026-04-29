@@ -1,3 +1,1 @@
-"""
-Tools for handling, evaluating and decomposing Qutip Qobj objects.
-"""
+"""Tools for handling, evaluating and decomposing Qutip Qobj objects."""

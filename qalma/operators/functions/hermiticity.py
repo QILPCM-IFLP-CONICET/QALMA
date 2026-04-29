@@ -1,6 +1,4 @@
-"""
-Functions for operators.
-"""
+"""Functions for operators."""
 
 from numbers import Complex, Real
 
@@ -14,8 +12,7 @@ from qalma.operators.basic import (
 
 
 def compute_dagger(operator):
-    """
-    Compute the adjoint of an `operator.
+    """Compute the adjoint of an `operator.
     If `operator` is a number, return its complex conjugate.
     """
     if isinstance(operator, Real):

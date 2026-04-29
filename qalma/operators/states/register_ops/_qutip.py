@@ -1,5 +1,4 @@
-"""
-Arithmetic handlers involving non-product density operators:
+"""Arithmetic handlers involving non-product density operators:
 QutipDensityOperator.
 
 The common strategy for all handlers here is to unwrap the density operator
@@ -41,7 +40,7 @@ from ._wrappers import _wrapper_qutip as _wrapper
     ]
 )
 def _(x_op: QutipDensityOperator, y_op: float):
-    """add a qutip densityoperator with a real number"""
+    """Add a qutip densityoperator with a real number"""
     if y_op == 0:
         return x_op
     if y_op > 0:
@@ -73,7 +72,7 @@ def _(
     y_op: float,
     x_op: QutipDensityOperator,
 ):
-    """add a qutip densityoperator with a real number"""
+    """Add a qutip densityoperator with a real number"""
     if y_op == 0:
         return x_op
     if y_op > 0:
@@ -102,7 +101,7 @@ def _(
     ]
 )
 def _(x_op: QutipDensityOperator, y_op: complex):
-    """add a qutip densityoperator with a complex number"""
+    """Add a qutip densityoperator with a complex number"""
     if y_op.imag == 0:
         return x_op + y_op.real
     return _wrapper(x_op) + y_op
@@ -121,7 +120,7 @@ def _(
     y_op: complex,
     x_op: QutipDensityOperator,
 ):
-    """add a qutip densityoperator with a complex number"""
+    """Add a qutip densityoperator with a complex number"""
     if y_op.imag == 0:
         return x_op + y_op.real
     return _wrapper(x_op) + y_op
@@ -134,7 +133,7 @@ def _(
     )
 )
 def _(x_op: QutipDensityOperator, y_op: QutipDensityOperator):
-    """add a qutip densityoperator with a mixture density operator"""
+    """Add a qutip densityoperator with a mixture density operator"""
     return MixtureDensityOperator(
         (
             x_op,
@@ -150,7 +149,7 @@ def _(x_op: QutipDensityOperator, y_op: QutipDensityOperator):
 @Operator.register_add_handler((QutipDensityOperator, SumOperator))
 @Operator.register_add_handler((QutipDensityOperator, OneBodyOperator))
 def add_qdo_sum(x_op: QutipDensityOperator, y_op: Operator):
-    """add a qutip densityoperator with a general density operator"""
+    """Add a qutip densityoperator with a general density operator"""
     return _wrapper(x_op) + y_op
 
 
@@ -167,7 +166,7 @@ def add_qdo_sum(x_op: QutipDensityOperator, y_op: Operator):
     ]
 )
 def _(x_op: float, y_op: QutipDensityOperator):
-    """multiply a qutip densityoperator with a real number"""
+    """Multiply a qutip densityoperator with a real number"""
     if x_op == 0:
         return ProductDensityOperator({}, system=y_op.system, weight=0.0)
     if x_op > 0:
@@ -191,7 +190,7 @@ def _(x_op: float, y_op: QutipDensityOperator):
     ]
 )
 def _(x_op: QutipDensityOperator, y_op: float):
-    """multiply a qutip densityoperator with a real number"""
+    """Multiply a qutip densityoperator with a real number"""
     if y_op == 0:
         return ProductDensityOperator({}, system=x_op.system, weight=0.0)
     if y_op > 0:
@@ -215,7 +214,7 @@ def _(x_op: QutipDensityOperator, y_op: float):
     ]
 )
 def _(x_op: complex, y_op: QutipDensityOperator):
-    """multiply a qutip densityoperator with a complex number"""
+    """Multiply a qutip densityoperator with a complex number"""
     if x_op.imag == 0:
         return y_op * x_op.real
 
@@ -232,7 +231,7 @@ def _(x_op: complex, y_op: QutipDensityOperator):
     ]
 )
 def _(x_op: QutipDensityOperator, y_op: complex):
-    """multiply a qutip densityoperator with a complex number"""
+    """Multiply a qutip densityoperator with a complex number"""
     if y_op.imag == 0:
         return x_op * y_op.real
 
@@ -249,7 +248,7 @@ def _(x_op: QutipDensityOperator, y_op: complex):
     )
 )
 def _(x_op: QutipDensityOperator, y_op: QutipDensityOperator):
-    """multiply two qutip densityoperators"""
+    """Multiply two qutip densityoperators"""
     if x_op is y_op:
         x_op_qutip = _wrapper(x_op)
         return x_op_qutip * x_op_qutip
@@ -267,7 +266,7 @@ def _(x_op: QutipDensityOperator, y_op: QutipDensityOperator):
     ]
 )
 def _(x_op: QutipDensityOperator, y_op: Operator):
-    """multiply a qutip densityoperator with general operators"""
+    """Multiply a qutip densityoperator with general operators"""
     return _wrapper(x_op) * y_op
 
 
@@ -285,5 +284,5 @@ def _(
     x_op: Operator,
     y_op: QutipDensityOperator,
 ):
-    """multiply a qutip densityoperator with general operators"""
+    """Multiply a qutip densityoperator with general operators"""
     return x_op * _wrapper(y_op)

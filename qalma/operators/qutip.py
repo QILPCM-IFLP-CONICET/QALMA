@@ -1,7 +1,5 @@
 # -*- coding: utf-8 -*-
-"""
-Qutip representation of an operator.
-"""
+"""Qutip representation of an operator."""
 
 import logging
 from functools import reduce
@@ -112,7 +110,7 @@ class QutipOperator(Operator):
         )
 
     def acts_over(self) -> frozenset:
-        """list the sites where the operator acts over"""
+        """List the sites where the operator acts over"""
         return frozenset(self.site_names.keys())
 
     def as_sum_of_products(self):
@@ -196,7 +194,7 @@ class QutipOperator(Operator):
         return QutipOperator(qop, self.system, self.site_names, prefactor)
 
     def inv(self):
-        """the inverse of the operator"""
+        """The inverse of the operator"""
         operator = self.operator
         return QutipOperator(
             operator.inv(),
@@ -228,7 +226,7 @@ class QutipOperator(Operator):
         return not (self.prefactor) or empty_op(self.operator)
 
     def logm(self):
-        """logarithm of the operator"""
+        """Logarithm of the operator"""
         operator = self.operator
         evals, evecs = operator.eigenstates()
         evals = evals * self.prefactor
@@ -241,9 +239,7 @@ class QutipOperator(Operator):
         return QutipOperator(log_op, self.system, self.site_names)
 
     def partial_trace(self, sites: Union[frozenset, SystemDescriptor]):
-        """
-
-        Parameters
+        """Parameters
         ----------
         sites: Union[frozenset :
 
@@ -307,14 +303,13 @@ class QutipOperator(Operator):
         )
 
     def reduce(self, sites: Iterable, state=None) -> Operator:
-        """
-        Partial trace of the product of the operator and the density operator
+        """Partial trace of the product of the operator and the density operator
         acting on the subsystem which is traced out.
         If the state is not provided, the result is the partial trace, divided
         by the dimension of the subsystem traced out.
 
         Parameters
-        ==========
+        ----------
         sites: Iterable
 
         state: Optional[DensityOperatorProtocol]
@@ -423,9 +418,7 @@ class QutipOperator(Operator):
         )
 
     def to_qutip(self, block: Optional[Tuple[str, ...]] = None):
-        """
-
-        Parameters
+        """Parameters
         ----------
         block: Optional[Tuple[str]] :
              (Default value = None)
