@@ -6,6 +6,7 @@ quantum states.
 
 import importlib
 
+from .arithmetic import MixtureDensityOperator
 from .basic import (
     DensityOperatorMixin,
     DensityOperatorProtocol,
