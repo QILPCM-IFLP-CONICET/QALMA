@@ -9,20 +9,26 @@ from typing import Dict, Iterable, Iterator, List, Optional, Tuple
 import numpy as np
 
 # type: ignore[import-untyped]
-from numpy import ndarray, zeros as np_zeros
-from numpy.linalg import eigh
+from numpy import zeros as _np_zeros
+from numpy.linalg import eigh as _eigh
 from packaging.version import parse as parse_version
 from qutip import (  # type: ignore[import-untyped]
-    Qobj,
+    Qobj as _Qobj,
     __version__ as qutip_version_string,
-    qeye,
-    tensor as qutip_tensor,
+    qeye as _qeye,
+    tensor as _qutip_tensor,
 )
-from qutip.core.data.csr import CSR as Qutip_CSR, fast_from_scipy
-from qutip.core.data.dense import Dense as Qutip_Dense, fast_from_numpy
-from scipy.linalg import norm as scipy_norm, svd
-from scipy.sparse import csr_matrix as sp_csr_matrix
-from scipy.sparse.linalg import ArpackError, ArpackNoConvergence
+from qutip.core.data.csr import CSR as _Qutip_CSR, fast_from_scipy as _fast_from_scipy
+from qutip.core.data.dense import (
+    Dense as _Qutip_Dense,
+    fast_from_numpy as _fast_from_numpy,
+)
+from scipy.linalg import norm as _scipy_norm, svd as _svd
+from scipy.sparse import csr_matrix as _sp_csr_matrix
+from scipy.sparse.linalg import (
+    ArpackError as _ArpackError,
+    ArpackNoConvergence as _ArpackNoConvergence,
+)
 
 qutip_version = parse_version(qutip_version_string)
 
@@ -42,7 +48,7 @@ def _to_array(op) -> np.ndarray:
     """
     if isinstance(op, np.ndarray):
         return np.asarray(op, dtype=complex, order="C")
-    if isinstance(op, Qobj):
+    if isinstance(op, _Qobj):
         return np.asarray(op.full(), dtype=complex, order="C")
     raise TypeError(
         f"Local operators must be np.ndarray o qutip.Qobj, " f"got {type(op)}"
@@ -101,7 +107,7 @@ if qutip_version < parse_version("5.0.0"):
         """If some of the factors are not in Dense representation, convert
         everthing to CSR to speedup the computation.
         """
-        return qutip_tensor(*factors)
+        return _qutip_tensor(*factors)
 
 else:
 
@@ -315,14 +321,14 @@ else:
             """If some of the factors are not in Dense representation, convert
             everthing to CSR to speedup the computation.
             """
-            return qutip_tensor(*factors)
+            return _qutip_tensor(*factors)
 
     else:
 
         def fast_tensor(*factors):
-            if all(isinstance(factor.data, Qutip_Dense) for factor in factors):
-                return qutip_tensor(*factors)
-            return qutip_tensor((factor.to(Qutip_CSR) for factor in factors))
+            if all(isinstance(factor.data, _Qutip_Dense) for factor in factors):
+                return _qutip_tensor(*factors)
+            return _qutip_tensor((factor.to(_Qutip_CSR) for factor in factors))
 
 
 def data_has_nan(data) -> bool:
@@ -359,33 +365,33 @@ def empty_op(op) -> bool:
     return False
 
 
-def hermitician_part(op: Qobj, tol=None) -> Qobj:
+def hermitician_part(op: _Qobj, tol=None) -> _Qobj:
     """Returns the hermitician part of the operator `op`."""
     if op.isherm:
         return op
     return (op + op.dag()).tidyup(tol) * 0.5
 
 
-def is_diagonal_op(op: Qobj | np.ndarray) -> bool:
+def is_diagonal_op(op: _Qobj | np.ndarray) -> bool:
     if isinstance(op, np.ndarray):
         return data_is_diagonal(op)
     return data_is_diagonal(op.data)
 
 
-def is_scalar_op(op: Qobj) -> bool:
+def is_scalar_op(op: _Qobj) -> bool:
     """Check if op is a multiple of the identity operator."""
-    if isinstance(op, Qobj):
+    if isinstance(op, _Qobj):
         return data_is_scalar(op.data)
     return data_is_scalar(op)
 
 
-def isnan_qutip(op: Qobj) -> bool:
+def isnan_qutip(op: _Qobj) -> bool:
     """Is nan for qutip objects."""
     return data_has_nan(op.data)
 
 
 def norm(
-    op: Qobj,
+    op: _Qobj,
     ord: Optional[int | str | float],
     axis: Optional[int | Tuple[int, int]] = None,
     keepdims: bool = False,
@@ -444,18 +450,18 @@ def norm(
     See scipy.linalg.norm
 
     """
-    if isinstance(op, Qobj):
+    if isinstance(op, _Qobj):
         data = op.data
         if op.isbra or op.isket:
-            return scipy_norm(data.to_array(), ord, axis, keepdims, check_finite)
+            return _scipy_norm(data.to_array(), ord, axis, keepdims, check_finite)
         assert op.isoper, "op is not valid."
-        return scipy_norm(data.to_array(), ord, axis, keepdims, check_finite)
+        return _scipy_norm(data.to_array(), ord, axis, keepdims, check_finite)
     else:
         data = op
-        return scipy_norm(data, ord, axis, keepdims, check_finite)
+        return _scipy_norm(data, ord, axis, keepdims, check_finite)
 
 
-def reshape_qutip_data(data, dims, bs=1) -> ndarray:
+def reshape_qutip_data(data, dims, bs=1) -> np.ndarray:
     """Reshape the data representing an operator with dimensions
     dims = [[dim1, dim2,...],[dim1, dim2,...]]
     as an array with shape
@@ -465,7 +471,7 @@ def reshape_qutip_data(data, dims, bs=1) -> ndarray:
 
     dim_1 = reduce(lambda x, y: x * y, dims[:bs])
     dim_2 = int(data.shape[0] / dim_1)
-    new_data: ndarray = np_zeros(
+    new_data: np.ndarray = _np_zeros(
         (
             dim_1**2,
             dim_2**2,
@@ -485,8 +491,8 @@ def reshape_qutip_data(data, dims, bs=1) -> ndarray:
 
 
 def schmidt_dec_first_rest_qutip_operator(
-    operator: Qobj, tol: float = 1e-10
-) -> Tuple[List[Qobj], ...]:
+    operator: _Qobj, tol: float = 1e-10
+) -> Tuple[List[_Qobj], ...]:
     """Decompose a qutip operator acting over H_1 (x) H_2 (x) H_3 (x) as a sum
     of terms of the form Q_{k} (x) Rest_{k}.
     """
@@ -498,11 +504,11 @@ def schmidt_dec_first_rest_qutip_operator(
     dim_2 = int(data.shape[0] / dim_1)
     dims_1 = [[dim_1], [dim_1]]
     dims_2 = [dims[1:], dims[1:]]
-    u_mat, s_mat, vh_mat = svd(
+    u_mat, s_mat, vh_mat = _svd(
         reshape_qutip_data(data, dims, 1), full_matrices=False, overwrite_a=True
     )
     ops_1 = [
-        Qobj(
+        _Qobj(
             (s * u_mat[:, i].reshape(dim_1, dim_1)),
             dims=dims_1,
             copy=False,
@@ -511,7 +517,7 @@ def schmidt_dec_first_rest_qutip_operator(
         if s > tol
     ]
     ops_2 = [
-        Qobj((vh_mat_row.reshape(dim_2, dim_2)), dims=dims_2, copy=False)
+        _Qobj((vh_mat_row.reshape(dim_2, dim_2)), dims=dims_2, copy=False)
         for vh_mat_row, s in zip(vh_mat, s_mat)
         if s > tol
     ]
@@ -519,8 +525,8 @@ def schmidt_dec_first_rest_qutip_operator(
 
 
 def schmidt_dec_first_rest_qutip_operator_hermitician(
-    operator: Qobj, tol: float = 1e-10
-) -> Tuple[List[Qobj], ...]:
+    operator: _Qobj, tol: float = 1e-10
+) -> Tuple[List[_Qobj], ...]:
     """Decompose a hermitician qutip operator acting over H_1 (x) H_2 (x) H_3
     (x) as a sum of terms of the form Q_{k} (x) Rest_{k}.
     """
@@ -577,8 +583,8 @@ def schmidt_dec_first_rest_qutip_operator_hermitician(
 
 
 def schmidt_dec_rest_last_qutip_operator(
-    operator: Qobj, tol: float = 1e-10
-) -> Tuple[List[Qobj], ...]:
+    operator: _Qobj, tol: float = 1e-10
+) -> Tuple[List[_Qobj], ...]:
     """Decompose a qutip operator acting over H_1 (x) H_2 (x) ...
 
     (x) H_n (x) as a sum of terms of the form Rest_{k} (x)  Q_{k}
@@ -591,11 +597,11 @@ def schmidt_dec_rest_last_qutip_operator(
     dim_1 = int(data.shape[0] / dim_2)
     dims_1 = [dims[:-1], dims[:-1]]
     dims_2 = [[dim_2], [dim_2]]
-    u_mat, s_mat, vh_mat = svd(
+    u_mat, s_mat, vh_mat = _svd(
         reshape_qutip_data(data, dims, -1), full_matrices=False, overwrite_a=True
     )
     ops_1 = [
-        Qobj(
+        _Qobj(
             (s * u_mat[:, i].reshape(dim_1, dim_1)),
             dims=dims_1,
             copy=False,
@@ -604,7 +610,7 @@ def schmidt_dec_rest_last_qutip_operator(
         if s > tol
     ]
     ops_2 = [
-        Qobj((vh_mat_row.reshape(dim_2, dim_2)), dims=dims_2, copy=False)
+        _Qobj((vh_mat_row.reshape(dim_2, dim_2)), dims=dims_2, copy=False)
         for vh_mat_row, s in zip(vh_mat, s_mat)
         if s > tol
     ]
@@ -612,8 +618,8 @@ def schmidt_dec_rest_last_qutip_operator(
 
 
 def schmidt_dec_rest_last_qutip_operator_hermitician(
-    operator: Qobj, tol: float = 1e-10
-) -> Tuple[List[Qobj], ...]:
+    operator: _Qobj, tol: float = 1e-10
+) -> Tuple[List[_Qobj], ...]:
     """Decompose a qutip operator acting over H_1 (x) H_2 (x) H_3 (x) as a sum
     of terms of the form Q_{k} (x) Rest_{k}.
     """
@@ -667,18 +673,18 @@ def schmidt_dec_rest_last_qutip_operator_hermitician(
     return opsh_1, opsh_2
 
 
-def to_qobj(array: np.ndarray, atol: float = 1e-12) -> Qobj:
-    """Build a Qobj with CSR storage directly from a dense numpy array."""
+def to_qobj(array: np.ndarray, atol: float = 1e-12) -> _Qobj:
+    """Build a _Qobj with CSR storage directly from a dense numpy array."""
     shape = array.shape
     dims = [[d] for d in shape]
     zero_pos = np.abs(array) < atol
     if shape[0] < 64 or np.count_nonzero(zero_pos):
         array[zero_pos] = 0
-        return Qobj(fast_from_scipy(sp_csr_matrix(array)), dims=dims, copy=False)
-    return Qobj(fast_from_numpy(array), dims=dims, copy=False)
+        return _Qobj(_fast_from_scipy(_sp_csr_matrix(array)), dims=dims, copy=False)
+    return _Qobj(_fast_from_numpy(array), dims=dims, copy=False)
 
 
-def decompose_qutip_operator(operator: Qobj, tol: float = 1e-10) -> List[Tuple]:
+def decompose_qutip_operator(operator: _Qobj, tol: float = 1e-10) -> List[Tuple]:
     """Decompose a qutip operator q123...
 
     into a sum of tensor products sum_{ka, kb, kc...} q1^{ka} q2^{kakb}
@@ -706,7 +712,7 @@ def decompose_qutip_operator(operator: Qobj, tol: float = 1e-10) -> List[Tuple]:
 
 
 def decompose_qutip_operator_hermitician(
-    operator: Qobj, tol: float = 1e-10
+    operator: _Qobj, tol: float = 1e-10
 ) -> List[Tuple]:
     """Decompose a hermitician qutip operator q123...
 
@@ -746,7 +752,7 @@ def get_proper_spaces(spectrum: Iterable) -> List[List[int]]:
     return list(sectors_dict.values())
 
 
-def reduce_to_proper_spaces(operator: Qobj, observable: Qobj) -> Qobj:
+def reduce_to_proper_spaces(operator: _Qobj, observable: _Qobj) -> _Qobj:
     """Reduce operator to a block diagonal operator
     on each sector.
 
@@ -782,14 +788,14 @@ def reduce_to_proper_spaces(operator: Qobj, observable: Qobj) -> Qobj:
         spectrum = observable.diag()
         new_data = build_proj_data(full_operator, spectrum)
     else:
-        spectrum, unitary = eigh(observable.full())
+        spectrum, unitary = _eigh(observable.full())
         unitary_dag = unitary.T.conj()
         full_operator = unitary_dag @ full_operator @ unitary
         new_data = build_proj_data(full_operator, spectrum)
         new_data = unitary @ new_data @ unitary_dag
 
-    return Qobj(
-        fast_from_numpy(new_data),
+    return _Qobj(
+        _fast_from_numpy(new_data),
         dims=operator._dims,
         isherm=operator.isherm,
         isunitary=False,
@@ -799,8 +805,8 @@ def reduce_to_proper_spaces(operator: Qobj, observable: Qobj) -> Qobj:
 
 
 def project_qutip_to_m_body(
-    op_qutip: Qobj, m_max: int = 2, local_sigmas: Optional[list] = None
-) -> Qobj:
+    op_qutip: _Qobj, m_max: int = 2, local_sigmas: Optional[list] = None
+) -> _Qobj:
     """Project a qutip operator onto a m_max - body operators sub-algebra
     relative to the local states `local_sigmas`.
     If `local_sigmas` is not given, maximally mixed states are assumed.
@@ -808,8 +814,8 @@ def project_qutip_to_m_body(
     scalar_term = 0
     dimensions = op_qutip.dims[0]
     site_indx = list(range(len(dimensions)))
-    idops = [qeye(dim) for dim in dimensions]
-    result = qutip_tensor([0 * local_id for local_id in idops])
+    idops = [_qeye(dim) for dim in dimensions]
+    result = _qutip_tensor([0 * local_id for local_id in idops])
     # Decompose the operator
     decompose = decompose_qutip_operator(op_qutip)
     # Build the local states
@@ -838,7 +844,7 @@ def project_qutip_to_m_body(
                 if abs(prefactor) < 1e-10:
                     continue
                 new_term = (
-                    qutip_tensor(
+                    _qutip_tensor(
                         [
                             local_delta_op[idx] if idx in fluc_sites else idops[idx]
                             for idx in site_indx
@@ -850,7 +856,7 @@ def project_qutip_to_m_body(
     return result + scalar_term
 
 
-def safe_exp_and_normalize(operator: Qobj) -> Tuple[Qobj, float]:
+def safe_exp_and_normalize(operator: _Qobj) -> Tuple[_Qobj, float]:
     """Compute the decomposition of exp(operator) as rho*exp(f)
     with f = Tr[exp(operator)], for operator a Qutip operator.
 
@@ -860,7 +866,7 @@ def safe_exp_and_normalize(operator: Qobj) -> Tuple[Qobj, float]:
          (exp(operator)/f , f)
 
     """
-    assert isinstance(operator, Qobj)
+    assert isinstance(operator, _Qobj)
     num_eigvals = min(3, operator.shape[0])
     try:
         k_0 = max(
@@ -871,7 +877,7 @@ def safe_exp_and_normalize(operator: Qobj) -> Tuple[Qobj, float]:
     except np.linalg.LinAlgError as err_la:
         logging.warning(err_la)
         k_0 = 0
-    except ArpackNoConvergence as err_arpack:
+    except _ArpackNoConvergence as err_arpack:
         logging.warning(
             "Convergence failed. try with "
             f"{type(err_arpack.eigenvalues)}-> {err_arpack.eigenvalues}"
@@ -881,7 +887,7 @@ def safe_exp_and_normalize(operator: Qobj) -> Tuple[Qobj, float]:
             if len(err_arpack.eigenvalues)
             else 0.0
         )
-    except ArpackError:
+    except _ArpackError:
         return operator * 0 + 1, 0
 
     op_exp = (operator - k_0).expm()

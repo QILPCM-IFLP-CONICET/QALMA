@@ -6,7 +6,7 @@ from functools import reduce
 from typing import Dict, Iterable, List, Optional, Tuple, Union
 
 from numpy import imag, log as np_log, real
-from qutip import Qobj, tensor  # type: ignore[import-untyped]
+from qutip import Qobj as _Qobj, tensor as _tensor  # type: ignore[import-untyped]
 
 from qalma.model import SystemDescriptor, build_system_from_dims
 from qalma.operators.basic import (
@@ -43,7 +43,7 @@ class QutipOperator(Operator):
 
     prefactor: complex
     system: SystemDescriptor
-    operator: Qobj
+    operator: _Qobj
     site_names: dict
 
     def __init__(
@@ -54,7 +54,7 @@ class QutipOperator(Operator):
         prefactor=1,
     ):
         # If build from a scalar:
-        if not isinstance(qoperator, Qobj):
+        if not isinstance(qoperator, _Qobj):
             prefactor = prefactor * qoperator
             qoperator = None
             names = {}
@@ -360,7 +360,7 @@ class QutipOperator(Operator):
         sites_tuple = tuple(sites)
         qop = self.to_qutip(sites_tuple + env_tuple)
         state_qutip = state.partial_trace(environment).to_qutip(env_tuple)
-        state_qutip = tensor(
+        state_qutip = _tensor(
             *(system.site_identity(site) for site in sites_tuple), state_qutip
         )
         qop = (qop * state_qutip).ptrace(list(range(len(sites_tuple))))
@@ -436,7 +436,7 @@ class QutipOperator(Operator):
         site_names = sorted(site_names_dict, key=lambda x: site_names_dict[x])
         system = self.system
         sites = system.sites
-        operator_qutip: Qobj = self.operator * self.prefactor
+        operator_qutip: _Qobj = self.operator * self.prefactor
         if block is None:
             if len(sites) > 8:
                 logging.warning(
@@ -463,9 +463,9 @@ class QutipOperator(Operator):
             )
             extra_identities = (sites[site]["identity"] for site in out_sites)
             operator_qutip = (
-                tensor(operator_qutip, *extra_identities)
+                _tensor(operator_qutip, *extra_identities)
                 if site_names
-                else tensor(*extra_identities)
+                else _tensor(*extra_identities)
             )
 
         # Add sites which are in site_names, but not in block

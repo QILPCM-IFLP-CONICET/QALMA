@@ -35,7 +35,7 @@ import pytest
 
 from qalma import graph_from_alps_xml, model_from_alps_xml
 from qalma.meanfield import variational_quadratic_mfa
-from qalma.meanfield.variational import compute_rel_entropy
+from qalma.meanfield.variational import compute_free_energy
 from qalma.model import SystemDescriptor
 from qalma.operators.states import ProductDensityOperator
 
@@ -115,11 +115,11 @@ def exact_free_energy(ham, system, beta: float) -> float:
 def s_rel(sigma, ham, beta: float) -> float:
     """S_rel(sigma || e^{-beta H}) = Tr[sigma(log sigma + beta H)] + log Z.
 
-    compute_rel_entropy returns Tr[sigma(log sigma + K)] with K = beta*H,
+    compute_free_energy returns Tr[sigma(log sigma + K)] with K = beta*H,
     which equals S_rel up to the constant log Z — sufficient for comparing
     approximations at fixed (H, beta).
     """
-    return float(np.real(compute_rel_entropy(sigma, beta * ham)))
+    return float(np.real(compute_free_energy(sigma, beta * ham)))
 
 
 # ---------------------------------------------------------------------------

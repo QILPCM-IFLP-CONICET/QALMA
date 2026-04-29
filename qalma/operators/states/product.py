@@ -6,11 +6,11 @@ from typing import Any, Dict, Optional, Tuple, Union, cast
 import numpy as np
 from numpy.typing import NDArray
 from qutip import (  # type: ignore[import-untyped]
-    Qobj,
-    qeye as qutip_qeye,
-    tensor as qutip_tensor,
+    Qobj as _Qobj,
+    qeye as _qutip_qeye,
+    tensor as _qutip_tensor,
 )
-from scipy.linalg import logm as scp_logm
+from scipy.linalg import logm as _scp_logm
 
 from qalma.model import SystemDescriptor
 from qalma.operators.arithmetic import OneBodyOperator, SumOperator
@@ -38,7 +38,7 @@ class ProductDensityOperator(DensityOperatorMixin, ProductOperator):
         weight: float = 1.0,
         system: Optional[SystemDescriptor] = None,
         normalized: bool = False,
-        _qutip_factors: Optional[Dict[str, Qobj]] = None,
+        _qutip_factors: Optional[Dict[str, _Qobj]] = None,
     ):
         r"""Parameters
         ----------
@@ -94,7 +94,7 @@ class ProductDensityOperator(DensityOperatorMixin, ProductOperator):
                     local_id = local_identities.get(dimension, None)
                     local_zs[site] = dimension
                     if local_id is None:
-                        local_id = qutip_qeye(dimension) / dimension
+                        local_id = _qutip_qeye(dimension) / dimension
                         local_identities[dimension] = local_id
                     local_states[site] = local_id
 
@@ -240,7 +240,7 @@ class ProductDensityOperator(DensityOperatorMixin, ProductOperator):
         system = self.system
         sites_op = self.site_factors
         terms = tuple(
-            LocalOperator(site, scp_logm(loc_op), system)
+            LocalOperator(site, _scp_logm(loc_op), system)
             for site, loc_op in sites_op.items()
         )
         if system:
@@ -281,7 +281,7 @@ class ProductDensityOperator(DensityOperatorMixin, ProductOperator):
             str(site): sites_op[site] for site in sites
         }
 
-        qutip_factors: Optional[Dict[str, Qobj]] = self.__dict__.get(
+        qutip_factors: Optional[Dict[str, _Qobj]] = self.__dict__.get(
             "site_factors_qutip", None
         )
         if qutip_factors is not None:
@@ -332,12 +332,12 @@ class ProductDensityOperator(DensityOperatorMixin, ProductOperator):
                 (site for site in sorted(sites_op) if site not in block)
             )
 
-        return qutip_tensor(
+        return _qutip_tensor(
             [
                 (
                     sites_op[site]
                     if site in sites_op
-                    else qutip_qeye(dimensions[site]) / dimensions[site]
+                    else _qutip_qeye(dimensions[site]) / dimensions[site]
                 )
                 for site in block
             ]

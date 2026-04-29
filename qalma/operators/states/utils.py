@@ -3,7 +3,7 @@
 from typing import Any, Dict, Iterable, List, Optional, Set, Tuple, Union, cast
 
 import numpy as np
-from qutip import Qobj, tensor as qutip_tensor
+from qutip import Qobj as _Qobj, tensor as _qutip_tensor
 
 from qalma.operators.arithmetic import SumOperator
 from qalma.operators.basic import (
@@ -48,7 +48,7 @@ COMPUTE_EXPECTATION_VALUES_CALLBACKS = {
     LocalOperator: lambda arg: arg.operator.trace() / arg.operator.shape[0],
     ProductOperator: _trivial_compute_epectation_values_product_op,
     SumOperator: lambda arg: sum(compute_expectation_values(op) for op in arg.terms),
-    Qobj: lambda arg: arg.data.trace() / arg.data.shape[0],
+    _Qobj: lambda arg: arg.data.trace() / arg.data.shape[0],
 }
 
 
@@ -200,7 +200,7 @@ def k_by_site_from_operator(k: Operator) -> Dict[str, Operator]:
             return dict(sites_op.items())
         return {site: op * prefactor for site, op in sites_op.items()}
     if isinstance(k, SumOperator):
-        result: Dict[str, Qobj] = {}
+        result: Dict[str, _Qobj] = {}
         offset = 0
         for term in getattr(k, "terms"):
             if isinstance(term, LocalOperator):
@@ -320,7 +320,7 @@ def safe_exp_and_normalize_sumop(
     acts_over_terms: List[frozenset] = cast(List[frozenset], acts_over_terms_or_none)
 
     system = operator.system
-    local_generators: Dict[str, Qobj] = {}
+    local_generators: Dict[str, _Qobj] = {}
     logz = 0
     for acts_over, term in zip(acts_over_terms, terms):
         if len(acts_over) == 0:
@@ -373,7 +373,7 @@ def safe_exp_and_normalize_qutip_operator(
         operator.operator * operator.prefactor
     )
     rest = tuple(sorted(site for site in system.sites if site not in block))
-    operator = qutip_tensor(
+    operator = _qutip_tensor(
         rho_qutip,
         *(system.site_identity(site) / system.dimensions[site] for site in rest),
     )
@@ -415,7 +415,7 @@ def safe_exp_and_normalize(operator):
         ln_z = sum((np.log(dim) for dim in system.dimensions.values()))
         return (ScalarOperator(np.exp(-ln_z), system), ln_z + operator.prefactor)
 
-    assert isinstance(operator, Qobj), f"type={type(operator)} should not be here."
+    assert isinstance(operator, _Qobj), f"type={type(operator)} should not be here."
 
     # assume Qobj or any other class with a compatible interface.
     return safe_exp_and_normalize_qobj(operator)

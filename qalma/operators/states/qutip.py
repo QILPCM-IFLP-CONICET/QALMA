@@ -8,7 +8,7 @@ from numbers import Real
 from typing import Optional, Tuple, Union, cast
 
 import numpy as np
-from qutip import Qobj, tensor as tensor_qutip  # type: ignore[import-untyped]
+from qutip import Qobj as _Qobj, tensor as _tensor_qutip  # type: ignore[import-untyped]
 
 from qalma.model import SystemDescriptor
 from qalma.operators.product import ScalarOperator
@@ -24,7 +24,7 @@ class QutipDensityOperator(DensityOperatorMixin, QutipOperator):
 
     def __init__(
         self,
-        qoperator: Qobj,
+        qoperator: _Qobj,
         system: Optional[SystemDescriptor] = None,
         names=None,
         prefactor=1,
@@ -98,7 +98,7 @@ class QutipDensityOperator(DensityOperatorMixin, QutipOperator):
         block_a = tuple(acts_over_a)
         block_b = tuple(acts_over_b)
         names = {site: pos for pos, site in enumerate(block_a + block_b)}
-        qutip_block = tensor_qutip(self.to_qutip(block_a), rho.to_qutip(block_b))
+        qutip_block = _tensor_qutip(self.to_qutip(block_a), rho.to_qutip(block_b))
         prefactor = self.prefactor * rho.prefactor
         return QutipDensityOperator(
             qutip_block, names=names, system=system, prefactor=prefactor

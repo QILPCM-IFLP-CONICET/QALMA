@@ -1,7 +1,7 @@
 """Fidelity and related functions."""
 
 import numpy as np
-from scipy.linalg import eigvals as scp_eigvals
+from scipy.linalg import eigvals as _scp_eigvals
 
 from qalma.operators import ProductOperator
 
@@ -34,6 +34,6 @@ def fidelity_product_states(rho1: ProductOperator, rho2: ProductOperator) -> flo
 
     result = 0.5 * np.log(radicand.prefactor)
     for factor in radicand.site_factors.values():
-        result += np.log(sum(abs(scp_eigvals(factor)) ** 0.5))
+        result += np.log(sum(abs(_scp_eigvals(factor)) ** 0.5))
 
     return np.exp(result)

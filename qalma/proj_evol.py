@@ -5,13 +5,13 @@ import numpy as np
 
 # from qalma.operators import safe_expm_and_normalize
 from qutip import (  # type: ignore[import-untyped]
-    entropy_vn,
-    fidelity,
-    jmat,
-    qeye,
-    tensor,
+    entropy_vn as _entropy_vn,
+    fidelity as _fidelity,
+    jmat as _jmat,
+    qeye as _qeye,
+    tensor as _tensor,
 )
-from qutip.core.qobj import Qobj  # type: ignore[import-untyped]
+from qutip.core.qobj import Qobj as _Qobj  # type: ignore[import-untyped]
 
 from qalma.operators import Operator
 from qalma.operators.states.utils import safe_exp_and_normalize
@@ -20,9 +20,9 @@ from qalma.scalarprod import gram_matrix, orthogonalize_basis
 
 def estimate_log_of_partial_trace(K0, local_sigmas, sites):
     return (
-        tensor(
+        _tensor(
             [
-                qeye(dim) if i in sites else local_sigmas[i]
+                _qeye(dim) if i in sites else local_sigmas[i]
                 for i, dim in enumerate(K0.dims[0])
             ]
         )
@@ -33,7 +33,7 @@ def estimate_log_of_partial_trace(K0, local_sigmas, sites):
 def project_k_to_sep(K, maxit=200):
     length = len(K.dims[0])
     phis = 2 * np.random.rand(length, 3) - 1.0
-    loc_ops = jmat(0.5)
+    loc_ops = _jmat(0.5)
     local_Ks = [sum((c * op for c, op in zip(phi, loc_ops))) for phi in phis]
     local_sigmas = [safe_exp_and_normalize(-localK) for localK in local_Ks]
     # Initializes with a random state
@@ -44,7 +44,7 @@ def project_k_to_sep(K, maxit=200):
 
         new_local_sigmas = [safe_exp_and_normalize(-localK) for localK in local_Ks]
         min_fid = min(
-            fidelity(old, new) for old, new in zip(local_sigmas, new_local_sigmas)
+            _fidelity(old, new) for old, new in zip(local_sigmas, new_local_sigmas)
         )
         if min_fid > 0.995:
             logging.info(f"converged after {it} iterations.")
@@ -67,7 +67,7 @@ def project_operator(
 class ProjectedEvolver:
     """Class that implements the projection evolver."""
 
-    def __init__(self, op_basis: dict, sp: Callable, K0: Qobj = None, deep: int = 0):
+    def __init__(self, op_basis: dict, sp: Callable, K0: _Qobj = None, deep: int = 0):
         """`op_basis`: the basis of observables that we want to evolve `sp`:
         the scalar product that defines the notion of orthogonality `K0`: the
         initial `K=-log(rho(0))`.
@@ -147,7 +147,7 @@ class ProjectedEvolver:
             sigma = self.build_state_form_orth_components(phi)
             for name in result:
                 if name == "entropy":
-                    result[name].append(entropy_vn(sigma))
+                    result[name].append(_entropy_vn(sigma))
                 else:
                     result[name].append((sigma * op_basis[name]).tr().real)
 

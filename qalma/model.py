@@ -1,6 +1,5 @@
 """System Descriptors.
 
-===================.
 A ``SystemDescriptor`` contains all the information relative to the
 system to be simulated.
 

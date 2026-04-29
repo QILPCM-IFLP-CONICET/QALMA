@@ -7,8 +7,8 @@ from functools import cached_property, reduce
 from typing import Dict, Iterable, Optional, Tuple, Union
 
 import numpy as np
-from qutip import Qobj
-from scipy.linalg import expm as scp_expm, logm as scp_logm
+from qutip import Qobj as _Qobj
+from scipy.linalg import expm as _scp_expm, logm as _scp_logm
 
 from qalma.model import SystemDescriptor
 from qalma.qutip_tools.tools import (
@@ -54,7 +54,7 @@ class ProductOperator(Operator):
 
     """
 
-    _to_qutip_cache: Dict[Optional[Tuple[str, ...]], Qobj]
+    _to_qutip_cache: Dict[Optional[Tuple[str, ...]], _Qobj]
     prefactor: complex
     site_factors: Dict[str, np.ndarray]
     system: SystemDescriptor
@@ -64,7 +64,7 @@ class ProductOperator(Operator):
         sites_operators: dict,
         prefactor: complex = 1.0,
         system: Optional[SystemDescriptor] = None,
-        _qutip_factors: Optional[Dict[str, Qobj]] = None,
+        _qutip_factors: Optional[Dict[str, _Qobj]] = None,
     ):
         """Parameters
         ----------
@@ -94,7 +94,7 @@ class ProductOperator(Operator):
                 if not isinstance(local_op, (int, float, complex))
             }
 
-        if all(isinstance(value, Qobj) for value in sites_operators.values()):
+        if all(isinstance(value, _Qobj) for value in sites_operators.values()):
             self.__dict__["site_factors_qutip"] = sites_operators
         elif _qutip_factors is not None:
             self.__dict__["site_factors_qutip"] = _qutip_factors
@@ -115,7 +115,7 @@ class ProductOperator(Operator):
         self._to_qutip_cache = {}
 
     @cached_property
-    def site_factors_qutip(self) -> Dict[str, Qobj]:
+    def site_factors_qutip(self) -> Dict[str, _Qobj]:
         """QuTiP representations of the local site factors.
 
         Returns
@@ -279,7 +279,7 @@ class ProductOperator(Operator):
             site, operator = next(iter(sites_op.items()))
 
             result = LocalOperator(
-                site, scp_expm(self.prefactor * operator), self.system
+                site, _scp_expm(self.prefactor * operator), self.system
             )
             return result
         result = super().expm()
@@ -403,7 +403,7 @@ class ProductOperator(Operator):
 
         system = self.system
         terms = tuple(
-            LocalOperator(site, scp_logm(loc_op), system)
+            LocalOperator(site, _scp_logm(loc_op), system)
             for site, loc_op in self.site_factors.items()
         )
         result = OneBodyOperator(terms, system, False)
@@ -576,7 +576,8 @@ class ProductOperator(Operator):
         return result
 
     def simplify(self) -> Operator:
-        """Simplifies a product operator
+        """Simplifies a product operator.
+
         - first, collect all the scalar factors and
           absorbe them in the prefactor.
         - If the prefactor vanishes, or all the factors are scalars,

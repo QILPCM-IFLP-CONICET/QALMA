@@ -4,9 +4,8 @@ import logging
 
 import numpy as np
 import qutip  # type: ignore[import-untyped]
-from matplotlib.patches import Circle, Ellipse
-from matplotlib.pyplot import Axes as PLTAxes
-from numpy.random import rand
+from matplotlib.patches import Circle as _Circle, Ellipse as _Ellipse
+from matplotlib.pyplot import Axes as _PLTAxes
 
 default_parms = {
     "pi": 3.1415926,
@@ -17,7 +16,7 @@ default_parms = {
     "tan": np.tan,
     "exp": np.exp,
     "log": np.log,
-    "rand": rand,
+    "rand": np.random.rand,
 }
 
 
@@ -41,7 +40,7 @@ def draw_ellipse_around_points(p1, p2, ax, b_ratio=0.15):
     b = a * b_ratio
 
     # Plotting
-    ellipse = Ellipse(
+    ellipse = _Ellipse(
         (xc, yc),
         width=3 * a,
         height=2.1 * b,
@@ -54,7 +53,7 @@ def draw_ellipse_around_points(p1, p2, ax, b_ratio=0.15):
     ax.add_patch(ellipse)
 
 
-def draw_operator(op, axis: PLTAxes) -> PLTAxes:
+def draw_operator(op, axis: _PLTAxes) -> _PLTAxes:
     """Draw the operator op over the axis.
 
     Parameters
@@ -88,7 +87,7 @@ def draw_operator(op, axis: PLTAxes) -> PLTAxes:
         coords = [g.nodes[site]["coords"] for site in acts_over]
         coords = [(x[0], 0) if len(x) == 1 else x for x in coords]
         if len(coords) == 1:
-            axis.add_artist(Circle(coords[0], 0.1))
+            axis.add_artist(_Circle(coords[0], 0.1))
         if len(coords) == 2:
             draw_ellipse_around_points(coords[0], coords[1], axis)
         else:
@@ -208,10 +207,11 @@ def operator_to_wolfram(operator) -> str:
     operator.
     """
     # pylint: disable=import-outside-toplevel
+    from qutip import Qobj
+
     from qalma.operators.arithmetic import SumOperator
     from qalma.operators.basic import LocalOperator, Operator
     from qalma.operators.product import ProductOperator
-    from qalma.operators.qutip import Qobj
 
     def get_site_identity(site_name):
         site_spec = sites[site_name]

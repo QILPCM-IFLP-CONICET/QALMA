@@ -5,14 +5,14 @@
 @author: mauricio
 """
 
-import qalma.restricted_maxent_toolkit
 from qalma import geometry, model, operators, utils
 from qalma.alpsmodels import list_models_in_alps_xml, model_from_alps_xml
 from qalma.geometry import graph_from_alps_xml, list_geometries_in_alps_xml
 from qalma.model import build_system
 
+from . import restricted_maxent_toolkit
+
 __all__ = [
-    "qalma",
     "build_system",
     "geometry",
     "graph_from_alps_xml",

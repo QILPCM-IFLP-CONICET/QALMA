@@ -46,6 +46,22 @@ html_theme_options = {
     "sticky_navigation": True,
 }
 
+# ------ Skip reexported objects --------------
+
+def skip_reexported(app, what, name, obj, skip, options):
+    try:
+        if hasattr(obj, "__module__") and options is not None:
+            current_module = options.get("module")
+            if current_module and obj.__module__ != current_module:
+                return True
+    except Exception:
+        pass
+    return skip
+
+def setup(app):
+    app.connect("autodoc-skip-member", skip_reexported)
+
+
 # -- Autodoc -----------------------------------------------------------------
 
 autoclass_content = "both"

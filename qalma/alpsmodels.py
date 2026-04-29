@@ -693,7 +693,7 @@ def qutip_model_from_dims(dims: Iterable, model_name="qutip") -> ModelDescriptor
             identity_operator = qutip.qeye(d)
             curr_site_basis = {
                 "name": name,
-                "qn": {"n":{}},
+                "qn": {"n": {}},
                 "dimension": d,
                 "identity": identity_operator,
                 "operators": {

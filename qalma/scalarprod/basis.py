@@ -6,7 +6,7 @@ from typing import Callable, Iterable, Optional, Tuple, cast
 import numpy as np
 from numpy.linalg import LinAlgError, cholesky, inv
 from numpy.typing import NDArray
-from scipy.linalg import expm as linalg_expm
+from scipy.linalg import expm as _linalg_expm
 
 from qalma.operators.arithmetic import SumOperator
 from qalma.operators.basic import Operator
@@ -282,7 +282,7 @@ class OperatorBasis:
             the second with the estimated error.
 
         """
-        a_t = linalg_expm(t * self.gen_matrix) @ a_0
+        a_t = _linalg_expm(t * self.gen_matrix) @ a_0
         # The error is estimated by
         # |\Delta K| = |\int_0^t \sum_a \Pi_{\perp}[H,Q_a] phi_a(\tau)d \tau  |
         #            <= \sum_a |\Pi_{\perp}[H,Q_a]| |phi_a(t)| t

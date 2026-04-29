@@ -5,7 +5,7 @@
 from typing import Iterable, Optional, Set, Tuple, Union
 
 import numpy as np
-from scipy.linalg import eigvals, expm as scp_expm
+from scipy.linalg import eigvals as _eigvals, expm as _scp_expm
 
 from qalma.model import SystemDescriptor
 from qalma.operators.basic import (
@@ -650,12 +650,12 @@ class OneBodyOperator(SumOperator):
                 ln_prefactor += term.prefactor
                 continue
             operator = term.operator
-            k_0 = max(np.real(eigvals(operator)))
+            k_0 = max(np.real(_eigvals(operator)))
 
             operator = operator.copy()
             np.fill_diagonal(operator, operator.diagonal() - k_0)
             ln_prefactor += k_0
-            sites_op[term.site] = scp_expm(operator)
+            sites_op[term.site] = _scp_expm(operator)
 
         prefactor = np.exp(ln_prefactor)
         return ProductOperator(sites_op, prefactor=prefactor, system=self.system)

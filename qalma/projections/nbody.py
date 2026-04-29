@@ -6,7 +6,7 @@ from typing import Callable, Dict, List, Optional, Tuple, Union, cast
 
 import numpy as np
 import qutip
-from qutip import Qobj
+from qutip import Qobj as _Qobj
 
 from qalma.operators import (
     LocalOperator,
@@ -561,7 +561,7 @@ def project_quadraticform_operator_as_n_body_operator(
 
 
 def one_body_from_qutip_operator(
-    operator: Union[Operator, Qobj], sigma0: Optional[ProductDensityOperator] = None
+    operator: Union[Operator, _Qobj], sigma0: Optional[ProductDensityOperator] = None
 ) -> Operator:
     """Decompose a qutip operator as a sum of an scalar term, a one-body term
     and a remainder, with the one-body term and the remainder having zero mean
@@ -585,7 +585,7 @@ def one_body_from_qutip_operator(
     if isinstance(operator, (ScalarOperator, OneBodyOperator, LocalOperator)):
         return operator
 
-    if isinstance(operator, Qobj):
+    if isinstance(operator, _Qobj):
         if sigma0 is None:
             operator = QutipOperator(operator)
             system = operator.system
