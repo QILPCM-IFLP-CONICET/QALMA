@@ -1,11 +1,21 @@
+"""
+Gibbs partial trace
+
+This module implement functions to approximate the partial trace
+of a Gibbs state.
+"""
+
 import logging
+from typing import List
 
 from qutip import tensor as qutip_tensor
 
 from qalma.meanfield import (
     variational_quadratic_mfa,
 )
+from qalma.model import SystemDescriptor
 from qalma.operators import (
+    Operator,
     ProductOperator,
     QutipOperator,
     ScalarOperator,
@@ -13,10 +23,13 @@ from qalma.operators import (
 )
 from qalma.operators.arithmetic import iterable_to_operator
 from qalma.operators.states.basic import (
-    DensityOperatorMixin,
-    ProductDensityOperator,
+    DensityOperatorProtocol,
 )
 from qalma.operators.states.gibbs import GibbsDensityOperator
+from qalma.operators.states.product import (
+    ProductDensityOperator,
+)
+from qalma.settings import MAXIMUM_GIBBS_EXACT_PARTIAL_TRACE
 
 
 def project_boundary_term(term, sigma: ProductDensityOperator, sites: frozenset):
@@ -26,7 +39,7 @@ def project_boundary_term(term, sigma: ProductDensityOperator, sites: frozenset)
     Q_b acting on the sub-system associated to sigma.
     """
     acts_over = term.acts_over()
-    sites = {site for site in acts_over if site in sites}
+    sites = frozenset({site for site in acts_over if site in sites})
     environment = frozenset(site for site in acts_over if site not in sites)
     system = term.system
     if len(sites) == 0:
@@ -34,7 +47,7 @@ def project_boundary_term(term, sigma: ProductDensityOperator, sites: frozenset)
     if all(site in sites for site in acts_over):
         return term
 
-    local_states = sigma.sites_op
+    local_states = sigma.site_factors_qutip
     local_states = {site: local_states[site] for site in environment}
 
     if isinstance(term, SumOperator):
@@ -45,11 +58,13 @@ def project_boundary_term(term, sigma: ProductDensityOperator, sites: frozenset)
         )
     if isinstance(term, ProductOperator):
         prefactor = term.prefactor
-        sites_op = term.sites_op
+        site_factors_qutip = term.site_factors_qutip
         for site in environment:
-            prefactor = prefactor * (sites_op[site] * local_states[site]).tr()
-        sites_op = {site: op for site, op in sites_op.items() if site in sites}
-        return ProductOperator(sites_op, prefactor, system)
+            prefactor = prefactor * (site_factors_qutip[site] * local_states[site]).tr()
+        site_factors_qutip = {
+            site: op for site, op in site_factors_qutip.items() if site in sites
+        }
+        return ProductOperator(site_factors_qutip, prefactor, system)
     if isinstance(term, QutipOperator):
         block = tuple(sites) + tuple(environment)
         qutip_op = term.to_qutip(block)
@@ -67,46 +82,85 @@ def project_boundary_term(term, sigma: ProductDensityOperator, sites: frozenset)
         term = term.as_sum_of_products()
         return project_boundary_term(term, sigma, sites)
     logging.warning(
-        f"boundary term is not Product or Qutip ({type(term)}). Converting to QutipOperator"
+        "boundary term is not Product or Qutip (%s). Converting to QutipOperator",
+        type(term),
     )
     return project_boundary_term(term.to_qutip_operator(), sigma, sites)
 
 
 def gibbs_meanfield_partial_trace(
     state: GibbsDensityOperator, sites: frozenset
-) -> DensityOperatorMixin:
+) -> DensityOperatorProtocol:
     """
     Build a self-consistent Mean Field approximation to the local state.
 
     """
+    terms_in: List[Operator]
+    terms_boundary: List[Operator]
+    prefactor: complex
+    generator: Operator
+    full_acts_over: frozenset
+    environment: frozenset
+    system: SystemDescriptor
+    subsystem: SystemDescriptor
+
+    # For states in small subsystems, just compute the partial trace
+    # *exactly* by exponentiating the state.
+    if len(state.system.sites) <= MAXIMUM_GIBBS_EXACT_PARTIAL_TRACE:
+        result = state.to_qutip_operator().partial_trace(sites)
+        return result
+
     prefactor = state.prefactor
     generator = state.k
     full_acts_over = generator.acts_over()
     environment = frozenset(site for site in full_acts_over if site not in sites)
     system = state.k.system
     subsystem = system.subsystem(sites)
-
-    # For states in small subsystems, just compute the partial trace
-    # *exactly* by exponentiating the state.
-    if len(full_acts_over) <= 4:
-        result = state.to_qutip_operator().partial_trace(sites)
-        return result
-
+    # pylint: disable=protected-access
     sigma_mf = state._meanfield
-    if not environment:
-        result = GibbsDensityOperator(
+
+    # Trivial cases:
+    if len(environment) == 0:
+        return GibbsDensityOperator(
             generator, system=subsystem, prefactor=prefactor, meanfield=sigma_mf
         )
-        return result
+    if len(full_acts_over) == len(environment):
+        return GibbsDensityOperator(
+            ScalarOperator(0.0, system), system=subsystem, prefactor=prefactor
+        )
+    # Shortcut for density operators acting on a small subblock:
+    # construct the state of the subblock, compute the partial trace,
+    # and get back the generator:
+    if len(full_acts_over) <= MAXIMUM_GIBBS_EXACT_PARTIAL_TRACE:
+        sites_in_superblock = frozenset(
+            site for site in full_acts_over if site in sites
+        )
+        sigma_superblock = (
+            GibbsDensityOperator(
+                generator,
+                system=system.subsystem(full_acts_over),
+                prefactor=1,
+                meanfield=sigma_mf,
+            )
+            .to_qutip_operator()
+            .partial_trace(sites_in_superblock)
+        )
+        k_reduced = -sigma_superblock.logm()
+        # k_reduced is associated to the state of the subsystem.
+        # We need to reset it to the global system:
+        # pylint: disable=protected-access
+        k_reduced._set_system_(system)
+        # Notice that subsystem can still be "large", so we return a GibbsDensityOperator:
+        return GibbsDensityOperator(k_reduced, system=subsystem, prefactor=prefactor)
 
-    generator = state.k.flat()
+    # Decompose generator in terms inside (subsystem), terms outside (environment) and
+    # boundary (interaction)
+    generator = generator.flat()
     all_terms = generator.terms if isinstance(generator, SumOperator) else [generator]
     terms_in, terms_boundary = [], []
     for term in all_terms:
         term_acts_over = term.acts_over()
-        if term_acts_over is None:
-            terms_boundary.append(term_acts_over)
-        elif term_acts_over.issubset(sites):
+        if term_acts_over.issubset(sites):
             terms_in.append(term)
         elif term_acts_over.issubset(environment):
             continue
@@ -116,15 +170,16 @@ def gibbs_meanfield_partial_trace(
     if terms_boundary:
         # If there are boundary terms, project them
         if sigma_mf is None:
-            sigma_mf = variational_quadratic_mfa(-generator).to_product_state()
+            sigma_mf = variational_quadratic_mfa(generator)
+            # pylint: disable=protected-access
             state._meanfield = sigma_mf
 
         # Project the terms onto the algebra of the local subsystem
-        terms_boundary = (
+        terms_boundary_gen = (
             project_boundary_term(term, sigma_mf, sites) for term in terms_boundary
         )
         # Remove empty terms
-        terms_boundary = tuple(term for term in terms_boundary if term)
+        terms_boundary = [term for term in terms_boundary_gen if term]
         terms_in.extend(terms_boundary)
 
     k_in = iterable_to_operator(terms_in, system, isherm=True)
@@ -133,10 +188,9 @@ def gibbs_meanfield_partial_trace(
         k_in, subsystem, prefactor=prefactor
     ).to_qutip_operator()
 
-    for symm in state.symmetry_projections:
-        result_new = symm(result)
-        # assert (
-        #    (result_new - result).tidyup().is_zero
-        # ), f"result is not invariant under {symm}."
-        result = result_new
+    # If there were non-trivial terms in the boundary,
+    # restore symmetries:
+    if terms_boundary:
+        for symm in state.symmetry_projections:
+            result = symm(result)
     return result

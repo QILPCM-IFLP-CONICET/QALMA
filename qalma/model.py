@@ -5,12 +5,12 @@ Define SystemDescriptors and different kind of operators
 import logging
 import pickle
 import re
-from typing import Optional, Tuple
+from typing import Dict, Optional, Tuple
 
-from qalma.alpsmodels import ModelDescriptor
+from qalma.alpsmodels import ModelDescriptor, qutip_model_from_dims
 from qalma.geometry import GraphDescriptor
 from qalma.settings import LATTICE_LIB_FILE, MODEL_LIB_FILE
-from qalma.utils import eval_expr
+from qalma.utils import eval_expr, replace_variable_type
 
 
 class SystemDescriptor:
@@ -35,6 +35,7 @@ class SystemDescriptor:
         model: ModelDescriptor,
         parms: Optional[dict] = None,
         sites=None,
+        _load_operators=True,
     ):
         if parms is None:
             parms = {}
@@ -59,7 +60,7 @@ class SystemDescriptor:
                         f"Model <<{model.name}>> does not provide the specification "
                         f"for site of type <<{ex.args[0]}>> used in nodes of <<{graph.name}>>."
                     )
-                )
+                ) from ex
 
         self.dimensions = {name: site["dimension"] for name, site in self.sites.items()}
         self.operators = {
@@ -69,17 +70,30 @@ class SystemDescriptor:
             "global_operators": {},
         }
         self._subsystems_cache = {}
-        self._load_site_operators()
-        self._load_global_ops()
+        if _load_operators:
+            self._load_site_operators()
+            self._load_global_ops()
 
     def __eq__(self, other):
         # To be the equal, two SystemDescriptors
         # should have the same values in the
         # `spec` attribute:
+        if self is other:
+            return True
+        if other is None:
+            return False
         assert isinstance(other, SystemDescriptor)
-        for key in self.spec:
-            if other.spec[key] != self.spec[key]:
+        for key, my_spec in self.spec.items():
+            if other.spec[key] != my_spec:
                 return False
+        for site in other.sites:
+            if site not in self.sites:
+                return False
+
+        for site, descr in self.sites.items():
+            if descr != other.sites[site]:
+                return False
+
         return True
 
     def __repr__(self):
@@ -106,6 +120,9 @@ class SystemDescriptor:
         }
         self._serialized = pickle.dumps(state)
         return self._serialized
+
+    def __iter__(self):
+        yield from self.sites
 
     def __setstate__(self, state):
         state_dict = pickle.loads(state)
@@ -139,7 +156,7 @@ class SystemDescriptor:
         parms = self.spec["parms"].copy()
         model = self.spec["model"]
         graph = self.spec["graph"].subgraph(sites)
-        result = SystemDescriptor(graph, model, parms)
+        result = SystemDescriptor(graph, model, parms, _load_operators=False)
         return self._subsystems_cache.setdefault(sites, result)
 
     def _load_site_operators(self):
@@ -186,6 +203,9 @@ class SystemDescriptor:
         return "System \textbf{" + self.name + "}"
 
     def contains(self, system):
+        """
+        Check if the object contains `system` as a subsystem.
+        """
         if self is system:
             return True
         block = frozenset(system.sites)
@@ -197,13 +217,18 @@ class SystemDescriptor:
                 self._subsystems_cache[block] = system
                 return True
 
+        logging.info("check model and graph")
         if (
-            self.spec["model"] is system.spec["model"]
+            self.spec["model"] == system.spec["model"]
             and self.spec["graph"].contains(system.spec["graph"])
             and all(site in self.sites for site in system.sites)
         ):
             self._subsystems_cache[block] = system
             return True
+        if not self.spec["model"] == system.spec["model"]:
+            print(self.spec["model"], " \n vs\n", system.spec["model"])
+        if not self.spec["graph"].contains(system.spec["graph"]):
+            print(self.spec["graph"], " \n vs\n", system.spec["graph"])
         return False
 
     def union(self, system):
@@ -389,7 +414,7 @@ class SystemDescriptor:
         #    self.bond_operators[(name, src, dst,)] = None
         return None
 
-    def loop_operator(self, name: str, loop: Tuple[str], skip=None):  # -> "Operator":
+    def loop_operator(self, name: str, loop: Tuple[str], _skip=None):  # -> "Operator":
         """Loop operator by name and sites"""
         result_op = self.operators["global_operators"].get(
             (
@@ -435,7 +460,12 @@ class SystemDescriptor:
             operator_names = set(re.findall(r"\b([a-zA-Z_]+)\b@", s_expr))
 
             s_expr = s_expr.replace("@", "__")
-            s_parm = {key.replace("#", node_type): val for key, val in t_parm.items()}
+            s_parm = {
+                replace_variable_type(key, node_type): replace_variable_type(
+                    val, node_type
+                )
+                for key, val in t_parm.items()
+            }
             s_parm.update(
                 {
                     f"{name_op}_local": local_op
@@ -466,7 +496,10 @@ class SystemDescriptor:
         def process_edge(e_expr, bond, model, t_parm):
             edge_type, src, dst = bond
             e_parms = {
-                key.replace("#", f"{edge_type}"): val for key, val in t_parm.items()
+                replace_variable_type(key, edge_type): replace_variable_type(
+                    val, edge_type
+                )
+                for key, val in t_parm.items()
             }
             for op_idx in ([src, "src"], [dst, "dst"]):
                 e_parms.update(
@@ -537,9 +570,12 @@ class SystemDescriptor:
         # pylint: disable=import-outside-toplevel
         from qalma.operators import ScalarOperator, SumOperator
 
-        def process_loop(loop_expr, loop_type, vertices_map, model, t_parm):
+        def process_loop(loop_expr, loop_type, vertices_map, _model, t_parm):
             loop_parms = {
-                key.replace("#", f"{loop_type}"): val for key, val in t_parm.items()
+                replace_variable_type(key, loop_type): replace_variable_type(
+                    val, loop_type
+                )
+                for key, val in t_parm.items()
             }
 
             for key, site in vertices_map.items():
@@ -571,9 +607,7 @@ class SystemDescriptor:
             loop_expr = expr.replace("#", loop_type)
             operator_names = set(re.findall(r"\b([a-zA-Z_]+)\b@", loop_expr))
             for vertices in loops:
-                vertices_site_map = {
-                    indx: site for indx, site in zip(index_names, vertices)
-                }
+                vertices_site_map = dict(zip(index_names, vertices))
                 term_op = process_loop(
                     loop_expr, loop_type, vertices_site_map, model, t_parm
                 )
@@ -596,13 +630,20 @@ class SystemDescriptor:
         # pylint: disable=import-outside-toplevel
         from qalma.operators import OneBodyOperator, SumOperator
 
+        if len(self.operators["site_operators"]) == 0:
+            self._load_site_operators()
+            self._load_global_ops()
+
         result = self.operators["global_operators"].get(name, None)
         if result is not None:
+            logging.warning("%s already defined. Return from cache.", name)
             return result
         # Build the global_operator from the descriptor
         op_descr = self.spec["model"].global_ops.get(name, None)
         if op_descr is None:
-            logging.warning(f"{op_descr} not defined.")
+            logging.warning(
+                "%s not defined in %s.", name, str(self.spec["model"].global_ops.keys())
+            )
             return None
 
         graph = self.spec["graph"]
@@ -617,7 +658,7 @@ class SystemDescriptor:
             )
             site_terms = tuple(term for term in site_terms if term)
         except ValueError as exc:
-            logging.debug(f"{exc.args} Aborting evaluation of {name}.")
+            logging.debug("%s aborting evaluation of %s.", exc.args, name)
             model.global_ops.pop(name)
             return None
 
@@ -630,7 +671,7 @@ class SystemDescriptor:
             bond_terms = tuple(term for term in bond_terms if term)
 
         except ValueError as exc:
-            logging.debug(f"{exc.args} Aborting evaluation of {name}.")
+            logging.debug("%s aborting evaluation of %s.", exc.args, name)
             model.global_ops.pop(name)
             return None
 
@@ -643,7 +684,7 @@ class SystemDescriptor:
             loop_terms = tuple(term for term in loop_terms if term)
 
         except ValueError as exc:
-            logging.debug(f"{exc.args} Aborting evaluation of {name}.")
+            logging.debug("%s Aborting evaluation of %s.", exc.args, name)
             model.global_ops.pop(name)
             return None
 
@@ -654,6 +695,7 @@ class SystemDescriptor:
             result = OneBodyOperator(site_terms, self, True)
         result = result.simplify()
         self.operators["global_operators"][name] = result
+        logging.debug("  return operator of type %s.", str(type(result)))
         return result
 
 
@@ -685,7 +727,7 @@ def build_system(
     # pylint: disable=import-outside-toplevel
     from qalma.geometry import graph_from_alps_xml
 
-    logging.info("loading model", model_name, " over graph", geometry_name)
+    logging.info("loading model %s over graph %s.", model_name, geometry_name)
 
     parms = {"L": 4, "J": 1, "a": 1}
     parms.update(kwargs)
@@ -695,3 +737,19 @@ def build_system(
     assert model is not None
     assert graph is not None
     return SystemDescriptor(graph, model, parms)
+
+
+def build_system_from_dims(dims_by_name: Dict[str, int]) -> SystemDescriptor:
+    """
+    Build a System from the dimension of each site
+    """
+    model = qutip_model_from_dims(dims_by_name.values())
+    sitebasis = model.site_basis
+    sites = {name: sitebasis[f"dim={dim}"] for name, dim in dims_by_name.items()}
+    graph = GraphDescriptor(
+        "disconnected graph",
+        {name: {"type": f"dim={dim}"} for name, dim in dims_by_name.items()},
+        {},
+        {},
+    )
+    return SystemDescriptor(graph, model, sites=sites)

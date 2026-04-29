@@ -15,6 +15,7 @@ from test.helper import (
 import numpy as np
 import pytest
 
+from qalma.model import build_system
 from qalma.operators import (
     LocalOperator,
     ProductOperator,
@@ -34,6 +35,15 @@ from qalma.settings import QALMA_TOLERANCE
 # from qalma.settings import VERBOSITY_LEVEL
 
 
+LARGE_SYSTEM = build_system(
+    geometry_name="square lattice",
+    model="spin",
+    **{"L": 3, "Jz": 1, "Jxy": 1, "ALPHA": 0.2},
+)
+SZ_00 = LARGE_SYSTEM.site_operator("Sz", "1[0, 0]")
+SZ_01 = LARGE_SYSTEM.site_operator("Sz", "1[0, 1]")
+
+
 def do_test_expect(rho, sigma_dict):
     """Compare expectation values"""
 
@@ -43,6 +53,7 @@ def do_test_expect(rho, sigma_dict):
             if sigma is None:
                 continue
 
+            print("    sigma=", name)
             if hasattr(sigma, "data"):
                 rho_obs_result = (obs_op.to_qutip() * sigma).tr()
             else:
@@ -68,6 +79,9 @@ def do_test_instance(rho) -> None:
 
     """
     rho_times_two = 2 * rho
+    assert hasattr(
+        rho_times_two, "expect"
+    ), f"2*{type(rho)} produced {type(rho_times_two)}."
     rho_qutip = rho.to_qutip()
     assert abs(rho.tr() - 1) < QALMA_TOLERANCE
     assert abs(rho_qutip.tr() - 1) < QALMA_TOLERANCE
@@ -141,10 +155,10 @@ def test_product_gibbs_with_dict(key, k_gen):
 
     local_gen_dic = {}
     if isinstance(k_gen, LocalOperator):
-        local_gen_dic[k_gen.site] = k_gen.operator
+        local_gen_dic[k_gen.site] = k_gen.operator_qutip
     elif isinstance(k_gen, ProductOperator):
-        if len(k_gen.sites_op) != 0:
-            site, op = k_gen.sites_op.items()
+        if len(k_gen.site_factors) != 0:
+            site, op = k_gen.site_factors_qutip.items()
             local_gen_dic[site] = op
     elif isinstance(k_gen, QutipOperator):
         (site,) = k_gen.site_names
@@ -153,7 +167,7 @@ def test_product_gibbs_with_dict(key, k_gen):
     elif isinstance(k_gen, SumOperator):
         for term in k_gen.flat().terms:
             if isinstance(term, LocalOperator):
-                local_gen_dic[term.site] = term.operator
+                local_gen_dic[term.site] = term.operator_qutip
             elif isinstance(term, ProductOperator):
                 site, op = term.sites_op.items()
                 local_gen_dic[site] = op
@@ -175,3 +189,52 @@ def do_test_log(rho):
     assert abs(ln_z) < QALMA_TOLERANCE**0.5
     check_operator_equality(rho_qutip, rho_g)
     return rho_g
+
+
+def test_large_gibbs_pt_1():
+    rho = GibbsDensityOperator(SZ_00, system=LARGE_SYSTEM)
+    rho_qutip = rho.to_qutip_operator()
+    rho_00 = rho.partial_trace(frozenset(["1[0, 0]"]))
+    rho_01 = rho.partial_trace(frozenset(["1[0, 1]"]))
+    rho_00_01 = rho.partial_trace(frozenset(["1[0, 0]", "1[0, 1]"]))
+
+    rho_00_qutip = rho_qutip.partial_trace(frozenset(["1[0, 0]"]))
+    rho_01_qutip = rho_qutip.partial_trace(frozenset(["1[0, 1]"]))
+    rho_00_01_qutip = rho_qutip.partial_trace(frozenset(["1[0, 0]", "1[0, 1]"]))
+
+    assert len(rho_00.acts_over()) == 1, "Partial trace on 00 acts over 00."
+    assert len(rho_01.acts_over()) == 0, "Partial trace on 01 is the identity."
+    assert len(rho_00_01.acts_over()) == 1, "Partial trace on 00 and 01 acts over 00."
+
+    check_operator_equality(rho_00_qutip, rho_00)
+    check_operator_equality(rho_01_qutip, rho_01)
+    check_operator_equality(rho_00_01_qutip, rho_00_01)
+
+
+def test_large_gibbs_pt_2():
+    rho = GibbsDensityOperator(SZ_00 * SZ_01, system=LARGE_SYSTEM)
+    rho_qutip = rho.to_qutip_operator()
+    rho_00 = rho.partial_trace(frozenset(["1[0, 0]"]))
+    rho_01 = rho.partial_trace(frozenset(["1[1, 0]"]))
+    rho_00_10 = rho.partial_trace(frozenset(["1[0, 0]", "1[1, 0]"]))
+    rho_00_01 = rho.partial_trace(frozenset(["1[0, 0]", "1[0, 1]"]))
+
+    rho_00_qutip = rho_qutip.partial_trace(frozenset(["1[0, 0]"]))
+    rho_01_qutip = rho_qutip.partial_trace(frozenset(["1[1, 0]"]))
+    rho_00_10_qutip = rho_qutip.partial_trace(frozenset(["1[0, 0]", "1[1, 0]"]))
+    rho_00_01_qutip = rho_qutip.partial_trace(frozenset(["1[0, 0]", "1[0, 1]"]))
+
+    assert len(rho_00.acts_over()) == 1, "Partial trace on 00 acts over 00."
+    assert len(rho_01.acts_over()) == 0, "Partial trace on 01 is the identity."
+    assert (
+        len(rho_00_01.acts_over()) == 2
+    ), "Partial trace on 00 and 01 acts over 00 and 01."
+    assert len(rho_00_10.acts_over()) == 1, "Partial trace on 00 and 01 acts over 00."
+    check_operator_equality(rho_00_qutip, rho_00)
+    check_operator_equality(rho_01_qutip, rho_01)
+    check_operator_equality(rho_00_01_qutip, rho_00_01)
+
+    print("rho_00_10", rho_00_10.acts_over())
+    print("rho_00_10_qutip", rho_00_10_qutip, rho_00_10_qutip.site_names)
+
+    check_operator_equality(rho_00_10_qutip, rho_00_10)

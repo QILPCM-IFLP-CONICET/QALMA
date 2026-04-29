@@ -3,8 +3,7 @@ Utility functions for qalma.operators.states
 
 """
 
-from functools import reduce
-from typing import Any, Dict, Iterable, List, Optional, Union, cast
+from typing import Any, Dict, Iterable, List, Optional, Set, Tuple, Union, cast
 
 import numpy as np
 from qutip import Qobj, tensor as qutip_tensor
@@ -13,13 +12,17 @@ from qalma.operators.arithmetic import SumOperator
 from qalma.operators.basic import (
     LocalOperator,
     Operator,
+)
+from qalma.operators.product import (
     ProductOperator,
     ScalarOperator,
 )
 from qalma.operators.quadratic import QuadraticFormOperator
 from qalma.operators.qutip import QutipOperator
 from qalma.operators.states.basic import (
-    DensityOperatorMixin,
+    DensityOperatorProtocol,
+)
+from qalma.operators.states.product import (
     ProductDensityOperator,
 )
 from qalma.operators.states.qutip import QutipDensityOperator
@@ -28,7 +31,35 @@ from qalma.qutip_tools.tools import (
 )
 
 
+def _trivial_compute_epectation_values_product_op(obs):
+    result = obs.prefactor
+    for l_op in obs.site_factors.values():
+        result *= l_op.trace() / l_op.shape[0]
+    return result
+
+
+COMPUTE_EXPECTATION_VALUES_CALLBACKS = {
+    dict: lambda arg: {
+        key: compute_expectation_values(val) for key, val in arg.items()
+    },
+    list: lambda arg: [compute_expectation_values(val) for val in arg],
+    tuple: lambda arg: tuple(compute_expectation_values(val) for val in arg),
+    QuadraticFormOperator: lambda arg: compute_expectation_values(
+        arg.as_sum_of_products()
+    ),
+    ScalarOperator: lambda arg: arg.prefactor,
+    LocalOperator: lambda arg: arg.operator.trace() / arg.operator.shape[0],
+    ProductOperator: _trivial_compute_epectation_values_product_op,
+    SumOperator: lambda arg: sum(compute_expectation_values(op) for op in arg.terms),
+    Qobj: lambda arg: arg.data.trace() / arg.data.shape[0],
+}
+
+
 def acts_over_order(elem):
+    """
+    Return the number of sites where the
+    operator `elem` acts over.
+    """
     elem_acts_over = elem.acts_over()
     if elem_acts_over is None:
         return 0
@@ -37,14 +68,26 @@ def acts_over_order(elem):
 
 def compute_expectation_values(
     obs: Operator | Iterable[Operator] | Dict[Any, Operator],
-    state: Optional[DensityOperatorMixin],
+    state: Optional[DensityOperatorProtocol] = None,
 ):
     """
     Compute the expectation value of an operator or operators in an iterable object,
     relative to the state `state`.
     """
     if state is None:
-        state = ProductDensityOperator({}, 1, obs.system)
+        callback = COMPUTE_EXPECTATION_VALUES_CALLBACKS.get(type(obs), None)
+        if callback is not None:
+            return callback(obs)
+        if isinstance(obs, SumOperator):
+            return sum(compute_expectation_values(term) for term in obs.terms)
+        elif hasattr(obs, "expect"):
+            return 1.0
+        elif isinstance(obs, Operator):
+            data = obs.to_qutip(tuple()).data
+            return data.trace() / data.shape[0]
+        elif hasattr(obs, "__getitem__"):
+            return [compute_expectation_values(elem) for elem in obs]
+        raise TypeError("type(obs) is not a valid type.")
     return state.expect(obs)
 
 
@@ -65,7 +108,7 @@ def collect_blocks_for_expect(obs_objs: Union[Operator, Iterable]) -> List[froze
     Result
     ======
 
-    Tuple:
+    List:
     a list of `frozenset` objects, sorted from the larger to the smaller in size.
 
     """
@@ -75,24 +118,23 @@ def collect_blocks_for_expect(obs_objs: Union[Operator, Iterable]) -> List[froze
         obs_objs = obs_objs.as_sum_of_products()
 
     if isinstance(obs_objs, Operator):
-        obs_objs = obs_objs.simplify()
-        if isinstance(obs_objs, SumOperator):
-            return collect_blocks_for_expect(obs_objs.terms)
-
-        acts_over = obs_objs.acts_over()
-        if acts_over is None:
-            return []
-        return [acts_over]
+        obs_obj = obs_objs
+        obs_obj = obs_obj.simplify()
+        if isinstance(obs_obj, SumOperator):
+            return collect_blocks_for_expect(obs_obj.terms)
+        return [obs_obj.acts_over()]
     # tuple or list
-    block_set = set()
+    block_set: Set[frozenset] = set()
     for elem in obs_objs:
         block_set.update(collect_blocks_for_expect(elem))
     return sorted(block_set, key=lambda x: -len(x))
 
 
 def collect_local_states(
-    obs_objs: Union[Operator, Iterable], global_state
-) -> Dict[frozenset, DensityOperatorMixin]:
+    obs_objs: Union[Operator, Iterable],
+    global_state,
+    _local_states: Optional[Dict[frozenset, DensityOperatorProtocol]] = None,
+) -> Dict[frozenset, DensityOperatorProtocol]:
     """
     Build a dict of local states required to compute the expectation values of the observable
     or the observables contained in obs_objs.
@@ -106,52 +148,28 @@ def collect_local_states(
 
     Return
     ======
-    Dict[frozenset, DensityMatrixMixin]
+    Dict[frozenset, DensityOperatorProtocol]
 
     A dict of local states associated to the sites enumerated in the keys.
 
     """
-    local_states = {}
+    assert obs_objs is not None
+    if _local_states is None:
+        _local_states = {}
     block_objts = collect_blocks_for_expect(obs_objs)
     for obj_block in (frozenset(blk) for blk in block_objts):
-        if obj_block in local_states:
+        if obj_block in _local_states:
             continue
         parent_state = global_state
         for block, candidate in sorted(
-            local_states.items(),
+            _local_states.items(),
             key=lambda x: (len(x[0]) if x[0] is not None else 0),
         ):
             if block is not None and obj_block.issubset(block):
                 parent_state = candidate
                 break
-        local_states[obj_block] = parent_state.partial_trace(obj_block)
-    return local_states
-
-
-def compute_operator_expectation_value__(
-    obs: Operator, sigma_state: Optional[DensityOperatorMixin]
-):
-    """ """
-    if sigma_state is not None:
-        return sigma_state.expect(obs)
-    if hasattr(obs, "sites_op"):
-        obs_sites_op = obs.sites_op
-        factors = (
-            qutip_op.tr() / qutip_op.dims[0][0] for qutip_op in obs_sites_op.values()
-        )
-        return reduce(lambda x, y: x * y, factors, obs.prefactor)
-
-    if hasattr(obs, "terms"):
-        return sum(
-            compute_operator_expectation_value(term, sigma_state) for term in obs.terms
-        )
-
-    # assert isinstance(obs, QutipOperator)
-    qutip_op = obs.operator
-    prefactor = reduce(
-        lambda x, y: x * y, (1.0 / d for d in qutip_op.dims[0]), obs.prefactor
-    )
-    return qutip_op.tr() * prefactor
+        _local_states[obj_block] = parent_state.partial_trace(obj_block)
+    return _local_states
 
 
 def k_by_site_from_operator(k: Operator) -> Dict[str, Operator]:
@@ -175,12 +193,12 @@ def k_by_site_from_operator(k: Operator) -> Dict[str, Operator]:
         site = next(iter(system.dimensions))
         return {site: k.prefactor * system.site_identity(site)}
     if isinstance(k, LocalOperator):
-        return {getattr(k, "site"): getattr(k, "operator")}
+        return {k.site: k.operator_qutip}
     if isinstance(k, ProductOperator):
         prefactor = getattr(k, "prefactor")
         if prefactor == 0:
             return {}
-        sites_op = getattr(k, "sites_op")
+        sites_op = k.site_factors_qutip
         if len(sites_op) > 1:
             raise ValueError(
                 "k must be a sum of one-body operators, but has a term acting on {k.acts_over()}"
@@ -190,15 +208,15 @@ def k_by_site_from_operator(k: Operator) -> Dict[str, Operator]:
             site = next(iter(system.dimensions))
             return {site: prefactor * system.site_identity(site)}
         if prefactor == 1.0:
-            return {site: op for site, op in sites_op.items()}
+            return dict(sites_op.items())
         return {site: op * prefactor for site, op in sites_op.items()}
     if isinstance(k, SumOperator):
-        result = {}
+        result: Dict[str, Qobj] = {}
         offset = 0
         for term in getattr(k, "terms"):
             if isinstance(term, LocalOperator):
                 site = term.site
-                result[site] = term.operator
+                result[site] = term.operator_qutip
             elif isinstance(term, ScalarOperator):
                 offset += term.prefactor
             elif isinstance(term, SumOperator):
@@ -234,40 +252,44 @@ def k_by_site_from_operator(k: Operator) -> Dict[str, Operator]:
 
 def reduced_state_by_block(
     term: Operator,
-    reduced_states_cache: Dict[Optional[frozenset], DensityOperatorMixin],
-):
+    reduced_states_cache: Dict[frozenset, DensityOperatorProtocol],
+) -> Optional[DensityOperatorProtocol]:
+    """
+    Compute the reduced DensityOperator for the block where
+    `term` acts over, and store it in a cache
+    `reduced_states_cache`.
+    """
     acts_over = term.acts_over()
     result = reduced_states_cache.get(acts_over, None)
     if result is not None:
         return result
-    if acts_over is None:
-        return None
-    # No cache
-    # return reduced_states_cache.get(None, None)
 
     size = len(acts_over)
     for block in sorted(
         [block for block in reduced_states_cache if block and len(block) > size],
-        key=lambda x: len(x),
+        key=len,
     ):
         if acts_over.issubset(block):
-
             result = reduced_states_cache[block]
             if result is not None:
                 result = result.partial_trace(acts_over)
             reduced_states_cache[acts_over] = result
             return result
-    result = reduced_states_cache.get(None, None)
-    if result is not None:
-        result = result.partial_trace(acts_over)
-    reduced_states_cache[acts_over] = result
-    return result
+    # result = reduced_states_cache.get(None, None)
+    # if result is not None:
+    #    result = result.partial_trace(acts_over)
+    # reduced_states_cache[acts_over] = result
+    # return result
+    return None
 
 
 def safe_exp_and_normalize_localop(operator: LocalOperator):
+    """
+    Exponentiate a local operator avoiding overflows.
+    """
     system = operator.system
     site = operator.site
-    loc_rho, log_z = safe_exp_and_normalize_qobj(operator.operator)
+    loc_rho, log_z = safe_exp_and_normalize_qobj(operator.operator_qutip)
     logz = sum(
         (
             np.log(dim)
@@ -288,13 +310,18 @@ def safe_exp_and_normalize_localop(operator: LocalOperator):
         ProductDensityOperator(
             local_states=local_states,
             system=system,
-            normalize=False,
+            normalized=True,
         ),
         logz,
     )
 
 
-def safe_exp_and_normalize_sumop(operator: SumOperator):
+def safe_exp_and_normalize_sumop(
+    operator: SumOperator,
+) -> Tuple[DensityOperatorProtocol, float]:
+    """
+    Exponentiate a sum operator avoiding overflows.
+    """
     logz: float
     operator = operator.simplify()
     if not isinstance(operator, SumOperator):
@@ -309,7 +336,7 @@ def safe_exp_and_normalize_sumop(operator: SumOperator):
     acts_over_terms: List[frozenset] = cast(List[frozenset], acts_over_terms_or_none)
 
     system = operator.system
-    local_generators: Dict[str, Qobj] = dict()
+    local_generators: Dict[str, Qobj] = {}
     logz = 0
     for acts_over, term in zip(acts_over_terms, terms):
         if len(acts_over) == 0:
@@ -337,18 +364,26 @@ def safe_exp_and_normalize_sumop(operator: SumOperator):
         ProductDensityOperator(
             local_states=local_states,
             system=system,
-            normalize=False,
+            normalized=True,
         ),
         logz,
     )
 
 
-def safe_exp_and_normalize_qutip_operator(operator):
-
+def safe_exp_and_normalize_qutip_operator(
+    operator,
+) -> Tuple[DensityOperatorProtocol, float]:
+    """
+    Exponentiate a qutip operator avoiding overflows.
+    """
+    ln_z: float
     system = operator.system
     if isinstance(operator, ScalarOperator):
         ln_z = sum((np.log(dim) for dim in system.dimensions.values()))
-        return (ScalarOperator(np.exp(-ln_z), system), ln_z + operator.prefactor)
+        return (
+            ProductDensityOperator({}, system=system),
+            cast(float, ln_z + operator.prefactor),
+        )
 
     site_names = operator.site_names
     block = tuple(sorted(site_names, key=lambda x: site_names[x]))
@@ -391,10 +426,16 @@ def safe_exp_and_normalize(operator):
         return safe_exp_and_normalize_localop(operator)
     if isinstance(operator, SumOperator):
         return safe_exp_and_normalize_sumop(operator)
+    if isinstance(operator, Operator):
+        operator = operator.to_qutip_operator()
     if isinstance(operator, QutipOperator):
         return safe_exp_and_normalize_qutip_operator(operator)
-    if isinstance(operator, Operator):
-        return safe_exp_and_normalize_qutip_operator(operator.to_qutip_operator())
+    if isinstance(operator, ScalarOperator):
+        system = operator.system
+        ln_z = sum((np.log(dim) for dim in system.dimensions.values()))
+        return (ScalarOperator(np.exp(-ln_z), system), ln_z + operator.prefactor)
+
+    assert isinstance(operator, Qobj), f"type={type(operator)} should not be here."
 
     # assume Qobj or any other class with a compatible interface.
     return safe_exp_and_normalize_qobj(operator)

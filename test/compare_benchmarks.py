@@ -1,3 +1,4 @@
+import argparse
 import glob
 import json
 import platform
@@ -5,7 +6,7 @@ import subprocess
 import sys
 
 
-def compare_benchmarks(ref_bench, new_bench):
+def compare_benchmarks(ref_bench, new_bench, threshold=0.05):
     summary = []
     for name in ref_bench:
         if name not in new_bench:
@@ -17,8 +18,8 @@ def compare_benchmarks(ref_bench, new_bench):
         # just consider changes larger than a 5% relative to the
         # worst case, plus the sum of the standard deviations of both
         # cases:
-        threshold = std_ref + std_new + 0.05 * max(mean_ref, mean_new)
-        if abs(diff) > threshold:
+        threshold_diff = std_ref + std_new + threshold * mean_ref
+        if abs(diff) > threshold_diff:
             pct = abs(diff) / mean_ref * 100
             direction, color = (
                 (
@@ -75,9 +76,28 @@ def load_benchmark(filename):
 
 
 if __name__ == "__main__":
+    parser = argparse.ArgumentParser(
+        description="Process files with a numerical threshold."
+    )
+    # Add the threshold argument
+    parser.add_argument(
+        "--threshold",
+        type=float,
+        default=0.05,
+        help="A numerical threshold value (default: 0.5)",
+    )
+    # Add the files argument (nargs='+' collects one or more arguments into a list)
+    parser.add_argument(
+        "files", metavar="FILE", nargs="*", help="Zero or more input files to process"
+    )
 
-    if len(sys.argv) == 1:
-        main_hash = get_commit_hash("main")
+    args = parser.parse_args()
+
+    threshold = args.threshold
+    files = args.files
+
+    if len(files) == 0:
+        master_hash = get_commit_hash("master")
         current_hash = get_commit_hash("HEAD")
 
         results = []
@@ -88,7 +108,7 @@ if __name__ == "__main__":
             "expect",
         ):
             print("\n", 60 * "-")
-            ref_file = get_latest_bench_file("main", bench_set)
+            ref_file = get_latest_bench_file(master_hash, bench_set)
             new_file = get_latest_bench_file(current_hash, bench_set)
 
             if ref_file and new_file:
@@ -96,7 +116,7 @@ if __name__ == "__main__":
                 print(f"    Comparing {ref_file} (main) to {new_file} (current branch)")
                 ref_bench = load_benchmark(ref_file)
                 new_bench = load_benchmark(new_file)
-                results = compare_benchmarks(ref_bench, new_bench)
+                results = compare_benchmarks(ref_bench, new_bench, threshold)
                 if not results:
                     print("No significant changes found.")
                 else:
@@ -104,17 +124,17 @@ if __name__ == "__main__":
                         print(line)
             else:
                 if not ref_file:
-                    print(f"{bench_set} not found for {main_hash}.")
+                    print(f"{bench_set} not found for {master_hash}.")
                 if not new_file:
                     print(f"{bench_set} not found for {current_hash}.")
                 continue
 
         sys.exit(0)
-    elif len(sys.argv) == 3:
-        ref_file, new_file = sys.argv[1], sys.argv[2]
+    elif len(files) == 2:
+        ref_file, new_file = files
         ref_bench = load_benchmark(ref_file)
         new_bench = load_benchmark(new_file)
-        results = compare_benchmarks(ref_bench, new_bench)
+        results = compare_benchmarks(ref_bench, new_bench, threshold)
         if not results:
             print("No significant changes found.")
         else:

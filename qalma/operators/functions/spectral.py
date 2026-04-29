@@ -6,12 +6,15 @@ Spectral-related functions for operators.
 # from typing import Callable, List, Optional, Tuple
 import logging
 
-from numpy import ndarray, real
+from numpy import inf, ndarray, real
+from scipy.linalg import eigvals as scp_eigvals, norm as scp_norm
 
 from qalma.operators.arithmetic import OneBodyOperator
 from qalma.operators.basic import (
     LocalOperator,
     Operator,
+)
+from qalma.operators.product import (
     ProductOperator,
     ScalarOperator,
 )
@@ -46,29 +49,26 @@ def spectral_norm(operator: Operator) -> float:
         return abs(operator.prefactor)
     if isinstance(operator, LocalOperator):
         if operator.isherm:
-            return max(abs(operator.operator.eigenenergies()))
-        op_qutip = operator.operator
-        return max(abs((op_qutip.dag() * op_qutip).eigenenergies())) ** 0.5
+            return max(abs(scp_eigvals(operator.operator)))
+        return scp_norm(operator.operator, ord=inf)
     if isinstance(operator, ProductOperator):
         result = abs(operator.prefactor)
-        for loc_op in operator.sites_op.values():
-            if loc_op.isherm:
-                result *= max(abs(loc_op.eigenenergies()))
-            else:
-                result *= max((loc_op.dag() * loc_op).eigenenergies()) ** 0.5
+        for loc_op in operator.site_factors.values():
+            result *= scp_norm(loc_op, ord=inf)
         return real(result)
 
     if operator.isherm:
         if isinstance(operator, OneBodyOperator):
             operator = operator.simplify()
-            return sum(spectral_norm(term) for term in operator.terms)
+            if hasattr(operator, "terms"):
+                return sum(spectral_norm(term) for term in operator.terms)
         return max(abs(eigenvalues(operator)))
     return max(eigenvalues(operator.dag() * operator)) ** 0.5
 
 
 def log_op(operator: Operator) -> Operator:
     """The logarithm of an operator"""
-
+    assert isinstance(operator, Operator)
     if hasattr(operator, "logm"):
         return operator.logm()
     return operator.to_qutip_operator().logm()
@@ -80,7 +80,11 @@ def relative_entropy(rho: Operator, sigma: Operator) -> float:
     log_rho = log_op(rho)
     log_sigma = log_op(sigma)
     delta_log = (log_rho - log_sigma).simplify()
-    result = real(rho.expect(delta_log))
+
+    if hasattr(rho, "expect"):
+        result = real(rho.expect(delta_log))
+    else:
+        result = real((rho * delta_log).tr())
     if result < 0:
-        logging.warning(f"S(rho|sigma)={result}<0")
+        logging.warning("S(rho|sigma)=%.4f<0", result)
     return max(0, result)

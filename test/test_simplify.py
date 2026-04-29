@@ -38,7 +38,7 @@ def compute_size(operator: Operator):
     if isinstance(operator, LocalOperator):
         return 1
     if isinstance(operator, ProductOperator):
-        return len(operator.sites_op)
+        return len(operator.site_factors)
     if isinstance(operator, SumOperator):
         return sum(compute_size(term) for term in operator.terms)
     if isinstance(operator, QutipOperator):

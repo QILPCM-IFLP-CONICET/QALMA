@@ -11,7 +11,7 @@ from numpy.typing import NDArray
 from scipy.linalg import expm as linalg_expm
 
 from qalma.operators.arithmetic import SumOperator
-from qalma.operators.basic import Operator, ScalarOperator
+from qalma.operators.basic import Operator
 from qalma.operators.functions import commutator
 from qalma.scalarprod.build import fetch_HS_scalar_product
 from qalma.scalarprod.gram import gram_matrix, merge_gram_matrices
@@ -72,7 +72,6 @@ class OperatorBasis:
         if n_body_projection is not None:
             operators = tuple((n_body_projection(op_b) for op_b in operators))
 
-        assert all(op_b.isherm for op_b in operators)
         self.operator_basis = operators
 
         if precomputed_tensors is not None:
@@ -81,6 +80,7 @@ class OperatorBasis:
             self.gram_inv = precomputed_tensors["gram_inv"]
             self.errors = precomputed_tensors["errors"]
             self.gen_matrix = precomputed_tensors["gen_matrix"]
+            self._hij = precomputed_tensors["hij"]
         else:
             self.build_tensors()
 
@@ -89,6 +89,20 @@ class OperatorBasis:
 
     def __radd__(self, other_basis):
         return prepend_basis(self, other_basis)
+
+    def __repr__(self):
+        result = "Basis in the "
+        result += f"{max(op.n_body_sector() for op in self.operator_basis)}"
+        result += "-body sector"
+        result += "\n" + f"  dimension: {len(self.operator_basis)}"
+        result += "\n" + f"  gram:\n {self.gram}\n"
+        if hasattr(self, "_hij"):
+            result += "\n" + f"  hij:\n {self._hij}\n"
+        if hasattr(self, "gen_matrix"):
+            result += "\n" + f"  gen matrix:\n {self.gen_matrix}\n"
+        if hasattr(self, "errors"):
+            result += "\n" + f"  errors: {self.errors}"
+        return result
 
     def build_tensors(
         self, generator: Optional[Operator] = None, sp: Optional[Callable] = None
@@ -133,16 +147,18 @@ class OperatorBasis:
                     1e-3 * min(row[i] for i, row in enumerate(gram)),
                 )
                 l_gram = cholesky(gram)
-                if all(abs(row[i]) > threshold for i, row in enumerate(l_gram)):
+                if all(abs(row[i]) >= threshold for i, row in enumerate(l_gram)):
                     break
             except LinAlgError:
                 pass
-            li_indx = find_linearly_independent_rows(gram)
+
+            li_indx = find_linearly_independent_rows(gram, tol=threshold)
             logging.warning(
                 (
                     "using a non-independent set of operators. "
-                    f"Reduce it to a linearly independent set {li_indx}..."
-                )
+                    "Reduce it to a linearly independent set %s..."
+                ),
+                li_indx,
             )
 
             operator_basis_it = (operator_basis[i] for i in li_indx)
@@ -187,6 +203,7 @@ class OperatorBasis:
         for j, op_2 in enumerate(operator_basis):
             hij[:, j], errors[j] = build_j_coefficients(op_2)
 
+        self._hij = hij
         self.gen_matrix = self.gram_inv @ hij
         self.errors = errors
 
@@ -211,6 +228,10 @@ class OperatorBasis:
         return self.gram_inv @ np.array(
             [sp(op, operator) for op in self.operator_basis]
         )
+
+    def operator_norm(self, operator: Operator):
+        """The induced norm of operator"""
+        return self.sp(operator, operator) ** 0.5
 
     def operator_from_coefficients(self, phi) -> Operator:
         """
@@ -306,51 +327,119 @@ class HierarchicalOperatorBasis(OperatorBasis):
         self.generator = generator.simplify()
         self._build_basis(seed, deep, n_body_projection)
         self.build_tensors()
-        assert all(op.isherm for op in self.operator_basis)
 
     def __add__(self, other):
-        return OperatorBasis(self.operator_basis, self.generator, self.sp) + other
+        return (
+            OperatorBasis(
+                self.operator_basis,
+                self.generator,
+                self.sp,
+                precomputed_tensors={
+                    "gram": self.gram,
+                    "gram_inv": self.gram_inv,
+                    "errors": self.errors,
+                    "gen_matrix": self.gen_matrix,
+                    "hij": self._hij,
+                },
+            )
+            + other
+        )
 
     def _build_basis(self, seed, deep, projection_function=None):
-
-        elements = [seed.simplify()]
-        dimension = deep + 1
         sp = self.sp
+        seed = seed.simplify()
+        seed_norm = np.abs(sp(seed, seed)) ** 0.5
+        elements = [seed / seed_norm]
+        norms = [seed_norm]
+        dimension = deep + 1
+
         generator = self.generator
         errors = np.zeros((dimension,))
-
+        closed = False
+        tol_sq = QALMA_TOLERANCE**2
         for i in range(dimension):
+            # commutator of the previous element
             new_elem = commutator(elements[-1], generator)
             if not new_elem.isherm:
                 if isinstance(new_elem, SumOperator):
                     new_elem = SumOperator(
                         new_elem.terms, system=new_elem.system, isherm=True
                     )
+                else:
+                    new_elem = SumOperator(
+                        (
+                            new_elem,
+                            new_elem.dag(),
+                        ),
+                        system=new_elem.system,
+                        isherm=True,
+                    )
+                old_elem = new_elem
+                assert (
+                    old_elem.isherm
+                ), f"old elem of type {type(new_elem)} should be herm"
                 new_elem = new_elem.simplify()
 
+            assert (
+                new_elem.isherm
+            ), f"hermiticity lost {type(old_elem)}->{type(new_elem)}"
+            # square norm of the commutator of the previous element
             comm_norm = np.abs(sp(new_elem, new_elem))
-            if np.abs(comm_norm) < 1e-12:
+            # Initially, self.errors stores the squared norms of the
+            # commutators.
+            errors[i] = comm_norm
+            # The new element is the projection of the commutator
+            # of the previous element
+            if projection_function is not None and comm_norm >= tol_sq:
+                new_elem_proj = projection_function(new_elem)
+                if new_elem_proj is not new_elem:
+                    new_elem = new_elem_proj
+                    comm_norm = np.abs(sp(new_elem, new_elem))
+
+            if not new_elem.isherm:
+                new_elem = new_elem.hermitician_part()
+
+            new_elem = new_elem.tidyup()
+
+            if not new_elem.isherm:
+                new_elem = new_elem.hermitician_part()
+
+            if np.abs(comm_norm) < tol_sq:
+                closed = True
+                deep = dimension = i + 1
                 logging.warning(
-                    (
-                        f"""A commutator got (almost) zero norm. deep->"""
-                        f"""{len(elements)}"""
-                    )
+                    """A commutator got (almost) zero norm. deep->%d""", len(elements)
                 )
-                dimension = len(elements)
-                deep = dimension - 1
-                elements.append(ScalarOperator(0, seed.system))
                 errors = errors[:dimension]
                 break
-            errors[i] = comm_norm
-            new_elem = projection_function(new_elem)
+
+            elem_norm = abs(comm_norm**0.5)
+            new_elem = new_elem / elem_norm
             elements.append(new_elem)
+            norms.append(elem_norm)
 
-        self.operator_basis = tuple(elements[:dimension])
-
-        gram = gram_matrix(elements, sp)
-        self._hij = gram[:dimension, 1:]
-        self.gram = gram[:dimension, :dimension]
         self.errors = errors
+        gram = gram_matrix(elements, sp)
+        hij = np.zeros(
+            (
+                dimension,
+                dimension,
+            )
+        )
+        if closed:
+            self.operator_basis = tuple(elements)
+            self.gram = gram
+            hij[:, : dimension - 1] = gram[:dimension, 1:]
+            for j in range(dimension - 1):
+                hij[:, j] *= norms[j + 1]
+        else:
+            self.operator_basis = tuple(elements[:dimension])
+            self.gram = gram[:dimension, :dimension]
+            hij[:, :] = gram[:dimension, 1:]
+            for j in range(dimension):
+                hij[:, j] *= norms[j + 1]
+
+        self._hij = hij
 
     def build_tensors(
         self, generator: Optional[Operator] = None, sp: Optional[Callable] = None
@@ -377,8 +466,8 @@ class HierarchicalOperatorBasis(OperatorBasis):
         # in the basis are linearly independent.
 
         if not self.operator_basis:
-            self.errors = np.arrow([])
-            self.gram = self.gram_inv = self.gen_matrix = self._hij = np.arrow([])
+            self.errors = np.array([])
+            self.gram = self.gram_inv = self.gen_matrix = self._hij = np.array([])
             return
 
         while self.operator_basis:
@@ -400,7 +489,9 @@ class HierarchicalOperatorBasis(OperatorBasis):
             self._hij = self._hij[:-1, :-1]
             self.errors = self.errors[:-1]
             if not self.operator_basis:
-                raise ValueError(f"The seed operator {seed} seems to have zero norm.")
+                raise ValueError(
+                    "The seed operator " f"{seed} seems to have zero norm."
+                )
 
         hij = self._hij
         errors = self.errors
@@ -408,12 +499,13 @@ class HierarchicalOperatorBasis(OperatorBasis):
         l_inv = inv(l_gram)
         self.gram_inv = l_inv.T @ l_inv
 
-        for j, row in enumerate(hij):
+        for j, row in enumerate(hij.T):
             proj_coeffs = l_inv @ row
             norm_par = proj_coeffs @ proj_coeffs
             errors[j] = (max(errors[j] - norm_par, 0)) ** 0.5
 
         self.errors = errors
+
         self.gen_matrix = self.gram_inv @ hij
 
 
@@ -442,6 +534,10 @@ def append_basis(basis_1: OperatorBasis, basis_2: OperatorBasis | Iterable[Opera
         norms = basis.errors**2
         norms = norms + np.array([hj @ gj for hj, gj in zip(hij.T, basis.gen_matrix.T)])
         return norms
+
+    g11: NDArray
+    g22: NDArray
+    g11_inv: NDArray
 
     ops1 = basis_1.operator_basis
     basis_1_generator = basis_1.generator
@@ -472,10 +568,9 @@ def append_basis(basis_1: OperatorBasis, basis_2: OperatorBasis | Iterable[Opera
     n2 = len(ops2)
 
     if same_sp:
-        g22 = basis_2_gram
+        g22 = basis_2_gram if basis_2_gram is not None else gram_matrix(ops2, sp)
     else:
         g22 = gram_matrix(ops2, sp)
-
     if hasattr(sp, "compute_cross_gram_matrix"):
         g12 = sp.compute_cross_gram_matrix(ops1, ops2)
     else:
@@ -498,6 +593,7 @@ def append_basis(basis_1: OperatorBasis, basis_2: OperatorBasis | Iterable[Opera
     n1, n2, n = len(g11), len(g22), len(gram)
     if n == n1:
         return basis_1
+
     if len(operators) != n:
         operators = tuple((operators[idx] for idx in li_indices))
 
@@ -507,23 +603,23 @@ def append_basis(basis_1: OperatorBasis, basis_2: OperatorBasis | Iterable[Opera
             operators,
             generator,
             sp,
-            precomputed_tensors=dict(
-                gram=gram,
-                gram_inv=gram_inv,
-                errors=np.zeros((n,)),
-                gen_matrix=np.zeros(
+            precomputed_tensors={
+                "gram": gram,
+                "gram_inv": gram_inv,
+                "errors": np.zeros((n,)),
+                "gen_matrix": np.zeros(
                     (
                         n,
                         n,
                     )
                 ),
-                hij=np.zeros(
+                "hij": np.zeros(
                     (
                         n,
                         n,
                     )
                 ),
-            ),
+            },
         )
 
     # Build gen_matrix and errors
@@ -532,7 +628,7 @@ def append_basis(basis_1: OperatorBasis, basis_2: OperatorBasis | Iterable[Opera
         hij_block: Optional[NDArray],
         ops: Tuple[Operator, ...],
         gram_block: NDArray,
-        errors: Optional[NDArray],
+        errors: NDArray,
         n_block: int,
         reuse: bool,
         rows_it,
@@ -541,7 +637,8 @@ def append_basis(basis_1: OperatorBasis, basis_2: OperatorBasis | Iterable[Opera
         if reuse and hij_block is not None:
             if n_block != len(hij_block):
                 rows_li = tuple(rows_it)
-                ops = tuple(ops[idx] for idx in rows_li)
+                ops = tuple(ops[idx].hermitician_part() for idx in rows_li)
+                assert all(op.isherm for op in ops), "must be hermitician"
                 errors = np.array([errors[idx] for idx in rows_li])
                 hij_block = cast(NDArray, hij_block)[rows_li, :][:, rows_li]
 
@@ -549,7 +646,8 @@ def append_basis(basis_1: OperatorBasis, basis_2: OperatorBasis | Iterable[Opera
 
         # If not reuse, just remove the ld operators from ops and return empty blocks.
         if n_block != len(ops):
-            ops = tuple(ops[idx] for idx in rows_it)
+            ops = tuple(ops[idx].hermitician_part() for idx in rows_it)
+
         return (
             np.empty(
                 (
@@ -609,6 +707,7 @@ def append_basis(basis_1: OperatorBasis, basis_2: OperatorBasis | Iterable[Opera
         reuse_h22,
         (idx - n1 for idx in li_indices if idx >= n1),
     )
+    operators = ops1 + ops2
 
     hij21 = fill_h_blocks(ops1, ops2, hij11, errors_1_sq, reuse_h11)
     hij12 = fill_h_blocks(ops2, ops1, hij22, errors_2_sq, reuse_h22)
@@ -627,9 +726,13 @@ def append_basis(basis_1: OperatorBasis, basis_2: OperatorBasis | Iterable[Opera
         operators,
         generator,
         sp,
-        precomputed_tensors=dict(
-            gram=gram, gram_inv=gram_inv, errors=errors, gen_matrix=genij, hij=hij
-        ),
+        precomputed_tensors={
+            "gram": gram,
+            "gram_inv": gram_inv,
+            "errors": errors,
+            "gen_matrix": genij,
+            "hij": hij,
+        },
     )
 
 
@@ -645,10 +748,13 @@ def prepend_basis(
     if basis_2 is basis_1 or not basis_2:
         return basis_1
     if not isinstance(basis_2, OperatorBasis):
-        basis_2 = OperatorBasis(tuple(basis_2), generator=None, sp=basis_1.sp)
+        basis_2 = OperatorBasis(
+            tuple(basis_2), generator=basis_1.generator, sp=basis_1.sp
+        )
 
     # Append basis_1 to basis_2
-    return append_basis(basis_2, basis_1)
+    basis_2, basis_1 = basis_1, basis_2
+    return append_basis(basis_1, basis_2)
 
 
 def do_compute_cross_gram_matrix(sp, ops1, ops2, dtype=np.float128):
@@ -668,3 +774,16 @@ def do_compute_cross_gram_matrix(sp, ops1, ops2, dtype=np.float128):
         for j_idx, o2 in enumerate(ops2):
             g12[i_idx, j_idx] = np.real(sp(o1, o2))
     return g12
+
+
+def _relative_non_hermitician_part(x: Operator):
+    """
+    Auxiliar function to check how much `x` fails
+    being hermitician. Used for test only.
+    """
+    if x.isherm:
+        return True
+    x_dag = x.dag()
+    x_ah = x_dag - x
+    error = abs((x_ah * x_ah).tr()) ** 0.5 / ((x_dag * x).tr()) ** 0.5
+    return error < QALMA_TOLERANCE

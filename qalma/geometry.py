@@ -70,7 +70,7 @@ def graph_from_alps_xml(
         check if the site has a periodic image.
         If it has, return it. Otherwise return None.
         """
-        new_coords = [c for c in coords]
+        new_coords = list(coords)
         for d_int, extent in enumerate(extents):
             if 0 <= coords[d_int] < extent:
                 continue
@@ -284,7 +284,7 @@ def graph_from_alps_xml(
         default_parms.update(parms)
         return default_parms
 
-    def process_edge_unitcell(e_desc, parms, dimension):
+    def process_edge_unitcell(e_desc, _parms, dimension):
         e_items = e_desc.attrib
         e_type = e_items.get("type", "0")
         e_src = e_items.get("source", "0")
@@ -314,7 +314,7 @@ def graph_from_alps_xml(
         }
         return result
 
-    def process_loop_graph(l_desc, parms):
+    def process_loop_graph(l_desc, _parms):
         l_items = l_desc.attrib
         l_type = l_items.get("type", "0")
         nodes = []
@@ -325,7 +325,7 @@ def graph_from_alps_xml(
 
         return {"type": l_type, "nodes": nodes}
 
-    def process_loop_unitcell(l_desc, parms, dimension):
+    def process_loop_unitcell(l_desc, _parms, dimension):
         l_items = l_desc.attrib
         l_type = l_items.get("type", "0")
         nodes = []
@@ -370,7 +370,7 @@ def graph_from_alps_xml(
             loops[l_type] = loop_type_list
         return unitcell
 
-    def process_vertex(node, parms):
+    def process_vertex(node, _parms):
         """Process a <VERTEX> node"""
         v_attributes = node.attrib
         v_attributes["type"] = v_attributes.get("type", "0")
@@ -573,6 +573,10 @@ class GraphDescriptor:
         return self.union(other)
 
     def contains(self, other):
+        """
+        Return True if all the sites in other
+        belongs to the graph.
+        """
         if self is other:
             return True
         other_nodes = other.nodes
@@ -580,9 +584,18 @@ class GraphDescriptor:
         if self.subgraphs.get(node_set, None) is other:
             return True
         self_nodes = self.nodes
-        if all(self_nodes.get(node, None) is other_nodes[node] for node in node_set):
+        if all(self_nodes.get(node, None) == other_nodes[node] for node in node_set):
             self.subgraphs[node_set] = other
             return True
+
+        logging.warning(
+            "nodes not coincide %s",
+            [
+                (self_nodes.get(node, None), other_nodes[node])
+                for node in node_set
+                if not self_nodes.get(node, None) == other_nodes[node]
+            ],
+        )
         return False
 
     def union(self, other):

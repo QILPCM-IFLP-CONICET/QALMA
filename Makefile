@@ -1,4 +1,4 @@
-# A GNU Makefile to run various tasks - compatibility for us old-timers.
+	# A GNU Makefile to run various tasks - compatibility for us old-timers.
 
 # Note: This makefile include remake-style target comments.
 # These comments before the targets start with #:
@@ -21,6 +21,7 @@ SOURCEDIR     = docs
 BUILDDIR      = docs/_build
 
 BENCHMARK_FILE := bench_$(shell date +%Y%m%d)_$(shell git rev-parse --short HEAD)
+CURRENT_GIT_BRANCH := $(shell git rev-parse --abbrev-ref HEAD)
 
 .PHONY: \
     all \
@@ -38,22 +39,29 @@ BENCHMARK_FILE := bench_$(shell date +%Y%m%d)_$(shell git rev-parse --short HEAD
     docs\
     docs-clean\
     install \
-    pytest
+    mypy \
+    pytest \
+    pytest-ll
 
 
 
 all: develop check_pre_commit
 	$(PIP) install -e .[dev]
 
-check_pre_commit: conventions pytest
+check_pre_commit: conventions mypy pytest
 
 conventions:
 	ruff check --fix qalma
 	ruff check --fix test
-	isort test
+	ruff check --fix tools
+	isort examples
 	isort qalma
-	black test
+	isort test
+	isort tools
+	black examples
 	black qalma
+	black test
+	black tools
 
 
 install:
@@ -61,6 +69,9 @@ install:
 
 pytest:
 	QALMA_ALLTESTS=1 $(PYTHON) -m pytest $(PYTEST_OPTIONS) $(PYTEST_WORKERS) test
+
+pytest-ll:
+	QALMA_HEAVY_LOWLEVELTESTS=1 QALMA_ALLTESTS=1 $(PYTHON) -m pytest $(PYTEST_OPTIONS) $(PYTEST_WORKERS) test
 
 cprofile:
 	QALMA_ALLTESTS=1 $(PYTHON) -m cProfile -o output.stats -m pytest $(PYTEST_OPTIONS) $(PYTEST_WORKERS) test
@@ -81,16 +92,33 @@ docs-clean:
 benchmark: benchmark-expect benchmark-commutators benchmark-gram benchmark-projections
 
 benchmark-expect:
-	BENCHMARKS=1 QALMA_ALLTESTS=1 CHAIN_SIZE=20 pytest -x --benchmark-enable --benchmark-save="expect_$(BENCHMARK_FILE)" --benchmark-columns=min test/states/test_expect_benchmark.py
+	PYTHONOPTIMIZE=TRUE BENCHMARKS=1 QALMA_ALLTESTS=1 CHAIN_SIZE=20 pytest -x --benchmark-enable --profile-svg --benchmark-save="expect_$(BENCHMARK_FILE)" --benchmark-columns=min test/states/test_expect_benchmark.py
+	mkdir -p "prof/$(CURRENT_GIT_BRANCH)"
+	-mv prof/*.prof  "prof/$(CURRENT_GIT_BRANCH)"
+	-mv prof/*.svg  "prof/$(CURRENT_GIT_BRANCH)"
+	-mv prof/*.png  "prof/$(CURRENT_GIT_BRANCH)"
 
 benchmark-gram:
-	BENCHMARKS=1 QALMA_ALLTESTS=1 CHAIN_SIZE=20 pytest --benchmark-enable --benchmark-save="gram_$(BENCHMARK_FILE)" --benchmark-columns=min test/scalar_product/test_gram.py
+	PYTHONOPTIMIZE=TRUE BENCHMARKS=1 QALMA_ALLTESTS=1 CHAIN_SIZE=20 pytest --benchmark-enable --profile-svg --benchmark-save="gram_$(BENCHMARK_FILE)" --benchmark-columns=min test/scalar_product/test_gram.py
+	mkdir -p "prof/$(CURRENT_GIT_BRANCH)"
+	-mv prof/*.prof  "prof/$(CURRENT_GIT_BRANCH)"
+	-mv prof/*.svg  "prof/$(CURRENT_GIT_BRANCH)"
+	-mv prof/*.png  "prof/$(CURRENT_GIT_BRANCH)"
 
 benchmark-commutators:
-	BENCHMARKS=1 QALMA_ALLTESTS=1 CHAIN_SIZE=20 pytest --benchmark-enable --benchmark-save="commutators_$(BENCHMARK_FILE)" --benchmark-columns=min test/basic_operators/test_operator_functions_benchmarks.py
+	PYTHONOPTIMIZE=TRUE BENCHMARKS=1 QALMA_ALLTESTS=1 CHAIN_SIZE=20 pytest --benchmark-enable --profile-svg --benchmark-save="commutators_$(BENCHMARK_FILE)" --benchmark-columns=min test/basic_operators/test_operator_functions_benchmarks.py
+	mkdir -p "prof/$(CURRENT_GIT_BRANCH)"
+	-mv prof/*.prof  "prof/$(CURRENT_GIT_BRANCH)"
+	-mv prof/*.svg  "prof/$(CURRENT_GIT_BRANCH)"
+	-mv prof/*.png  "prof/$(CURRENT_GIT_BRANCH)"
 
 benchmark-projections:
-	BENCHMARKS=1 QALMA_ALLTESTS=1 CHAIN_SIZE=20 pytest -s --ff -x --benchmark-enable --benchmark-save="projections_$(BENCHMARK_FILE)" --benchmark-columns=min test/states/test_projections_benchmark.py
+	PYTHONOPTIMIZE=TRUE BENCHMARKS=1 QALMA_ALLTESTS=1 CHAIN_SIZE=20 pytest -s --ff -x --benchmark-enable --profile-svg --benchmark-save="projections_$(BENCHMARK_FILE)" --benchmark-columns=min test/states/test_projections_benchmark.py
+	mkdir -p "prof/$(CURRENT_GIT_BRANCH)"
+	-mv prof/*.prof  "prof/$(CURRENT_GIT_BRANCH)"
+	-mv prof/*.svg  "prof/$(CURRENT_GIT_BRANCH)"
+	-mv prof/*.png  "prof/$(CURRENT_GIT_BRANCH)"
+
 
 benchmark-set-reference:
 	python test/set_benchmark_reference.py
@@ -100,3 +128,7 @@ benchmark-clean:
 
 benchmark-show:
 	python test/compare_benchmarks.py
+
+
+mypy:
+	mypy --install-types --ignore-missing-imports --non-interactive qalma

@@ -8,7 +8,7 @@ from typing import Optional, Tuple, cast
 import numpy as np
 
 from qalma.operators import Operator
-from qalma.operators.states import DensityOperatorMixin, ProductDensityOperator
+from qalma.operators.states import DensityOperatorProtocol, ProductDensityOperator
 from qalma.operators.states.gibbs import GibbsProductDensityOperator
 from qalma.projections import (
     ProjectingOperatorFunction,
@@ -22,7 +22,7 @@ def self_consistent_project_meanfield(
     max_it: int = 100,
     tol: float = 1e-12,
     proj_func: Optional[ProjectingOperatorFunction] = n_body_projection,
-) -> Tuple[Operator, DensityOperatorMixin]:
+) -> Tuple[Operator, DensityOperatorProtocol]:
     """
     Iteratively computes the one-body component from a QuTip operator and state
     using a self-consistent Mean-Field Projection (MF).
@@ -47,7 +47,7 @@ def self_consistent_project_meanfield(
     -------
     k_one_body : Operator
         The projected one-body operator.
-    opt_sigma : DensityOperatorMixin
+    opt_sigma : DensityOperatorProtocol
         The optimized one-body density operator.
     """
     converged: bool
@@ -83,9 +83,8 @@ def self_consistent_project_meanfield(
         # k_one_body = project_operator_to_m_body(k_op, 1, sigma)
         k_one_body = n_body_projection(k_op, 1, sigma_curr).simplify()
         if not k_one_body.isherm:
-            k_one_body = (k_one_body + k_one_body.dag()).simplify()
-
-        assert k_one_body.isherm, f"k_one_body is not herm at iteration = {it}"
+            logging.debug("hermiticity lost at iteration", it)
+            k_one_body = k_one_body.hermitician_part()
 
         sigma_new = GibbsProductDensityOperator(k_one_body)
         rel_s_new = np.real(cast(complex, sigma_curr.expect(k_op + sigma_new.logm())))
@@ -106,11 +105,13 @@ def self_consistent_project_meanfield(
 
     if converged:
         logging.debug(
-            f"  convergence achieved after {it} iterations with SR = {rel_s}."
+            "  convergence achieved after %d iterations with SR = %.6f.", it, rel_s
         )
     else:
         logging.debug(
-            f"  rel_s_new {rel_s_new} is much worst than the optimal {rel_s}. Give up."
+            "  rel_s_new %.6f is much worst than the optimal %.6f. Give up.",
+            rel_s_new,
+            rel_s,
         )
 
     return k_one_body, sigma_opt

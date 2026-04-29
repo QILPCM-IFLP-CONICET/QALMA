@@ -8,8 +8,7 @@ implemented though the class MixtureDensityOperator.
 
 import logging
 import pickle
-from numbers import Number
-from typing import Iterable, Optional, Tuple, Union, cast
+from typing import Dict, Iterable, Optional, Set, Tuple, Union, cast
 
 import numpy as np
 
@@ -17,11 +16,13 @@ from qalma.model import SystemDescriptor
 from qalma.operators.arithmetic import SumOperator
 from qalma.operators.basic import (
     Operator,
+)
+from qalma.operators.product import (
     ScalarOperator,
 )
 from qalma.operators.states.basic import (
     DensityOperatorMixin,
-    ProductDensityOperator,
+    DensityOperatorProtocol,
 )
 
 
@@ -35,113 +36,27 @@ class MixtureDensityOperator(DensityOperatorMixin, SumOperator):
     def __init__(self, terms: tuple, system: Optional[SystemDescriptor] = None):
         super().__init__(terms, system, True)
 
-    def __add__(self, rho: Operator):
-        terms: tuple[Operator] = self.terms
-        system = self.system
-
-        if isinstance(rho, MixtureDensityOperator):
-            terms = cast(Tuple[Operator], terms + rho.terms)
-        elif isinstance(rho, DensityOperatorMixin):
-            terms = cast(Tuple[Operator], terms + (rho,))
-        elif isinstance(rho, (int, float)) and rho >= 0:
-            terms = cast(
-                Tuple[Operator],
-                terms + (ProductDensityOperator({}, rho, system, False),),
-            )
-        else:
-            # return super().__add__(rho)
-            return (
-                SumOperator(
-                    tuple((-(-term) * term.prefactor for term in terms)), system
-                )
-                + rho
-            )
-        return MixtureDensityOperator(terms, system)
-
-    def __mul__(self, a):
-        if isinstance(a, float) and a >= 0:
-            return MixtureDensityOperator(
-                tuple(term * a for term in self.terms), self.system
-            )
-        if isinstance(a, MixtureDensityOperator):
-            return SumOperator(
-                tuple(
-                    (term * term_a) * (term.prefactor * term_a.prefactor)
-                    for term in self.terms
-                    for term_a in a.terms
-                ),
-                self.system,
-            )
-        if isinstance(a, SumOperator):
-            return SumOperator(
-                tuple(
-                    (term * term_a) * term.prefactor
-                    for term in self.terms
-                    for term_a in a.terms
-                ),
-                self.system,
-            )
-        return SumOperator(
-            tuple((-term * a) * (-term.prefactor) for term in self.terms), self.system
-        )
-
     def __neg__(self):
         logging.warning("Negate a DensityOperator leads to a regular operator.")
         new_terms = tuple(((-t) * (t.prefactor) for t in self.terms))
         return SumOperator(new_terms, self.system, isherm=True)
 
-    def __radd__(self, rho: Operator):
-        terms = self.terms
-        system = self.system
-
-        if isinstance(rho, MixtureDensityOperator):
-            terms = cast(Tuple[Operator], rho.terms + terms)
-        elif isinstance(rho, DensityOperatorMixin):
-            terms = cast(Tuple[Operator], (rho,) + terms)
-        elif isinstance(rho, (int, float)) and rho >= 0:
-            terms = cast(
-                Tuple[Operator],
-                (ProductDensityOperator({}, rho, system, False),) + terms,
-            )
-        else:
-            # return super().__add__(rho)
-            return rho + SumOperator(terms, system)
-        return MixtureDensityOperator(terms, system)
-
-    def __rmul__(self, a):
-        if isinstance(a, float) and a >= 0:
-            return MixtureDensityOperator(
-                tuple(term * a for term in self.terms), self.system
-            )
-        if isinstance(a, SumOperator):
-            return SumOperator(
-                tuple(
-                    (
-                        term_a * term * term.prefactor
-                        for term in self.terms
-                        for term_a in a.terms
-                    )
-                ),
-                self.system,
-            )
-        return SumOperator(
-            tuple((-a * term) * (-term.prefactor) for term in self.terms), self.system
-        )
-
-    def acts_over(self) -> Optional[frozenset]:
+    def acts_over(self) -> frozenset:
         """
         Return a set with the name of the
         sites where the operator nontrivially acts
         """
-        sites: set = set()
+        sites: Set[str] = set()
         for term in self.terms:
             acts_over = cast(Operator, term).acts_over()
-            if acts_over is None:
-                return None
             sites.update(acts_over)
         return frozenset(sites)
 
-    def expect(self, obs: Union[Operator, Iterable]) -> Union[np.ndarray, dict, Number]:
+    def expect(
+        self,
+        obs_objs: Union[Operator, Iterable],
+        _local_states: Optional[Dict[frozenset, DensityOperatorProtocol]] = None,
+    ) -> Union[np.ndarray, dict, complex]:
 
         def compute_results(curr_obs, sub_averages, prefactors):
             if isinstance(curr_obs, dict):
@@ -162,10 +77,10 @@ class MixtureDensityOperator(DensityOperatorMixin, SumOperator):
             )
 
         averages = tuple(
-            cast(DensityOperatorMixin, term).expect(obs) for term in self.terms
+            cast(DensityOperatorMixin, term).expect(obs_objs) for term in self.terms
         )
         prefactors = tuple(term.prefactor for term in self.terms)
-        return compute_results(obs, averages, prefactors)
+        return compute_results(obs_objs, averages, prefactors)
 
     def partial_trace(self, sites: Union[frozenset, SystemDescriptor]):
         new_terms = tuple(cast(Operator, t).partial_trace(sites) for t in self.terms)
@@ -181,7 +96,7 @@ class MixtureDensityOperator(DensityOperatorMixin, SumOperator):
         self.__dict__.update(state)
         self._set_system_(self.system)
 
-    def to_qutip(self, block: Optional[Tuple[str]] = None):
+    def to_qutip(self, block: Optional[Tuple[str, ...]] = None):
         """Produce a qutip compatible object"""
         if len(self.terms) == 0:
             return ScalarOperator(0, self.system).to_qutip()

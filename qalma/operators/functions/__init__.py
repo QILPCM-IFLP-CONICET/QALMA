@@ -8,6 +8,7 @@ from qalma.operators.functions.commutators import (
     commutator,
     commutator_qalma,
 )
+from qalma.operators.functions.fidelity import fidelity
 from qalma.operators.functions.hermiticity import (
     compute_dagger,
     hermitian_and_antihermitian_parts,
@@ -25,6 +26,7 @@ __all__ = [
     "anticommutator",
     "anticommutator_qalma",
     "eigenvalues",
+    "fidelity",
     "spectral_norm",
     "log_op",
     "relative_entropy",

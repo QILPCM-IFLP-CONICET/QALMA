@@ -15,6 +15,7 @@ license = { file = "LICENSE.txt" }
 dependencies = [
     "matplotlib",
     "qutip",
+    "h5py",
 ]
 classifiers = [
     "Intended Audience :: Developers",
@@ -30,10 +31,46 @@ classifiers = [
 
 [tool.setuptools.package-data]
 "qalma" = [
-    "qalma/lib/*.xml",
+    "lib/*.xml",
 ]
 
 [project.urls]
 Homepage = "http://www.fisica.unlp.edu.ar/Members/matera/english-version/mauricio-materas-personal-home-page"
 
 
+# Dependencias opcionales (si no existen ya, crear la tabla [project.optional-dependencies])
+[project.optional-dependencies]
+dev = [
+    "pytest",
+    "pytest-cov",
+    "interrogate",
+    "pydocstyle",
+]
+docs = [
+    "sphinx>=7",
+    "sphinx-rtd-theme",
+    "sphinx-autodoc-typehints",
+    "nbsphinx",          # para ejecutar notebooks como páginas
+    "myst-parser",       # si se usan archivos .md además de .rst
+    "sphinx-rtd-theme",
+]
+ 
+# ── Configuración de interrogate ─────────────────────────────────────────────
+[tool.interrogate]
+ignore-init-method = true
+ignore-init-module = false
+ignore-magic = true        # ignora __repr__, __str__, etc.
+ignore-semiprivate = false
+ignore-private = false
+fail-under = 80             # subir gradualmente: 40 → 60 → 80 → 100
+verbose = 1
+quiet = false
+color = true
+
+
+# ── Configuración de pydocstyle ───────────────────────────────────────────────
+[tool.pydocstyle]
+convention = "numpy"
+# D100-D107: docstrings faltantes (los reporta interrogate, no duplicar aquí)
+# D205: falta línea en blanco después del resumen (muy ruidoso al inicio)
+add-ignore = ["D105", "D107", "D205"]

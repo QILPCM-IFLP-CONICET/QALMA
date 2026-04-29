@@ -7,6 +7,7 @@ from test.helper import (
     HAMILTONIAN,
     OPERATOR_TYPE_CASES,
     SX_AB,
+    SZ_TOTAL,
     TEST_CASES_STATES,
     check_operator_equality,
 )
@@ -16,17 +17,20 @@ import pytest
 import qutip
 
 from qalma.evolution import (
+    adaptive_projected_evolution,
     build_hierarchical_basis,
     fn_hij_tensor_with_errors,
     projected_evolution,
     series_evolution,
+    update_basis_light,
 )
 from qalma.operators.functions import commutator, spectral_norm
+from qalma.operators.quadratic import QuadraticFormOperator
 from qalma.operators.states.gibbs import GibbsProductDensityOperator
 from qalma.scalarprod import fetch_covar_scalar_product, orthogonalize_basis
 
 np.set_printoptions(
-    edgeitems=30, linewidth=100000, formatter=dict(float=lambda x: "%.3g" % x)
+    edgeitems=30, linewidth=100000, formatter={"float": lambda x: "%.3g" % x}
 )
 
 
@@ -71,24 +75,30 @@ def compare_basis(basis, basis_qutip):
         idx += 1
 
 
-def compare_solutions(sol, sol_qutip, t_span, order, coeff_bound):
+def compare_solutions(sol, sol_qutip, t_span, order, coeff_bound, tol=1.0e-8):
     """
     compare two solutions
     """
     diff_sols = [
         spectral_norm(k1.to_qutip() - k2_qutip) for k1, k2_qutip in zip(sol, sol_qutip)
     ]
-    assert all(
-        error <= coeff_bound * t**order + 1.0e-8 for t, error in zip(t_span, diff_sols)
-    ), (
-        "Some of the errors in "
-        f"{dict([(t, (d, coeff_bound*t**order+1.0e-8,)) for t,d in zip(t_span, diff_sols) if d>= coeff_bound*t**order+1.0e-8])}"
-        " are larger from the expected bound."
+
+    broken = {
+        t: (
+            error,
+            coeff_bound * t**order + tol,
+        )
+        for t, error in zip(t_span, diff_sols)
+        if error >= coeff_bound * t**order + tol
+    }
+
+    assert len(broken) == 0, (
+        "Some of the errors in " f"{broken}" " are larger from the expected bound."
     )
 
 
 def fn_hij_tensor_with_errors_from_qutip(basis, sp, ham_j):
-
+    """test fn_hij_tensor computation"""
     comm_h_ops = [(ham_j * op2 - op2 * ham_j) for op2 in basis]
     local_h_ij = np.zeros([len(basis), len(basis)], dtype=complex)
     for i, b in enumerate(basis):
@@ -120,7 +130,6 @@ def test_build_hierarchical_basis(name_ham, ham, name_k0, k0, sigma_name, sigma)
     """
     Check the construction of hierarchical basis
     """
-    from qalma.operators.quadratic import QuadraticFormOperator
 
     if isinstance(ham, QuadraticFormOperator):
         return
@@ -143,7 +152,7 @@ def test_build_hierarchical_basis(name_ham, ham, name_k0, k0, sigma_name, sigma)
         b_op.isherm for b_op in h_basis
     ), "operators in a Hierarchical basis must be hermitician."
     h_basis_qutip = [qutip_k0]
-    for i in range(deep):
+    for _ in range(deep):
         h_basis_qutip.append(
             qutip_ham * h_basis_qutip[-1] - h_basis_qutip[-1] * qutip_ham
         )
@@ -177,7 +186,7 @@ def test_build_hierarchical_basis(name_ham, ham, name_k0, k0, sigma_name, sigma)
     print("werrs      ", werrs)
     assert all(
         abs(x - y) < 1e-6 for x, y in zip(werrs_qutip, werrs)
-    ), f"werrs and werrs_qutip do not match {[abs(x - y)  for x, y in zip(werrs_qutip, werrs)]}."
+    ), f"werrs and werrs_qutip do not match {[abs(x - y) for x, y in zip(werrs_qutip, werrs)]}."
 
     # check commutators
 
@@ -201,16 +210,40 @@ def test_evolution():
     """
     t_span = np.linspace(0, 0.1, 10)
     k0 = SX_AB
-    sigma = GibbsProductDensityOperator(0.5 * k0)
     qutip_solution = qutip.mesolve(HAMILTONIAN.to_qutip(), k0.to_qutip(), t_span).states
     for order in range(1, 5):
         print("order: ", order)
         print(" * series solution")
-        as_series_solution = series_evolution(HAMILTONIAN, k0, t_span, order)
+        as_series_solution = series_evolution(HAMILTONIAN, k0, t_span, order).states
         compare_solutions(as_series_solution, qutip_solution, t_span, order, 0.5)
-
         projected_solution = projected_evolution(
-            HAMILTONIAN, k0, t_span, order, sigma_0=sigma, n_body=order + 1
-        )
+            HAMILTONIAN, k0, t_span, order, n_body=order + 1
+        ).states
         print(" * projected solution")
         compare_solutions(projected_solution, qutip_solution, t_span, order, 0.55)
+
+
+def test_adaptive():
+    """test adaptive evolution"""
+    t_span = np.linspace(0, 2, 10)
+    k0 = SX_AB
+    ham = 0.1 * HAMILTONIAN + SZ_TOTAL
+    qutip_solution = qutip.mesolve(ham.to_qutip(), k0.to_qutip(), t_span).states
+    adapt_solution = adaptive_projected_evolution(ham, k0, t_span, 4, 2, tol=2.0).states
+    compare_solutions(
+        adapt_solution, qutip_solution, t_span, order=0, coeff_bound=0.0, tol=2
+    )
+
+
+def test_adaptive_light():
+    """test adaptive evolution with light update basis"""
+    t_span = np.linspace(0, 2, 10)
+    k0 = SX_AB
+    ham = 0.1 * HAMILTONIAN + SZ_TOTAL
+    qutip_solution = qutip.mesolve(ham.to_qutip(), k0.to_qutip(), t_span).states
+    adapt_solution = adaptive_projected_evolution(
+        ham, k0, t_span, 4, 2, tol=2.0, basis_update_callback=update_basis_light
+    ).states
+    compare_solutions(
+        adapt_solution, qutip_solution, t_span, order=0, coeff_bound=0.0, tol=2
+    )

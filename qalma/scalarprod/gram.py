@@ -35,23 +35,31 @@ else:
 # ### Generic functions depending on the SP ###
 def _sp_worker(pair, basis, sp):
     """
-    Compute the real-valued part of the scalar product between two SumOperators belonging to some basis,
-    provided these are hermitian.
+    Compute the real-valued part of the scalar product between
+    two SumOperators belonging to some basis, provided these
+    are hermitian.
 
-    Parameters:
-        pair (tuple): A tuple (i, j) indicating indices in the basis list.
-        basis (list): A list of operator objects forming a basis.
-        sp (callable): A scalar product function sp(op1, op2) -> real.
+    Parameters
+    ==========
+    pair: tuple
+        A tuple (i, j) indicating indices in the basis list.
+    basis: list
+        A list of operator objects forming a basis.
+    sp: callable
+        A scalar product function sp(op1, op2) -> real.
 
-    Returns:
-        tuple: A tuple (i, j, val) where val is the real part of sp(basis[i], basis[j]).
+    Return
+    ======
+    tuple:
+        A tuple (i, j, val) where val is the real part of
+        sp(basis[i], basis[j]).
     """
     try:
         i, j = pair
         val = float(np.real(sp(basis[i], basis[j])))
         return (i, j, val)
     except Exception as exc_val:
-        logging.error(f"Error computing Gram's matrix entry ({i},{j}):{exc_val}")
+        logging.error("Error computing Gram's matrix entry (%d, %d):%s", i, j, exc_val)
         return (i, j, np.nan)
 
 
@@ -108,21 +116,28 @@ def gram_matrix_serial(basis, sp: Callable):
     Computes the Gram matrix of a given operator basis using a scalar product.
 
     The Gram matrix is symmetric and defined as:
+
+    .. code-block:: python
+
         Gij = sp(op1, op2)
-    where `sp` is the scalar product function and `op1, op2` are operators from
+
+    where ``sp`` is the scalar product function and `op1, op2` are operators from
     the basis.
 
     Parameters
     ----------
 
-        basis: A list of basis operators.
-        sp: A callable that defines a scalar product function between two
-        operators.
+    basis: A list of basis operators.
+
+    sp: A callable that defines a scalar product function between two
+    operators.
 
     Return
     ------
-        A symmetric NumPy array representing the Gram matrix, with entries
-        rounded to 14 decimal places.
+
+    A symmetric NumPy array representing the Gram matrix, with entries
+    rounded to 14 decimal places.
+
     """
     if hasattr(sp, "compute_gram_matrix"):  # and all(b_i.isherm for b_i in basis):
         return sp.compute_gram_matrix(basis)
@@ -205,15 +220,11 @@ def merge_gram_matrices(
     li_indices = find_linearly_independent_rows(gram_full)
     li_1_indices = tuple(i for i in li_indices if i < n_1)
     if len(li_1_indices) != n_1:
-        print(li_1_indices, n_1)
-        print("basis 1 singular")
         raise ValueError("It looks like basis_1 were singular.")
 
     if len(li_indices) != n_total:
-        print("      li indices < ntotal", len(li_indices), n_total)
         n_total = len(li_indices)
         if n_total == n_1:
-            print("      n_total=n1")
             return g11, g11_inv, g11, g11, li_indices
     n_2 = n_total - n_1
     gram_full = gram_full[li_indices, :][:, li_indices]

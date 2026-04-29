@@ -6,8 +6,8 @@ import logging
 
 import numpy as np
 import qutip  # type: ignore[import-untyped]
-from matplotlib import pyplot as plt
 from matplotlib.patches import Circle, Ellipse
+from matplotlib.pyplot import Axes as PLTAxes
 from numpy.random import rand
 
 default_parms = {
@@ -55,7 +55,7 @@ def draw_ellipse_around_points(p1, p2, ax, b_ratio=0.15):
     ax.add_patch(ellipse)
 
 
-def draw_operator(op, axis: "plt.Axis") -> "plt.Axis":
+def draw_operator(op, axis: PLTAxes) -> PLTAxes:
     """
     Draw the operator op over the axis.
 
@@ -150,7 +150,7 @@ def eval_expr(expr: str, parms: dict):
                 if val != result:
                     changed = True
             except RecursionError:
-                logging.warning(f"A recursion error happens evaluating `{val}`.")
+                logging.warning("A recursion error happens evaluating `%s`.", val)
                 raise
         if not changed:
             break
@@ -161,7 +161,7 @@ def eval_expr(expr: str, parms: dict):
     except NameError:
         pass
     except TypeError as exc:
-        logging.warning(f"Type Error. Undefined variables in [{exc}] in {expr}.")
+        logging.warning("Type Error. Undefined variables in [%s] in %s.", exc, expr)
         return None
     except SyntaxError:
         logging.error(
@@ -206,8 +206,10 @@ def operator_to_wolfram(operator) -> str:
     Produce a string with a Wolfram Mathematica expression
     representing the operator.
     """
+    # pylint: disable=import-outside-toplevel
     from qalma.operators.arithmetic import SumOperator
-    from qalma.operators.basic import LocalOperator, Operator, ProductOperator
+    from qalma.operators.basic import LocalOperator, Operator
+    from qalma.operators.product import ProductOperator
     from qalma.operators.qutip import Qobj
 
     def get_site_identity(site_name):
@@ -253,7 +255,7 @@ def operator_to_wolfram(operator) -> str:
     if isinstance(operator, LocalOperator):
         local_site = operator.site
         factors = [
-            operator.operator if site == local_site else get_site_identity(site)
+            operator.operator_qutip if site == local_site else get_site_identity(site)
             for site in sorted(dimensions)
         ]
         factors_str = [operator_to_wolfram(factor) for factor in factors]
@@ -262,7 +264,7 @@ def operator_to_wolfram(operator) -> str:
 
     if isinstance(operator, ProductOperator):
         factors = [
-            operator.sites_op.get(site, get_site_identity(site))
+            operator.site_factors_qutip.get(site, get_site_identity(site))
             for site in sorted(dimensions)
         ]
         factors_str = [operator_to_wolfram(factor) for factor in factors]
@@ -319,3 +321,14 @@ def next_name(dictionary: dict, s: int = 1, prefix: str = "") -> str:
     if name in dictionary:
         return next_name(dictionary, s + 1, prefix)
     return name
+
+
+def replace_variable_type(val, e_type):
+    """
+    if `val` is a str representing an unevaluated
+    expression, replace occurrences of `#` by
+    `e_type`.
+    """
+    if isinstance(val, str):
+        return val.replace("#", f"{e_type}")
+    return val

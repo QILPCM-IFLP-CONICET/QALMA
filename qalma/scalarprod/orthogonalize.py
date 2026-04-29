@@ -148,21 +148,21 @@ def orthogonalize_basis_gs(basis, sp: Callable, tol: float = 1.0e-5):
     """
     orth_basis: list = []
     for op_orig in basis:
-        norm: float = abs(sp(op_orig, op_orig)) ** 0.5
-        if norm < tol:
+        op_norm: float = abs(sp(op_orig, op_orig)) ** 0.5
+        if op_norm < tol:
             continue
         changed = False
-        new_op = op_orig / norm
+        new_op = op_orig / op_norm
         for prev_op in orth_basis:
             overlap = sp(prev_op, new_op)
             if abs(overlap) > tol:
                 new_op -= prev_op * overlap
                 changed = True
         if changed:
-            norm = abs(sp(new_op, new_op)) ** 0.5
-            if norm < tol:
+            op_norm = abs(sp(new_op, new_op)) ** 0.5
+            if op_norm < tol:
                 continue
-            new_op = new_op / norm
+            new_op = new_op / op_norm
         orth_basis.append(new_op)
     return orth_basis
 
@@ -203,11 +203,7 @@ def orthogonalize_basis_cholesky(basis, sp: Callable, tol: float = 1.0e-5):
         if len(li_indices) == 1:
             idx = li_indices[0]
             return [local_basis[idx] / abs(gram[idx, idx]) ** 0.5]
-        elif len(li_indices) == 0:
-            return []
-        local_basis = [local_basis[ind] for ind in li_indices]
-        gram = np.array([[gram[i, j] for i in li_indices] for j in li_indices])
-        l_gram = cholesky(gram)
+        return []
 
     l_inv = inv(l_gram)
 
