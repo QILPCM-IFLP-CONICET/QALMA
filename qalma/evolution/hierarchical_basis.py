@@ -1,6 +1,4 @@
-"""
-Functions used to run MaxEnt simulations.
-"""
+"""Functions used to run MaxEnt simulations."""
 
 from __future__ import annotations
 
@@ -18,10 +16,8 @@ from qalma.operators.functions import commutator
 def build_hierarchical_basis(
     generator: Operator, seed_op: Operator, deep: int, to_qutip_operator: bool = False
 ) -> List[Operator]:
-    """
-    Constructs a hierarchical basis of operators, formed from iterated
+    """Constructs a hierarchical basis of operators, formed from iterated
     commutators of a seed operator.
-
 
     Parameters
     ----------
@@ -47,7 +43,6 @@ def build_hierarchical_basis(
         successive commutators.
 
     """
-
     if to_qutip_operator:
         seed_op = seed_op.to_qutip_operator()
         generator = generator.to_qutip_operator()
@@ -65,8 +60,7 @@ def build_hierarchical_basis(
 
 
 def fn_hij_tensor(basis: List[Operator], sp: Callable, generator: Operator) -> NDArray:
-    """
-    Computes the Hij-tensor, a local matrix representation of the Hamiltonian
+    """Computes the Hij-tensor, a local matrix representation of the Hamiltonian
     onto the given basis.
 
     For each pair of basis operators (op1, op2), the matrix element is defined
@@ -79,7 +73,6 @@ def fn_hij_tensor(basis: List[Operator], sp: Callable, generator: Operator) -> N
 
     Parameters
     ----------
-
     basis : List[Operator]
         A list of basis operators..
 
@@ -93,13 +86,11 @@ def fn_hij_tensor(basis: List[Operator], sp: Callable, generator: Operator) -> N
 
     Returns
     -------
-
     ndarray:
         A real-valued NumPy array representing the Hamiltonian matrix in the
         given basis.
 
     """
-
     generator_j = -1j * generator
     local_h_ij = np.array(
         [[sp(op1, commutator(generator_j, op2)) for op2 in basis] for op1 in basis]
@@ -110,8 +101,7 @@ def fn_hij_tensor(basis: List[Operator], sp: Callable, generator: Operator) -> N
 def fn_hij_tensor_with_errors(
     basis: List[Operator], sp: Callable, generator: Operator
 ) -> Tuple[NDArray, NDArray]:
-    """
-    Computes the Hij-tensor, a local matrix representation of the Hamiltonian
+    """Computes the Hij-tensor, a local matrix representation of the Hamiltonian
     onto the given basis, and the norm of the orthogonal projector.
 
     For each pair of basis operators (op1, op2), the matrix element is defined
@@ -124,7 +114,6 @@ def fn_hij_tensor_with_errors(
 
     Parameters
     ----------
-
     basis : List[Operator]
         A list of basis operators..
     sp : Callable
@@ -136,7 +125,6 @@ def fn_hij_tensor_with_errors(
 
     Returns
     -------
-
     local_h_ij : ndarray
         A real-valued NumPy array representing the Hamiltonian matrix in the
         given basis.
@@ -145,7 +133,6 @@ def fn_hij_tensor_with_errors(
         coefficients to span the norm of the orthogonal projection.
 
     """
-
     hgen = -1j * generator
     comm_h_ops = [commutator(hgen, op2).simplify() for op2 in basis]
 
@@ -168,9 +155,8 @@ def fn_hij_tensor_with_errors(
 
 
 def k_state_from_phi_basis(phi: NDArray, basis: List[Operator]) -> Operator:
-    """
-    Constructs the operator K from a given set of coefficients and
-    basis operators.
+    """Constructs the operator K from a given set of coefficients and basis
+    operators.
 
     Parameters
     ----------
@@ -186,8 +172,8 @@ def k_state_from_phi_basis(phi: NDArray, basis: List[Operator]) -> Operator:
         The operator K, defined as the negative linear combination of the basis
         operators weighted by the coefficients in `phi`. If `phi` is shorter
         than the basis, it is padded with zeros.
-    """
 
+    """
     if len(phi) < len(basis):
         phi = np.array(list(phi) + [0.0 for _ in range(len(basis) - len(phi))])
     return sum(phi_a * opa for phi_a, opa in zip(phi, basis))

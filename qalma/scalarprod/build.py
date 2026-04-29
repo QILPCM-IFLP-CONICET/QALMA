@@ -1,6 +1,4 @@
-"""
-Functions to fetch specific scalar product functions.
-"""
+"""Functions to fetch specific scalar product functions."""
 
 # from datetime import datetime
 from typing import Callable
@@ -16,9 +14,8 @@ from .covar import CovariantScalarProductFunction
 
 
 def fetch_kubo_scalar_product(sigma: Operator, threshold=0) -> Callable:
-    """
-    Build a KMB scalar product function
-    associated to the state ``sigma``
+    """Build a KMB scalar product function associated to the state
+    ``sigma``.
     """
     evals_evecs = sorted(zip(*sigma.eigenstates()), key=lambda x: -x[0])
     w = 1
@@ -48,12 +45,9 @@ def fetch_kubo_scalar_product(sigma: Operator, threshold=0) -> Callable:
 
 
 def fetch_kubo_int_scalar_product(sigma: Operator) -> Callable:
+    """Build a KMB scalar product function associated to the state ``sigma``,
+    from its integral form.
     """
-    Build a KMB scalar product function
-    associated to the state ``sigma``, from
-    its integral form.
-    """
-
     evals, evecs = sigma.eigenstates()
 
     def return_func(op1, op2):
@@ -74,8 +68,7 @@ def fetch_kubo_int_scalar_product(sigma: Operator) -> Callable:
 
 
 def fetch_covar_scalar_product(sigma: DensityOperatorProtocol) -> Callable:
-    """
-    Returns a scalar product function based on the covariance of a density
+    r"""Returns a scalar product function based on the covariance of a density
     operator.
 
     The scalar product for two operators op1 and op2 is defined as:
@@ -88,15 +81,13 @@ def fetch_covar_scalar_product(sigma: DensityOperatorProtocol) -> Callable:
     anticommutator of the Hermitian conjugate of ``op1`` and ``op2``,
     and $Tr$ denotes the trace.
 
-    Parameters:
-    -----------
-
+    Parameters
+    ----------
         sigma: The density operator (quantum state) used to define the scalar
         product.
 
-    Returns:
-    --------
-
+    Returns
+    -------
         A function that takes two operators (op1, op2) and computes their
         covariance-based scalar product.
 
@@ -105,7 +96,5 @@ def fetch_covar_scalar_product(sigma: DensityOperatorProtocol) -> Callable:
 
 
 def fetch_HS_scalar_product() -> Callable:
-    """
-    Build a HS scalar product function
-    """
+    """Build a HS scalar product function."""
     return lambda op1, op2: (op1.dag() * op2).tr()

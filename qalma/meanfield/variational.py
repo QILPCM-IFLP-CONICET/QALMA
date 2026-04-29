@@ -1,8 +1,6 @@
-"""
-Variational Mean-field
+"""Variational Mean-field.
 
 Build variational approximations to a Gibbsian state.
-
 """
 
 import logging
@@ -10,8 +8,8 @@ from numbers import Complex, Real
 from typing import Callable, Optional, Tuple, cast
 
 import numpy as np
-from numpy.random import random_sample
-from scipy.optimize import minimize
+from numpy.random import random_sample as _random_sample
+from scipy.optimize import minimize as _minimize
 
 from qalma.operators import OneBodyOperator, Operator
 from qalma.operators.quadratic import (
@@ -24,10 +22,9 @@ from qalma.projections import n_body_projection
 from qalma.settings import DEFAULT_MAX_NUMBER_OF_FIELDS, QALMA_TOLERANCE
 
 
-def compute_rel_entropy(state: ProductDensityOperator, ham: Operator) -> float:
-    """
-    Compute the relative entropy relative to the gibbs state exp(-ham)
-    from `state`.
+def compute_free_energy(state: ProductDensityOperator, ham: Operator) -> float:
+    """Compute the approfree energy relative to the gibbs state exp(-ham) from
+    `state`.
 
     Parameters
     ----------
@@ -40,6 +37,7 @@ def compute_rel_entropy(state: ProductDensityOperator, ham: Operator) -> float:
     -------
     float64
     The relative entropy S(sigma|exp(-ham))
+
     """
     if state is None:
         state = ProductDensityOperator({}, system=ham.system)
@@ -53,9 +51,8 @@ def mf_quadratic_form_exponential(
     callback_optimizer: Optional[Callable] = None,
     ham: Optional[Operator] = None,
 ) -> ProductDensityOperator:
-    """
-    Approximate `exp(-qf_op)` as `exp(-h_mf)`
-    with h_mf = k_0 + sum_a phi_a q_a
+    """Approximate `exp(-qf_op)` as `exp(-h_mf)`
+    with h_mf = k_0 + sum_a phi_a q_a.
 
     Parameters
     ----------
@@ -82,9 +79,7 @@ def mf_quadratic_form_exponential(
     """
 
     def build_test_state(coeffs: np.ndarray) -> ProductDensityOperator:
-        """
-        Build the test state from the coefficients.
-        """
+        """Build the test state from the coefficients."""
         terms = tuple((coef * gen for coef, gen in zip(coeffs, generators)))
         if k0 is not None:
             terms = (k0,) + terms
@@ -93,12 +88,13 @@ def mf_quadratic_form_exponential(
         return sigma_k.to_product_state()
 
     def test_state_re(coeffs: np.ndarray) -> float:
-        """
-        Target function. Computes the relative entropy
-        relative to the gibbs state exp(-ham)
+        """Target function.
+
+        Computes the relative entropy relative to the gibbs state
+        exp(-ham)
         """
         test_state: ProductDensityOperator = build_test_state(coeffs)
-        return compute_rel_entropy(test_state, hamiltonian)
+        return compute_free_energy(test_state, hamiltonian)
 
     # Trim terms with positive weights and keep at most
     # num_fields of the remaining
@@ -127,9 +123,9 @@ def mf_quadratic_form_exponential(
     # sigma = exp(-k0 - sum_a phi_a Q_a)
 
     # Generate a initial guess for the coefficients.
-    phis = 2 * random_sample(len(generators)) - 1
+    phis = 2 * _random_sample(len(generators)) - 1
     try:
-        result = minimize(
+        result = _minimize(
             test_state_re, phis, method=method, callback=callback_optimizer
         )
         phis = result.x
@@ -143,8 +139,7 @@ def mf_quadratic_form_exponential(
 def reduced_quadratic_form_operator(
     qf_op: QuadraticFormOperator, num_terms: int
 ) -> QuadraticFormOperator:
-    """
-    Build a new quadratic form operator keeping only positive weights.
+    """Build a new quadratic form operator keeping only positive weights.
 
     Parameters
     ----------
@@ -190,9 +185,8 @@ def self_consistent_mf(
     max_steps: int = 10,
     callback: Optional[Callable] = None,
 ) -> Tuple[ProductDensityOperator, float]:
-    """
-    Starting from `sigma_ref` compute an approximation of
-    exp(-ham) following a self-consistent algorithm.
+    """Starting from `sigma_ref` compute an approximation of exp(-ham)
+    following a self-consistent algorithm.
 
     Parameters
     ----------
@@ -218,12 +212,12 @@ def self_consistent_mf(
     if sigma_ref is None:
         sigma_ref = ProductDensityOperator({}, system=ham.system)
 
-    rel_entropy = compute_rel_entropy(sigma_ref, ham)
+    rel_entropy = compute_free_energy(sigma_ref, ham)
     converged = False
     for curr_step in range(max_steps):
         gen_sc = n_body_projection(ham, n_max=1, sigma=sigma_ref)
         sigma_sc = GibbsProductDensityOperator(gen_sc).to_product_state()
-        new_rel_entropy = compute_rel_entropy(sigma_sc, ham)
+        new_rel_entropy = compute_free_energy(sigma_sc, ham)
         if callback is not None:
             callback(sigma_ref, rel_entropy, curr_step)
 
@@ -251,8 +245,7 @@ def variational_quadratic_mfa(
     sigma_ref: Optional[ProductDensityOperator] = None,
     **kwargs,
 ) -> ProductDensityOperator:
-    r"""
-    Find the Mean field approximation for the exponential
+    r"""Find the Mean field approximation for the exponential
     of an operator using a variational algorithm.
 
     At the end, improve the solution in a self-consistent
@@ -275,7 +268,6 @@ def variational_quadratic_mfa(
 
     Parameters
     ----------
-
     ham : Operator
         The generator of the exact state rho=exp(-ham).
     numfields : int, optional
@@ -318,7 +310,7 @@ def variational_quadratic_mfa(
         sigma_ref = sigma_ref.to_product_state()
 
     current_rel_entropy = (
-        None if sigma_ref is None else compute_rel_entropy(sigma_ref, ham)
+        None if sigma_ref is None else compute_free_energy(sigma_ref, ham)
     )
     if isinstance(ham, OneBodyOperator):
         return GibbsProductDensityOperator(ham.hermitician_part()).to_product_state()
@@ -345,9 +337,9 @@ def variational_quadratic_mfa(
         if current_rel_entropy is None:
             changed = True
             sigma_ref = sigma_candidate
-            current_rel_entropy = compute_rel_entropy(sigma_ref, ham)
+            current_rel_entropy = compute_free_energy(sigma_ref, ham)
         else:
-            rel_s = compute_rel_entropy(sigma_candidate, ham)
+            rel_s = compute_free_energy(sigma_candidate, ham)
             if rel_s < current_rel_entropy:
                 changed = True
                 sigma_ref = sigma_candidate

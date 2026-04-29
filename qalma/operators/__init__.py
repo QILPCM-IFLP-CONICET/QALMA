@@ -1,24 +1,31 @@
 # -*- coding: utf-8 -*-
 """
 Operators
+=========
+
+Classes representing different kind of operators.
 """
 
-from qalma.operators import register_ops
-from qalma.operators.arithmetic import (
+import importlib
+
+from .arithmetic import (
     OneBodyOperator,
     SumOperator,
     iterable_to_operator,
 )
-from qalma.operators.basic import (
+from .basic import (
     LocalOperator,
     Operator,
 )
-from qalma.operators.product import (
+from .product import (
     ProductOperator,
     ScalarOperator,
 )
-from qalma.operators.quadratic import QuadraticFormOperator
-from qalma.operators.qutip import QutipOperator
+from .quadratic import QuadraticFormOperator
+from .qutip import QutipOperator
+
+importlib.import_module(".register_ops", __name__)
+
 
 __all__ = [
     "LocalOperator",
@@ -30,5 +37,5 @@ __all__ = [
     "ScalarOperator",
     "SumOperator",
     "iterable_to_operator",
-    "register_ops",
+    #    "register_ops",
 ]

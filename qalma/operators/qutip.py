@@ -1,14 +1,12 @@
 # -*- coding: utf-8 -*-
-"""
-Qutip representation of an operator.
-"""
+"""Qutip representation of an operator."""
 
 import logging
 from functools import reduce
 from typing import Dict, Iterable, List, Optional, Tuple, Union
 
 from numpy import imag, log as np_log, real
-from qutip import Qobj, tensor  # type: ignore[import-untyped]
+from qutip import Qobj as _Qobj, tensor as _tensor  # type: ignore[import-untyped]
 
 from qalma.model import SystemDescriptor, build_system_from_dims
 from qalma.operators.basic import (
@@ -29,8 +27,7 @@ from qalma.qutip_tools.tools import (
 
 
 class QutipOperator(Operator):
-    """Represents a Qutip operator that acts over a block
-    of sites of a system.
+    """Represents a Qutip operator that acts over a block of sites of a system.
 
     If two QutipOperator are combined in an arithmetic
     operation, the result is QutipOperator acting on
@@ -46,7 +43,7 @@ class QutipOperator(Operator):
 
     prefactor: complex
     system: SystemDescriptor
-    operator: Qobj
+    operator: _Qobj
     site_names: dict
 
     def __init__(
@@ -57,7 +54,7 @@ class QutipOperator(Operator):
         prefactor=1,
     ):
         # If build from a scalar:
-        if not isinstance(qoperator, Qobj):
+        if not isinstance(qoperator, _Qobj):
             prefactor = prefactor * qoperator
             qoperator = None
             names = {}
@@ -112,12 +109,11 @@ class QutipOperator(Operator):
         )
 
     def acts_over(self) -> frozenset:
-        """list the sites where the operator acts over"""
+        """List the sites where the operator acts over."""
         return frozenset(self.site_names.keys())
 
     def as_sum_of_products(self):
-        """Decompose the operator as a
-        sum of product operators
+        """Decompose the operator as a sum of product operators.
 
         Parameters
         ----------
@@ -158,7 +154,7 @@ class QutipOperator(Operator):
         return SumOperator(terms, self.system, isherm=isherm)
 
     def dag(self):
-        """Hermitician adjoint operator"""
+        """Hermitician adjoint operator."""
         prefactor = self.prefactor
         operator = self.operator
         if isinstance(prefactor, complex):
@@ -178,7 +174,7 @@ class QutipOperator(Operator):
         return self.operator.eigenenergies() * self.prefactor
 
     def eigenstates(self):
-        """Eigendecomposition"""
+        """Eigendecomposition."""
         evals, evecs = self.operator.eigenstates()
         return evals * self.prefactor, evecs
 
@@ -196,7 +192,7 @@ class QutipOperator(Operator):
         return QutipOperator(qop, self.system, self.site_names, prefactor)
 
     def inv(self):
-        """the inverse of the operator"""
+        """The inverse of the operator."""
         operator = self.operator
         return QutipOperator(
             operator.inv(),
@@ -219,16 +215,16 @@ class QutipOperator(Operator):
 
     @property
     def isdiagonal(self) -> bool:
-        """Check if the operator is diagonal"""
+        """Check if the operator is diagonal."""
         return is_diagonal_op(self.operator)
 
     @property
     def is_zero(self) -> bool:
-        """Check if the matrix is zero"""
+        """Check if the matrix is zero."""
         return not (self.prefactor) or empty_op(self.operator)
 
     def logm(self):
-        """logarithm of the operator"""
+        """Logarithm of the operator."""
         operator = self.operator
         evals, evecs = operator.eigenstates()
         evals = evals * self.prefactor
@@ -241,9 +237,7 @@ class QutipOperator(Operator):
         return QutipOperator(log_op, self.system, self.site_names)
 
     def partial_trace(self, sites: Union[frozenset, SystemDescriptor]):
-        """
-
-        Parameters
+        """Parameters
         ----------
         sites: Union[frozenset :
 
@@ -307,14 +301,13 @@ class QutipOperator(Operator):
         )
 
     def reduce(self, sites: Iterable, state=None) -> Operator:
-        """
-        Partial trace of the product of the operator and the density operator
-        acting on the subsystem which is traced out.
-        If the state is not provided, the result is the partial trace, divided
-        by the dimension of the subsystem traced out.
+        """Partial trace of the product of the operator and the density
+        operator acting on the subsystem which is traced out. If the state is
+        not provided, the result is the partial trace, divided by the dimension
+        of the subsystem traced out.
 
         Parameters
-        ==========
+        ----------
         sites: Iterable
 
         state: Optional[DensityOperatorProtocol]
@@ -367,7 +360,7 @@ class QutipOperator(Operator):
         sites_tuple = tuple(sites)
         qop = self.to_qutip(sites_tuple + env_tuple)
         state_qutip = state.partial_trace(environment).to_qutip(env_tuple)
-        state_qutip = tensor(
+        state_qutip = _tensor(
             *(system.site_identity(site) for site in sites_tuple), state_qutip
         )
         qop = (qop * state_qutip).ptrace(list(range(len(sites_tuple))))
@@ -378,7 +371,7 @@ class QutipOperator(Operator):
         )
 
     def simplify(self):
-        """Simplify the operator"""
+        """Simplify the operator."""
         names = self.site_names
         prefactor = self.prefactor
         qt_operator = self.operator
@@ -423,9 +416,7 @@ class QutipOperator(Operator):
         )
 
     def to_qutip(self, block: Optional[Tuple[str, ...]] = None):
-        """
-
-        Parameters
+        """Parameters
         ----------
         block: Optional[Tuple[str]] :
              (Default value = None)
@@ -445,7 +436,7 @@ class QutipOperator(Operator):
         site_names = sorted(site_names_dict, key=lambda x: site_names_dict[x])
         system = self.system
         sites = system.sites
-        operator_qutip: Qobj = self.operator * self.prefactor
+        operator_qutip: _Qobj = self.operator * self.prefactor
         if block is None:
             if len(sites) > 8:
                 logging.warning(
@@ -472,9 +463,9 @@ class QutipOperator(Operator):
             )
             extra_identities = (sites[site]["identity"] for site in out_sites)
             operator_qutip = (
-                tensor(operator_qutip, *extra_identities)
+                _tensor(operator_qutip, *extra_identities)
                 if site_names
-                else tensor(*extra_identities)
+                else _tensor(*extra_identities)
             )
 
         # Add sites which are in site_names, but not in block
@@ -488,7 +479,7 @@ class QutipOperator(Operator):
         return operator_qutip.permute(shuffle)
 
     def tr(self) -> complex:
-        """Compute the trace"""
+        """Compute the trace."""
         prefactor = self.prefactor
         if prefactor == 0:
             return prefactor

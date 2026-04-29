@@ -28,7 +28,7 @@ dynamics using MaxEnt projected evolution.
    :maxdepth: 1
    :caption: API Reference
 
-   api/index
+   api/modules
 
 .. toctree::
    :maxdepth: 1

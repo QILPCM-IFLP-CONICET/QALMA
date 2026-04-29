@@ -1,5 +1,4 @@
-"""
-Qutip representation for density operators.
+"""Qutip representation for density operators.
 
 Be careful: just use this class for states of small systems.
 """
@@ -9,7 +8,7 @@ from numbers import Real
 from typing import Optional, Tuple, Union, cast
 
 import numpy as np
-from qutip import Qobj, tensor as tensor_qutip  # type: ignore[import-untyped]
+from qutip import Qobj as _Qobj, tensor as _tensor_qutip  # type: ignore[import-untyped]
 
 from qalma.model import SystemDescriptor
 from qalma.operators.product import ScalarOperator
@@ -21,18 +20,32 @@ from qalma.operators.states.basic import (
 
 
 class QutipDensityOperator(DensityOperatorMixin, QutipOperator):
-    """
-    Qutip representation of a density operator
-    """
+    """Qutip representation of a density operator."""
 
     def __init__(
         self,
-        qoperator: Qobj,
+        qoperator: _Qobj,
         system: Optional[SystemDescriptor] = None,
         names=None,
         prefactor=1,
         normalized=False,
     ):
+        r"""Parameters
+        ----------
+        qoperator : Qobj
+            The QuTiP density matrix. Normalized to unit trace on construction
+            unless ``normalized=True``.
+        system : SystemDescriptor or None, optional
+            Descriptor of the full lattice system.
+        names : dict[str, int] or None, optional
+            Mapping from site name to tensor-product index in ``qoperator``.
+        prefactor : float, optional
+            Scalar weight :math:`\\lambda`. Default is ``1``.
+        normalized : bool, optional
+            If ``True``, skips normalization on construction. Default is
+            ``False``.
+
+        """
         self._normalized = normalized
         super().__init__(qoperator, system, names, prefactor)
         self.normalize()
@@ -43,9 +56,8 @@ class QutipDensityOperator(DensityOperatorMixin, QutipOperator):
         return QutipOperator(self.operator, self.system, self.site_names, -1)
 
     def join_states(self, other: DensityOperatorProtocol | complex):
-        """
-        Combine the states of two disjoint systems to produce the state
-        of the union of both systems.
+        """Combine the states of two disjoint systems to produce the state of
+        the union of both systems.
         """
         if isinstance(other, Real):
             if other < 0:
@@ -86,13 +98,24 @@ class QutipDensityOperator(DensityOperatorMixin, QutipOperator):
         block_a = tuple(acts_over_a)
         block_b = tuple(acts_over_b)
         names = {site: pos for pos, site in enumerate(block_a + block_b)}
-        qutip_block = tensor_qutip(self.to_qutip(block_a), rho.to_qutip(block_b))
+        qutip_block = _tensor_qutip(self.to_qutip(block_a), rho.to_qutip(block_b))
         prefactor = self.prefactor * rho.prefactor
         return QutipDensityOperator(
             qutip_block, names=names, system=system, prefactor=prefactor
         )
 
     def logm(self):
+        r"""Return the matrix logarithm :math:`\\log\\rho`.
+
+        Normalizes first, then computes the logarithm via eigendecomposition.
+        Eigenvalues below ``1e-30`` are clamped to avoid divergence.
+
+        Returns
+        -------
+        QutipOperator
+            The matrix logarithm as a :class:`~qalma.operators.qutip.QutipOperator`.
+
+        """
         self.normalize()
         operator = self.operator
         evals, evecs = operator.eigenstates()
@@ -103,7 +126,7 @@ class QutipDensityOperator(DensityOperatorMixin, QutipOperator):
         return QutipOperator(log_op, self.system, self.site_names)
 
     def normalize(self):
-        """Normalize the operator"""
+        """Normalize the operator."""
         if self._normalized:
             return self
         qoperator = self.operator
@@ -115,6 +138,25 @@ class QutipDensityOperator(DensityOperatorMixin, QutipOperator):
         return self
 
     def partial_trace(self, sites: Union[frozenset, SystemDescriptor]):
+        """Compute the partial trace over the complement of ``sites``.
+
+        Normalizes first, delegates to the parent
+        :class:`~qalma.operators.qutip.QutipOperator` partial trace, and
+        wraps the result back as a :class:`QutipDensityOperator`.
+
+        Parameters
+        ----------
+        sites : frozenset[str] or SystemDescriptor
+            Sites to *keep*. All other sites are traced out.
+
+        Returns
+        -------
+        QutipDensityOperator or ScalarOperator
+            The reduced density operator on the subsystem defined by
+            ``sites``, or a :class:`~qalma.operators.product.ScalarOperator`
+            if all sites are traced out.
+
+        """
         self.normalize()
         self_pt = super().partial_trace(sites)
         if isinstance(self_pt, ScalarOperator):
@@ -128,6 +170,25 @@ class QutipDensityOperator(DensityOperatorMixin, QutipOperator):
         )
 
     def to_qutip(self, block: Optional[Tuple[str, ...]] = None):
+        """Return the normalized QuTiP density matrix over ``block``.
+
+        Normalizes first, then delegates to
+        :meth:`~qalma.operators.qutip.QutipOperator.to_qutip` with the
+        prefactor temporarily set to ``1`` so that the state sums to unit
+        trace (the prefactor is a mixture weight, not part of the matrix).
+
+        Parameters
+        ----------
+        block : tuple[str, ...] or None, optional
+            Ordered list of site names. Defaults to all sites in the order
+            stored in ``site_names``.
+
+        Returns
+        -------
+        qutip.Qobj
+            The normalized density matrix restricted to ``block``.
+
+        """
         self.normalize()
         # set the prefactor temporarily to 1, because it should
         # not be taken into account in the conversion of a state.

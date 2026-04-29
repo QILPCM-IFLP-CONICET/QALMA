@@ -1,7 +1,4 @@
-"""
-Parallel routines
-
-"""
+"""Parallel routines."""
 
 import logging
 from functools import partial
@@ -45,16 +42,18 @@ else:
 
 
 def _commutator_term_worker(entries):
-    """
-    Compute the commutator [hi, kj] = hi * kj - kj * hi and simplify the result.
+    """Compute the commutator [hi, kj] = hi * kj - kj * hi and simplify the result.
     The `system` attribute of the result is set to `None` to reduce the
     serializing cost.
 
-    Parameters:
+    Parameters
+    ----------
         hi_kj (tuple): A tuple (hi, kj) of SumOperator objects.
 
-    Returns:
+    Returns
+    -------
         Operator: The simplified commutator operator with small terms removed (threshold 1e-5).
+
     """
     op_1, op_2 = entries
     return (op_1 * op_2 - op_2 * op_1).simplify()._set_system_()
@@ -66,8 +65,8 @@ def commutator_qalma_parallel(
     use_threads: bool = USE_THREADS,
     num_workers: int = MAX_WORKERS,
 ) -> Operator:
-    """
-    The commutator of two Operator objects `op_1` and  `op_2`.
+    """The commutator of two Operator objects `op_1` and  `op_2`.
+
     Parallel implementation.
     """
     system = op_1.system.union(op_2.system)
@@ -117,7 +116,7 @@ def commutator_qalma_parallel(
 
 
 def _project_monomial_worker(operator, nmax, sigma):
-    """Worker"""
+    """Worker."""
     return (
         DISPATCH_PROJECTION_METHOD_PARALLEL[type(operator)](operator, nmax, sigma)
         .simplify()
@@ -132,9 +131,8 @@ def parallel_process_non_dispatched_terms(
     use_threads=USE_THREADS,
     max_workers=MAX_WORKERS,
 ) -> Tuple[Operator, ...]:
-    """
-    Project each operator in `terms` to the nmax subspace, relative
-    to the state `sigma`.
+    """Project each operator in `terms` to the nmax subspace, relative to the
+    state `sigma`.
     """
     system = terms[0].system
     non_dispatched_length = len(terms)

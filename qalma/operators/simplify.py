@@ -1,7 +1,5 @@
 # -*- coding: utf-8 -*-
-"""
-Functions to simplify sums of operators
-"""
+"""Functions to simplify sums of operators."""
 
 import logging
 from typing import Callable, Dict, List, Optional, Sequence, cast
@@ -47,7 +45,6 @@ def sum_operator_sequence(
     Returns
     -------
 
-
     """
     if not seq:
         return ScalarOperator(0, system)
@@ -57,9 +54,8 @@ def sum_operator_sequence(
 
 
 def collect_nbody_terms(operator: Operator) -> dict:
-    """Build a dictionary whose keys are subsystems and
-    the values are lists of operators acting exactly
-    over the subsystem.
+    """Build a dictionary whose keys are subsystems and the values are lists of
+    operators acting exactly over the subsystem.
 
     Parameters
     ----------
@@ -70,7 +66,6 @@ def collect_nbody_terms(operator: Operator) -> dict:
 
     Returns
     -------
-
 
     """
     full_acts_over: frozenset
@@ -107,7 +102,7 @@ def group_terms_by_blocks(operator: Operator, fn: Optional[Callable] = None):
     For example
 
 
-    .. codeblock:: python
+    .. code-block:: python
 
         group_terms_by_blocks(operator, lambda op:op.to_qutip_operator())
 
@@ -131,8 +126,8 @@ def group_terms_by_blocks(operator: Operator, fn: Optional[Callable] = None):
     Operator
        A monomial operator or a sum operator, with terms acting
        in different blocks.
-    """
 
+    """
     if (
         not isinstance(operator, SumOperator)
         or getattr(operator, "_simplified", False)
@@ -158,9 +153,7 @@ def group_terms_by_blocks(operator: Operator, fn: Optional[Callable] = None):
     scalar_terms = []
 
     def apply_simplification_fn(op_in: Operator, fn: Optional[Callable]):
-        """
-
-        Parameters
+        """Parameters
         ----------
         op_in: Operator :
 
@@ -253,8 +246,8 @@ def group_terms_by_blocks(operator: Operator, fn: Optional[Callable] = None):
 
 
 def simplify_qutip_sums(sum_operator: SumOperator) -> Operator:
-    """Collect terms acting on the same block of sites,
-    and reduce it to a single qutip operator.
+    """Collect terms acting on the same block of sites, and reduce it to a
+    single qutip operator.
 
     Parameters
     ----------
@@ -265,7 +258,6 @@ def simplify_qutip_sums(sum_operator: SumOperator) -> Operator:
 
     Returns
     -------
-
 
     """
     if not isinstance(sum_operator, SumOperator):
@@ -345,7 +337,7 @@ def rewrite_nbody_term_using_qutip(
     isherm: Optional[bool] = None,
     isdiag: Optional[bool] = None,
 ) -> Operator:
-    """Do the decomposition work using qutip
+    """Do the decomposition work using qutip.
 
     Parameters
     ----------
@@ -368,9 +360,7 @@ def rewrite_nbody_term_using_qutip(
     sites_identity: Dict[str, Qobj] = {}
 
     def op_or_identity(term, site):
-        """
-
-        Parameters
+        """Parameters
         ----------
         term :
 

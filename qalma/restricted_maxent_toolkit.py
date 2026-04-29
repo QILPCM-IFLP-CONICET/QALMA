@@ -1,3 +1,1 @@
-"""
-Functions used to run MaxEnt simulations.
-"""
+"""Functions used to run MaxEnt simulations."""

@@ -1,6 +1,4 @@
-"""
-Shared operator type tuples used across all register_ops submodules.
-"""
+"""Shared operator type tuples used across all register_ops submodules."""
 
 from numbers import Number
 

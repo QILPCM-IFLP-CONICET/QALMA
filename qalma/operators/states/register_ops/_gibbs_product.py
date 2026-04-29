@@ -1,5 +1,4 @@
-"""
-Arithmetic handlers involving GibbsProductDensityOperator.
+"""Arithmetic handlers involving GibbsProductDensityOperator.
 
 All handlers delegate to `.to_product_state()`, which converts a Gibbs state
 into a plain ProductDensityOperator before dispatching to the product handlers.
@@ -34,6 +33,7 @@ from ._types import (
     [(GibbsProductDensityOperator, type_1) for type_1 in REAL_NUMERIC_TYPES]
 )
 def gpdo_add_real_(x_op: GibbsProductDensityOperator, y_op: float):
+    """Add a gibbs product density operator with a real number."""
     if y_op == 0:
         return x_op
     system = x_op.system
@@ -47,7 +47,8 @@ def gpdo_add_real_(x_op: GibbsProductDensityOperator, y_op: float):
 @Operator.register_add_handler(
     [(GibbsProductDensityOperator, type_1) for type_1 in COMPLEX_NUMERIC_TYPES]
 )
-def gpdo_add_complex_(x_op: GibbsProductDensityOperator, y_op: float):
+def gpdo_add_complex_(x_op: GibbsProductDensityOperator, y_op: complex):
+    """Add a gibbs product density operator with a complex number."""
     if y_op.imag == 0:
         return x_op + y_op.real
     if y_op == 0:
@@ -68,6 +69,7 @@ def gpdo_add_complex_(x_op: GibbsProductDensityOperator, y_op: float):
     ]
 )
 def _gpd_add_gpd_(x_op: GibbsProductDensityOperator, y_op: DensityOperatorMixin):
+    """Add a gibbs product density operator a product density operator."""
     if x_op is y_op:
         return GibbsProductDensityOperator(
             x_op.k_by_site,
@@ -84,6 +86,7 @@ def _gpd_add_gpd_(x_op: GibbsProductDensityOperator, y_op: DensityOperatorMixin)
 @Operator.register_add_handler((GibbsProductDensityOperator, SumOperator))
 @Operator.register_add_handler((GibbsProductDensityOperator, OneBodyOperator))
 def _(x_op: GibbsProductDensityOperator, y_op: Operator):
+    """Add a gibbs product density operator a general operator."""
     return x_op.to_product_state() + y_op
 
 
@@ -93,6 +96,7 @@ def _(x_op: GibbsProductDensityOperator, y_op: Operator):
     ]
 )
 def _(x_op: GibbsProductDensityOperator, y_op: MixtureDensityOperator):
+    """Add a gibbs product density operator a mixture density operator."""
     return MixtureDensityOperator((x_op,) + y_op.terms, x_op.system * y_op.system)
 
 
@@ -105,6 +109,7 @@ def _(x_op: GibbsProductDensityOperator, y_op: MixtureDensityOperator):
     ]
 )
 def _(y_op: MixtureDensityOperator, x_op: GibbsProductDensityOperator):
+    """Add a gibbs product density operator a mixture density operator."""
     return MixtureDensityOperator((x_op,) + y_op.terms, x_op.system * y_op.system)
 
 
@@ -118,6 +123,7 @@ def _(y_op: MixtureDensityOperator, x_op: GibbsProductDensityOperator):
     [(GibbsProductDensityOperator, type_op) for type_op in REAL_NUMERIC_TYPES]
 )
 def _(x_op: GibbsProductDensityOperator, y_op: float):
+    """Multiply a gibbs product density operator a real number."""
     if y_op == 0:
         return ProductDensityOperator({}, weight=0, system=x_op.system, normalized=True)
     if y_op == 1:
@@ -138,6 +144,7 @@ def _(x_op: GibbsProductDensityOperator, y_op: float):
     [(type_op, GibbsProductDensityOperator) for type_op in REAL_NUMERIC_TYPES]
 )
 def _(y_op: float, x_op: GibbsProductDensityOperator):
+    """Multiply a gibbs product density operator a real number."""
     if y_op == 0:
         return ProductDensityOperator({}, weight=0, system=x_op.system, normalized=True)
     if y_op == 1:
@@ -156,14 +163,16 @@ def _(y_op: float, x_op: GibbsProductDensityOperator):
 @Operator.register_mul_handler(
     [(GibbsProductDensityOperator, type_op) for type_op in COMPLEX_NUMERIC_TYPES]
 )
-def _(x_op: GibbsProductDensityOperator, y_op: float):
+def _(x_op: GibbsProductDensityOperator, y_op: complex):
+    """Multiply a gibbs product density operator a complex number."""
     return x_op.to_product_state() * y_op
 
 
 @Operator.register_mul_handler(
     [(type_op, GibbsProductDensityOperator) for type_op in COMPLEX_NUMERIC_TYPES]
 )
-def _(y_op: float, x_op: GibbsProductDensityOperator):
+def _(y_op: complex, x_op: GibbsProductDensityOperator):
+    """Multiply a gibbs product density operator a complex number."""
     return x_op.to_product_state() * y_op
 
 
@@ -174,6 +183,7 @@ def _(y_op: float, x_op: GibbsProductDensityOperator):
     (GibbsProductDensityOperator, GibbsProductDensityOperator)
 )
 def _(x_op: GibbsProductDensityOperator, y_op: GibbsProductDensityOperator):
+    """Multiply two gibbs product density operators."""
     return x_op.to_product_state() * y_op.to_product_state()
 
 
@@ -188,6 +198,7 @@ def _(x_op: GibbsProductDensityOperator, y_op: GibbsProductDensityOperator):
     ]
 )
 def _(x_op: GibbsProductDensityOperator, y_op: DensityOperatorMixin):
+    """Multiply a gibbs product density operator a generic density operator."""
     return x_op.to_product_state() * y_op
 
 
@@ -202,6 +213,7 @@ def _(x_op: GibbsProductDensityOperator, y_op: DensityOperatorMixin):
     ]
 )
 def _(x_op: DensityOperatorMixin, y_op: GibbsProductDensityOperator):
+    """Multiply a gibbs product density operator a generic density operator."""
     return x_op * y_op.to_product_state()
 
 
@@ -216,6 +228,7 @@ def _(x_op: DensityOperatorMixin, y_op: GibbsProductDensityOperator):
 )
 @Operator.register_mul_handler((GibbsProductDensityOperator, SumOperator))
 def _(x_op: GibbsProductDensityOperator, y_op: Operator):
+    """Multiply a gibbs product density operator a generic operator."""
     return x_op.to_product_state() * y_op
 
 
@@ -227,6 +240,7 @@ def _(x_op: GibbsProductDensityOperator, y_op: Operator):
 )
 @Operator.register_mul_handler((SumOperator, GibbsProductDensityOperator))
 def _(x_op: Operator, y_op: GibbsProductDensityOperator):
+    """Multiply a gibbs product density operator a generic operator."""
     return x_op * y_op.to_product_state()
 
 
@@ -234,6 +248,7 @@ def _(x_op: Operator, y_op: GibbsProductDensityOperator):
 @Operator.register_mul_handler((GibbsProductDensityOperator, LocalOperator))
 @Operator.register_mul_handler((GibbsProductDensityOperator, ProductOperator))
 def _(x_op: GibbsProductDensityOperator, y_op: Operator):
+    """Multiply a gibbs product density operator a product operator."""
     return x_op.to_product_state() * y_op
 
 
@@ -241,4 +256,5 @@ def _(x_op: GibbsProductDensityOperator, y_op: Operator):
 @Operator.register_mul_handler((LocalOperator, GibbsProductDensityOperator))
 @Operator.register_mul_handler((ProductOperator, GibbsProductDensityOperator))
 def _(x_op: Operator, y_op: GibbsProductDensityOperator):
+    """Multiply a gibbs product density operator a product operator."""
     return x_op * y_op.to_product_state()

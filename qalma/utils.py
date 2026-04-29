@@ -1,14 +1,11 @@
-"""
-Utility functions to import and process ALPS specification files.
-"""
+"""Utility functions to import and process ALPS specification files."""
 
 import logging
 
 import numpy as np
 import qutip  # type: ignore[import-untyped]
-from matplotlib.patches import Circle, Ellipse
-from matplotlib.pyplot import Axes as PLTAxes
-from numpy.random import rand
+from matplotlib.patches import Circle as _Circle, Ellipse as _Ellipse
+from matplotlib.pyplot import Axes as _PLTAxes
 
 default_parms = {
     "pi": 3.1415926,
@@ -19,12 +16,13 @@ default_parms = {
     "tan": np.tan,
     "exp": np.exp,
     "log": np.log,
-    "rand": rand,
+    "rand": np.random.rand,
 }
 
 
 def draw_ellipse_around_points(p1, p2, ax, b_ratio=0.15):
-    """
+    """Draw an ellipse around the specified points.
+
     Draw an ellipse containing p1 and p2 located over the main axis,
     symmetrically around the center.
     """
@@ -42,7 +40,7 @@ def draw_ellipse_around_points(p1, p2, ax, b_ratio=0.15):
     b = a * b_ratio
 
     # Plotting
-    ellipse = Ellipse(
+    ellipse = _Ellipse(
         (xc, yc),
         width=3 * a,
         height=2.1 * b,
@@ -55,24 +53,23 @@ def draw_ellipse_around_points(p1, p2, ax, b_ratio=0.15):
     ax.add_patch(ellipse)
 
 
-def draw_operator(op, axis: PLTAxes) -> PLTAxes:
-    """
-    Draw the operator op over the axis.
+def draw_operator(op, axis: _PLTAxes) -> _PLTAxes:
+    """Draw the operator op over the axis.
 
     Parameters
     ----------
-
     op: Operator
       If the operator acts on a single site, draws a disk on its coordinates.
       If is a SumOperator, flatten it and draw each term.
       For many-body operators, a line is drawn.
-    ax: mpl.Axis
+    axis: mpl.Axis
       the axis over which the operator is going to be drawn.
 
     Return
     ------
     mpl.Axis
       the axis over which the operator was drawn.
+
     """
     # TODO: handle 3D graphs
     from qalma.operators import SumOperator
@@ -90,7 +87,7 @@ def draw_operator(op, axis: PLTAxes) -> PLTAxes:
         coords = [g.nodes[site]["coords"] for site in acts_over]
         coords = [(x[0], 0) if len(x) == 1 else x for x in coords]
         if len(coords) == 1:
-            axis.add_artist(Circle(coords[0], 0.1))
+            axis.add_artist(_Circle(coords[0], 0.1))
         if len(coords) == 2:
             draw_ellipse_around_points(coords[0], coords[1], axis)
         else:
@@ -104,10 +101,13 @@ def draw_operator(op, axis: PLTAxes) -> PLTAxes:
 
 
 def eval_expr(expr: str, parms: dict):
-    """
-    Evaluate the expression `expr` replacing the variables defined in `parms`.
-    expr can include python`s arithmetic expressions, and some elementary
-    functions.
+    """Evaluate the expression `expr` using ``parms``.
+
+    The function uses the Python ``eval`` method using the
+    ``parms`` dict as a context.
+
+    ``expr`` can include python`s arithmetic expressions, and some
+    elementary functions.
     """
     # TODO: Improve the workflow in a way that numpy functions
     # and constants be loaded just if they are needed.
@@ -175,8 +175,7 @@ def eval_expr(expr: str, parms: dict):
 
 
 def find_ref(node, root):
-    """
-    Find a node in the root
+    """Find a node in the root.
 
     Parameters
     ----------
@@ -189,7 +188,7 @@ def find_ref(node, root):
     Returns
     -------
     dict
-        the node corresponding to `node`.
+        the node corresponding to ``node``.
 
     """
     node_items = dict(node.items())
@@ -202,15 +201,17 @@ def find_ref(node, root):
 
 
 def operator_to_wolfram(operator) -> str:
-    """
-    Produce a string with a Wolfram Mathematica expression
-    representing the operator.
+    """WL representation of the operator.
+
+    Produce a string with a Wolfram Mathematica expression representing the
+    operator.
     """
     # pylint: disable=import-outside-toplevel
+    from qutip import Qobj
+
     from qalma.operators.arithmetic import SumOperator
     from qalma.operators.basic import LocalOperator, Operator
     from qalma.operators.product import ProductOperator
-    from qalma.operators.qutip import Qobj
 
     def get_site_identity(site_name):
         site_spec = sites[site_name]
@@ -283,7 +284,7 @@ def operator_to_wolfram(operator) -> str:
 
 
 def matrix_to_wolfram(matr: np.ndarray):
-    """Produce a string representing the data in the matrix"""
+    """Produce a string representing the data in the matrix."""
     assert isinstance(
         matr, (np.ndarray, complex, float)
     ), f"{type(matr)} is not ndarray or number"
@@ -313,10 +314,7 @@ def matrix_to_wolfram(matr: np.ndarray):
 
 
 def next_name(dictionary: dict, s: int = 1, prefix: str = "") -> str:
-    """
-    Produces a new key for the `dictionary` with a
-    `prefix`
-    """
+    """Produce a new key for the ``dictionary`` with a ``prefix``."""
     name = f"{prefix}{s}"
     if name in dictionary:
         return next_name(dictionary, s + 1, prefix)
@@ -324,10 +322,10 @@ def next_name(dictionary: dict, s: int = 1, prefix: str = "") -> str:
 
 
 def replace_variable_type(val, e_type):
-    """
-    if `val` is a str representing an unevaluated
-    expression, replace occurrences of `#` by
-    `e_type`.
+    """Replace `#` by type in parametrized variable names.
+
+    If ``val`` is a str representing an unevaluated expression, replace
+    occurrences of ``#`` by ``e_type``.
     """
     if isinstance(val, str):
         return val.replace("#", f"{e_type}")

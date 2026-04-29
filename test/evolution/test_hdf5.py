@@ -8,7 +8,7 @@ from qalma.operators.states import GibbsDensityOperator
 
 
 def test_store_and_recover_dicts():
-    """Test stored dict routines"""
+    """Test stored dict routines."""
     from h5py import File
     from numpy import array as np_array, ndarray
 

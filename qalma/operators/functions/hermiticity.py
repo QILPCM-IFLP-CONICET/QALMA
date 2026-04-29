@@ -1,6 +1,4 @@
-"""
-Functions for operators.
-"""
+"""Functions for operators."""
 
 from numbers import Complex, Real
 
@@ -14,8 +12,8 @@ from qalma.operators.basic import (
 
 
 def compute_dagger(operator):
-    """
-    Compute the adjoint of an `operator.
+    """Compute the adjoint of an `operator.
+
     If `operator` is a number, return its complex conjugate.
     """
     if isinstance(operator, Real):
@@ -28,12 +26,12 @@ def compute_dagger(operator):
 
 
 def hermitian_part(operator: Operator) -> Operator:
-    r"""Compute (A+A^\dagger)/2"""
+    r"""Compute (A+A^\dagger)/2."""
     return operator.hermitician_part()
 
 
 def hermitian_and_antihermitian_parts(operator: Operator) -> Tuple[Operator, Operator]:
-    """Decompose an operator Q as A + i B with
-    A and B self-adjoint operators
+    """Decompose an operator Q as A + i B with A and B self-adjoint
+    operators.
     """
     return operator.hermitician_part(), (operator * (-1j)).hermitician_part()

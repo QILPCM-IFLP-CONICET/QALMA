@@ -1,5 +1,4 @@
-"""
-Arithmetic bindings for QuadraticFormOperator.
+"""Arithmetic bindings for QuadraticFormOperator.
 
 Covers:
   - QuadraticFormOperator + Number

@@ -1,6 +1,4 @@
-"""
-Functions used to run MaxEnt simulations.
-"""
+"""Functions used to run MaxEnt simulations."""
 
 from __future__ import annotations
 
@@ -30,8 +28,7 @@ def qutip_me_solve(
     args: Optional[Dict[str, Any]] = None,
     options: Optional[Dict[str, Any]] = None,
 ) -> Simulation:
-    """
-    Compute the solution of the Schrödinger equation using qutip.mesolve.
+    """Compute the solution of the Schrödinger equation using qutip.mesolve.
 
     Parameters
     ----------
@@ -95,6 +92,7 @@ def qutip_me_solve(
     Simulation
         A Simulation object storing the parameters and results of the
         simulation.
+
     """
     system = None
     if isinstance(H, Operator):

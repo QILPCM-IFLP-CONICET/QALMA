@@ -1,7 +1,5 @@
-"""
-Routines to implement different kind of linear and non-linear projections
-on operator objects.
-
+"""Routines to implement different kind of linear and non-linear projections on
+operator objects.
 """
 
 from .nbody import (

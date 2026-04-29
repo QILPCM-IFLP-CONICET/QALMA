@@ -1,8 +1,7 @@
-"""
-Gibbs partial trace
+"""Gibbs partial trace.
 
-This module implement functions to approximate the partial trace
-of a Gibbs state.
+This module implement functions to approximate the partial trace of a
+Gibbs state.
 """
 
 import logging
@@ -33,10 +32,9 @@ from qalma.settings import MAXIMUM_GIBBS_EXACT_PARTIAL_TRACE
 
 
 def project_boundary_term(term, sigma: ProductDensityOperator, sites: frozenset):
-    """
-    Convert terms of the form O_a Q_b in to O_a <Q_b>
-    with <Q_b> the expectation value regarding sigma, and
-    Q_b acting on the sub-system associated to sigma.
+    """Convert terms of the form O_a Q_b in to O_a <Q_b> with <Q_b> the
+    expectation value regarding sigma, and Q_b acting on the sub-system
+    associated to sigma.
     """
     acts_over = term.acts_over()
     sites = frozenset({site for site in acts_over if site in sites})
@@ -91,10 +89,7 @@ def project_boundary_term(term, sigma: ProductDensityOperator, sites: frozenset)
 def gibbs_meanfield_partial_trace(
     state: GibbsDensityOperator, sites: frozenset
 ) -> DensityOperatorProtocol:
-    """
-    Build a self-consistent Mean Field approximation to the local state.
-
-    """
+    """Build a self-consistent Mean Field approximation to the local state."""
     terms_in: List[Operator]
     terms_boundary: List[Operator]
     prefactor: complex

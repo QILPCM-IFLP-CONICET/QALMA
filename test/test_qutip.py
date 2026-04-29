@@ -1,6 +1,4 @@
-"""
-Basic unit test.
-"""
+"""Basic unit test."""
 
 import numpy as np
 import pytest
@@ -271,10 +269,7 @@ def test_qutip_properties(case, data):
     ["name", "qutip_operator"], list(QUTIP_DECOMPOSITION_TEST_CASES.items())
 )
 def test_schmidt_dec_first_rest_qutip_operator(name, qutip_operator):
-    """
-    test decomposition of qutip operators
-    as sums of product operators
-    """
+    """Test decomposition of qutip operators as sums of product operators."""
     print("decomposing ", name)
     print("qutip operator:\n", qutip_operator)
     terms = schmidt_dec_first_rest_qutip_operator(qutip_operator)
@@ -301,10 +296,7 @@ def test_schmidt_dec_first_rest_qutip_operator(name, qutip_operator):
     ["name", "qutip_operator"], list(QUTIP_DECOMPOSITION_TEST_CASES.items())
 )
 def test_schmidt_dec_rest_last_qutip_operator(name, qutip_operator):
-    """
-    test decomposition of qutip operators
-    as sums of product operators
-    """
+    """Test decomposition of qutip operators as sums of product operators."""
     print("decomposing ", name)
     print("qutip operator:\n", qutip_operator)
     terms = schmidt_dec_rest_last_qutip_operator(qutip_operator)
@@ -330,10 +322,7 @@ def test_schmidt_dec_rest_last_qutip_operator(name, qutip_operator):
     ["name", "qutip_operator"], list(QUTIP_DECOMPOSITION_TEST_CASES.items())
 )
 def test_decompose_qutip_operators(name, qutip_operator):
-    """
-    test decomposition of qutip operators
-    as sums of product operators
-    """
+    """Test decomposition of qutip operators as sums of product operators."""
     print("decomposing ", name)
 
     print("qutip operator:\n", qutip_operator)
@@ -432,7 +421,7 @@ def test_decompose_qutip_operators(name, qutip_operator):
 def test_qutip_operators(
     case: str, op_case: Operator, expected_value: complex, op_native: Qobj
 ):
-    """Test for the qutip representation"""
+    """Test for the qutip representation."""
     print("testing case", case, expected_value, "=?=", op_native.tr())
     site_map = {site_name: i for i, site_name in enumerate(op_case.system.sites)}
     failed_tr = {}
@@ -464,10 +453,7 @@ def test_qutip_operators(
 
 @pytest.mark.parametrize(["name", "operator_case"], list(OPERATOR_TYPE_CASES.items()))
 def test_as_sum_of_products(name, operator_case):
-    """
-    Convert qutip operators into product
-    operators back and forward
-    """
+    """Convert qutip operators into product operators back and forward."""
     print("testing QutipOperator.as_sum_of_products")
     print("   operator", name, "of type", type(operator_case))
     qutip_op = 3 * (operator_case.to_qutip_operator())
@@ -486,7 +472,7 @@ def test_as_sum_of_products(name, operator_case):
 
 
 def test_detached_operators():
-    """Check operators not coming from a system"""
+    """Check operators not coming from a system."""
     # Tests for QutipOperators defined without a system
     test_op = SX_A_SY_B_TIMES_2
     system = test_op.system
@@ -558,9 +544,7 @@ def test_to_qutip_operator():
 
 
 def test_reduce_to_proper_spaces():
-    """
-    Test the projections to proper spaces.
-    """
+    """Test the projections to proper spaces."""
     observable_x = tensor(sigmax(), ID_2_QUTIP) + tensor(ID_2_QUTIP, sigmax())
     observable_z = tensor(sigmaz(), ID_2_QUTIP) + tensor(ID_2_QUTIP, sigmaz())
     observable_h = observable_x + observable_z  # Hadamard

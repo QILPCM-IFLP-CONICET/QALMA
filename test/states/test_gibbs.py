@@ -1,6 +1,4 @@
-"""
-Basic unit test for states.
-"""
+"""Basic unit test for states."""
 
 from test.helper import (
     EXPECTATION_VALUE_TOLERANCE,
@@ -45,8 +43,7 @@ SZ_01 = LARGE_SYSTEM.site_operator("Sz", "1[0, 1]")
 
 
 def do_test_expect(rho, sigma_dict):
-    """Compare expectation values"""
-
+    """Compare expectation values."""
     for obs_name, obs_op in OPERATOR_TYPE_CASES.items():
         rho_obs_expect = rho.expect(obs_op)
         for name, sigma in sigma_dict.items():
@@ -70,9 +67,7 @@ def do_test_expect(rho, sigma_dict):
 
 
 def do_test_instance(rho) -> None:
-    """
-
-    Parameters
+    """Parameters
     ----------
     rho : GibbsDensityOperator |GibbsProductDensityOperator
         the state over which implement the tests.
@@ -113,7 +108,7 @@ def do_test_instance(rho) -> None:
 
 @pytest.mark.parametrize(("key", "k_gen"), list(GIBBS_GENERATOR_TESTS.items()))
 def test_gibbs(key, k_gen):
-    """Test GibbsDensityOperator"""
+    """Test GibbsDensityOperator."""
     if k_gen is None:
         return
 
@@ -125,7 +120,7 @@ def test_gibbs(key, k_gen):
 
 @pytest.mark.parametrize(("key", "k_gen"), list(PRODUCT_GIBBS_GENERATOR_TESTS.items()))
 def test_product_gibbs(key, k_gen):
-    """Test GibbsProductDensityOperator"""
+    """Test GibbsProductDensityOperator."""
     if k_gen is None:
         return
 
@@ -137,7 +132,7 @@ def test_product_gibbs(key, k_gen):
 
 @pytest.mark.parametrize(("key", "k_gen"), list(PRODUCT_GIBBS_GENERATOR_TESTS.items()))
 def test_product_gibbs_with_offset(key, k_gen):
-    """Test GibbsProductDensityOperator"""
+    """Test GibbsProductDensityOperator."""
     if k_gen is None:
         return
 
@@ -149,7 +144,7 @@ def test_product_gibbs_with_offset(key, k_gen):
 
 @pytest.mark.parametrize(("key", "k_gen"), list(PRODUCT_GIBBS_GENERATOR_TESTS.items()))
 def test_product_gibbs_with_dict(key, k_gen):
-    """Test GibbsProductDensityOperator"""
+    """Test GibbsProductDensityOperator."""
     if k_gen is None:
         return
 

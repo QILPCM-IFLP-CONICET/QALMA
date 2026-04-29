@@ -1,6 +1,4 @@
-"""
-Basic unit test for states.
-"""
+"""Basic unit test for states."""
 
 import os
 from test.helper import (

@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-"""
-Created on Tue Sep 12 19:07:05 2023
+"""Created on Tue Sep 12 19:07:05 2023.
 
 @author: mmatera <matera@fisica.unlp.edu.ar>
 """
@@ -17,7 +16,7 @@ import os.path as osp
 
 
 def get_srcdir():
-    """Get the root directory of the source code"""
+    """Get the root directory of the source code."""
     filename = osp.normcase(osp.dirname(osp.abspath(__file__)))
     return osp.realpath(filename)
 

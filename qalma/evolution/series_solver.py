@@ -1,6 +1,4 @@
-"""
-Functions used to run MaxEnt simulations.
-"""
+"""Functions used to run MaxEnt simulations."""
 
 from __future__ import annotations
 
@@ -17,8 +15,7 @@ from .simulation import Simulation
 def series_evolution(
     ham, k0, t_span, order, *, e_ops: Optional[Callable | Dict] = None
 ) -> Simulation:
-    """
-    Compute the solution of the Schrödinger equation
+    """Compute the solution of the Schrödinger equation.
 
     dk
     -- = -i [H, k]
@@ -65,7 +62,7 @@ def series_evolution(
         return basis.operator_from_coefficients(t_coeffs)
 
     def compute_and_store_expect(_, rho_t):
-        """Compute expectation values and store them"""
+        """Compute expectation values and store them."""
         for key, val in rho_t.expect(e_ops_dict).items():
             expect_ops.setdefault(key, []).append(val)
 

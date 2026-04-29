@@ -1,5 +1,4 @@
-"""
-Arithmetic bindings for ProductOperator.
+"""Arithmetic bindings for ProductOperator.
 
 Covers:
   - ProductOperator * ProductOperator

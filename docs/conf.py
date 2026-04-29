@@ -46,12 +46,20 @@ html_theme_options = {
     "sticky_navigation": True,
 }
 
+
 # -- Autodoc -----------------------------------------------------------------
 
 autoclass_content = "both"
 autodoc_member_order = "bysource"
 autodoc_typehints = "description"
 add_module_names = False
+
+autodoc_default_options = {
+    "members": True,
+    "undoc-members": True,
+    "show-inheritance": True,
+    "imported-members": False,
+}
 
 # -- Napoleon (NumPy docstrings) ---------------------------------------------
 

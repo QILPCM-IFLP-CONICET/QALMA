@@ -1,22 +1,24 @@
-"""
-Operator State package
+"""Operator State package.
 
 This package contains classes and functions to represent and manipulate
 quantum states.
 """
 
-import qalma.operators.states.register_ops as _register_ops
-from qalma.operators.states.arithmetic import MixtureDensityOperator
-from qalma.operators.states.basic import (
+import importlib
+
+from .basic import (
     DensityOperatorMixin,
     DensityOperatorProtocol,
 )
-from qalma.operators.states.gibbs import (
+from .gibbs import (
     GibbsDensityOperator,
     GibbsProductDensityOperator,
 )
-from qalma.operators.states.product import ProductDensityOperator
-from qalma.operators.states.qutip import QutipDensityOperator
+from .product import ProductDensityOperator
+from .qutip import QutipDensityOperator
+
+importlib.import_module(".register_ops", __name__)
+
 
 __all__ = [
     "DensityOperatorMixin",
@@ -26,5 +28,5 @@ __all__ = [
     "MixtureDensityOperator",
     "ProductDensityOperator",
     "QutipDensityOperator",
-    "_register_ops",
+    "register_ops",
 ]

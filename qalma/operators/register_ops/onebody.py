@@ -1,5 +1,4 @@
-"""
-Arithmetic bindings for OneBodyOperator.
+"""Arithmetic bindings for OneBodyOperator.
 
 Covers:
   - OneBodyOperator + OneBodyOperator
