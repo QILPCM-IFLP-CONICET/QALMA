@@ -1,13 +1,11 @@
 """ALPS models.
-============
 
 Function to read XML ALPS libraries to produce model descriptors.
 
-The class ``ModelDescriptor`` contains the information to build a system when
-is combined with the information of a ``GraphDescriptor``.
+The class ``ModelDescriptor`` contains the information to build a system
+when is combined with the information of a ``GraphDescriptor``.
 
 The module also provides some helper functions.
-
 """
 
 import logging
@@ -58,11 +56,11 @@ def build_local_basis_from_qn_descriptors(
 ) -> dict:
     """Build a local basis from a quantum number descriptor.
 
-    From a quantum number descriptor and a set of parameters,
-    build a dictionary with keys `qns` and `basis`.
-    `basis` is a list of tuples containing the values of the quantum numbers.
-    `qns` is a dict that maps the name of the quantum numbers to the position
-    in the tuples in `basis`.
+    From a quantum number descriptor and a set of parameters, build a
+    dictionary with keys `qns` and `basis`. `basis` is a list of tuples
+    containing the values of the quantum numbers. `qns` is a dict that
+    maps the name of the quantum numbers to the position in the tuples
+    in `basis`.
     """
     local_basis: list = [{}]
     parms = parms.copy() if parms is not None else {}
@@ -109,8 +107,8 @@ def model_from_alps_xml(filename=MODEL_LIB_FILE, name="spin", parms=None):
     """Load a model from an ALPS XML model library.
 
     Read the ALPS XML library in ``filename``, and load the model
-    associated to the name ``name``. If given, set the parameters
-    of the model according ``parms``.
+    associated to the name ``name``. If given, set the parameters of the
+    model according ``parms``.
     """
     xmltree = ET.parse(filename)
     models = xmltree.getroot()
@@ -189,7 +187,8 @@ def model_from_alps_xml(filename=MODEL_LIB_FILE, name="spin", parms=None):
         return operators
 
     def process_bond_operators(operators: dict, _parms: dict):
-        """Populate ``operators`` with all ``<BONDOPERATOR>`` nodes in the model.
+        """Populate ``operators`` with all ``<BONDOPERATOR>`` nodes in the
+        model.
 
         Each bond operator is stored as a string expression with source and
         target placeholders (``@src``, ``@dst``, etc.) ready for later
@@ -488,7 +487,8 @@ def model_from_alps_xml(filename=MODEL_LIB_FILE, name="spin", parms=None):
         }
 
     def process_hamiltonian(ham, parms):
-        """Parse a ``<HAMILTONIAN>`` node and return a :class:`ModelDescriptor`.
+        """Parse a ``<HAMILTONIAN>`` node and return a
+        :class:`ModelDescriptor`.
 
         Processes the associated ``<BASIS>``, then collects all site, bond,
         and loop terms and stores them under the ``"Hamiltonian"`` key of
@@ -563,9 +563,8 @@ def model_from_alps_xml(filename=MODEL_LIB_FILE, name="spin", parms=None):
 class ModelDescriptor:
     """Describes a quantum model, without a reference to a geometry.
 
-    A ``ModelDescriptor`` provides the required information to,
-    combined with a ``GraphDescriptor`` build a simulation of a quantum
-    system.
+    A ``ModelDescriptor`` provides the required information to, combined
+    with a ``GraphDescriptor`` build a simulation of a quantum system.
     """
 
     def __init__(

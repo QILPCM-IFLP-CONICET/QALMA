@@ -1,6 +1,5 @@
-"""Routines to compute scalar products of operators and related functions,
-like orthogonalize sets of operators.
-
+"""Routines to compute scalar products of operators and related functions, like
+orthogonalize sets of operators.
 """
 
 from qalma.scalarprod.basis import HierarchicalOperatorBasis, OperatorBasis

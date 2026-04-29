@@ -1,7 +1,6 @@
-"""Variational Mean-field
+"""Variational Mean-field.
 
 Build variational approximations to a Gibbsian state.
-
 """
 
 import logging
@@ -24,8 +23,8 @@ from qalma.settings import DEFAULT_MAX_NUMBER_OF_FIELDS, QALMA_TOLERANCE
 
 
 def compute_rel_entropy(state: ProductDensityOperator, ham: Operator) -> float:
-    """Compute the relative entropy relative to the gibbs state exp(-ham)
-    from `state`.
+    """Compute the relative entropy relative to the gibbs state exp(-ham) from
+    `state`.
 
     Parameters
     ----------
@@ -89,8 +88,10 @@ def mf_quadratic_form_exponential(
         return sigma_k.to_product_state()
 
     def test_state_re(coeffs: np.ndarray) -> float:
-        """Target function. Computes the relative entropy
-        relative to the gibbs state exp(-ham)
+        """Target function.
+
+        Computes the relative entropy relative to the gibbs state
+        exp(-ham)
         """
         test_state: ProductDensityOperator = build_test_state(coeffs)
         return compute_rel_entropy(test_state, hamiltonian)
@@ -184,8 +185,8 @@ def self_consistent_mf(
     max_steps: int = 10,
     callback: Optional[Callable] = None,
 ) -> Tuple[ProductDensityOperator, float]:
-    """Starting from `sigma_ref` compute an approximation of
-    exp(-ham) following a self-consistent algorithm.
+    """Starting from `sigma_ref` compute an approximation of exp(-ham)
+    following a self-consistent algorithm.
 
     Parameters
     ----------

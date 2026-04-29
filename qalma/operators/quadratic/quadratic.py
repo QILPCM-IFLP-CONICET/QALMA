@@ -1,15 +1,12 @@
-r"""QuadraticForm Operators
+r"""QuadraticForm Operators.
 
 Quadratic Form Operators provides a representation for quantum operators
 of the form
 
 Q= L + \sum_a w_a M_a ^2 + \delta Q
 
-with L and M_a one-body operators, w_a certain weights and
-\delta Q a *remainder* as a sum of n-body terms.
-
-
-
+with L and M_a one-body operators, w_a certain weights and \delta Q a
+*remainder* as a sum of n-body terms.
 """
 
 from numbers import Number
@@ -38,8 +35,7 @@ from qalma.settings import QALMA_TOLERANCE
 
 
 class QuadraticFormOperator(Operator):
-    """Represents a two-body operator of the form
-    sum_alpha w_alpha * Q_alpha^2
+    """Represents a two-body operator of the form sum_alpha w_alpha * Q_alpha^2
     with Q_alpha a local operator or a One body operator.
     """
 
@@ -236,7 +232,7 @@ class QuadraticFormOperator(Operator):
     def as_sum_of_products(
         self, simplify: bool = True
     ) -> ProductOperator | LocalOperator | SumOperator:
-        """Convert to a linear combination of two-body operators"""
+        """Convert to a linear combination of two-body operators."""
         isherm = self._isherm
         isdiag = self.isdiagonal
         if all(b_op.isherm for b_op in self.basis):
@@ -327,10 +323,10 @@ class QuadraticFormOperator(Operator):
     def isherm(self):
         """``True`` if the operator is Hermitian.
 
-        Checks that all weights are real and that the linear term and offset
-        (if present) are Hermitian. If inconclusive, converts to a sum of
-        products and delegates the check. The result is cached in
-        ``_isherm``.
+        Checks that all weights are real and that the linear term and
+        offset (if present) are Hermitian. If inconclusive, converts to
+        a sum of products and delegates the check. The result is cached
+        in ``_isherm``.
         """
         isherm = self._isherm
         if isherm is not None:
@@ -448,10 +444,10 @@ class QuadraticFormOperator(Operator):
         ).simplify()
 
     def reduce(self, sites: Iterable, state=None) -> Operator:
-        """Partial trace of the product of the operator and the density operator
-        acting on the subsystem which is traced out.
-        If the state is not provided, the result is the partial trace, divided
-        by the dimension of the subsystem traced out.
+        """Partial trace of the product of the operator and the density
+        operator acting on the subsystem which is traced out. If the state is
+        not provided, the result is the partial trace, divided by the dimension
+        of the subsystem traced out.
 
         Parameters
         ----------
@@ -472,6 +468,7 @@ class QuadraticFormOperator(Operator):
 
     def simplify(self):
         """Simplify the operator.
+
         Build a new representation with a smaller basis.
         """
         # pylint: disable=protected-access
@@ -507,8 +504,8 @@ class QuadraticFormOperator(Operator):
 
 
 def quadratic_form_expect(sq_op, state):
-    """Compute the expectation value of op, taking advantage
-    of its structure.
+    """Compute the expectation value of op, taking advantage of its
+    structure.
     """
     sq_op = sq_op.as_sum_of_products(False)
     return state.expect(sq_op)
@@ -517,8 +514,8 @@ def quadratic_form_expect(sq_op, state):
 def selfconsistent_meanfield_from_quadratic_form(
     quadratic_form: QuadraticFormOperator, max_it, logdict=None
 ):
-    """Build a self-consistent mean field approximation
-    to the gibbs state associated to the quadratic form.
+    """Build a self-consistent mean field approximation to the gibbs state
+    associated to the quadratic form.
     """
     from qalma.operators.states.gibbs import GibbsProductDensityOperator
 
@@ -565,7 +562,7 @@ def selfconsistent_meanfield_from_quadratic_form(
 
 
 def one_body_operator_hermitician_hs_sp(x_op: OneBodyOperator, y_op: OneBodyOperator):
-    """Hilbert Schmidt scalar product optimized for OneBodyOperators"""
+    """Hilbert Schmidt scalar product optimized for OneBodyOperators."""
     result = 0
     terms_x: Tuple[ScalarOperator | LocalOperator] = cast(
         Tuple[ScalarOperator | LocalOperator],
@@ -594,9 +591,10 @@ def simplify_quadratic_form(
     hermitic: bool = True,
     scalar_product: Callable = one_body_operator_hermitician_hs_sp,
 ):
-    """Takes a 2-body operator and returns lists weights, ops
-    such that the original operator is
-    sum(w * op**2 for w,op in zip(weights,ops))
+    """Takes a 2-body operator and returns lists weights, ops.
+
+    such that the original operator is sum(w * op**2 for w,op in
+    zip(weights,ops))
     """
     from .build import build_quadratic_form_from_operator
 

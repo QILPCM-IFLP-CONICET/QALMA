@@ -62,7 +62,7 @@ def series_evolution(
         return basis.operator_from_coefficients(t_coeffs)
 
     def compute_and_store_expect(_, rho_t):
-        """Compute expectation values and store them"""
+        """Compute expectation values and store them."""
         for key, val in rho_t.expect(e_ops_dict).items():
             expect_ops.setdefault(key, []).append(val)
 

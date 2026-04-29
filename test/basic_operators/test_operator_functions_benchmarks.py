@@ -1,5 +1,4 @@
-"""
-Tests and benchmarks for `gram_matrix`.
+"""Tests and benchmarks for `gram_matrix`.
 """
 
 import os
@@ -79,8 +78,7 @@ from qalma.operators.functions import commutator, fidelity
     ],
 )
 def test_iterated_commutator_benchmark(benchmark, case, op1, op2, deep):
-    """
-    Benchmark scalar products
+    """Benchmark scalar products
     """
 
     def impl():

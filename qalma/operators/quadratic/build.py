@@ -1,15 +1,12 @@
-r"""QuadraticForm Operators
+r"""QuadraticForm Operators.
 
 Quadratic Form Operators provides a representation for quantum operators
 of the form
 
 Q= L + \sum_a w_a M_a ^2 + \delta Q
 
-with L and M_a one-body operators, w_a certain weights and
-\delta Q a *remainder* as a sum of n-body terms.
-
-
-
+with L and M_a one-body operators, w_a certain weights and \delta Q a
+*remainder* as a sum of n-body terms.
 """
 
 # from numbers import Number
@@ -42,9 +39,8 @@ BlockTermsDict = Dict[Tuple[str, ...], List[Operator]]
 def build_local_basis(
     terms_by_block: BlockTermsDict,
 ) -> LocalBasisDict:
-    """Build a local basis of operators from
-    a list of two-body operators on each
-    pair of sites
+    """Build a local basis of operators from a list of two-body operators on
+    each pair of sites.
     """
     basis_by_site: Dict[str, List[Qobj]] = {}
     # First, collect the one-body factors
@@ -74,9 +70,9 @@ def build_local_basis(
 
 
 def orthonormal_hs_local_basis(local_generators_dict: LocalBasisDict) -> LocalBasisDict:
-    """From a set of operators associated to each site,
-    build an orthonormalized basis of hermitian operators
-    regarding the HS scalar product on each site.
+    """From a set of operators associated to each site, build an
+    orthonormalized basis of hermitian operators regarding the HS scalar
+    product on each site.
     """
     basis_dict: Dict[str, List[Qobj]] = {}
     for site, generators in local_generators_dict.items():
@@ -114,9 +110,8 @@ def orthonormal_hs_local_basis(local_generators_dict: LocalBasisDict) -> LocalBa
 
 
 def zero_expectation_value_basis(basis: LocalBasisDict, sigma_ref):
-    """Add an offset of each element of the local basis
-    in a way that each operator have zero mean regarding
-    sigma_ref
+    """Add an offset of each element of the local basis in a way that each
+    operator have zero mean regarding sigma_ref.
     """
     local_sigmas = sigma_ref.site_factors_qutip
 
@@ -361,7 +356,7 @@ def build_quadratic_form_from_operator(
 
 
 def basis_and_weights(qf_basis_list: List[List[Operator]]):
-    """Build basis and weights"""
+    """Build basis and weights."""
 
     def spectral_norm(ob_op: Operator) -> complex:
         if isinstance(ob_op, ScalarOperator):
@@ -391,7 +386,7 @@ def basis_and_weights(qf_basis_list: List[List[Operator]]):
 def decompose_matrix(
     qf_array: np.ndarray, local_basis, local_basis_offsets, system: SystemDescriptor
 ):
-    """Decompose the array into"""
+    """Decompose the array into."""
     e_vals, e_vecs = eigh(qf_array)
 
     return sorted(
@@ -421,7 +416,7 @@ def decompose_matrix(
 
 
 def force_hermitic_t(t):
-    """Force `t` to be hermitician"""
+    """Force `t` to be hermitician."""
     if t is None:
         return t
     if not t.isherm:
@@ -433,7 +428,7 @@ def force_hermitic_t(t):
 def build_positions_and_full_size(
     local_basis: LocalBasisDict,
 ) -> Tuple[Dict[str, int], int]:
-    """Build the positions"""
+    """Build the positions."""
     sizes: Dict[str, int] = {
         site: len(local_base) for site, local_base in local_basis.items()
     }
@@ -454,7 +449,9 @@ def fill_array_from_block(
     block: Tuple[str, ...],
     terms: List[Operator],
 ) -> None:
-    """Full result_array with the coefficients obtained from the local basis."""
+    """Full result_array with the coefficients obtained from the local
+    basis.
+    """
     site1, site2 = block
     position_1 = positions[site1]
     position_2 = positions[site2]

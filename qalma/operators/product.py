@@ -1,4 +1,4 @@
-"""Different representations for operators"""
+"""Different representations for operators."""
 
 import logging
 from functools import cached_property, reduce
@@ -156,16 +156,16 @@ class ProductOperator(Operator):
         """Tr(a @ b) without allocating an intermediate matrix.
 
         Equivalent to ``np.einsum('ij,ji->', a, b)`` but avoids einsum's
-        fixed Python overhead, which dominates for the small matrices (d=2,3,4)
-        typical in spin/boson lattice models.
+        fixed Python overhead, which dominates for the small matrices
+        (d=2,3,4) typical in spin/boson lattice models.
         """
         return complex((a * b.T).sum())
 
     def __bool__(self):
         """Return ``True`` if the operator is non-zero.
 
-        An operator is considered zero if its prefactor is zero or if any
-        local factor is the zero matrix.
+        An operator is considered zero if its prefactor is zero or if
+        any local factor is the zero matrix.
         """
         return bool(self.prefactor) and all(
             factor.any() for factor in self.site_factors.values()
@@ -208,7 +208,7 @@ class ProductOperator(Operator):
         return result
 
     def _repr_latex(self):
-        """Latex representation"""
+        """Latex representation."""
         factors_latex = []
         for site, qutip_op in self.site_factors_qutip.items():
             # pylint: disable=protected-access
@@ -307,7 +307,8 @@ class ProductOperator(Operator):
         return self
 
     def hermitician_part(self):
-        """Return the Hermitian part of the operator, :math:`(O + O^\\dagger)/2`.
+        """Return the Hermitian part of the operator, :math:`(O +
+        O^\\dagger)/2`.
 
         Returns
         -------
@@ -356,8 +357,8 @@ class ProductOperator(Operator):
     def isherm(self) -> bool:
         """``True`` if the operator is Hermitian.
 
-        An operator is Hermitian if all local factors are Hermitian and the
-        prefactor is real (up to ``QALMA_TOLERANCE``).
+        An operator is Hermitian if all local factors are Hermitian and
+        the prefactor is real (up to ``QALMA_TOLERANCE``).
         """
         # TODO: check if it worth to check that factors are not hermitician
         # up to a phase factor.
@@ -374,7 +375,8 @@ class ProductOperator(Operator):
     def isdiagonal(self) -> bool:
         """``True`` if the operator is diagonal in the site-local basis.
 
-        Returns ``True`` only when every local factor is a diagonal matrix.
+        Returns ``True`` only when every local factor is a diagonal
+        matrix.
         """
         for factor_op in self.site_factors.values():
             if not is_diagonal_op(factor_op):
@@ -497,10 +499,10 @@ class ProductOperator(Operator):
         )
 
     def reduce(self, sites: Iterable, state=None) -> Operator:
-        """Partial trace of the product of the operator and the density operator
-        acting on the subsystem which is traced out.
-        If the state is not provided, the result is the partial trace, divided
-        by the dimension of the subsystem traced out.
+        """Partial trace of the product of the operator and the density
+        operator acting on the subsystem which is traced out. If the state is
+        not provided, the result is the partial trace, divided by the dimension
+        of the subsystem traced out.
 
         Parameters
         ----------
@@ -758,7 +760,8 @@ class ScalarOperator(ProductOperator):
         )
 
     def acts_over(self) -> frozenset:
-        """Return the empty set — a scalar operator acts trivially on all sites.
+        """Return the empty set — a scalar operator acts trivially on all
+        sites.
 
         Returns
         -------
@@ -798,7 +801,9 @@ class ScalarOperator(ProductOperator):
 
     @property
     def isherm(self):
-        """``True`` if the scalar prefactor is real (up to ``QALMA_TOLERANCE``)."""
+        """``True`` if the scalar prefactor is real (up to
+        ``QALMA_TOLERANCE``).
+        """
         prefactor = self.prefactor
         return not (
             isinstance(prefactor, complex) and abs(prefactor.imag) > QALMA_TOLERANCE

@@ -1,4 +1,4 @@
-"""Solvers for the dynamics"""
+"""Solvers for the dynamics."""
 
 from qalma.evolution.heisenberg_solver import heisenberg_solve
 from qalma.evolution.hierarchical_basis import (

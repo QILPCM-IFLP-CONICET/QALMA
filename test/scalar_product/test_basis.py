@@ -37,8 +37,7 @@ for i in range(5):
 
 
 def check_basis_equivalence(basis1, basis2):
-    """
-    check if both basis are equivalent
+    """Check if both basis are equivalent
     """
     if len(basis1.operator_basis) != len(basis2.operator_basis):
         print(
@@ -80,8 +79,7 @@ def check_basis_consistency(basis):
 
 
 def check_gen_matrix(basis):
-    """
-    Check that the gen_matrix attribute
+    """Check that the gen_matrix attribute
     has the right values
     """
     operators = basis.operator_basis
@@ -122,8 +120,7 @@ def check_gen_matrix(basis):
 
 
 def compare_basis(b1, b2):
-    """
-    Compare the tensors of both basis
+    """Compare the tensors of both basis
     """
     print("--------- comparing basis ----------")
     print("b1:\n", b1)

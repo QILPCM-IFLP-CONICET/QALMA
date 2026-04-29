@@ -1,4 +1,4 @@
-"""Parallel routines"""
+"""Parallel routines."""
 
 import logging
 from functools import partial
@@ -66,6 +66,7 @@ def commutator_qalma_parallel(
     num_workers: int = MAX_WORKERS,
 ) -> Operator:
     """The commutator of two Operator objects `op_1` and  `op_2`.
+
     Parallel implementation.
     """
     system = op_1.system.union(op_2.system)
@@ -115,7 +116,7 @@ def commutator_qalma_parallel(
 
 
 def _project_monomial_worker(operator, nmax, sigma):
-    """Worker"""
+    """Worker."""
     return (
         DISPATCH_PROJECTION_METHOD_PARALLEL[type(operator)](operator, nmax, sigma)
         .simplify()
@@ -130,8 +131,8 @@ def parallel_process_non_dispatched_terms(
     use_threads=USE_THREADS,
     max_workers=MAX_WORKERS,
 ) -> Tuple[Operator, ...]:
-    """Project each operator in `terms` to the nmax subspace, relative
-    to the state `sigma`.
+    """Project each operator in `terms` to the nmax subspace, relative to the
+    state `sigma`.
     """
     system = terms[0].system
     non_dispatched_length = len(terms)

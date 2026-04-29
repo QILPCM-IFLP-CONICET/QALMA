@@ -22,7 +22,7 @@ from qalma.parallel import USE_PARALLEL, commutator_qalma_parallel
 def anticommutator(
     op_1: Union[Qobj, Operator], op_2: Union[Qobj, Operator]
 ) -> Union[Qobj, Operator]:
-    """Computes the anticommutator of two operators, defined as {op1, op2} = op1 * op2 + op2 * op1.
+    """Compute the anticommutator of two operators, defined as {op1, op2} = op1 * op2 + op2 * op1.
 
     Parameters
     ----------
@@ -45,7 +45,7 @@ def anticommutator(
 
 
 def anticommutator_qalma_serial(op_1: Operator, op_2: Operator) -> Operator:
-    """Computes the anticommutator of two operators, defined as {op1, op2} = op1 * op2 + op2 * op1.
+    """Compute the anticommutator of two operators, defined as {op1, op2} = op1 * op2 + op2 * op1.
 
     Parameters
     ----------
@@ -84,7 +84,7 @@ def anticommutator_qalma_serial(op_1: Operator, op_2: Operator) -> Operator:
 def commutator(
     op_1: Union[Operator, Qobj], op_2: Union[Operator, Qobj]
 ) -> Union[Qobj, Operator]:
-    """Commutator of two operators"""
+    """Commutator of two operators."""
     if isinstance(op_1, Qobj):
         if not isinstance(op_2, Qobj):
             op_2 = op_2.to_qutip()
@@ -98,6 +98,7 @@ def commutator(
 
 def commutator_qalma_serial(op_1: Operator, op_2: Operator) -> Operator:
     """The commutator of two Operator objects `op_1` and  `op_2`.
+
     Serial implementation.
     """
     system = op_1.system.union(op_2.system)

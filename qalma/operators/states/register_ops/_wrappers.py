@@ -28,7 +28,7 @@ def _wrapper_generic(rho, prefactor: complex = 1) -> Operator:
 
 
 def _wrapper_sum(op, prefactor: complex = 1) -> SumOperator:
-    """Convert a MixtureDensityOperator into a SumOperator"""
+    """Convert a MixtureDensityOperator into a SumOperator."""
     return SumOperator(
         tuple(
             _wrapper_generic(term, term.prefactor * prefactor)
@@ -43,7 +43,7 @@ def _wrapper_sum(op, prefactor: complex = 1) -> SumOperator:
 def _wrapper_qutip(
     qutip_density: QutipDensityOperator, prefactor: complex = 1
 ) -> QutipOperator:
-    """Discard the prefactor and build a new qutip operator"""
+    """Discard the prefactor and build a new qutip operator."""
     result = QutipOperator(
         qutip_density.operator,
         qutip_density.system,
@@ -56,9 +56,9 @@ def _wrapper_qutip(
 def _wrapper_product(
     y_op: ProductDensityOperator, prefactor: complex = 1
 ) -> ProductOperator:
-    """Convert a ProductDensityOperator into a ProductOperator
-    Missing factors in  ProductDensityOperator are not treated
-    as the identity operator, but as a prefactor 1/dim_local.
+    """Convert a ProductDensityOperator into a ProductOperator Missing factors
+    in  ProductDensityOperator are not treated as the identity operator, but as
+    a prefactor 1/dim_local.
     """
     return ProductOperator(y_op.site_factors, prefactor=prefactor, system=y_op.system)
 
@@ -66,14 +66,14 @@ def _wrapper_product(
 def _wrapper_gibbs(
     operator: GibbsDensityOperator, prefactor: complex = 1
 ) -> QutipOperator:
-    """Convert a GibbsOperator into a basic QutioOperator"""
+    """Convert a GibbsOperator into a basic QutioOperator."""
     return _wrapper_qutip(operator.to_qutip_operator(), prefactor)
 
 
 def _wrapper_gibbs_product(
     operator: GibbsProductDensityOperator, prefactor: complex = 1
 ) -> ProductOperator:
-    """Convert a GibbsOperator into a basic ProductOperator"""
+    """Convert a GibbsOperator into a basic ProductOperator."""
     return _wrapper_product(operator.to_product_state(), prefactor)
 
 

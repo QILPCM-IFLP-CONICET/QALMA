@@ -19,7 +19,6 @@ def build_hierarchical_basis(
     """Constructs a hierarchical basis of operators, formed from iterated
     commutators of a seed operator.
 
-
     Parameters
     ----------
     generator : Operator
@@ -156,8 +155,8 @@ def fn_hij_tensor_with_errors(
 
 
 def k_state_from_phi_basis(phi: NDArray, basis: List[Operator]) -> Operator:
-    """Constructs the operator K from a given set of coefficients and
-    basis operators.
+    """Constructs the operator K from a given set of coefficients and basis
+    operators.
 
     Parameters
     ----------

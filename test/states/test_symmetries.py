@@ -1,5 +1,4 @@
-"""
-Test functions that implement the mean field approximation.
+"""Test functions that implement the mean field approximation.
 """
 
 from test.helper import (

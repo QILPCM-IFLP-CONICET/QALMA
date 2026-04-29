@@ -8,10 +8,11 @@ from qalma.operators import ProductOperator
 
 def fidelity(rho1, rho2) -> float:
     """Compute the fidelity between two states.
-    Following qutip, we compute the  Bhattacharyya's
-    quantum coefficient (the square root of the fidelity), which
-    is the maximum  absolute value of the overlap between
-    all the possible purifications of the states.
+
+    Following qutip, we compute the  Bhattacharyya's quantum coefficient
+    (the square root of the fidelity), which is the maximum  absolute
+    value of the overlap between all the possible purifications of the
+    states.
     """
     if isinstance(rho1, ProductOperator):
         if isinstance(rho2, ProductOperator):
@@ -23,10 +24,11 @@ def fidelity(rho1, rho2) -> float:
 
 def fidelity_product_states(rho1: ProductOperator, rho2: ProductOperator) -> float:
     """Compute the fidelity between two product states.
-    Following qutip, we compute the  Bhattacharyya's
-    quantum coefficient (the square root of the fidelity), which
-    is the maximum  absolute value of the overlap between
-    all the possible purifications of the states.
+
+    Following qutip, we compute the  Bhattacharyya's quantum coefficient
+    (the square root of the fidelity), which is the maximum  absolute
+    value of the overlap between all the possible purifications of the
+    states.
     """
     radicand = rho1 * rho2
 

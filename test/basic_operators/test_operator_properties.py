@@ -1,5 +1,4 @@
-"""
-Basic unit test.
+"""Basic unit test.
 """
 
 from test.helper import (
@@ -27,8 +26,7 @@ OPGLOBAL = SZ_C + SX_ASYB_TIMES_2
 
 @pytest.mark.parametrize(["name", "value"], list(FULL_TEST_CASES.items()))
 def test_empty_op(name, value):
-    """
-    test for the function that checks if the operator
+    """Test for the function that checks if the operator
     is equivalent to 0.
     """
     if value is None:
@@ -39,11 +37,9 @@ def test_empty_op(name, value):
 
 
 def test_is_scalar_or_diagonal_operator():
-    """
-    test for the function that checks if the operator
+    """Test for the function that checks if the operator
     is equivalent to 0.
     """
-
     test_cases = {
         "zero": (0 * qutip.qeye(4), True, True),
         "identity": (qutip.qeye(4), True, True),
@@ -69,11 +65,9 @@ def test_is_scalar_or_diagonal_operator():
 
 @pytest.mark.parametrize(["name", "value"], list(FULL_TEST_CASES.items()))
 def test_trace(name, value):
-    """
-    test for the function that checks if the operator
+    """Test for the function that checks if the operator
     is equivalent to 0.
     """
-
     if value is None:
         return
     # TODO: check the trace of quadratic operators.
@@ -91,8 +85,7 @@ def test_trace(name, value):
 
 @pytest.mark.parametrize(["key", "observable"], list(OBSERVABLE_CASES.items()))
 def test_isherm_operator(key, observable):
-    """
-    Check if hermiticity is correctly determined
+    """Check if hermiticity is correctly determined
     """
 
     def do_test_case(name, observable):
@@ -121,8 +114,7 @@ def test_isherm_operator(key, observable):
 
 @pytest.mark.parametrize(["name", "operator"], list(FULL_TEST_CASES.items()))
 def test_isdiagonal(name, operator):
-    """test the isdiag property"""
-
+    """Test the isdiag property"""
     print("checking diagonality in ", name, type(operator))
     qobj = operator.to_qutip()
     data_qt = qobj.data
@@ -142,8 +134,7 @@ def test_isdiagonal(name, operator):
 
 @pytest.mark.parametrize(["key", "operator"], list(FULL_TEST_CASES.items()))
 def test_norm(key, operator):
-    """test the isdiag property"""
-
+    """Test the isdiag property"""
     print("checking norms for", key, type(operator))
     q_op = operator.to_qutip_operator()
     for ord in ["fro", "nuc", 2]:

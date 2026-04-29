@@ -28,7 +28,7 @@ from qalma.utils import eval_expr, find_ref, next_name
 
 
 def list_geometries_in_alps_xml(filename=LATTICE_LIB_FILE) -> Tuple[str, ...]:
-    """List all the graph names in a lattice.xml ALPS file"""
+    """List all the graph names in a lattice.xml ALPS file."""
     result = []
     xmltree = ET.parse(filename)
     lattices = xmltree.getroot()
@@ -49,8 +49,8 @@ def list_geometries_in_alps_xml(filename=LATTICE_LIB_FILE) -> Tuple[str, ...]:
 def graph_from_alps_xml(
     filename=LATTICE_LIB_FILE, name="rectangular lattice", parms=None
 ):
-    """Load from `filename` xml library a Graph or LatticeGraph of name
-    `name`, using `parms` as parameters.
+    """Load from `filename` xml library a Graph or LatticeGraph of name `name`,
+    using `parms` as parameters.
     """
     xmltree = ET.parse(filename)
     lattices = xmltree.getroot()
@@ -76,8 +76,9 @@ def graph_from_alps_xml(
         return cells
 
     def complete_periodic_or_none(coords, extents, bcs) -> Optional[List[int]]:
-        """If coords are out of the extents limits,
-        check if the site has a periodic image.
+        """If coords are out of the extents limits, check if the site has a
+        periodic image.
+
         If it has, return it. Otherwise return None.
         """
         new_coords = list(coords)
@@ -116,7 +117,7 @@ def graph_from_alps_xml(
         return None
 
     def process_graph(node, parms):
-        """Process a <GRAPH> node"""
+        """Process a <GRAPH> node."""
         g_items = node.attrib
         parms = process_parms(node, parms)
         num_vertices = int(g_items["vertices"])
@@ -153,7 +154,7 @@ def graph_from_alps_xml(
         )
 
     def process_lattice(node, parms):
-        """Process a <LATTICE> node"""
+        """Process a <LATTICE> node."""
         parms = process_parms(node, parms)
         lattice = {"basis": [], "reciprocal_basis": []}
         lattice["dimension"] = int(node.attrib.get("dimension", 0))
@@ -176,7 +177,7 @@ def graph_from_alps_xml(
         return lattice
 
     def process_latticegraph(node, parms):
-        """Process a <LATTICEGRAPH> node"""
+        """Process a <LATTICEGRAPH> node."""
         parms = process_parms(node, parms)
         unitcell = []
         vertices = {}
@@ -301,7 +302,7 @@ def graph_from_alps_xml(
         )
 
     def process_parms(node, parms):
-        """Process the <PARAMETER>s nodes"""
+        """Process the <PARAMETER>s nodes."""
         default_parms = {}
         for parameter in node.findall("./PARAMETER"):
             key_vals = parameter.attrib
@@ -310,7 +311,8 @@ def graph_from_alps_xml(
         return default_parms
 
     def process_edge_unitcell(e_desc, _parms, dimension):
-        """Parse an ``<EDGE>`` node from a ``<UNITCELL>`` into an edge descriptor.
+        """Parse an ``<EDGE>`` node from a ``<UNITCELL>`` into an edge
+        descriptor.
 
         Parameters
         ----------
@@ -386,7 +388,8 @@ def graph_from_alps_xml(
         return {"type": l_type, "nodes": nodes}
 
     def process_loop_unitcell(l_desc, _parms, dimension):
-        """Parse a ``<LOOP>`` node from a ``<UNITCELL>`` into a loop descriptor.
+        """Parse a ``<LOOP>`` node from a ``<UNITCELL>`` into a loop
+        descriptor.
 
         Like :func:`process_loop_graph` but also extracts per-node unit-cell
         offsets and pads them to ``dimension`` components.
@@ -471,7 +474,7 @@ def graph_from_alps_xml(
         return unitcell
 
     def process_vertex(node, _parms):
-        """Process a <VERTEX> node"""
+        """Process a <VERTEX> node."""
         v_attributes = node.attrib
         v_attributes["type"] = v_attributes.get("type", "0")
         v_attributes["coords"] = None
@@ -493,7 +496,7 @@ def graph_from_alps_xml(
 
 
 class GraphDescriptor:
-    """A description of a Graph"""
+    """A description of a Graph."""
 
     name: str
     nodes: dict
@@ -567,7 +570,7 @@ class GraphDescriptor:
         return True
 
     def complete_coordiantes(self):
-        """Add coordinates to nodes without specified coordinates"""
+        """Add coordinates to nodes without specified coordinates."""
         nodes = self.nodes
         lattice = self.lattice
         # TODO: it would be great to use a better algorithm to
@@ -613,7 +616,7 @@ class GraphDescriptor:
         return result
 
     def draw(self, ax_mpl, node_spec=None, edge_spec=None):
-        """Draw the graph over a matplotlib axis"""
+        """Draw the graph over a matplotlib axis."""
         coords = {}
 
         if node_spec is None:
@@ -657,7 +660,7 @@ class GraphDescriptor:
                 ax_mpl.plot(*[[u, v] for u, v in zip(src, tgt)], **spec)
 
     def subgraph(self, node_set: frozenset, name: str = ""):
-        """A subgraph containing the specified nodes"""
+        """A subgraph containing the specified nodes."""
         assert isinstance(node_set, frozenset)
         subgraph = self.subgraphs.get(node_set, None)
         if subgraph is not None:
@@ -691,9 +694,7 @@ class GraphDescriptor:
         return self.union(other)
 
     def contains(self, other):
-        """Return True if all the sites in other
-        belongs to the graph.
-        """
+        """Return True if all the sites in other belongs to the graph."""
         if self is other:
             return True
         other_nodes = other.nodes
@@ -716,7 +717,7 @@ class GraphDescriptor:
         return False
 
     def union(self, other):
-        """Join two graphics"""
+        """Join two graphics."""
         if self is other or other is None:
             return self
         other_nodes = other.nodes

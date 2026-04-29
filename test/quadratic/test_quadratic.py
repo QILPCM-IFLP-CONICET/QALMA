@@ -1,5 +1,4 @@
-"""
-Basic unit test.
+"""Basic unit test.
 """
 
 from test.helper import (
@@ -38,8 +37,7 @@ QUADRATIC_OPERATORS = {
 
 @pytest.mark.parametrize(["name"], list((name,) for name in QUADRATIC_OPERATORS))
 def test_simplify_quadratic_form(name):
-    """
-    Try to convert all the test cases into
+    """Try to convert all the test cases into
     quadratic forms, and check if simplification
     works in all the cases.
     """
@@ -62,7 +60,6 @@ def test_simplify_quadratic_form(name):
 @pytest.mark.parametrize(["name"], list((name,) for name in QUADRATIC_OPERATORS))
 def test_flat_quadratic(name):
     """Test flat"""
-
     operator = QUADRATIC_OPERATORS[name]
     print("\n *******\n\n name: ", name)
     qutip_operator = operator.to_qutip().tidyup()

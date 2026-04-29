@@ -100,9 +100,11 @@ def draw_operator(op, axis: PLTAxes) -> PLTAxes:
 
 
 def eval_expr(expr: str, parms: dict):
-    """Evaluate the expression `expr` replacing the variables defined in `parms`.
-    expr can include python`s arithmetic expressions, and some elementary
-    functions.
+    """Evaluate the expression `expr` replacing the variables defined in
+    `parms`.
+
+    expr can include python`s arithmetic expressions, and some
+    elementary functions.
     """
     # TODO: Improve the workflow in a way that numpy functions
     # and constants be loaded just if they are needed.
@@ -170,7 +172,7 @@ def eval_expr(expr: str, parms: dict):
 
 
 def find_ref(node, root):
-    """Find a node in the root
+    """Find a node in the root.
 
     Parameters
     ----------
@@ -196,8 +198,8 @@ def find_ref(node, root):
 
 
 def operator_to_wolfram(operator) -> str:
-    """Produce a string with a Wolfram Mathematica expression
-    representing the operator.
+    """Produce a string with a Wolfram Mathematica expression representing the
+    operator.
     """
     # pylint: disable=import-outside-toplevel
     from qalma.operators.arithmetic import SumOperator
@@ -276,7 +278,7 @@ def operator_to_wolfram(operator) -> str:
 
 
 def matrix_to_wolfram(matr: np.ndarray):
-    """Produce a string representing the data in the matrix"""
+    """Produce a string representing the data in the matrix."""
     assert isinstance(
         matr, (np.ndarray, complex, float)
     ), f"{type(matr)} is not ndarray or number"
@@ -306,9 +308,7 @@ def matrix_to_wolfram(matr: np.ndarray):
 
 
 def next_name(dictionary: dict, s: int = 1, prefix: str = "") -> str:
-    """Produces a new key for the `dictionary` with a
-    `prefix`
-    """
+    """Produces a new key for the `dictionary` with a `prefix`"""
     name = f"{prefix}{s}"
     if name in dictionary:
         return next_name(dictionary, s + 1, prefix)
@@ -316,9 +316,8 @@ def next_name(dictionary: dict, s: int = 1, prefix: str = "") -> str:
 
 
 def replace_variable_type(val, e_type):
-    """If `val` is a str representing an unevaluated
-    expression, replace occurrences of `#` by
-    `e_type`.
+    """If `val` is a str representing an unevaluated expression, replace
+    occurrences of `#` by `e_type`.
     """
     if isinstance(val, str):
         return val.replace("#", f"{e_type}")

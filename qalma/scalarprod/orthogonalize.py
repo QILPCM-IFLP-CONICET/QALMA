@@ -1,4 +1,6 @@
-"""Routines to compute generalized scalar products over the algebra of operators."""
+"""Routines to compute generalized scalar products over the algebra of
+operators.
+"""
 
 # from datetime import datetime
 from typing import Callable
@@ -12,9 +14,9 @@ from qalma.scalarprod.utils import find_linearly_independent_rows
 
 
 def build_hermitician_basis(basis, sp=lambda x, y: ((x.dag() * y).tr())):
-    """Build a basis of independent hermitician operators
-    from a set of operators, and the coefficients for the expansion
-    of basis in terms of the new orthogonal basis.
+    """Build a basis of independent hermitician operators from a set of
+    operators, and the coefficients for the expansion of basis in terms of the
+    new orthogonal basis.
     """
     # First, find a basis of hermitician operators that generates
     # basis.
@@ -174,8 +176,7 @@ def orthogonalize_basis_gs(basis, sp: Callable, tol: float = 1.0e-5):
 
 def orthogonalize_basis_cholesky(basis, sp: Callable, tol: float = 1.0e-5):
     """Orthogonalizes a given basis of operators using a scalar product and the
-    Cholesky decomposition
-    method.
+    Cholesky decomposition method.
 
     Parameters
     ----------

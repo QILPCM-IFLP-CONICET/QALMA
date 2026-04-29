@@ -1,5 +1,4 @@
-"""
-Basic unit test.
+"""Basic unit test.
 """
 
 from test.helper import (
@@ -12,8 +11,7 @@ import pytest
 
 @pytest.mark.parametrize(["name"], [(name,) for name in FULL_TEST_CASES])
 def test_hermitician_part(name):
-    """
-    test for the function that checks if the operator
+    """Test for the function that checks if the operator
     is equivalent to 0.
     """
     operator = FULL_TEST_CASES[name]

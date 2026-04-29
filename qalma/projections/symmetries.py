@@ -10,6 +10,7 @@ from qalma.qutip_tools.tools import reduce_to_proper_spaces
 def project_parity_like(state, op_name: str):
     """Build a (op_name)-parity symmetry restored state from a broken symmetry
     state.
+
     op_name must be the name of a local operator, with spectrum +/-1
     """
     if isinstance(state, ScalarOperator):

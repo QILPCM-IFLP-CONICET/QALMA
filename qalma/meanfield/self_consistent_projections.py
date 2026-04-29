@@ -1,4 +1,4 @@
-"""Module that implements a meanfield approximation of a Gibbsian state"""
+"""Module that implements a meanfield approximation of a Gibbsian state."""
 
 import logging
 from typing import Optional, Tuple, cast
@@ -21,9 +21,8 @@ def self_consistent_project_meanfield(
     tol: float = 1e-12,
     proj_func: Optional[ProjectingOperatorFunction] = n_body_projection,
 ) -> Tuple[Operator, DensityOperatorProtocol]:
-    """Iteratively computes the one-body component from a QuTip operator and state
-    using a self-consistent Mean-Field Projection (MF).
-
+    """Iteratively computes the one-body component from a QuTip operator and
+    state using a self-consistent Mean-Field Projection (MF).
 
     Parameters
     ----------

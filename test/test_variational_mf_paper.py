@@ -1,5 +1,4 @@
-"""
-Benchmarks for the variational mean-field approximation — paper figures.
+"""Benchmarks for the variational mean-field approximation — paper figures.
 
 Two families of tests:
 
@@ -46,8 +45,7 @@ from qalma.operators.states import ProductDensityOperator
 
 
 def build_nn_chain(L: int, parms: dict) -> Tuple[SystemDescriptor, object]:
-    """
-    Spin-1/2 open chain with nearest-neighbor bonds only.
+    """Spin-1/2 open chain with nearest-neighbor bonds only.
     Uses 'open chain' latticegraph (simple1d unit cell, bond type 0).
 
     Parameters
@@ -57,6 +55,7 @@ def build_nn_chain(L: int, parms: dict) -> Tuple[SystemDescriptor, object]:
     parms : dict
         Model parameters. Keys: Jz, Jxy, Gamma, h, etc.
         Bond type 0 maps to J, Jz, Jxy in the 'spin' Hamiltonian.
+
     """
     graph = graph_from_alps_xml(name="open chain lattice", parms={"L": L, "a": 1})
     model = model_from_alps_xml(name="spin")
@@ -66,8 +65,7 @@ def build_nn_chain(L: int, parms: dict) -> Tuple[SystemDescriptor, object]:
 
 
 def build_j1j2_chain(L: int, J1: float, J2: float) -> Tuple[SystemDescriptor, object]:
-    """
-    Spin-1/2 J1-J2 open chain.
+    """Spin-1/2 J1-J2 open chain.
     Uses 'nnn open chain lattice' (complex1d unit cell), which has:
       - bond type 0: nearest neighbors  (J1)
       - bond type 1: next-nearest neighbors (J2)
@@ -80,6 +78,7 @@ def build_j1j2_chain(L: int, J1: float, J2: float) -> Tuple[SystemDescriptor, ob
         Nearest-neighbor coupling. Negative = ferromagnetic.
     J2 : float
         Next-nearest-neighbor coupling.
+
     """
     parms = {
         "Jz": J1,
@@ -102,8 +101,7 @@ def build_j1j2_chain(L: int, J1: float, J2: float) -> Tuple[SystemDescriptor, ob
 
 
 def exact_free_energy(ham, system, beta: float) -> float:
-    """
-    Exact Helmholtz free energy F = -1/beta * log Z.
+    """Exact Helmholtz free energy F = -1/beta * log Z.
     Only feasible for L <= 10 (Hilbert space dim = 2^L).
     """
     sites = tuple(sorted(system.sites.keys()))
@@ -115,8 +113,7 @@ def exact_free_energy(ham, system, beta: float) -> float:
 
 
 def s_rel(sigma, ham, beta: float) -> float:
-    """
-    S_rel(sigma || e^{-beta H}) = Tr[sigma(log sigma + beta H)] + log Z.
+    """S_rel(sigma || e^{-beta H}) = Tr[sigma(log sigma + beta H)] + log Z.
 
     compute_rel_entropy returns Tr[sigma(log sigma + K)] with K = beta*H,
     which equals S_rel up to the constant log Z — sufficient for comparing
@@ -174,8 +171,7 @@ EXACT_CASES = [
 @pytest.mark.parametrize("L", [4, 6, 8])
 @pytest.mark.parametrize("beta", [0.5, 1.0, 2.0])
 def test_exact_validation(label, parms, L_list, beta_list, L, beta):
-    """
-    Variational MF must improve over the fully mixed state.
+    """Variational MF must improve over the fully mixed state.
     The mixed state is the trivial upper bound on S_rel.
     """
     if L not in L_list or beta not in beta_list:
@@ -236,8 +232,7 @@ def run_numfields_sweep(
     beta: float,
     numfields_list: List[int] = NUMFIELDS_LIST,
 ) -> List[dict]:
-    """
-    Sweep numfields for a J1-J2 chain, using warm start between runs.
+    """Sweep numfields for a J1-J2 chain, using warm start between runs.
     Returns list of result dicts suitable for JSON serialization.
     """
     J2 = J2_ratio * abs(J1)
@@ -292,8 +287,7 @@ def run_numfields_sweep(
 @pytest.mark.parametrize("L", [8, 12, 16])
 @pytest.mark.parametrize("beta", [1.0, 2.0, 5.0])
 def test_numfields_convergence(J2_ratio, label, L, beta):
-    """
-    S_rel must be non-increasing as numfields grows.
+    """S_rel must be non-increasing as numfields grows.
     Tolerance of 1e-4 allows for numerical noise in the optimizer.
     """
     print(f"\n--- {label}  L={L}  beta={beta} ---")

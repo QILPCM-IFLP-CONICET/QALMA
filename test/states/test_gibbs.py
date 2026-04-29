@@ -1,5 +1,4 @@
-"""
-Basic unit test for states.
+"""Basic unit test for states.
 """
 
 from test.helper import (
@@ -46,7 +45,6 @@ SZ_01 = LARGE_SYSTEM.site_operator("Sz", "1[0, 1]")
 
 def do_test_expect(rho, sigma_dict):
     """Compare expectation values"""
-
     for obs_name, obs_op in OPERATOR_TYPE_CASES.items():
         rho_obs_expect = rho.expect(obs_op)
         for name, sigma in sigma_dict.items():
@@ -70,9 +68,7 @@ def do_test_expect(rho, sigma_dict):
 
 
 def do_test_instance(rho) -> None:
-    """
-
-    Parameters
+    """Parameters
     ----------
     rho : GibbsDensityOperator |GibbsProductDensityOperator
         the state over which implement the tests.

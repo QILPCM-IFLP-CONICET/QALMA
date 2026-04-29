@@ -154,7 +154,7 @@ class SumOperator(Operator):
         return "(\n" + "\n  +".join(repr(t) for t in self.terms) + "\n)"
 
     def _repr_latex_(self):
-        """LaTeX Representation"""
+        """LaTeX Representation."""
         # pylint: disable=protected-access
         terms = self.terms
         if len(terms) > 6:
@@ -276,14 +276,15 @@ class SumOperator(Operator):
         """``True`` if the operator is Hermitian.
 
         First checks each term individually. If all terms are Hermitian,
-        returns ``True``. Otherwise applies a more aggressive test: simplifies
-        the anti-Hermitian part and checks whether its Frobenius norm vanishes
-        (up to ``QALMA_TOLERANCE``). The result is cached in ``_isherm``.
+        returns ``True``. Otherwise applies a more aggressive test:
+        simplifies the anti-Hermitian part and checks whether its
+        Frobenius norm vanishes (up to ``QALMA_TOLERANCE``). The result
+        is cached in ``_isherm``.
         """
         isherm = self._isherm
 
         def aggresive_hermitician_test(non_hermitian_tuple: Tuple[Operator, ...]):
-            """Determine if the antihermitician part is zero"""
+            """Determine if the antihermitician part is zero."""
             # Here we assume that after simplify, the operator is a single term
             # (not a SumOperator), a OneBodyOperator, or a sum of a one-body operator
             # and terms acting over an specific block.
@@ -325,8 +326,8 @@ class SumOperator(Operator):
     def isdiagonal(self) -> bool:
         """``True`` if all terms are diagonal in the site-local basis.
 
-        Simplifies the operator first if not already simplified, then checks
-        each term. The result is cached in ``_isdiagonal``.
+        Simplifies the operator first if not already simplified, then
+        checks each term. The result is cached in ``_isdiagonal``.
         """
         if self._isdiagonal is None:
             simplified = self if self._simplified else self.simplify()
@@ -707,7 +708,8 @@ class OneBodyOperator(SumOperator):
 
     @staticmethod
     def _simplify_terms(terms, system):
-        """Group terms by subsystem and combine local operators on the same site.
+        """Group terms by subsystem and combine local operators on the same
+        site.
 
         Scalar terms are summed into a single :class:`ScalarOperator`.
         :class:`LocalOperator` terms on the same site are added together.

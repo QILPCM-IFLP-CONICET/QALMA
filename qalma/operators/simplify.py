@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""Functions to simplify sums of operators"""
+"""Functions to simplify sums of operators."""
 
 import logging
 from typing import Callable, Dict, List, Optional, Sequence, cast
@@ -45,7 +45,6 @@ def sum_operator_sequence(
     Returns
     -------
 
-
     """
     if not seq:
         return ScalarOperator(0, system)
@@ -55,9 +54,8 @@ def sum_operator_sequence(
 
 
 def collect_nbody_terms(operator: Operator) -> dict:
-    """Build a dictionary whose keys are subsystems and
-    the values are lists of operators acting exactly
-    over the subsystem.
+    """Build a dictionary whose keys are subsystems and the values are lists of
+    operators acting exactly over the subsystem.
 
     Parameters
     ----------
@@ -68,7 +66,6 @@ def collect_nbody_terms(operator: Operator) -> dict:
 
     Returns
     -------
-
 
     """
     full_acts_over: frozenset
@@ -249,8 +246,8 @@ def group_terms_by_blocks(operator: Operator, fn: Optional[Callable] = None):
 
 
 def simplify_qutip_sums(sum_operator: SumOperator) -> Operator:
-    """Collect terms acting on the same block of sites,
-    and reduce it to a single qutip operator.
+    """Collect terms acting on the same block of sites, and reduce it to a
+    single qutip operator.
 
     Parameters
     ----------
@@ -261,7 +258,6 @@ def simplify_qutip_sums(sum_operator: SumOperator) -> Operator:
 
     Returns
     -------
-
 
     """
     if not isinstance(sum_operator, SumOperator):

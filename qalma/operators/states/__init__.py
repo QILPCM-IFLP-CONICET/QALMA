@@ -1,4 +1,4 @@
-"""Operator State package
+"""Operator State package.
 
 This package contains classes and functions to represent and manipulate
 quantum states.

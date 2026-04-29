@@ -1,4 +1,6 @@
-"""Routines to build the Gram's matrix associated to a scalar product and a basis."""
+"""Routines to build the Gram's matrix associated to a scalar product and a
+basis.
+"""
 
 import logging
 from typing import Callable, Tuple
@@ -32,9 +34,8 @@ else:
 
 # ### Generic functions depending on the SP ###
 def _sp_worker(pair, basis, sp):
-    """Compute the real-valued part of the scalar product between
-    two SumOperators belonging to some basis, provided these
-    are hermitian.
+    """Compute the real-valued part of the scalar product between two
+    SumOperators belonging to some basis, provided these are hermitian.
 
     Parameters
     ----------
@@ -62,7 +63,8 @@ def _sp_worker(pair, basis, sp):
 
 
 def gram_matrix_parallel(basis, sp, num_workers=MAX_WORKERS, use_threads=USE_THREADS):
-    r"""Compute the Gram matrix of a set of operators in parallel using a scalar product.
+    r"""Compute the Gram matrix of a set of operators in parallel using a scalar
+    product.
 
     This function evaluates all inner products $\langle b_i | b_j \rangle$
     for ``i, j`` in ``basis``

@@ -1,8 +1,7 @@
 """Arithmetic operations with states.
 
-Essentially, arithmetic operations with states involves just mixing of operators,
-implemented though the class MixtureDensityOperator.
-
+Essentially, arithmetic operations with states involves just mixing of
+operators, implemented though the class MixtureDensityOperator.
 """
 
 import logging
@@ -26,7 +25,7 @@ from qalma.operators.states.basic import (
 
 
 class MixtureDensityOperator(DensityOperatorMixin, SumOperator):
-    """A mixture of density operators"""
+    """A mixture of density operators."""
 
     terms: Tuple[Operator]
 
@@ -49,8 +48,8 @@ class MixtureDensityOperator(DensityOperatorMixin, SumOperator):
         return SumOperator(new_terms, self.system, isherm=True)
 
     def acts_over(self) -> frozenset:
-        """Return a set with the name of the
-        sites where the operator nontrivially acts
+        """Return a set with the name of the sites where the operator
+        nontrivially acts.
         """
         sites: Set[str] = set()
         for term in self.terms:
@@ -83,7 +82,9 @@ class MixtureDensityOperator(DensityOperatorMixin, SumOperator):
         """
 
         def compute_results(curr_obs, sub_averages, prefactors):
-            """Combine per-component averages into the mixture expectation value."""
+            """Combine per-component averages into the mixture expectation
+            value.
+            """
             if isinstance(curr_obs, dict):
                 result = {}
                 for key in curr_obs:
@@ -127,7 +128,8 @@ class MixtureDensityOperator(DensityOperatorMixin, SumOperator):
         return MixtureDensityOperator(new_terms, subsystem)
 
     def simplify(self):
-        """Return ``self`` — mixture density operators are already in simplified form.
+        """Return ``self`` — mixture density operators are already in
+        simplified form.
 
         Returns
         -------
@@ -143,7 +145,7 @@ class MixtureDensityOperator(DensityOperatorMixin, SumOperator):
         self._set_system_(self.system)
 
     def to_qutip(self, block: Optional[Tuple[str, ...]] = None):
-        """Produce a qutip compatible object"""
+        """Produce a qutip compatible object."""
         if len(self.terms) == 0:
             return ScalarOperator(0, self.system).to_qutip()
 

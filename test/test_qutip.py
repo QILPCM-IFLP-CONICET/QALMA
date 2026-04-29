@@ -1,5 +1,4 @@
-"""
-Basic unit test.
+"""Basic unit test.
 """
 
 import numpy as np
@@ -271,8 +270,7 @@ def test_qutip_properties(case, data):
     ["name", "qutip_operator"], list(QUTIP_DECOMPOSITION_TEST_CASES.items())
 )
 def test_schmidt_dec_first_rest_qutip_operator(name, qutip_operator):
-    """
-    test decomposition of qutip operators
+    """Test decomposition of qutip operators
     as sums of product operators
     """
     print("decomposing ", name)
@@ -301,8 +299,7 @@ def test_schmidt_dec_first_rest_qutip_operator(name, qutip_operator):
     ["name", "qutip_operator"], list(QUTIP_DECOMPOSITION_TEST_CASES.items())
 )
 def test_schmidt_dec_rest_last_qutip_operator(name, qutip_operator):
-    """
-    test decomposition of qutip operators
+    """Test decomposition of qutip operators
     as sums of product operators
     """
     print("decomposing ", name)
@@ -330,8 +327,7 @@ def test_schmidt_dec_rest_last_qutip_operator(name, qutip_operator):
     ["name", "qutip_operator"], list(QUTIP_DECOMPOSITION_TEST_CASES.items())
 )
 def test_decompose_qutip_operators(name, qutip_operator):
-    """
-    test decomposition of qutip operators
+    """Test decomposition of qutip operators
     as sums of product operators
     """
     print("decomposing ", name)
@@ -464,8 +460,7 @@ def test_qutip_operators(
 
 @pytest.mark.parametrize(["name", "operator_case"], list(OPERATOR_TYPE_CASES.items()))
 def test_as_sum_of_products(name, operator_case):
-    """
-    Convert qutip operators into product
+    """Convert qutip operators into product
     operators back and forward
     """
     print("testing QutipOperator.as_sum_of_products")
@@ -558,8 +553,7 @@ def test_to_qutip_operator():
 
 
 def test_reduce_to_proper_spaces():
-    """
-    Test the projections to proper spaces.
+    """Test the projections to proper spaces.
     """
     observable_x = tensor(sigmax(), ID_2_QUTIP) + tensor(ID_2_QUTIP, sigmax())
     observable_z = tensor(sigmaz(), ID_2_QUTIP) + tensor(ID_2_QUTIP, sigmaz())

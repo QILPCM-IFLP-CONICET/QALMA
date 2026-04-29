@@ -1,4 +1,4 @@
-"""Utility functions for qalma.operators.states"""
+"""Utility functions for qalma.operators.states."""
 
 from typing import Any, Dict, Iterable, List, Optional, Set, Tuple, Union, cast
 
@@ -53,9 +53,7 @@ COMPUTE_EXPECTATION_VALUES_CALLBACKS = {
 
 
 def acts_over_order(elem):
-    """Return the number of sites where the
-    operator `elem` acts over.
-    """
+    """Return the number of sites where the operator `elem` acts over."""
     elem_acts_over = elem.acts_over()
     if elem_acts_over is None:
         return 0
@@ -66,8 +64,8 @@ def compute_expectation_values(
     obs: Operator | Iterable[Operator] | Dict[Any, Operator],
     state: Optional[DensityOperatorProtocol] = None,
 ):
-    """Compute the expectation value of an operator or operators in an iterable object,
-    relative to the state `state`.
+    """Compute the expectation value of an operator or operators in an iterable
+    object, relative to the state `state`.
     """
     if state is None:
         callback = COMPUTE_EXPECTATION_VALUES_CALLBACKS.get(type(obs), None)
@@ -90,8 +88,8 @@ compute_operator_expectation_value = compute_expectation_values
 
 
 def collect_blocks_for_expect(obs_objs: Union[Operator, Iterable]) -> List[frozenset]:
-    """Find the subsystems required to compute the expectation values
-    of obs_objs.
+    """Find the subsystems required to compute the expectation values of
+    obs_objs.
 
     Parameters
     ----------
@@ -128,8 +126,8 @@ def collect_local_states(
     global_state,
     _local_states: Optional[Dict[frozenset, DensityOperatorProtocol]] = None,
 ) -> Dict[frozenset, DensityOperatorProtocol]:
-    """Build a dict of local states required to compute the expectation values of the observable
-    or the observables contained in obs_objs.
+    """Build a dict of local states required to compute the expectation values
+    of the observable or the observables contained in obs_objs.
 
     Parameters
     ----------

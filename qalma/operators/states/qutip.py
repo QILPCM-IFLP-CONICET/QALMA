@@ -20,7 +20,7 @@ from qalma.operators.states.basic import (
 
 
 class QutipDensityOperator(DensityOperatorMixin, QutipOperator):
-    """Qutip representation of a density operator"""
+    """Qutip representation of a density operator."""
 
     def __init__(
         self,
@@ -56,8 +56,8 @@ class QutipDensityOperator(DensityOperatorMixin, QutipOperator):
         return QutipOperator(self.operator, self.system, self.site_names, -1)
 
     def join_states(self, other: DensityOperatorProtocol | complex):
-        """Combine the states of two disjoint systems to produce the state
-        of the union of both systems.
+        """Combine the states of two disjoint systems to produce the state of
+        the union of both systems.
         """
         if isinstance(other, Real):
             if other < 0:
@@ -126,7 +126,7 @@ class QutipDensityOperator(DensityOperatorMixin, QutipOperator):
         return QutipOperator(log_op, self.system, self.site_names)
 
     def normalize(self):
-        """Normalize the operator"""
+        """Normalize the operator."""
         if self._normalized:
             return self
         qoperator = self.operator

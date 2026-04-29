@@ -27,8 +27,7 @@ from qalma.qutip_tools.tools import (
 
 
 class QutipOperator(Operator):
-    """Represents a Qutip operator that acts over a block
-    of sites of a system.
+    """Represents a Qutip operator that acts over a block of sites of a system.
 
     If two QutipOperator are combined in an arithmetic
     operation, the result is QutipOperator acting on
@@ -110,12 +109,11 @@ class QutipOperator(Operator):
         )
 
     def acts_over(self) -> frozenset:
-        """List the sites where the operator acts over"""
+        """List the sites where the operator acts over."""
         return frozenset(self.site_names.keys())
 
     def as_sum_of_products(self):
-        """Decompose the operator as a
-        sum of product operators
+        """Decompose the operator as a sum of product operators.
 
         Parameters
         ----------
@@ -156,7 +154,7 @@ class QutipOperator(Operator):
         return SumOperator(terms, self.system, isherm=isherm)
 
     def dag(self):
-        """Hermitician adjoint operator"""
+        """Hermitician adjoint operator."""
         prefactor = self.prefactor
         operator = self.operator
         if isinstance(prefactor, complex):
@@ -176,7 +174,7 @@ class QutipOperator(Operator):
         return self.operator.eigenenergies() * self.prefactor
 
     def eigenstates(self):
-        """Eigendecomposition"""
+        """Eigendecomposition."""
         evals, evecs = self.operator.eigenstates()
         return evals * self.prefactor, evecs
 
@@ -194,7 +192,7 @@ class QutipOperator(Operator):
         return QutipOperator(qop, self.system, self.site_names, prefactor)
 
     def inv(self):
-        """The inverse of the operator"""
+        """The inverse of the operator."""
         operator = self.operator
         return QutipOperator(
             operator.inv(),
@@ -217,16 +215,16 @@ class QutipOperator(Operator):
 
     @property
     def isdiagonal(self) -> bool:
-        """Check if the operator is diagonal"""
+        """Check if the operator is diagonal."""
         return is_diagonal_op(self.operator)
 
     @property
     def is_zero(self) -> bool:
-        """Check if the matrix is zero"""
+        """Check if the matrix is zero."""
         return not (self.prefactor) or empty_op(self.operator)
 
     def logm(self):
-        """Logarithm of the operator"""
+        """Logarithm of the operator."""
         operator = self.operator
         evals, evecs = operator.eigenstates()
         evals = evals * self.prefactor
@@ -303,10 +301,10 @@ class QutipOperator(Operator):
         )
 
     def reduce(self, sites: Iterable, state=None) -> Operator:
-        """Partial trace of the product of the operator and the density operator
-        acting on the subsystem which is traced out.
-        If the state is not provided, the result is the partial trace, divided
-        by the dimension of the subsystem traced out.
+        """Partial trace of the product of the operator and the density
+        operator acting on the subsystem which is traced out. If the state is
+        not provided, the result is the partial trace, divided by the dimension
+        of the subsystem traced out.
 
         Parameters
         ----------
@@ -373,7 +371,7 @@ class QutipOperator(Operator):
         )
 
     def simplify(self):
-        """Simplify the operator"""
+        """Simplify the operator."""
         names = self.site_names
         prefactor = self.prefactor
         qt_operator = self.operator
@@ -481,7 +479,7 @@ class QutipOperator(Operator):
         return operator_qutip.permute(shuffle)
 
     def tr(self) -> complex:
-        """Compute the trace"""
+        """Compute the trace."""
         prefactor = self.prefactor
         if prefactor == 0:
             return prefactor

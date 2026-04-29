@@ -1,5 +1,4 @@
-"""
-Helper functions for pytests
+"""Helper functions for pytests
 """
 
 import logging
@@ -274,8 +273,7 @@ def alert(verbosity, *args):
 
 
 def check_equality(lhs, rhs, tolerance=1e-10):
-    """
-    Compare lhs and rhs and raise an assertion error if they are
+    """Compare lhs and rhs and raise an assertion error if they are
     different.
     """
     if isinstance(lhs, Number) and isinstance(rhs, Number):
@@ -316,8 +314,7 @@ def check_equality(lhs, rhs, tolerance=1e-10):
 
 
 def check_operator_equality(op1, op2, tolerance=1.0e-9):
-    """check if two operators are numerically equal"""
-
+    """Check if two operators are numerically equal"""
     if isinstance(op2, qutip.Qobj):
         op1, op2 = op2, op1
 

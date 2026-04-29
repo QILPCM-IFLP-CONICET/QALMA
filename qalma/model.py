@@ -1,18 +1,17 @@
-"""System Descriptors.
-===================
+"""System Descriptors. ===================
 
-A ``SystemDescriptor`` contains all the information relative to
-the system to be simulated.
+A ``SystemDescriptor`` contains all the information relative to the
+system to be simulated.
 
-``SystemDescriptor``s can be generated from information in ALPS xml
-file libraries by means of ``build_system``.
+``SystemDescriptor``s can be generated from information in ALPS xml file
+libraries by means of ``build_system``.
 
-An alternative is just to build the system through ``build_system_from_dims``
-which takes as argument a  dictionary, specifiying the names of the system sites
-as keys, and their corresponding dimensions as values.
+An alternative is just to build the system through
+``build_system_from_dims`` which takes as argument a  dictionary,
+specifiying the names of the system sites as keys, and their
+corresponding dimensions as values.
 
 ``build_spin_chain`` is a short-cut to build a spin chain lattice.
-
 """
 
 import logging
@@ -30,8 +29,8 @@ class SystemDescriptor:
     """System Descriptor class.
 
     A SystemDescriptor represents a quantum system as a collection of
-    Hilbert spaces associated to the nodes of a graph or lattice, and
-    a set of parameters defining a Hamiltonian operator.
+    Hilbert spaces associated to the nodes of a graph or lattice, and a
+    set of parameters defining a Hamiltonian operator.
     """
 
     _subsystems_cache: dict
@@ -147,9 +146,7 @@ class SystemDescriptor:
         self.__dict__.update(state_dict)
 
     def subsystem(self, sites: frozenset):
-        """Build a subsystem including the sites listed
-        in sites
-        """
+        """Build a subsystem including the sites listed in sites."""
         # Try to find the subsystem in the cache
         assert isinstance(sites, frozenset)
         result = self._subsystems_cache.get(sites, None)
@@ -241,7 +238,7 @@ class SystemDescriptor:
         return False
 
     def union(self, system):
-        """Return a SystemDescritor containing system and self"""
+        """Return a SystemDescritor containing system and self."""
         if system is None or system is self:
             return self
         if all(site in self.sites for site in system.sites):
@@ -265,15 +262,17 @@ class SystemDescriptor:
         return result
 
     def site_identity(self, site: str):  # -> Qobj
-        """Returns the internal representation of the identity associated
-        to `site`
+        """Returns the internal representation of the identity associated to
+        `site`
         """
         return self.sites[site]["identity"]
 
     def site_operator(self, name: str, site: str = ""):  # -> "Operator"
-        """Return a global operator representing an operator `name`
-        acting over the site `site`. By default, the name is assumed
-        to specify both the name and site in the form `"name@site"`.
+        """Return a global operator representing an operator `name` acting over
+        the site `site`.
+
+        By default, the name is assumed to specify both the name and
+        site in the form `"name@site"`.
         """
         # Import here to avoid circular dependency
         # pylint: disable=import-outside-toplevel
@@ -298,7 +297,7 @@ class SystemDescriptor:
         return result_op
 
     def bond_operator(self, name: str, src: str, dst: str, skip=None):  # -> "Operator":
-        """Bond operator by name and sites"""
+        """Bond operator by name and sites."""
         result_op = self.operators["global_operators"].get(
             (
                 name,
@@ -421,7 +420,7 @@ class SystemDescriptor:
         return None
 
     def loop_operator(self, name: str, loop: Tuple[str], _skip=None):  # -> "Operator":
-        """Loop operator by name and sites"""
+        """Loop operator by name and sites."""
         result_op = self.operators["global_operators"].get(
             (
                 name,
@@ -446,7 +445,7 @@ class SystemDescriptor:
         raise ValueError(f"{loop_op_descriptor} not implemented for  {loop}.")
 
     def site_term_from_descriptor(self, term_spec, graph, parms):
-        """Build a site term from a site term specification"""
+        """Build a site term from a site term specification."""
         # Import here to avoid circular dependency
         # pylint: disable=import-outside-toplevel
         from qalma.operators import OneBodyOperator, ScalarOperator
@@ -494,7 +493,7 @@ class SystemDescriptor:
         return OneBodyOperator(tuple(term_ops), self)
 
     def bond_term_from_descriptor(self, term_spec, graph, model, parms):
-        """Build a bond term from a bond term specification"""
+        """Build a bond term from a bond term specification."""
         # Import here to avoid circular dependency
         # pylint: disable=import-outside-toplevel
         from qalma.operators import ScalarOperator, SumOperator
@@ -571,7 +570,7 @@ class SystemDescriptor:
         return SumOperator(tuple(result_terms), self, True)
 
     def loop_term_from_descriptor(self, term_spec, graph, model, parms):
-        """Build loop term from aloop term specification"""
+        """Build loop term from aloop term specification."""
         # Import here to avoid circular dependency
         # pylint: disable=import-outside-toplevel
         from qalma.operators import ScalarOperator, SumOperator
@@ -632,7 +631,7 @@ class SystemDescriptor:
         return SumOperator(tuple(result_terms), self, True)
 
     def global_operator(self, name):
-        """Return a global operator by its name"""
+        """Return a global operator by its name."""
         # pylint: disable=import-outside-toplevel
         from qalma.operators import OneBodyOperator, SumOperator
 
@@ -718,13 +717,11 @@ def build_system(
     lattice_lib_file=LATTICE_LIB_FILE,
     **kwargs,
 ) -> SystemDescriptor:
-    """Build a SystemDescriptor from the names of
-    the geometry and the model.
+    """Build a SystemDescriptor from the names of the geometry and the model.
 
     lattice_lib_file: str
 
     kwargs: Optional keyword parameters are passed to the model.
-
     """
     # pylint: disable=import-outside-toplevel
     from qalma.alpsmodels import model_from_alps_xml
@@ -745,7 +742,7 @@ def build_system(
 
 
 def build_system_from_dims(dims_by_name: Dict[str, int]) -> SystemDescriptor:
-    """Build a System from the dimension of each site
+    """Build a System from the dimension of each site.
 
     Parameters
     ----------

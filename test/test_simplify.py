@@ -1,5 +1,4 @@
-"""
-Basic unit test.
+"""Basic unit test.
 """
 
 from functools import reduce
@@ -28,8 +27,7 @@ def union_set(set_list):
 
 
 def compute_size(operator: Operator):
-    """
-    compute the initial number of
+    """Compute the initial number of
     qutip operators needed to store
     operator
     """
@@ -54,8 +52,7 @@ def compute_size(operator: Operator):
 
 @pytest.mark.parametrize(["key", "operator"], list(FULL_TEST_CASES.items()))
 def test_simplify(key, operator):
-    """test simplify operators"""
-
+    """Test simplify operators"""
     print("* check", key)
     simplify1 = operator.simplify()
     assert check_operator_equality(operator, simplify1, 1e-8), (

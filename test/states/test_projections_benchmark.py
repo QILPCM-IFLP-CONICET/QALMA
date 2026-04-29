@@ -245,7 +245,8 @@ def test_benchmark_nbody_projection(
     benchmark, op_name, projection_name, projection_function, state_name, nbody, sigma0
 ):
     """Test the mean field projection over different states,
-    and using both implementations"""
+    and using both implementations
+    """
     print("testing the consistency of projection in", op_name)
     op_sq = TEST_OPERATORS_SQ[op_name]
 

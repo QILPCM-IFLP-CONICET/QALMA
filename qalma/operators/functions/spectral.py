@@ -28,7 +28,7 @@ def eigenvalues(
     tol: float = 0.0,
     maxiter: int = 100000,
 ) -> ndarray:
-    """Compute the eigenvalues of operator"""
+    """Compute the eigenvalues of operator."""
     qutip_op = operator.to_qutip() if isinstance(operator, Operator) else operator
     if eigvals > 0 and qutip_op.data.shape[0] < eigvals:
         sparse = False
@@ -38,7 +38,7 @@ def eigenvalues(
 
 
 def spectral_norm(operator: Operator) -> float:
-    """Compute the spectral norm of the operator `op`"""
+    """Compute the spectral norm of the operator `op`."""
     if isinstance(operator, ScalarOperator):
         return abs(operator.prefactor)
     if isinstance(operator, LocalOperator):
@@ -61,7 +61,7 @@ def spectral_norm(operator: Operator) -> float:
 
 
 def log_op(operator: Operator) -> Operator:
-    """The logarithm of an operator"""
+    """The logarithm of an operator."""
     assert isinstance(operator, Operator)
     if hasattr(operator, "logm"):
         return operator.logm()
@@ -69,7 +69,7 @@ def log_op(operator: Operator) -> Operator:
 
 
 def relative_entropy(rho: Operator, sigma: Operator) -> float:
-    """Compute the relative entropy"""
+    """Compute the relative entropy."""
     log_rho = log_op(rho)
     log_sigma = log_op(sigma)
     delta_log = (log_rho - log_sigma).simplify()

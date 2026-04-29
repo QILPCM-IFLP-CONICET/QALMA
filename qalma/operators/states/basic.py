@@ -104,11 +104,11 @@ class DensityOperatorMixin:
         self.__dict__.update(state_dict)
 
     def dag(self) -> Operator:
-        """Adjoint operator"""
+        """Adjoint operator."""
         return cast(Operator, self)
 
     def eigenstates(self) -> list:
-        """Eigendecomposition"""
+        """Eigendecomposition."""
         if isinstance(self, Operator):
             return super().eigenstates()  # type: ignore[misc]
         raise NotImplementedError
@@ -118,7 +118,7 @@ class DensityOperatorMixin:
         obs_objs: Union[Operator, Iterable],
         _local_states: Optional[Dict[frozenset, "DensityOperatorProtocol"]] = None,
     ) -> Union[NDArray, dict, complex]:
-        """Compute the expectation value of an observable"""
+        """Compute the expectation value of an observable."""
         # TODO: explode that expectation values of operators just requires the
         # state where the operators acts.
         from qalma.operators.states.utils import (
@@ -132,10 +132,11 @@ class DensityOperatorMixin:
         # local_states = {None: self}
 
         def do_evaluate_expect(obs):
-            """Inner function to evaluate expectation values. This method keeps
-            track of the states of the subsystems required in the evaluation,
-            which in typical cases is the most expensive part of
-            the evaluation.
+            """Inner function to evaluate expectation values.
+
+            This method keeps track of the states of the subsystems
+            required in the evaluation, which in typical cases is the
+            most expensive part of the evaluation.
             """
             nonlocal _local_states
 
@@ -178,16 +179,16 @@ class DensityOperatorMixin:
 
     @property
     def isherm(self):
-        """Isherm property"""
+        """Isherm property."""
         return True
 
     def simplify(self):
-        """Build an operator in a simplified representation"""
+        """Build an operator in a simplified representation."""
         # DensityOperator's are considered "simplified".
         return self
 
     def to_qutip_operator(self):
-        """QutipOperator representation"""
+        """QutipOperator representation."""
         from qalma.operators.states import QutipDensityOperator
 
         prefactor = getattr(self, "prefactor", 1.0)
@@ -202,43 +203,43 @@ class DensityOperatorMixin:
         )
 
     def tr(self):
-        """The trace of the operator"""
+        """The trace of the operator."""
         return 1
 
 
 class DensityOperatorProtocol(Protocol):
-    """Minimal interface of DensityOperators"""
+    """Minimal interface of DensityOperators."""
 
     prefactor: complex
     system: SystemDescriptor
 
     def acts_over(self) -> frozenset:
-        """Return a list of sites over which this operator acts"""
+        """Return a list of sites over which this operator acts."""
 
     def __add__(self, other):
-        """Add method"""
+        """Add method."""
 
     def __radd__(self, other):
-        """Radd method"""
+        """Radd method."""
 
     def __mul__(self, other):
-        """Mul method"""
+        """Mul method."""
 
     def __rmul__(self, other):
-        """Rmul method"""
+        """Rmul method."""
 
     def expect(
         self,
         obs: Union[Operator, Iterable],
         _local_states: Optional[Dict[frozenset, "DensityOperatorProtocol"]] = None,
     ) -> Union[np.ndarray, dict, complex]:
-        """Compute expectation values"""
+        """Compute expectation values."""
 
     def partial_trace(self, sites: Union[frozenset, SystemDescriptor]):
-        """Compute the partial trace"""
+        """Compute the partial trace."""
 
     def to_qutip(self, block: Optional[Tuple[str, ...]] = None):
         """Return a Qobj representation acting over block."""
 
     def to_qutip_operator(self):
-        """Convert to QutipOperator representation"""
+        """Convert to QutipOperator representation."""

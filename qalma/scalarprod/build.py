@@ -14,9 +14,7 @@ from .covar import CovariantScalarProductFunction
 
 
 def fetch_kubo_scalar_product(sigma: Operator, threshold=0) -> Callable:
-    """Build a KMB scalar product function
-    associated to the state ``sigma``
-    """
+    """Build a KMB scalar product function associated to the state ``sigma``"""
     evals_evecs = sorted(zip(*sigma.eigenstates()), key=lambda x: -x[0])
     w = 1
     for i, val_vec in enumerate(evals_evecs):
@@ -45,9 +43,8 @@ def fetch_kubo_scalar_product(sigma: Operator, threshold=0) -> Callable:
 
 
 def fetch_kubo_int_scalar_product(sigma: Operator) -> Callable:
-    """Build a KMB scalar product function
-    associated to the state ``sigma``, from
-    its integral form.
+    """Build a KMB scalar product function associated to the state ``sigma``,
+    from its integral form.
     """
     evals, evecs = sigma.eigenstates()
 
@@ -97,5 +94,5 @@ def fetch_covar_scalar_product(sigma: DensityOperatorProtocol) -> Callable:
 
 
 def fetch_HS_scalar_product() -> Callable:
-    """Build a HS scalar product function"""
+    """Build a HS scalar product function."""
     return lambda op1, op2: (op1.dag() * op2).tr()

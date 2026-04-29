@@ -1,5 +1,4 @@
-"""
-Tests and benchmarks for `gram_matrix`.
+"""Tests and benchmarks for `gram_matrix`.
 """
 
 import os
@@ -50,8 +49,7 @@ else:
 
 @pytest.mark.parametrize(["case", "basis"], list(HIERARCHICAL_BASIS_CASES.items()))
 def test_gram_matrix_benchmark(benchmark, case, basis):
-    """
-    Benchmark scalar products
+    """Benchmark scalar products
     """
     sp = basis.sp
     ops = basis.operator_basis
@@ -64,8 +62,7 @@ def test_gram_matrix_benchmark(benchmark, case, basis):
 
 @pytest.mark.parametrize(["case", "basis"], list(HIERARCHICAL_BASIS_CASES.items()))
 def test_brute_force_gram_matrix_benchmark(benchmark, case, basis):
-    """
-    Benchmark scalar products
+    """Benchmark scalar products
     """
     sp = basis.sp
     ops = basis.operator_basis
@@ -92,8 +89,7 @@ def test_brute_force_gram_matrix_benchmark(benchmark, case, basis):
 
 @pytest.mark.parametrize(["case", "basis"], list(HIERARCHICAL_BASIS_CASES.items()))
 def test_cross_gram_matrix_benchmark(benchmark, case, basis):
-    """
-    Benchmark scalar products
+    """Benchmark scalar products
     """
     sp = basis.sp
     ops = basis.operator_basis

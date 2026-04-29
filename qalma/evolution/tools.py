@@ -46,8 +46,8 @@ def slice_times(tlist: NDArray, tcuts: List[float]) -> List[NDArray]:
 
 
 def m_th_partial_sum(phi: NDArray, m: int) -> float:
-    """Computes the $m$-th partial sum of the squared magnitudes of the last `m`
-    coefficients of `phi`.
+    """Computes the $m$-th partial sum of the squared magnitudes of the last
+    `m` coefficients of `phi`.
 
     Parameters
     ----------

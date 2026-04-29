@@ -1,5 +1,4 @@
-"""
-Tests for max-ent solvers
+"""Tests for max-ent solvers
 """
 
 from test.helper import (
@@ -40,8 +39,7 @@ HAMILTONIANS = {
 
 
 def check_orthogonality(basis, sp):
-    """
-    check if basis is orthonormal
+    """Check if basis is orthonormal
     """
     for pos, b_op in enumerate(basis):
         norm = sp(b_op, b_op) ** 0.5
@@ -60,8 +58,7 @@ def check_orthogonality(basis, sp):
 
 
 def compare_basis(basis, basis_qutip):
-    """
-    Compare a basis of Operator objects
+    """Compare a basis of Operator objects
     and a basis of raw qutip operators.
     """
     assert len(basis) == len(basis_qutip)
@@ -76,8 +73,7 @@ def compare_basis(basis, basis_qutip):
 
 
 def compare_solutions(sol, sol_qutip, t_span, order, coeff_bound, tol=1.0e-8):
-    """
-    compare two solutions
+    """Compare two solutions
     """
     diff_sols = [
         spectral_norm(k1.to_qutip() - k2_qutip) for k1, k2_qutip in zip(sol, sol_qutip)
@@ -98,7 +94,7 @@ def compare_solutions(sol, sol_qutip, t_span, order, coeff_bound, tol=1.0e-8):
 
 
 def fn_hij_tensor_with_errors_from_qutip(basis, sp, ham_j):
-    """test fn_hij_tensor computation"""
+    """Test fn_hij_tensor computation"""
     comm_h_ops = [(ham_j * op2 - op2 * ham_j) for op2 in basis]
     local_h_ij = np.zeros([len(basis), len(basis)], dtype=complex)
     for i, b in enumerate(basis):
@@ -127,10 +123,8 @@ def fn_hij_tensor_with_errors_from_qutip(basis, sp, ham_j):
     ],
 )
 def test_build_hierarchical_basis(name_ham, ham, name_k0, k0, sigma_name, sigma):
+    """Check the construction of hierarchical basis
     """
-    Check the construction of hierarchical basis
-    """
-
     if isinstance(ham, QuadraticFormOperator):
         return
     if isinstance(k0, QuadraticFormOperator):
@@ -205,8 +199,7 @@ def test_build_hierarchical_basis(name_ham, ham, name_k0, k0, sigma_name, sigma)
 
 
 def test_evolution():
-    """
-    Compare the evolution with the series expansion solution
+    """Compare the evolution with the series expansion solution
     """
     t_span = np.linspace(0, 0.1, 10)
     k0 = SX_AB
@@ -224,7 +217,7 @@ def test_evolution():
 
 
 def test_adaptive():
-    """test adaptive evolution"""
+    """Test adaptive evolution"""
     t_span = np.linspace(0, 2, 10)
     k0 = SX_AB
     ham = 0.1 * HAMILTONIAN + SZ_TOTAL
@@ -236,7 +229,7 @@ def test_adaptive():
 
 
 def test_adaptive_light():
-    """test adaptive evolution with light update basis"""
+    """Test adaptive evolution with light update basis"""
     t_span = np.linspace(0, 2, 10)
     k0 = SX_AB
     ham = 0.1 * HAMILTONIAN + SZ_TOTAL

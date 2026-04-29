@@ -1,5 +1,4 @@
-"""
-Basic unit test for operator functions.
+"""Basic unit test for operator functions.
 """
 
 from test.helper import (
@@ -196,7 +195,6 @@ def test_log_op():
     only if operator has an small spectral norm.
 
     """
-
     clean = True
     for name, operator in OPERATORS.items():
         test_op = operator + 0.0001
@@ -254,8 +252,7 @@ def test_log_op():
     [(name, operator) for name, operator in OPERATOR_TYPE_CASES.items()],
 )
 def test_spectral_norm(name, operator):
-    """
-    Test the spectral norm
+    """Test the spectral norm
     """
     tolerance = QALMA_TOLERANCE
     print("spectral norm of", name, "of type", type(operator))

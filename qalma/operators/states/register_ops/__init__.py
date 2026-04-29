@@ -1,4 +1,5 @@
-"""Handler registration for arithmetic operations involving density operator types.
+"""Handler registration for arithmetic operations involving density operator
+types.
 
 Importing this package registers all handlers as a side effect. The submodules
 are organised by the density operator type that drives each group of handlers:
@@ -9,7 +10,6 @@ are organised by the density operator type that drives each group of handlers:
   _gibbs_product.py        GibbsProductDensityOperator
   _gibbs.py        GibbsDensityOperator
   _qutip.py        QutipDensityOperator
-
 """
 
 import qalma.operators.basic  # noqa: F401

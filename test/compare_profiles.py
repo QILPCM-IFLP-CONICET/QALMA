@@ -1,6 +1,5 @@
 #!/usr/bin/env python3
-"""
-compare_profiles.py  —  detect largest time changes between two .prof files.
+"""compare_profiles.py  —  detect largest time changes between two .prof files.
 
 Usage:
     python compare_profiles.py baseline.prof candidate.prof [options]
@@ -123,8 +122,7 @@ def print_diff_table(
     use_color: bool,
     reverse: bool = True,
 ):
-    """
-    rows: list of (key, b_ct, c_ct, d_ct, b_tt, c_tt, d_tt, b_nc, c_nc)
+    """rows: list of (key, b_ct, c_ct, d_ct, b_tt, c_tt, d_tt, b_nc, c_nc)
     sort_idx: index into the tuple to sort by
     """
     filtered = [r for r in rows if abs(r[3]) >= min_delta or abs(r[6]) >= min_delta]

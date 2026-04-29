@@ -57,28 +57,29 @@ if qutip_version < parse_version("5.0.0"):
         yield from zip(i_idx, j_idx, data.data)
 
     def data_get_coeff(data, i_idx, j_idx):
-        """Access to a matrix entry"""
+        """Access to a matrix entry."""
         return data[i_idx, j_idx]
 
     def data_get_type(data) -> type:
-        """Get the type of the elements in data"""
+        """Get the type of the elements in data."""
         return data.dtype
 
     def data_is_diagonal(data) -> bool:
-        """Check if data is diagonal"""
+        """Check if data is diagonal."""
         if data.nnz == 0 or all(a == b for a, b in zip(*data.nonzero())):
             return True
         return all(val == 0 for val, a, b in zip(data.data, *data.nonzero()) if a != b)
 
     def data_is_zero(data) -> bool:
-        """Check if the matrix is empty"""
+        """Check if the matrix is empty."""
         if data.nnz == 0:
             return True
         return not any(data.data)
 
     def scalar_value(data):
-        """If data is a scalar matrix, return any
-        of its diagonal elements. Otherwise, return `None`
+        """If data is a scalar matrix, return any of its diagonal elements.
+
+        Otherwise, return `None`
         """
         if data.nnz == 0:
             return 0.0
@@ -97,8 +98,8 @@ if qutip_version < parse_version("5.0.0"):
         return elem if all(elem == val for val in vals) else None
 
     def fast_tensor(*factors):
-        """If some of the factors are not in Dense representation,
-        convert everthing to CSR to speedup the computation
+        """If some of the factors are not in Dense representation, convert
+        everthing to CSR to speedup the computation.
         """
         return qutip_tensor(*factors)
 
@@ -192,7 +193,7 @@ else:
             yield from do_dense()
 
     def data_get_coeff(data, i_idx, j_idx):
-        """Access to a matrix entry"""
+        """Access to a matrix entry."""
         if hasattr(data, "num_diag"):
             data_sp = data.as_scipy()
             offset = j_idx - i_idx
@@ -205,13 +206,13 @@ else:
         return data.as_ndarray()[i_idx, j_idx]
 
     def data_get_type(data) -> type:
-        """Get the type of the elements in data"""
+        """Get the type of the elements in data."""
         if hasattr(data, "as_scipy"):
             return data.as_scipy().dtype
         return data.as_ndarray().dtype
 
     def data_is_diagonal(data) -> bool:
-        """Check if data is diagonal"""
+        """Check if data is diagonal."""
         if hasattr(data, "num_diag"):
             if data.num_diag == 0:
                 return True
@@ -235,7 +236,7 @@ else:
         )
 
     def data_is_zero(data) -> bool:
-        """Check if the matrix is empty"""
+        """Check if the matrix is empty."""
         if hasattr(data, "num_diag"):
             return data.num_diag == 0
         if hasattr(data, "as_scipy"):
@@ -243,8 +244,9 @@ else:
         return np.count_nonzero(data.as_ndarray()) == 0
 
     def scalar_value(data):
-        """If data is a scalar matrix, return any
-        of its diagonal elements. Otherwise, return `None`
+        """If data is a scalar matrix, return any of its diagonal elements.
+
+        Otherwise, return `None`
         """
         dim1, _ = data.shape
         if hasattr(data, "num_diag"):
@@ -310,8 +312,8 @@ else:
     if qutip_version < parse_version("5.2.0"):
 
         def fast_tensor(*factors):
-            """If some of the factors are not in Dense representation,
-            convert everthing to CSR to speedup the computation
+            """If some of the factors are not in Dense representation, convert
+            everthing to CSR to speedup the computation.
             """
             return qutip_tensor(*factors)
 
@@ -324,7 +326,7 @@ else:
 
 
 def data_has_nan(data) -> bool:
-    """Check if data has `nan` entries"""
+    """Check if data has `nan` entries."""
     for _, _, val in data_element_iterator(data):
         if not val == val:
             return True
@@ -337,9 +339,7 @@ def data_is_scalar(data) -> bool:
 
 
 def empty_op(op) -> bool:
-    """Check if op is an sparse operator without
-    non-zero elements.
-    """
+    """Check if op is an sparse operator without non-zero elements."""
     if isinstance(op, complex):
         return op == 0
 
@@ -373,14 +373,14 @@ def is_diagonal_op(op: Qobj | np.ndarray) -> bool:
 
 
 def is_scalar_op(op: Qobj) -> bool:
-    """Check if op is a multiple of the identity operator"""
+    """Check if op is a multiple of the identity operator."""
     if isinstance(op, Qobj):
         return data_is_scalar(op.data)
     return data_is_scalar(op)
 
 
 def isnan_qutip(op: Qobj) -> bool:
-    """Is nan for qutip objects"""
+    """Is nan for qutip objects."""
     return data_has_nan(op.data)
 
 
@@ -487,8 +487,8 @@ def reshape_qutip_data(data, dims, bs=1) -> ndarray:
 def schmidt_dec_first_rest_qutip_operator(
     operator: Qobj, tol: float = 1e-10
 ) -> Tuple[List[Qobj], ...]:
-    """Decompose a qutip operator acting over H_1 (x) H_2 (x) H_3 (x)
-    as a sum of terms of the form Q_{k} (x) Rest_{k}
+    """Decompose a qutip operator acting over H_1 (x) H_2 (x) H_3 (x) as a sum
+    of terms of the form Q_{k} (x) Rest_{k}
     """
     dims = operator.dims[0]
     if len(dims) < 2:
@@ -521,8 +521,8 @@ def schmidt_dec_first_rest_qutip_operator(
 def schmidt_dec_first_rest_qutip_operator_hermitician(
     operator: Qobj, tol: float = 1e-10
 ) -> Tuple[List[Qobj], ...]:
-    """Decompose a hermitician qutip operator acting over H_1 (x) H_2 (x) H_3 (x)
-    as a sum of terms of the form Q_{k} (x) Rest_{k}
+    """Decompose a hermitician qutip operator acting over H_1 (x) H_2 (x) H_3
+    (x) as a sum of terms of the form Q_{k} (x) Rest_{k}
     """
     opsh_1 = []
     opsh_2 = []
@@ -579,8 +579,9 @@ def schmidt_dec_first_rest_qutip_operator_hermitician(
 def schmidt_dec_rest_last_qutip_operator(
     operator: Qobj, tol: float = 1e-10
 ) -> Tuple[List[Qobj], ...]:
-    """Decompose a qutip operator acting over H_1 (x) H_2 (x) ... (x) H_n (x)
-    as a sum of terms of the form Rest_{k} (x)  Q_{k}
+    """Decompose a qutip operator acting over H_1 (x) H_2 (x) ...
+
+    (x) H_n (x) as a sum of terms of the form Rest_{k} (x)  Q_{k}
     """
     dims = operator.dims[0]
     if len(dims) < 2:
@@ -613,8 +614,8 @@ def schmidt_dec_rest_last_qutip_operator(
 def schmidt_dec_rest_last_qutip_operator_hermitician(
     operator: Qobj, tol: float = 1e-10
 ) -> Tuple[List[Qobj], ...]:
-    """Decompose a qutip operator acting over H_1 (x) H_2 (x) H_3 (x)
-    as a sum of terms of the form Q_{k} (x) Rest_{k}
+    """Decompose a qutip operator acting over H_1 (x) H_2 (x) H_3 (x) as a sum
+    of terms of the form Q_{k} (x) Rest_{k}
     """
     opsh_1 = []
     opsh_2 = []
@@ -678,9 +679,10 @@ def to_qobj(array: np.ndarray, atol: float = 1e-12) -> Qobj:
 
 
 def decompose_qutip_operator(operator: Qobj, tol: float = 1e-10) -> List[Tuple]:
-    """Decompose a qutip operator q123... into a sum
-    of tensor products sum_{ka, kb, kc...} q1^{ka} q2^{kakb} q3^{kakbkc}...
-    return a list of tuples, with each factor.
+    """Decompose a qutip operator q123...
+
+    into a sum of tensor products sum_{ka, kb, kc...} q1^{ka} q2^{kakb}
+    q3^{kakbkc}... return a list of tuples, with each factor.
     """
     dims = operator.dims[0]
     ops_1, *rest = schmidt_dec_first_rest_qutip_operator(operator, tol)
@@ -706,9 +708,10 @@ def decompose_qutip_operator(operator: Qobj, tol: float = 1e-10) -> List[Tuple]:
 def decompose_qutip_operator_hermitician(
     operator: Qobj, tol: float = 1e-10
 ) -> List[Tuple]:
-    """Decompose a hermitician qutip operator q123... into a sum
-    of tensor products sum_{ka, kb, kc...} q1^{ka} q2^{kakb} q3^{kakbkc}...
-    return a list of tuples, with each factor.
+    """Decompose a hermitician qutip operator q123...
+
+    into a sum of tensor products sum_{ka, kb, kc...} q1^{ka} q2^{kakb}
+    q3^{kakbkc}... return a list of tuples, with each factor.
     """
     dims = operator.dims[0]
 
@@ -734,8 +737,8 @@ def decompose_qutip_operator_hermitician(
 
 
 def get_proper_spaces(spectrum: Iterable) -> List[List[int]]:
-    """Given a diagonal operator, find the proper spaces
-    associated to each eigenvalue.
+    """Given a diagonal operator, find the proper spaces associated to each
+    eigenvalue.
     """
     sectors_dict: Dict[Real, List[int]] = {}
     for idx, sector in enumerate(spectrum):

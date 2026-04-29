@@ -1,5 +1,4 @@
-"""
-Test functions that implement n-body projections
+"""Test functions that implement n-body projections
 """
 
 import os
@@ -132,8 +131,7 @@ if os.environ.get("QALMA_ALLTESTS"):
 
 @pytest.mark.parametrize(["op_name", "op_test"], list(TEST_OPERATORS.items()))
 def test_compare_recursive_and_iterative_n_body_projections(op_name, op_test):
-    """
-    Compare the results of the recursive and the iterative implementations
+    """Compare the results of the recursive and the iterative implementations
     of the n-body projections.
     """
     failed = {}
@@ -177,8 +175,7 @@ def test_compare_recursive_and_iterative_n_body_projections(op_name, op_test):
 
 @pytest.mark.parametrize(["op_name", "op_test"], list(TEST_OPERATORS.items()))
 def test_compare_iterative_and_recursive_n_body_qutip_projections(op_name, op_test):
-    """
-    This test compares the results of using the recursive
+    """This test compares the results of using the recursive
     `_project_qutip_operator_recursive` and the iterative
     `_project_qutip_operator_combinatorial` n-body projections.
     """
@@ -217,8 +214,7 @@ def test_compare_iterative_and_recursive_n_body_qutip_projections(op_name, op_te
 
 @pytest.mark.parametrize(["op_name", "op_test"], list(TEST_OPERATORS.items()))
 def test_compare_iterative_and_recursive_n_body_product_projections(op_name, op_test):
-    """
-    This test compares the results of using the recursive
+    """This test compares the results of using the recursive
     `project_operator_to_n_body` and the iterative specific
     `_project_product_operator_combinatorial` product n-body projections.
     """
@@ -270,8 +266,7 @@ def test_compare_iterative_and_recursive_n_body_product_projections(op_name, op_
     ],
 )
 def test_idempotency_nbody_projection(op_name, projection_name, projection_function):
-    """
-    Test the mean field projection over different states,
+    """Test the mean field projection over different states,
     and using both implementations.
     Also check if hermiticity is preserved.
 
@@ -391,8 +386,7 @@ def test_self_consistent_meanfield_projection(op_name, op_test):
 def test_compare_meanfield_projection_using_iterative_and_recursive_projections(
     op_name, op_test
 ):
-    """
-    Compare the results of the self-consistent mean field projection from
+    """Compare the results of the self-consistent mean field projection from
     both iterative and recursive projection routines.
     """
     failed = {}
@@ -432,8 +426,7 @@ def test_compare_meanfield_projection_using_iterative_and_recursive_projections(
     ["operator_case", "operator"], list(OPERATOR_TYPE_CASES.items())
 )
 def test_one_body_from_qutip_operator_1(operator_case, operator):
-    """
-    Test if the `one_body_from_qutip_operator` function returns
+    """Test if the `one_body_from_qutip_operator` function returns
     the right type of operator.
     """
     print(operator_case, "as scalar + one body + rest")
@@ -464,8 +457,7 @@ def test_one_body_from_qutip_operator_1(operator_case, operator):
 
 
 def test_one_body_from_qutip_operator_2():
-    """
-    one_body_from_qutip_operator tries to decompose
+    """one_body_from_qutip_operator tries to decompose
     an operator K in the sparse Qutip form into
     a sum of two operators
     K = K_0 + Delta K
