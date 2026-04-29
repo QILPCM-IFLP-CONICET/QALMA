@@ -32,7 +32,6 @@ from pathlib import Path
 from typing import List, Tuple
 
 import numpy as np
-import qutip
 import pytest
 
 from qalma import graph_from_alps_xml, model_from_alps_xml
@@ -41,10 +40,10 @@ from qalma.meanfield.variational import compute_rel_entropy
 from qalma.model import SystemDescriptor
 from qalma.operators.states import ProductDensityOperator
 
-
 # ---------------------------------------------------------------------------
 # System builders
 # ---------------------------------------------------------------------------
+
 
 def build_nn_chain(L: int, parms: dict) -> Tuple[SystemDescriptor, object]:
     """
@@ -83,8 +82,10 @@ def build_j1j2_chain(L: int, J1: float, J2: float) -> Tuple[SystemDescriptor, ob
         Next-nearest-neighbor coupling.
     """
     parms = {
-        "Jz":  J1,  "Jxy":  J1,   # bond type 0 → NN
-        "Jz'": J2,  "Jxy'": J2,   # bond type 1 → NNN
+        "Jz": J1,
+        "Jxy": J1,  # bond type 0 → NN
+        "Jz'": J2,
+        "Jxy'": J2,  # bond type 1 → NNN
     }
     graph = graph_from_alps_xml(name="nnn open chain lattice", parms={"L": L, "a": 1})
     model = model_from_alps_xml(name="spin")
@@ -98,6 +99,7 @@ def build_j1j2_chain(L: int, J1: float, J2: float) -> Tuple[SystemDescriptor, ob
 # ---------------------------------------------------------------------------
 # Helpers: reference quantities
 # ---------------------------------------------------------------------------
+
 
 def exact_free_energy(ham, system, beta: float) -> float:
     """
@@ -132,32 +134,38 @@ EXACT_CASES = [
     (
         "Ising transverse (Gamma=0.5J)",
         {"Jz": 1.0, "Jxy": 0.0, "Gamma": 0.5},
-        [4, 6, 8], [0.5, 1.0, 2.0, 5.0],
+        [4, 6, 8],
+        [0.5, 1.0, 2.0, 5.0],
     ),
     (
         "Ising transverse critical (Gamma=J)",
         {"Jz": 1.0, "Jxy": 0.0, "Gamma": 1.0},
-        [4, 6, 8], [0.5, 1.0, 2.0],
+        [4, 6, 8],
+        [0.5, 1.0, 2.0],
     ),
     (
         "XX chain",
         {"Jz": 0.0, "Jxy": 1.0},
-        [4, 6, 8], [0.5, 1.0, 2.0, 5.0],
+        [4, 6, 8],
+        [0.5, 1.0, 2.0, 5.0],
     ),
     (
         "XXX Heisenberg AFM",
         {"Jz": 1.0, "Jxy": 1.0},
-        [4, 6, 8], [0.5, 1.0, 2.0, 5.0],
+        [4, 6, 8],
+        [0.5, 1.0, 2.0, 5.0],
     ),
     (
         "XXX Heisenberg FM",
         {"Jz": -1.0, "Jxy": -1.0},
-        [4, 6, 8], [0.5, 1.0, 2.0, 5.0],
+        [4, 6, 8],
+        [0.5, 1.0, 2.0, 5.0],
     ),
     (
         "XYZ anisotropic (Jz=1, Jxy=0.5)",
         {"Jz": 1.0, "Jxy": 0.5},
-        [4, 6, 8], [0.5, 1.0, 2.0],
+        [4, 6, 8],
+        [0.5, 1.0, 2.0],
     ),
 ]
 
@@ -189,8 +197,8 @@ def test_exact_validation(label, parms, L_list, beta_list, L, beta):
     )
 
     s_mixed = s_rel(sigma_mixed, ham, beta)
-    s_sc    = s_rel(sigma_sc,    ham, beta)
-    s_var   = s_rel(sigma_var,   ham, beta)
+    s_sc = s_rel(sigma_sc, ham, beta)
+    s_var = s_rel(sigma_var, ham, beta)
 
     print(f"\n{label}  L={L}  beta={beta}")
     print(f"  S_rel mixed: {s_mixed:.6f}")
@@ -198,9 +206,9 @@ def test_exact_validation(label, parms, L_list, beta_list, L, beta):
     print(f"  S_rel var:   {s_var:.6f}")
     print(f"  Delta(var vs SC):   {s_sc - s_var:.6f}")
 
-    assert s_var <= s_mixed + 1e-6, (
-        f"Variational ({s_var:.4f}) not better than mixed ({s_mixed:.4f})"
-    )
+    assert (
+        s_var <= s_mixed + 1e-6
+    ), f"Variational ({s_var:.4f}) not better than mixed ({s_mixed:.4f})"
 
 
 # ---------------------------------------------------------------------------
@@ -219,7 +227,7 @@ J1J2_CASES = [
 ]
 
 NUMFIELDS_LIST = [1, 2, 3, 4, 6, 8, 10]
-J1 = -1.0   # AFM nearest-neighbor
+J1 = -1.0  # AFM nearest-neighbor
 
 
 def run_numfields_sweep(
@@ -253,15 +261,17 @@ def run_numfields_sweep(
         sr = s_rel(sigma, ham, beta)
         mag = [float(np.real(sigma.expect(sz))) for sz in Sz_ops]
 
-        results.append({
-            "J2_over_J1":     J2_ratio,
-            "L":              L,
-            "beta":           beta,
-            "numfields":      nf,
-            "s_rel":          sr,
-            "magnetization":  mag,
-            "time":           elapsed,
-        })
+        results.append(
+            {
+                "J2_over_J1": J2_ratio,
+                "L": L,
+                "beta": beta,
+                "numfields": nf,
+                "s_rel": sr,
+                "magnetization": mag,
+                "time": elapsed,
+            }
+        )
 
         print(
             f"  J2/J1={J2_ratio:.2f}  L={L}  beta={beta}  "
@@ -269,7 +279,7 @@ def run_numfields_sweep(
             f"<Sz>=[{', '.join(f'{m:.3f}' for m in mag[:5])}...]"
         )
 
-        sigma_ref = sigma   # warm start for next nf
+        sigma_ref = sigma  # warm start for next nf
 
     return results
 
@@ -290,9 +300,9 @@ def test_numfields_convergence(J2_ratio, label, L, beta):
     results = run_numfields_sweep(J2_ratio, L, beta)
     s_rels = [r["s_rel"] for r in results]
     for i in range(1, len(s_rels)):
-        nf_prev = results[i-1]["numfields"]
+        nf_prev = results[i - 1]["numfields"]
         nf_curr = results[i]["numfields"]
-        assert s_rels[i] <= s_rels[i-1] + 1e-4, (
+        assert s_rels[i] <= s_rels[i - 1] + 1e-4, (
             f"S_rel increased: nf={nf_prev} → {nf_curr}  "
             f"({s_rels[i-1]:.5f} → {s_rels[i]:.5f})"
         )
@@ -331,21 +341,19 @@ if __name__ == "__main__":
                 )
                 t_sc = time.perf_counter() - t0
 
-                F_exact = (
-                    exact_free_energy(ham, system, beta) if L <= 8 else None
-                )
+                F_exact = exact_free_energy(ham, system, beta) if L <= 8 else None
 
                 row = {
-                    "label":             label,
-                    "params":            parms,
-                    "L":                 L,
-                    "beta":              beta,
-                    "F_exact":           F_exact,
-                    "s_rel_mixed":       s_rel(sigma_mixed, ham, beta),
-                    "s_rel_sc":          s_rel(sigma_sc,    ham, beta),
-                    "s_rel_variational": s_rel(sigma_var,   ham, beta),
-                    "time_variational":  t_var,
-                    "time_sc":           t_sc,
+                    "label": label,
+                    "params": parms,
+                    "L": L,
+                    "beta": beta,
+                    "F_exact": F_exact,
+                    "s_rel_mixed": s_rel(sigma_mixed, ham, beta),
+                    "s_rel_sc": s_rel(sigma_sc, ham, beta),
+                    "s_rel_variational": s_rel(sigma_var, ham, beta),
+                    "time_variational": t_var,
+                    "time_sc": t_sc,
                 }
                 all_results["exact_validation"].append(row)
 
@@ -383,13 +391,14 @@ if __name__ == "__main__":
     print(f"{'Frustration':45s} {'nf=1':>8} {'nf=4':>8} {'nf=10':>8}")
     for J2_ratio, label in J1J2_CASES:
         rows = [
-            r for r in all_results["numfields_convergence"]
+            r
+            for r in all_results["numfields_convergence"]
             if r["J2_over_J1"] == J2_ratio and r["L"] == 8 and r["beta"] == 2.0
         ]
         if not rows:
             continue
         by_nf = {r["numfields"]: r["s_rel"] for r in rows}
-        s1  = f"{by_nf.get(1,  float('nan')):.4f}"
-        s4  = f"{by_nf.get(4,  float('nan')):.4f}"
+        s1 = f"{by_nf.get(1,  float('nan')):.4f}"
+        s4 = f"{by_nf.get(4,  float('nan')):.4f}"
         s10 = f"{by_nf.get(10, float('nan')):.4f}"
         print(f"  {label:43s} {s1:>8} {s4:>8} {s10:>8}")
