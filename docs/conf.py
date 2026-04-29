@@ -71,7 +71,7 @@ napoleon_preprocess_types = True
 
 # -- Autosummary -------------------------------------------------------------
 
-autosummary_generate = False  # avoids re-indexing symbols already in automodule
+autosummary_generate = True
 
 # -- Todo --------------------------------------------------------------------
 
@@ -123,7 +123,16 @@ nitpick_ignore = [
     ("py:attr", "qalma.operators.states.gibbs.GibbsProductDensityOperator.k_by_site"),
 ]
 
-suppress_warnings = ["ref.python"]
+suppress_warnings = ["ref.python", "misc.highlighting_failure"]
+
+# Register ipython3 as an alias for ipython so nbsphinx notebooks render correctly
+from pygments.lexers import get_lexer_by_name  # noqa: E402
+from sphinx.highlighting import lexers  # noqa: E402
+
+try:
+    lexers["ipython3"] = get_lexer_by_name("ipython")
+except Exception:
+    pass
 
 # SyntaxWarning from LaTeX strings in notebook cell outputs (Python 3.12+)
 warnings.filterwarnings(
