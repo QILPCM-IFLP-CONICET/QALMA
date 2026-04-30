@@ -86,6 +86,7 @@ class SystemDescriptor:
             self._load_global_ops()
 
     def __eq__(self, other):
+        """Check equality."""
         # To be the equal, two SystemDescriptors
         # should have the same values in the
         # `spec` attribute:
@@ -108,6 +109,7 @@ class SystemDescriptor:
         return True
 
     def __repr__(self):
+        """Build repr str."""
         result = (
             "graph:"
             + repr(self.spec["graph"])
@@ -121,6 +123,7 @@ class SystemDescriptor:
         return result
 
     def __getstate__(self):
+        """Get state."""
         # Copy the object's state and exclude _subsystems_cache and operators
         if hasattr(self, "_serialized"):
             return self._serialized
@@ -133,9 +136,11 @@ class SystemDescriptor:
         return self._serialized
 
     def __iter__(self):
+        """Iterate over sites."""
         yield from self.sites
 
     def __setstate__(self, state):
+        """Set state."""
         state_dict = pickle.loads(state)
         state_dict["operators"] = {
             "site_operators": {},
@@ -200,11 +205,13 @@ class SystemDescriptor:
             self.global_operator(gop)
 
     def __mul__(self, system):
+        """Return the union of two models."""
         if system is None or system is self:
             return self
         return self.union(system)
 
     def __len__(self):
+        """Return the number of sites in the model."""
         return len(self.sites)
 
     def _repr_latex_(self):
@@ -262,13 +269,18 @@ class SystemDescriptor:
         return result
 
     def site_identity(self, site: str):  # -> Qobj
-        """Returns the internal representation of the identity associated to
+        """
+        Return the identity operator for the site.
+
+        Returns the internal representation of the identity associated to
         `site`.
         """
         return self.sites[site]["identity"]
 
     def site_operator(self, name: str, site: str = ""):  # -> "Operator"
-        """Return a global operator representing an operator `name` acting over
+        """Return a site operator.
+
+        Return a global operator representing an operator `name` acting over
         the site `site`.
 
         By default, the name is assumed to specify both the name and
@@ -297,7 +309,7 @@ class SystemDescriptor:
         return result_op
 
     def bond_operator(self, name: str, src: str, dst: str, skip=None):  # -> "Operator":
-        """Bond operator by name and sites."""
+        """Return a bond operator by name and sites."""
         result_op = self.operators["global_operators"].get(
             (
                 name,
@@ -420,7 +432,7 @@ class SystemDescriptor:
         return None
 
     def loop_operator(self, name: str, loop: Tuple[str], _skip=None):  # -> "Operator":
-        """Loop operator by name and sites."""
+        """Return a loop operator by name and sites."""
         result_op = self.operators["global_operators"].get(
             (
                 name,
@@ -641,7 +653,7 @@ class SystemDescriptor:
 
         result = self.operators["global_operators"].get(name, None)
         if result is not None:
-            logging.warning("%s already defined. Return from cache.", name)
+            logging.info("%s already defined. Return from cache.", name)
             return result
         # Build the global_operator from the descriptor
         op_descr = self.spec["model"].global_ops.get(name, None)

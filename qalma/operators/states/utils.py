@@ -64,7 +64,9 @@ def compute_expectation_values(
     obs: Operator | Iterable[Operator] | Dict[Any, Operator],
     state: Optional[DensityOperatorProtocol] = None,
 ):
-    """Compute the expectation value of an operator or operators in an iterable
+    """Compute expectation values of objects and iterables.
+
+    Compute the expectation value of an operator or operators in an iterable
     object, relative to the state `state`.
     """
     if state is None:
@@ -88,8 +90,7 @@ compute_operator_expectation_value = compute_expectation_values
 
 
 def collect_blocks_for_expect(obs_objs: Union[Operator, Iterable]) -> List[frozenset]:
-    """Find the subsystems required to compute the expectation values of
-    obs_objs.
+    """Find the subsystems required to compute the expectation values of obs_objs.
 
     Parameters
     ----------
@@ -126,7 +127,9 @@ def collect_local_states(
     global_state,
     _local_states: Optional[Dict[frozenset, DensityOperatorProtocol]] = None,
 ) -> Dict[frozenset, DensityOperatorProtocol]:
-    """Build a dict of local states required to compute the expectation values
+    """Collect local states required for evaluating expectation values.
+
+    Build a dict of local states required to compute the expectation values
     of the observable or the observables contained in obs_objs.
 
     Parameters
@@ -162,16 +165,24 @@ def collect_local_states(
 
 
 def k_by_site_from_operator(k: Operator) -> Dict[str, Operator]:
-    """Maps an operator `k` to a dictionary where keys are site identifiers and
+    """
+    Classify terms of an operator which acts on different sites.
+
+    Maps an operator `k` to a dictionary where keys are site identifiers and
     values are corresponding operators.
 
-    Args:
-        k (Operator): The operator to map.
+    Parameters
+    ----------
+        k: Operator
+            The operator to map.
 
-    Returns:
-        Dict[str, Operator]: A dictionary mapping site identifiers to operators.
+    Result
+    ------
+        Dict[str, Operator]
+            A dictionary mapping site identifiers to operators.
 
-    Raises:
+    Raises
+    ------
         TypeError: If the operator type is not supported.
         ValueError: If `QutipOperator` acts on multiple sites.
 
@@ -243,7 +254,10 @@ def reduced_state_by_block(
     term: Operator,
     reduced_states_cache: Dict[frozenset, DensityOperatorProtocol],
 ) -> Optional[DensityOperatorProtocol]:
-    """Compute the reduced DensityOperator for the block where
+    """
+    Compute reduced states required to evaluate the expectation value of term.
+
+    Compute the reduced DensityOperator for the block where
     `term` acts over, and store it in a cache
     `reduced_states_cache`.
     """
@@ -389,13 +403,20 @@ def safe_exp_and_normalize_qutip_operator(
 
 
 def safe_exp_and_normalize(operator):
-    """Compute the decomposition of exp(operator) as rho*exp(f)
+    """Exponenciate an operator avoiding overflows.
+
+    Compute the decomposition of exp(operator) as rho*exp(f)
     with f = Tr[exp(operator)], for operator a Qutip operator.
 
-    operator: Operator | Qobj
+    Parameters
+    ----------
+        operator: Operator | Qobj
 
-    result: Tuple[Operator|Qobj, float]
-         (exp(operator)/f , f)
+    Result
+    ------
+
+    Tuple[Operator|Qobj, float]
+         A tuple (exp(operator)/f , f)
 
     """
     if isinstance(operator, ScalarOperator):

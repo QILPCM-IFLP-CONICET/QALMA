@@ -33,11 +33,6 @@ class QutipOperator(Operator):
     operation, the result is QutipOperator acting on
     the union of both blocks.
 
-    Parameters
-    ----------
-
-    Returns
-    -------
 
     """
 
@@ -82,6 +77,7 @@ class QutipOperator(Operator):
         self.prefactor = prefactor
 
     def __neg__(self):
+        """Multiply by -1."""
         return QutipOperator(
             self.operator,
             self.system,
@@ -90,6 +86,7 @@ class QutipOperator(Operator):
         )
 
     def __pow__(self, exponent):
+        """Exponentiate the operator at a given power."""
         operator = self.operator
         if exponent < 0:
             operator = operator.inv()
@@ -103,6 +100,7 @@ class QutipOperator(Operator):
         )
 
     def __repr__(self) -> str:
+        """Built the repr str."""
         return (
             f"qutip interface operator over sites {self.site_names} for {self.prefactor} x  \n"
             + repr(self.operator)
@@ -113,15 +111,7 @@ class QutipOperator(Operator):
         return frozenset(self.site_names.keys())
 
     def as_sum_of_products(self):
-        """Decompose the operator as a sum of product operators.
-
-        Parameters
-        ----------
-
-        Returns
-        -------
-
-        """
+        """Decompose the operator as a sum of product operators."""
         from qalma.operators.arithmetic import SumOperator
 
         isherm = self.operator.isherm
@@ -154,7 +144,7 @@ class QutipOperator(Operator):
         return SumOperator(terms, self.system, isherm=isherm)
 
     def dag(self):
-        """Hermitician adjoint operator."""
+        """Build the hermitician adjoint operator."""
         prefactor = self.prefactor
         operator = self.operator
         if isinstance(prefactor, complex):
@@ -170,15 +160,16 @@ class QutipOperator(Operator):
         )
 
     def eigenenergies(self):
-        """Spectrum of the operator."""
+        """Compute the spectrum of the operator."""
         return self.operator.eigenenergies() * self.prefactor
 
     def eigenstates(self):
-        """Eigendecomposition."""
+        """Compute the eigendecomposition of the operator."""
         evals, evecs = self.operator.eigenstates()
         return evals * self.prefactor, evecs
 
     def hermitician_part(self):
+        """Compute the hermitician part of the operator."""
         if self.isherm:
             return self
         qop = self.operator
@@ -192,7 +183,7 @@ class QutipOperator(Operator):
         return QutipOperator(qop, self.system, self.site_names, prefactor)
 
     def inv(self):
-        """The inverse of the operator."""
+        """Compute the inverse of the operator."""
         operator = self.operator
         return QutipOperator(
             operator.inv(),
@@ -203,7 +194,11 @@ class QutipOperator(Operator):
 
     @property
     def isherm(self) -> bool:
-        """True if operator is hermitician."""
+        """
+        Check if the operator is hermitician.
+
+        Return True if operator is hermitician.
+        """
         isherm = self.operator.isherm
         if imag(self.prefactor) == 0.0:
             return isherm
@@ -224,7 +219,7 @@ class QutipOperator(Operator):
         return not (self.prefactor) or empty_op(self.operator)
 
     def logm(self):
-        """Logarithm of the operator."""
+        """Compute the logarithm of the operator."""
         operator = self.operator
         evals, evecs = operator.eigenstates()
         evals = evals * self.prefactor
@@ -237,7 +232,10 @@ class QutipOperator(Operator):
         return QutipOperator(log_op, self.system, self.site_names)
 
     def partial_trace(self, sites: Union[frozenset, SystemDescriptor]):
-        """Parameters
+        """
+        Compute the partial trace.
+
+        Parameters
         ----------
         sites: Union[frozenset :
 
@@ -246,6 +244,8 @@ class QutipOperator(Operator):
 
         Returns
         -------
+        Operator
+        The partial trace of the operator.
 
         """
         if isinstance(sites, SystemDescriptor):
@@ -301,7 +301,9 @@ class QutipOperator(Operator):
         )
 
     def reduce(self, sites: Iterable, state=None) -> Operator:
-        """Partial trace of the product of the operator and the density
+        """Compute the reduced operator.
+
+        Partial trace of the product of the operator and the density
         operator acting on the subsystem which is traced out. If the state is
         not provided, the result is the partial trace, divided by the dimension
         of the subsystem traced out.
@@ -314,7 +316,7 @@ class QutipOperator(Operator):
                The state relative to which make the reduction.
 
         Return
-        ======
+        ------
 
         The reduced operator.
 
@@ -397,15 +399,19 @@ class QutipOperator(Operator):
         return LocalOperator(site, operator, self.system)
 
     def tidyup(self, atol=None):
-        """Removes small elements from the quantum object.
+        """Remove small elements from the quantum object.
 
         Parameters
         ----------
-        atol :
-             (Default value = None)
+        atol : float
+            the threshold
+            (Default value = None)
 
-        Returns
-        -------
+        Return
+        ------
+        Operator
+            An operator with all their matrix elements having absolute values
+            larger than the threshold.
 
         """
         return QutipOperator(
@@ -416,14 +422,19 @@ class QutipOperator(Operator):
         )
 
     def to_qutip(self, block: Optional[Tuple[str, ...]] = None):
-        """Parameters
+        """
+        Return a Qobj representation for the operator.
+
+        Parameters
         ----------
         block: Optional[Tuple[str]] :
-             (Default value = None)
+             The sites defining the block on which we want the
+             prepresentation. If ``None``, returns a Qobj acting
+             on all the sites.
 
         Returns
         -------
-        type
+        Operator
             sites in block.
             By default (`block`=`None`), returns an operator
             acting over the full system, with sites sorted in

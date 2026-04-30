@@ -1,16 +1,17 @@
 """Graphs and conversions from ALPS.
 
 ``GraphDescriptor`` stores information about the graph geometry
- over which the quantum system to be simulated is defined is stored.
+over which the quantum system to be simulated is defined is stored.
 This includes the different kind of sites, the edge liking among them,
 their coordinates, the underlying lattice structure, and "loops"
 used to define loop operators.
 
+* ``list_geometries_in_alps_xml``:
+  list the graph geometries defined in an ALPS XML library file.
+* ``graph_from_alps_xml``:
+  create a ``GraphDescriptor`` from an ALPS XML library file and
+  the parameters provided.
 
-* ``list_geometries_in_alps_xml`` list the graph geometries defined in an
-  ALPS XML library file.
-* ``graph_from_alps_xml``: create a ``GraphDescriptor`` from an ALPS XML
-  library file and the parameters provided.
 """
 
 import logging
@@ -46,7 +47,10 @@ def list_geometries_in_alps_xml(filename=LATTICE_LIB_FILE) -> Tuple[str, ...]:
 def graph_from_alps_xml(
     filename=LATTICE_LIB_FILE, name="rectangular lattice", parms=None
 ):
-    """Load from `filename` xml library a Graph or LatticeGraph of name `name`,
+    """
+    Build a ``GraphDescriptor`` from the library.
+
+    Load from `filename` xml library a Graph or LatticeGraph of name `name`,
     using `parms` as parameters.
     """
     xmltree = ET.parse(filename)
@@ -73,7 +77,9 @@ def graph_from_alps_xml(
         return cells
 
     def complete_periodic_or_none(coords, extents, bcs) -> Optional[List[int]]:
-        """If coords are out of the extents limits, check if the site has a
+        """Complete missing coordinates.
+
+        If coords are out of the extents limits, check if the site has a
         periodic image.
 
         If it has, return it. Otherwise return None.
@@ -308,7 +314,9 @@ def graph_from_alps_xml(
         return default_parms
 
     def process_edge_unitcell(e_desc, _parms, dimension):
-        """Parse an ``<EDGE>`` node from a ``<UNITCELL>`` into an edge
+        """Parse Edge descriptor.
+
+        Parse an ``<EDGE>`` node from a ``<UNITCELL>`` into an edge
         descriptor.
 
         Parameters
@@ -358,7 +366,9 @@ def graph_from_alps_xml(
         return result
 
     def process_loop_graph(l_desc, _parms):
-        """Parse a ``<LOOP>`` node from a ``<GRAPH>`` into a loop descriptor.
+        """Parse a loop descriptor from a graph.
+
+        Parse a ``<LOOP>`` node from a ``<GRAPH>`` into a loop descriptor.
 
         Parameters
         ----------
@@ -385,7 +395,9 @@ def graph_from_alps_xml(
         return {"type": l_type, "nodes": nodes}
 
     def process_loop_unitcell(l_desc, _parms, dimension):
-        """Parse a ``<LOOP>`` node from a ``<UNITCELL>`` into a loop
+        """Parse loop descriptor from a unit cell.
+
+        Parse a ``<LOOP>`` node from a ``<UNITCELL>`` into a loop
         descriptor.
 
         Like :func:`process_loop_graph` but also extracts per-node unit-cell
@@ -510,7 +522,10 @@ class GraphDescriptor:
         lattice: Optional[dict] = None,
         parms: Optional[dict] = None,
     ):
-        """Parameters
+        """
+        Initialize a GraphDescriptor.
+
+        Parameters
         ----------
         name : str
             Human-readable name of the graph (e.g. ``"open chain"``).
@@ -540,6 +555,7 @@ class GraphDescriptor:
         self.subgraphs = {}
 
     def __getstate__(self):
+        """Get state."""
         # Copy the object's state and exclude _subsystems_cache
         state = {
             key: {} if key == "subgraphs" else val for key, val in self.__dict__.items()
@@ -547,9 +563,11 @@ class GraphDescriptor:
         return state
 
     def __setstate__(self, state):
+        """Set state."""
         self.__dict__.update(state)
 
     def __eq__(self, other):
+        """Check equality."""
         # To be the same, two GraphDescriptors
         # should have the same `name`, `nodes`,
         # `loops`, `edges` and `parms`.
@@ -600,6 +618,7 @@ class GraphDescriptor:
                 n_attr["coords"] = rand(2)
 
     def __repr__(self):
+        """Build repr str."""
         result = (
             f"Graph {self.name}. Vertices: \n  "
             + "\n  ".join([f" {i} of type {t}" for i, t in self.nodes.items()])
@@ -657,7 +676,7 @@ class GraphDescriptor:
                 ax_mpl.plot(*[[u, v] for u, v in zip(src, tgt)], **spec)
 
     def subgraph(self, node_set: frozenset, name: str = ""):
-        """A subgraph containing the specified nodes."""
+        """Return a subgraph containing the specified nodes."""
         assert isinstance(node_set, frozenset)
         subgraph = self.subgraphs.get(node_set, None)
         if subgraph is not None:
@@ -688,6 +707,7 @@ class GraphDescriptor:
         return subgraph
 
     def __add__(self, other):
+        """Add two GraphDescriptors."""
         return self.union(other)
 
     def contains(self, other):

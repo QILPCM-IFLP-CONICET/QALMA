@@ -1,4 +1,5 @@
-"""Qutip representation for density operators.
+"""
+Qutip representation for density operators.
 
 Be careful: just use this class for states of small systems.
 """
@@ -30,7 +31,10 @@ class QutipDensityOperator(DensityOperatorMixin, QutipOperator):
         prefactor=1,
         normalized=False,
     ):
-        r"""Parameters
+        r"""
+        Initialize a QutipDensityOperator.
+
+        Parameters
         ----------
         qoperator : Qobj
             The QuTiP density matrix. Normalized to unit trace on construction
@@ -44,19 +48,21 @@ class QutipDensityOperator(DensityOperatorMixin, QutipOperator):
         normalized : bool, optional
             If ``True``, skips normalization on construction. Default is
             ``False``.
-
         """
         self._normalized = normalized
         super().__init__(qoperator, system, names, prefactor)
         self.normalize()
 
     def __neg__(self):
+        """Multiply by -1."""
         logging.warning("Negate a DensityOperator leads to a regular operator.")
         self.normalize()
         return QutipOperator(self.operator, self.system, self.site_names, -1)
 
     def join_states(self, other: DensityOperatorProtocol | complex):
-        """Combine the states of two disjoint systems to produce the state of
+        """Combine states of two systems.
+
+        Combine the states of two disjoint systems to produce the state of
         the union of both systems.
         """
         if isinstance(other, Real):
@@ -105,7 +111,8 @@ class QutipDensityOperator(DensityOperatorMixin, QutipOperator):
         )
 
     def logm(self):
-        r"""Return the matrix logarithm :math:`\\log\\rho`.
+        r"""
+        Return the matrix logarithm :math:`\\log\\rho`.
 
         Normalizes first, then computes the logarithm via eigendecomposition.
         Eigenvalues below ``1e-30`` are clamped to avoid divergence.
@@ -114,7 +121,6 @@ class QutipDensityOperator(DensityOperatorMixin, QutipOperator):
         -------
         QutipOperator
             The matrix logarithm as a :class:`~qalma.operators.qutip.QutipOperator`.
-
         """
         self.normalize()
         operator = self.operator

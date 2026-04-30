@@ -40,7 +40,10 @@ class ProductDensityOperator(DensityOperatorMixin, ProductOperator):
         normalized: bool = False,
         _qutip_factors: Optional[Dict[str, _Qobj]] = None,
     ):
-        r"""Parameters
+        r"""
+        Initialize a ProductDensityOperator.
+
+        Parameters
         ----------
         local_states : dict[str, np.ndarray or Qobj]
             Mapping from site name to local density matrix. If
@@ -102,6 +105,7 @@ class ProductDensityOperator(DensityOperatorMixin, ProductOperator):
         self.local_fs = {site: -np.log(z) for site, z in local_zs.items()}
 
     def __mul__(self, a):
+        """Multiply by a number of operator by the right."""
         if isinstance(a, (float, np.float64)):
             if a >= 0:
                 return ProductDensityOperator(
@@ -117,10 +121,12 @@ class ProductDensityOperator(DensityOperatorMixin, ProductOperator):
         return ProductOperator(self.site_factors, 1, self.system) * a
 
     def __neg__(self):
+        """Multiply by -1."""
         logging.warning("Negate a DensityOperator leads to a regular operator.")
         return ProductOperator(self.site_factors, -1, self.system)
 
     def __rmul__(self, a):
+        """Multiply by a number of operator by the left."""
         if isinstance(a, (float, np.float64)):
             if a >= 0:
                 return ProductDensityOperator(
@@ -140,7 +146,10 @@ class ProductDensityOperator(DensityOperatorMixin, ProductOperator):
         obs_objs: Any,
         _local_states: Optional[Dict[frozenset, "DensityOperatorProtocol"]] = None,
     ) -> Any:
-        """Compute the expectation value of an operator or a sequence of
+        """
+        Compute expectation values.
+
+        Compute the expectation value of an operator or a sequence of
         operators.
 
         Hot paths use dense numpy arithmetic and bypass Qobj overhead:

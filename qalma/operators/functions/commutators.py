@@ -45,7 +45,13 @@ def anticommutator(
 
 
 def anticommutator_qalma_serial(op_1: Operator, op_2: Operator) -> Operator:
-    """Compute the anticommutator of two operators, defined as {op1, op2} = op1 * op2 + op2 * op1.
+    r"""Compute the anticommutator of two operators.
+
+    The anticommutator of two operators ``op1`` and ``op2`` is defined as
+
+    .. math::
+
+    \{op1, op2\} = op1 * op2 + op2 * op1.
 
     Parameters
     ----------
@@ -97,7 +103,7 @@ def commutator(
 
 
 def commutator_qalma_serial(op_1: Operator, op_2: Operator) -> Operator:
-    """The commutator of two Operator objects `op_1` and  `op_2`.
+    """Compute the commutator of two Operator objects `op_1` and `op_2` (serial implementation).
 
     Serial implementation.
     """

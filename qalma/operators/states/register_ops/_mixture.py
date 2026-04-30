@@ -1,4 +1,5 @@
-"""Arithmetic handlers involving MixtureDensityOperator.
+"""
+Arithmetic handlers involving MixtureDensityOperator.
 
 Registered operations:
   - MixtureDensityOperator + any density state  ->  MixtureDensityOperator
@@ -118,9 +119,7 @@ def _(x_op: MixtureDensityOperator, y_op: MixtureDensityOperator):
     ]
 )
 def _(x_op: MixtureDensityOperator, y_op: Operator):
-    """Convert the mixture into a SumOperator, and then add the other
-    operator.
-    """
+    """Convert the mixture into a SumOperator, and then add the other operator."""
     # HACK to convert terms from a MixtureDensityOperator
     # to terms in a sum.
     #
@@ -147,9 +146,7 @@ def _(x_op: MixtureDensityOperator, y_op: Operator):
     ]
 )
 def _(x_op: Operator, y_op: MixtureDensityOperator):
-    """Convert the mixture into a SumOperator, and then add the other
-    operator.
-    """
+    """Convert the mixture into a SumOperator, and then add the other operator."""
     # HACK to convert terms from a MixtureDensityOperator
     # to terms in a sum.
     #

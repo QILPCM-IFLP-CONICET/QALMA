@@ -147,14 +147,15 @@ class SumOperator(Operator):
         )
 
     def __neg__(self):
-        """Return the negation of each term."""
+        """Multiply the operator by -1."""
         return SumOperator(tuple(-t for t in self.terms), self.system, self._isherm)
 
     def __repr__(self):
+        """Build the repr str."""
         return "(\n" + "\n  +".join(repr(t) for t in self.terms) + "\n)"
 
     def _repr_latex_(self):
-        """LaTeX Representation."""
+        """Build a LaTeX representation."""
         # pylint: disable=protected-access
         terms = self.terms
         if len(terms) > 6:
@@ -600,10 +601,11 @@ class OneBodyOperator(SumOperator):
         )
 
     def __repr__(self):
+        """Build the repr str."""
         return "  " + "\n  +".join("(" + repr(term) + ")" for term in self.terms)
 
     def __neg__(self):
-        """Return the negation of the operator."""
+        """Multiply the operator by -1."""
         return OneBodyOperator(tuple(-term for term in self.terms), self.system)
 
     def dag(self):
@@ -708,7 +710,9 @@ class OneBodyOperator(SumOperator):
 
     @staticmethod
     def _simplify_terms(terms, system):
-        """Group terms by subsystem and combine local operators on the same
+        """Simplify terms (internal).
+
+        Group terms by subsystem and combine local operators on the same
         site.
 
         Scalar terms are summed into a single :class:`ScalarOperator`.

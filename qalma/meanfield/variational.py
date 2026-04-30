@@ -273,14 +273,16 @@ def variational_quadratic_mfa(
     numfields : int, optional
         The minimal number of *fields* $\phi_a$ to be included in the
         optimization. If there are several generators of the quadratic form
-        with the same weight, numfields is extended to include all of them.
+        with the same weight, ``numfields`` is extended to include all of them.
+        If ``numfields`` is ``0``, the function just does a self consistent
+        search.
         The default is 1.
     sigma_ref : DensityOperatorProtocol, optional
         The initial reference state to project `ham` to a quadratic form.
         The default is None.
     its : int, optional
         Maximum number of recursive rounds. If the operator is already a
-        2-body operator, its is set to 0. The default is 0.
+        2-body operator, ``its`` is set to 1. The default is 1.
     method : Optional[str], optional
         The method used in the numeric optimization. The default is None.
     callback_optimizer : Callable, optional
@@ -315,10 +317,17 @@ def variational_quadratic_mfa(
     if isinstance(ham, OneBodyOperator):
         return GibbsProductDensityOperator(ham.hermitician_part()).to_product_state()
 
+    if numfields == 0:
+        sigma, _ = self_consistent_mf(
+            ham, sigma_ref, max_steps=max_self_consistent_steps
+        )
+        return sigma
+
     for _ in range(its):
         # We start by projecting the generator `ham` to the two-body sector
         # relative to `sigma_ref`:
         changed = False
+
         ham_proj = n_body_projection(ham, n_max=2, sigma=sigma_ref).hermitician_part()
         if isinstance(ham_proj, OneBodyOperator):
             sigma_candidate = GibbsProductDensityOperator(ham_proj).to_product_state()

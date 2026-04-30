@@ -35,8 +35,16 @@ from qalma.settings import QALMA_TOLERANCE
 
 
 class QuadraticFormOperator(Operator):
-    """Represents a two-body operator of the form sum_alpha w_alpha * Q_alpha^2
-    with Q_alpha a local operator or a One body operator.
+    r"""Represent a two-body operator as a sum of squares with coefficients.
+
+    The operator ``T`` is represented in terms of operators $Q_\alpha$ and
+    weights $w_\alpha$ s.t.
+
+    .. math::
+
+        T = sum_alpha w_alpha * Q_alpha^2
+
+    with $Q_alpha$ a local operator or a one body operator.
     """
 
     system: SystemDescriptor
@@ -45,7 +53,9 @@ class QuadraticFormOperator(Operator):
     offset: Optional[Operator]
 
     def __init__(self, basis, weights, system=None, linear_term=None, offset=None):
-        r"""Parameters
+        r"""Initializae a QuadraticFormOperator.
+
+        Parameters
         ----------
         basis : tuple[Operator, ...]
             Tuple of Hermitian one-body operators :math:`Q_\\alpha`. Each
@@ -101,6 +111,7 @@ class QuadraticFormOperator(Operator):
         self._simplified = False
 
     def __bool__(self):
+        """Convert to bool."""
         for term in (self.linear_term, self.offset):
             if term is not None:
                 if not term.is_zero:
@@ -108,7 +119,7 @@ class QuadraticFormOperator(Operator):
         return len(self.weights) > 0 and any(self.weights) and any(self.basis)
 
     def __add__(self, other):
-
+        """Add with another operator."""
         # TODO: remove me and fix the sums
         if not bool(other):
             return self
@@ -160,6 +171,7 @@ class QuadraticFormOperator(Operator):
         )
 
     def __mul__(self, other):
+        """Multiply with another operator by the right."""
         system = self.system
         if isinstance(other, ScalarOperator):
             other = other.prefactor
@@ -183,6 +195,7 @@ class QuadraticFormOperator(Operator):
         return standard_repr * other
 
     def __neg__(self):
+        """Represent the additive opposite."""
         offset = self.offset
         if offset is not None:
             offset = -offset
@@ -444,9 +457,12 @@ class QuadraticFormOperator(Operator):
         ).simplify()
 
     def reduce(self, sites: Iterable, state=None) -> Operator:
-        """Partial trace of the product of the operator and the density
-        operator acting on the subsystem which is traced out. If the state is
-        not provided, the result is the partial trace, divided by the dimension
+        """Compute the reduced operator relative to ``state``.
+
+        The relative reduced state operator is the partial trace of the
+        product of the operator and the density operator acting on the
+        subsystem which is traced out. If the state is not provided,
+        the result is the partial trace, divided by the dimension
         of the subsystem traced out.
 
         Parameters
@@ -480,8 +496,9 @@ class QuadraticFormOperator(Operator):
         return result
 
     def to_qutip(self, block: Optional[Tuple[str, ...]] = None):
-        """Return a qutip object acting over the sites listed in
-        `block`.
+        """Return a qutip ``Qobj`` object.
+
+        The Qobj acts over the sites listed in `block`.
         By default (`block=None`) returns a qutip object
         acting over all the sites, in lexicographical order.
         """
@@ -504,8 +521,9 @@ class QuadraticFormOperator(Operator):
 
 
 def quadratic_form_expect(sq_op, state):
-    """Compute the expectation value of op, taking advantage of its
-    structure.
+    """Compute the expectation value of op.
+
+    The evaluation takes advantage of the operator structure.
     """
     sq_op = sq_op.as_sum_of_products(False)
     return state.expect(sq_op)
@@ -514,7 +532,9 @@ def quadratic_form_expect(sq_op, state):
 def selfconsistent_meanfield_from_quadratic_form(
     quadratic_form: QuadraticFormOperator, max_it, logdict=None
 ):
-    """Build a self-consistent mean field approximation to the gibbs state
+    """Build a meanfield approximation.
+
+    Build a self-consistent mean field approximation to the gibbs state
     associated to the quadratic form.
     """
     from qalma.operators.states.gibbs import GibbsProductDensityOperator
@@ -591,10 +611,12 @@ def simplify_quadratic_form(
     hermitic: bool = True,
     scalar_product: Callable = one_body_operator_hermitician_hs_sp,
 ):
-    """Takes a 2-body operator and returns lists weights, ops.
+    """Take a 2-body operator and returns lists weights, ops.
 
-    such that the original operator is sum(w * op**2 for w,op in
-    zip(weights,ops))
+    The original operator is spanned as
+
+    .. code-block:: Python
+        sum(w * op**2 for w,op in zip(weights,ops))
     """
     from .build import build_quadratic_form_from_operator
 
