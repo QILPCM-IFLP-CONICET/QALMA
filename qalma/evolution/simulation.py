@@ -130,7 +130,7 @@ def store_state(key, state, group, system=None):
         def serialize_state(rho):
             """
             Serialize the state attribute.
-            
+
             Pickle ``rho`` with its system reference intact.
             """
             return pickle.dumps(rho)
