@@ -42,9 +42,7 @@ class Operator:  # pylint: disable=too-many-public-methods
         """Register a function to implement add."""
 
         def register_func(func):
-            """Register ``func`` as the add handler for ``key`` and return
-            it.
-            """
+            """Register ``func`` as the add handler for ``key`` and return it."""
             if isinstance(key[0], (list, tuple)):
                 keys = key
             else:
@@ -68,9 +66,7 @@ class Operator:  # pylint: disable=too-many-public-methods
         """Register a function to implement mul."""
 
         def register_func(func):
-            """Register ``func`` as the mul handler for ``key`` and return
-            it.
-            """
+            """Register ``func`` as the mul handler for ``key`` and return it."""
             if isinstance(key[0], (list, tuple)):
                 keys = key
             else:
@@ -89,10 +85,11 @@ class Operator:  # pylint: disable=too-many-public-methods
         return register_func
 
     def __bool__(self):
+        """Return False if the operator is zero, True otherwise."""
         return not self.is_zero
 
     def __add__(self, term):
-        # Use multiple dispatch to determine how to add
+        """Add ``term`` to this operator using the registered dispatch table."""
         dispatch_table = Operator.__add__dispatch__
         # First try with the cases stored in the dispatch table:
         func = dispatch_table.get((type(self), type(term)), None)
@@ -116,6 +113,7 @@ class Operator:  # pylint: disable=too-many-public-methods
             raise TypeError(f"{type(self)} cannot be added with  {type(term)}") from exc
 
     def __mul__(self, factor):
+        """Multiply this operator by ``factor`` using the registered dispatch table."""
         # Use multiple dispatch to determine how to multiply
         dispatch_table = Operator.__mul__dispatch__
         # First try with the cases stored in the dispatch table:
@@ -135,9 +133,11 @@ class Operator:  # pylint: disable=too-many-public-methods
             ) from exc
 
     def __neg__(self):
+        """Return the negation of this operator."""
         return -(self.to_qutip_operator())
 
     def __sub__(self, operand):
+        """Subtract ``operand`` from this operator."""
         from qalma.operators.product import ScalarOperator
 
         if operand is self:
@@ -148,6 +148,7 @@ class Operator:  # pylint: disable=too-many-public-methods
         return self + neg_op
 
     def __radd__(self, term):
+        """Add this operator to ``term`` (right-hand addition)."""
         # Use multiple dispatch to determine how to add
         dispatch_table = Operator.__add__dispatch__
         # First try with the cases stored in the dispatch table:
@@ -182,6 +183,7 @@ class Operator:  # pylint: disable=too-many-public-methods
         raise TypeError(f"{type(self)} cannot be added with  {type(term)}")
 
     def __rmul__(self, factor):
+        """Multiply ``factor`` by this operator (right-hand multiplication)."""
         # Use __mul__dispatch__ to determine how to evaluate the product
 
         dispatch_table = Operator.__mul__dispatch__
@@ -198,6 +200,7 @@ class Operator:  # pylint: disable=too-many-public-methods
         raise TypeError(f"{type(factor)} cannot be multiplied with  {type(self)}")
 
     def __rsub__(self, operand):
+        """Subtract this operator from ``operand`` (right-hand subtraction)."""
         if operand is None:
             raise ValueError("None can not be an operand")
 
@@ -205,12 +208,14 @@ class Operator:  # pylint: disable=too-many-public-methods
         return operand + neg_self
 
     def __pow__(self, exponent):
+        """Raise this operator to ``exponent`` via the QuTiP representation."""
         if exponent is None:
             raise ValueError("None can not be an operand")
 
         return self.to_qutip_operator() ** exponent
 
     def __truediv__(self, operand):
+        """Divide this operator by a scalar or another operator."""
         if isinstance(operand, (int, float, complex)):
             return self * (1.0 / operand)
         if isinstance(operand, Operator):
@@ -218,7 +223,7 @@ class Operator:  # pylint: disable=too-many-public-methods
         raise ValueError("Division of an operator by ", type(operand), " not defined.")
 
     def _repr_latex_(self):
-        """LaTeX Representation."""
+        """Latex representation."""
         acts_over = sorted(self.acts_over())
         if len(acts_over) > 4:
             return repr(self)
@@ -255,10 +260,7 @@ class Operator:  # pylint: disable=too-many-public-methods
         return self
 
     def hermitician_part(self):
-        """The hermitician part of the operator."""
-        if self.isherm:
-            return self
-        return (self + self.dag()) * 0.5
+        """Return the Hermitian part of the operator, (O + O†) / 2."""
 
     @property
     def isherm(self) -> bool:
@@ -490,7 +492,7 @@ class LocalOperator(Operator):
         return LocalOperator(self.site, self.operator_qutip.expm(), self.system)
 
     def hermitician_part(self):
-        """The hermitician part of the operator."""
+        """Return the Hermitian part of the local operator, (O + O†) / 2."""
         op = self.operator
         if self.isherm:
             return self
