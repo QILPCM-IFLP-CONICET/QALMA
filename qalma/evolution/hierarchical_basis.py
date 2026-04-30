@@ -16,7 +16,10 @@ from qalma.operators.functions import commutator
 def build_hierarchical_basis(
     generator: Operator, seed_op: Operator, deep: int, to_qutip_operator: bool = False
 ) -> List[Operator]:
-    """Constructs a hierarchical basis of operators, formed from iterated
+    """
+    Buold a hierarchical basis.
+
+    Constructs a hierarchical basis of operators, formed from iterated
     commutators of a seed operator.
 
     Parameters
@@ -60,7 +63,10 @@ def build_hierarchical_basis(
 
 
 def fn_hij_tensor(basis: List[Operator], sp: Callable, generator: Operator) -> NDArray:
-    """Computes the Hij-tensor, a local matrix representation of the Hamiltonian
+    """
+    Compute the ``Hij`` tensor.
+
+    Computes the Hij-tensor, a local matrix representation of the Hamiltonian
     onto the given basis.
 
     For each pair of basis operators (op1, op2), the matrix element is defined
@@ -101,7 +107,10 @@ def fn_hij_tensor(basis: List[Operator], sp: Callable, generator: Operator) -> N
 def fn_hij_tensor_with_errors(
     basis: List[Operator], sp: Callable, generator: Operator
 ) -> Tuple[NDArray, NDArray]:
-    """Computes the Hij-tensor, a local matrix representation of the Hamiltonian
+    """
+    Compute the ``Hij`` tensor and the error coefficients.
+
+    Computes the Hij-tensor, a local matrix representation of the Hamiltonian
     onto the given basis, and the norm of the orthogonal projector.
 
     For each pair of basis operators (op1, op2), the matrix element is defined
@@ -155,7 +164,10 @@ def fn_hij_tensor_with_errors(
 
 
 def k_state_from_phi_basis(phi: NDArray, basis: List[Operator]) -> Operator:
-    """Constructs the operator K from a given set of coefficients and basis
+    """
+    Build an operator from a basis and coefficients.
+
+    Constructs the operator K from a given set of coefficients and basis
     operators.
 
     Parameters

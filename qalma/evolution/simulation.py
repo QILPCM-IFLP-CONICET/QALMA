@@ -1,4 +1,7 @@
-"""This module defines the `Simulation` dataclass containing the
+"""
+Simulation class.
+
+This module defines the `Simulation` dataclass containing the
 state and the result of a simulation.
 `Simulation` objects can be serialized both as Python pickle and
 as  HDF5 files.
@@ -110,7 +113,10 @@ def store_state(key, state, group, system=None):
     if system is not None:
 
         def serialize_state(rho):
-            """Pickle ``rho`` after temporarily clearing its system
+            """
+            Serialize the state attribute.
+
+            Pickle ``rho`` after temporarily clearing its system
             reference.
             """
             state_sys = rho.system
@@ -122,7 +128,11 @@ def store_state(key, state, group, system=None):
     else:
 
         def serialize_state(rho):
-            """Pickle ``rho`` with its system reference intact."""
+            """
+            Serialize the state attribute.
+            
+            Pickle ``rho`` with its system reference intact.
+            """
             return pickle.dumps(rho)
 
     group.create_dataset(
@@ -284,7 +294,10 @@ class SimulationHDF5(Simulation):
         """
 
         def __init__(self, filename, system):
-            """Parameters
+            """
+            Initialize the Simulation object.
+
+            Parameters
             ----------
             filename : str
                 Path to the HDF5 file containing the simulation.
@@ -298,6 +311,7 @@ class SimulationHDF5(Simulation):
                 self.system = system_from_hdf5(f)
 
         def __iter__(self):
+            """Retrieve items."""
             with h5py.File(self.filename, "r") as f:
                 group = f.get("states", None)
                 if group is None:
@@ -305,6 +319,7 @@ class SimulationHDF5(Simulation):
                 yield from hdf5_state_iterator(f, self.system)
 
         def __getitem__(self, idx: int):
+            """Get item from serialization."""
             key = "rho_" + f"{idx}".rjust(6, "0")
             with h5py.File(self.filename, "r") as f:
                 group = f.get("states", None)
@@ -314,6 +329,7 @@ class SimulationHDF5(Simulation):
             raise ValueError("element out of range")
 
         def __setitem__(self, idx: int, value: Operator):
+            """Set item into serialization."""
             key = "rho_" + f"{idx}".rjust(6, "0")
             with h5py.File(self.filename, "r+") as f:
                 group = f.get("states", None)
@@ -323,6 +339,7 @@ class SimulationHDF5(Simulation):
                 store_state(key, value, group, self.system)
 
         def __len__(self):
+            """Compute the length."""
             with h5py.File(self.filename, "r") as f:
                 group = f.get("states", None)
                 if group is None:

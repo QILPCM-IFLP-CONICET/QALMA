@@ -23,7 +23,10 @@ from qalma.settings import DEFAULT_MAX_NUMBER_OF_FIELDS, QALMA_TOLERANCE
 
 
 def compute_free_energy(state: ProductDensityOperator, ham: Operator) -> float:
-    """Compute the approfree energy relative to the gibbs state exp(-ham) from
+    """
+    Estimate the free energy of ``ham`` from the approximate Gibbs product state.
+
+    Compute the approfree energy relative to the gibbs state exp(-ham) from
     `state`.
 
     Parameters
@@ -51,8 +54,13 @@ def mf_quadratic_form_exponential(
     callback_optimizer: Optional[Callable] = None,
     ham: Optional[Operator] = None,
 ) -> ProductDensityOperator:
-    """Approximate `exp(-qf_op)` as `exp(-h_mf)`
-    with h_mf = k_0 + sum_a phi_a q_a.
+    """Approximate `exp(-qf_op)` as `exp(-h_mf)`.
+    
+    Here 
+
+    .. math::
+
+        h_mf = k_0 + sum_a phi_a q_a.
 
     Parameters
     ----------
@@ -185,7 +193,10 @@ def self_consistent_mf(
     max_steps: int = 10,
     callback: Optional[Callable] = None,
 ) -> Tuple[ProductDensityOperator, float]:
-    """Starting from `sigma_ref` compute an approximation of exp(-ham)
+    """
+    Build a self-consistent approximation of $exp(-ham)$.
+
+    Starting from `sigma_ref` compute an approximation of exp(-ham)
     following a self-consistent algorithm.
 
     Parameters
@@ -245,7 +256,10 @@ def variational_quadratic_mfa(
     sigma_ref: Optional[ProductDensityOperator] = None,
     **kwargs,
 ) -> ProductDensityOperator:
-    r"""Find the Mean field approximation for the exponential
+    r"""
+    Build a variational meanfield approximation 2-body projections.
+
+    Find the Mean field approximation for the exponential
     of an operator using a variational algorithm.
 
     At the end, improve the solution in a self-consistent

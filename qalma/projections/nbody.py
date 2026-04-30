@@ -53,7 +53,10 @@ _FEW_BODY_APPROACH_THRESHOLD_ = 3
 
 
 def np_prod(a, initial=None):
-    """Return the product of the elements of an array, times an initial value,
+    """
+    Compute the product of the elements in a numpy array.
+
+    Return the product of the elements of an array, times an initial value,
     if given, using numpy.
 
     If numpy fails, try with reduce. In particular, this happens if `a`
@@ -69,7 +72,10 @@ def np_prod(a, initial=None):
 
 
 def one_body_product_projection(full_operator, sigma_ref):
-    """Project a :class:`~qalma.operators.product.ProductOperator` onto the
+    """
+    Project product operators onto one-body operators.
+
+    Project a :class:`~qalma.operators.product.ProductOperator` onto the
     one-body operator subspace relative to ``sigma_ref``.
 
     Delegates to :func:`_project_product_operator_to_one_body`.
@@ -95,7 +101,10 @@ def _project_product_operator_to_one_body(
     full_operator: ProductOperator,
     sigma_ref: Optional[ProductDensityOperator] = None,
 ):
-    """Project a Product operator to the algebra of one-body operators,
+    """
+    Project product operators onto one-body operators.
+
+    Project a Product operator to the algebra of one-body operators,
     relative to the state `sigma_ref`.
     """
     system = full_operator.system
@@ -130,7 +139,10 @@ def one_body_qutip_projection(
     full_operator: QutipOperator,
     state_ref: Optional[ProductDensityOperator] = None,
 ):
-    """Project a :class:`~qalma.operators.qutip.QutipOperator` onto the one-
+    """
+    Project qutip operators onto one-body operators.
+
+    Project a :class:`~qalma.operators.qutip.QutipOperator` onto the one-
     body operator subspace relative to ``state_ref``.
 
     Delegates to :func:`_project_qutip_operator_to_one_body`.
@@ -156,7 +168,10 @@ def _project_qutip_operator_to_one_body(
     full_operator: QutipOperator,
     state_ref: Optional[ProductDensityOperator] = None,
 ):
-    r"""Project `full_operator` over the one-body operator subspace,
+    r"""
+    Project qutip operators onto one-body operators.
+
+    Project `full_operator` over the one-body operator subspace,
     relative to the state `state_ref`.
 
     The idea is that the projection of a product operator on the one-body
@@ -281,7 +296,10 @@ def n_body_product_projection(
     n_max: int,
     sigma_ref: Optional[ProductDensityOperator],
 ) -> Operator:
-    """Project a :class:`~qalma.operators.product.ProductOperator` onto the
+    """
+    Project product operators onto the n-body operator space.
+
+    Project a :class:`~qalma.operators.product.ProductOperator` onto the
     n-body operator subspace relative to ``sigma_ref``.
 
     Delegates to :func:`_project_product_operator_recursive`.
@@ -310,7 +328,7 @@ def _project_product_operator_recursive(
     n_max: int,
     sigma_ref: Optional[ProductDensityOperator],
 ) -> Operator:
-    """# reduce op1 (x) op2 (x) op3 ...
+    """Reduce op1 (x) op2 (x) op3 ...
 
     # to <op1> Proj_{m}(op2 (x) op3) + # Delta op1 (x) Proj_{m-1}(op2
     (x) op3) # and sum the result.
@@ -431,7 +449,10 @@ def _project_qutip_operator_combinatorial(
 
 
 def n_body_qutip_projection(full_operator: QutipOperator, n_max=2, sigma_ref=None):
-    """Project a :class:`~qalma.operators.qutip.QutipOperator` onto the n-body
+    """
+    Project qutip operators onto the n-body operator space.
+
+    Project a :class:`~qalma.operators.qutip.QutipOperator` onto the n-body
     operator subspace relative to ``sigma_ref``.
 
     Delegates to :func:`_project_qutip_operator_recursive`.
@@ -459,7 +480,10 @@ def n_body_qutip_projection(full_operator: QutipOperator, n_max=2, sigma_ref=Non
 def _project_qutip_operator_recursive(
     full_operator: QutipOperator, n_max=2, sigma_ref=None
 ) -> Operator:
-    """Recursive implementation for the n-body Projection over
+    """
+    Project qutip operators onto the n-body operator space (recursive implementation).
+
+    Recursive implementation for the n-body Projection over
     QutipOperators.
     """
     if n_max == 0:
@@ -563,7 +587,10 @@ def project_quadraticform_operator_as_n_body_operator(
 def one_body_from_qutip_operator(
     operator: Union[Operator, _Qobj], sigma0: Optional[ProductDensityOperator] = None
 ) -> Operator:
-    """Decompose a qutip operator as a sum of an scalar term, a one-body term
+    """
+    Decompose qutip operators as a sum of scalar + one-body+remainder.
+
+    Decompose a qutip operator as a sum of an scalar term, a one-body term
     and a remainder, with the one-body term and the remainder having zero mean
     regarding sigma0.
 
@@ -638,7 +665,10 @@ def one_body_from_qutip_operator(
 def project_operator_to_n_body(
     full_operator: Operator, n_max=2, sigma_ref=None
 ) -> Operator:
-    """Project a Operator onto a n_max - body operators sub-algebra
+    """
+    Project general operators onto the n-body operator space.
+
+    Project a Operator onto a n_max - body operators sub-algebra
     relative to the local states `local_sigmas`.
     If `local_sigmas` is not given, maximally mixed states are assumed.
     """
@@ -707,9 +737,7 @@ def project_operator_to_n_body(
 
 
 def _project_monomial(operator, n_max, sigma):
-    """Apply the projection function specific for the given type of
-    operator.
-    """
+    """Apply the projection function specific for the given type of operator."""
     return DISPATCH_PROJECTION_METHOD[type(operator)](operator, n_max, sigma).simplify()
 
 
@@ -727,7 +755,10 @@ def project_sum_operator(
     block_terms: Dict[Optional[frozenset], Operator] = {}
 
     def dispatch_term(t):
-        """If t is a nbody-term acting on not more than n_max sites, stores in
+        """
+        Dispatch term.
+
+        If t is a nbody-term acting on not more than n_max sites, stores in
         the proper place and return True.
 
         Otherwise, return False.
@@ -802,7 +833,10 @@ def project_sum_operator(
 def project_to_n_body_operator(
     full_operator: Operator, n_max: int = 1, sigma=None
 ) -> Operator:
-    """Approximate `operator` by a sum of (up to) n_max-body terms, relative to
+    """
+    Project operators onto the n-body operator space.
+
+    Approximate `operator` by a sum of (up to) n_max-body terms, relative to
     the state sigma. By default, `sigma` is the identity matrix.
 
     ``operator`` can be a SumOperator or a Product Operator.

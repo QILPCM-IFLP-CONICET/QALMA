@@ -58,7 +58,7 @@ def _to_array(op) -> np.ndarray:
 if qutip_version < parse_version("5.0.0"):
 
     def data_element_iterator(data) -> Iterator:
-        """Generator for the nontrivial elements."""
+        """Retrieve a generator for the nontrivial elements."""
         i_idx, j_idx = data.nonzero()
         yield from zip(i_idx, j_idx, data.data)
 
@@ -104,7 +104,10 @@ if qutip_version < parse_version("5.0.0"):
         return elem if all(elem == val for val in vals) else None
 
     def fast_tensor(*factors):
-        """If some of the factors are not in Dense representation, convert
+        """
+        Compute a fast tensor product using a CSR representation.
+
+        If some of the factors are not in Dense representation, convert
         everthing to CSR to speedup the computation.
         """
         return _qutip_tensor(*factors)
@@ -318,7 +321,10 @@ else:
     if qutip_version < parse_version("5.2.0"):
 
         def fast_tensor(*factors):
-            """If some of the factors are not in Dense representation, convert
+            """
+            Compute a fast tensor product using a CSR representation.
+
+            If some of the factors are not in Dense representation, convert
             everthing to CSR to speedup the computation.
             """
             return _qutip_tensor(*factors)
@@ -326,6 +332,7 @@ else:
     else:
 
         def fast_tensor(*factors):
+            """Compute a fast tensor product using a CSR representation."""
             if all(isinstance(factor.data, _Qutip_Dense) for factor in factors):
                 return _qutip_tensor(*factors)
             return _qutip_tensor((factor.to(_Qutip_CSR) for factor in factors))
@@ -366,13 +373,14 @@ def empty_op(op) -> bool:
 
 
 def hermitician_part(op: _Qobj, tol=None) -> _Qobj:
-    """Returns the hermitician part of the operator `op`."""
+    """Return the hermitician part of the operator `op`."""
     if op.isherm:
         return op
     return (op + op.dag()).tidyup(tol) * 0.5
 
 
 def is_diagonal_op(op: _Qobj | np.ndarray) -> bool:
+    """Check if a ``Qobj`` operator is diagonal."""
     if isinstance(op, np.ndarray):
         return data_is_diagonal(op)
     return data_is_diagonal(op.data)
@@ -386,7 +394,7 @@ def is_scalar_op(op: _Qobj) -> bool:
 
 
 def isnan_qutip(op: _Qobj) -> bool:
-    """Is nan for qutip objects."""
+    """Check if a ``Qobj`` operator has ``nan`` entries."""
     return data_has_nan(op.data)
 
 
@@ -462,7 +470,10 @@ def norm(
 
 
 def reshape_qutip_data(data, dims, bs=1) -> np.ndarray:
-    """Reshape the data representing an operator with dimensions
+    """
+    Reshape tensor indices.
+
+    Reshape the data representing an operator with dimensions
     dims = [[dim1, dim2,...],[dim1, dim2,...]]
     as an array with shape
     dims' = [[dim1,dim1],[dim2,dim3,... dim2,dim3,...]].
@@ -493,7 +504,10 @@ def reshape_qutip_data(data, dims, bs=1) -> np.ndarray:
 def schmidt_dec_first_rest_qutip_operator(
     operator: _Qobj, tol: float = 1e-10
 ) -> Tuple[List[_Qobj], ...]:
-    """Decompose a qutip operator acting over H_1 (x) H_2 (x) H_3 (x) as a sum
+    """
+    Decompose an operator as a sum of tensor products.
+
+    Decompose a qutip operator acting over H_1 (x) H_2 (x) H_3 (x) as a sum
     of terms of the form Q_{k} (x) Rest_{k}.
     """
     dims = operator.dims[0]
@@ -527,7 +541,10 @@ def schmidt_dec_first_rest_qutip_operator(
 def schmidt_dec_first_rest_qutip_operator_hermitician(
     operator: _Qobj, tol: float = 1e-10
 ) -> Tuple[List[_Qobj], ...]:
-    """Decompose a hermitician qutip operator acting over H_1 (x) H_2 (x) H_3
+    """
+    Decompose an hermitician operator as a sum of tensor products.
+
+    Decompose a hermitician qutip operator acting over H_1 (x) H_2 (x) H_3
     (x) as a sum of terms of the form Q_{k} (x) Rest_{k}.
     """
     opsh_1 = []
@@ -620,7 +637,10 @@ def schmidt_dec_rest_last_qutip_operator(
 def schmidt_dec_rest_last_qutip_operator_hermitician(
     operator: _Qobj, tol: float = 1e-10
 ) -> Tuple[List[_Qobj], ...]:
-    """Decompose a qutip operator acting over H_1 (x) H_2 (x) H_3 (x) as a sum
+    """
+    Decompose an hermitician operator as a sum of tensor products.
+
+    Decompose a qutip operator acting over H_1 (x) H_2 (x) H_3 (x) as a sum
     of terms of the form Q_{k} (x) Rest_{k}.
     """
     opsh_1 = []
@@ -743,8 +763,11 @@ def decompose_qutip_operator_hermitician(
 
 
 def get_proper_spaces(spectrum: Iterable) -> List[List[int]]:
-    """Given a diagonal operator, find the proper spaces associated to each
-    eigenvalue.
+    """
+    Find the proper space of each eigenvalue.
+
+    Given a diagonal operator, this function finds the proper spaces
+    associated to each eigenvalue.
     """
     sectors_dict: Dict[Real, List[int]] = {}
     for idx, sector in enumerate(spectrum):
@@ -753,8 +776,8 @@ def get_proper_spaces(spectrum: Iterable) -> List[List[int]]:
 
 
 def reduce_to_proper_spaces(operator: _Qobj, observable: _Qobj) -> _Qobj:
-    """Reduce operator to a block diagonal operator
-    on each sector.
+    """
+    Reduce operator to a block diagonal operator on each sector.
 
     If ``observable`` is of the form
 
@@ -807,7 +830,10 @@ def reduce_to_proper_spaces(operator: _Qobj, observable: _Qobj) -> _Qobj:
 def project_qutip_to_m_body(
     op_qutip: _Qobj, m_max: int = 2, local_sigmas: Optional[list] = None
 ) -> _Qobj:
-    """Project a qutip operator onto a m_max - body operators sub-algebra
+    """
+    Project a Qobj operator into the m-body sector.
+
+    Project a qutip operator onto a m_max - body operators sub-algebra
     relative to the local states `local_sigmas`.
     If `local_sigmas` is not given, maximally mixed states are assumed.
     """
@@ -857,7 +883,10 @@ def project_qutip_to_m_body(
 
 
 def safe_exp_and_normalize(operator: _Qobj) -> Tuple[_Qobj, float]:
-    """Compute the decomposition of exp(operator) as rho*exp(f)
+    """
+    Compute the exponential of a ``Qobj`` operator avoiding overflows.
+
+    Compute the decomposition of exp(operator) as rho*exp(f)
     with f = Tr[exp(operator)], for operator a Qutip operator.
 
     operator: Qobj

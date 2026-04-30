@@ -490,9 +490,7 @@ def adaptive_projected_evolution(
             e_ops = {pos: e_op for pos, e_op in enumerate(cast(Iterable, e_ops))}
 
         def call_on_success_evol(t, k):
-            """Evaluate observables at time ``t`` and optionally store
-            ``k``.
-            """
+            """Evaluate observables at time ``t`` and optionally store ``k``."""
             curr_e_ops = GibbsDensityOperator(k).expect(e_ops)
             for key, val in curr_e_ops.items():
                 expect_ops.setdefault(key, []).append(val)

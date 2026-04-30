@@ -32,7 +32,10 @@ from qalma.settings import MAXIMUM_GIBBS_EXACT_PARTIAL_TRACE
 
 
 def project_boundary_term(term, sigma: ProductDensityOperator, sites: frozenset):
-    """Convert terms of the form O_a Q_b in to O_a <Q_b> with <Q_b> the
+    """
+    Project the boundary term.
+
+    Convert terms of the form O_a Q_b in to O_a <Q_b> with <Q_b> the
     expectation value regarding sigma, and Q_b acting on the sub-system
     associated to sigma.
     """
