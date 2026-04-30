@@ -44,6 +44,8 @@ def sum_operator_sequence(
 
     Returns
     -------
+    Operator
+        the sum of the terms in the sequence.
 
     """
     if not seq:
@@ -54,7 +56,10 @@ def sum_operator_sequence(
 
 
 def collect_nbody_terms(operator: Operator) -> dict:
-    """Build a dictionary whose keys are subsystems and the values are lists of
+    """
+    Collect terms by the block on which acts over.
+
+    This functio builds a dictionary whose keys are subsystems and the values are lists of
     operators acting exactly over the subsystem.
 
     Parameters
@@ -66,6 +71,9 @@ def collect_nbody_terms(operator: Operator) -> dict:
 
     Returns
     -------
+    Dict[frozenset, Operator]
+        A dict whose keys are set of sites, and their values are the terms
+        actin on these sites.
 
     """
     full_acts_over: frozenset
@@ -92,7 +100,10 @@ def collect_nbody_terms(operator: Operator) -> dict:
 
 
 def group_terms_by_blocks(operator: Operator, fn: Optional[Callable] = None):
-    """Rewrite a sum of operators as a sum
+    """
+    Rewrite operator as a sum of terms acting on different blocks.
+
+    Rewrite a sum of operators as a sum
     of a ScalarOperator, a OneBodyOperator
     and terms acting on different blocks.
 
@@ -153,7 +164,10 @@ def group_terms_by_blocks(operator: Operator, fn: Optional[Callable] = None):
     scalar_terms = []
 
     def apply_simplification_fn(op_in: Operator, fn: Optional[Callable]):
-        """Parameters
+        """
+        Apply the simplification function.
+
+        Parameters
         ----------
         op_in: Operator :
 
@@ -161,7 +175,8 @@ def group_terms_by_blocks(operator: Operator, fn: Optional[Callable] = None):
 
         Returns
         -------
-
+        Operator:
+           the simplified operator.
         """
         try:
             if isinstance(op_in, SumOperator):
@@ -246,7 +261,10 @@ def group_terms_by_blocks(operator: Operator, fn: Optional[Callable] = None):
 
 
 def simplify_qutip_sums(sum_operator: SumOperator) -> Operator:
-    """Collect terms acting on the same block of sites, and reduce it to a
+    """
+    Simplify terms which are qutip operators.
+
+    This function collect terms acting on the same block of sites, and reduce it to a
     single qutip operator.
 
     Parameters
@@ -258,6 +276,8 @@ def simplify_qutip_sums(sum_operator: SumOperator) -> Operator:
 
     Returns
     -------
+    Operator
+        the simplified operator.
 
     """
     if not isinstance(sum_operator, SumOperator):
@@ -354,21 +374,28 @@ def rewrite_nbody_term_using_qutip(
 
     Returns
     -------
+    Operator
+        the simplified operator.
 
     """
     block_sites = sorted(block)
     sites_identity: Dict[str, Qobj] = {}
 
     def op_or_identity(term, site):
-        """Parameters
-        ----------
-        term :
+        """
+        Return ``term`` or ``identity``.
 
-        site :
+        Parameters
+        ----------
+        term : Operator
+
+        site : Operator
 
 
         Returns
         -------
+           If the term acts on ``site``, return the term. Otherwise, return
+           the identity operator on the site.
 
         """
         result = term.sites_op.get(site, None) or sites_identity.get(site, None)

@@ -11,7 +11,9 @@ from qalma.settings import (
 def find_arithmetic_implementation(
     op1, op2, dispatch_table: dict
 ) -> Optional[Callable]:
-    """Find the function that implements the operation op1 [operation] op2 in
+    """Lookup for the implementation of an arithmetic operation.
+
+    Find the function that implements the operation op1 [operation] op2 in
     the dispatch table dispatch.
 
     If the combination of types is not already in the dispatch table,

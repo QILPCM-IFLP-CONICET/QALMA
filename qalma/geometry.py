@@ -1,15 +1,16 @@
 """Graphs and conversions from ALPS.
 
 ``GraphDescriptor`` stores information about the graph geometry
- over which the quantum system to be simulated is defined is stored.
+over which the quantum system to be simulated is defined is stored.
 This includes the different kind of sites, the edge liking among them,
 their coordinates, the underlying lattice structure, and "loops"
 used to define loop operators.
 
-* ``list_geometries_in_alps_xml`` list the graph geometries defined in an
-  ALPS XML library file.
-* ``graph_from_alps_xml``: create a ``GraphDescriptor`` from an ALPS XML
-  library file and the parameters provided.
+* ``list_geometries_in_alps_xml``:
+  list the graph geometries defined in an ALPS XML library file.
+* ``graph_from_alps_xml``:
+  create a ``GraphDescriptor`` from an ALPS XML library file and
+  the parameters provided.
 
 """
 

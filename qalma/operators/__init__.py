@@ -1,7 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-Operators
-=========
+Operators.
 
 Classes representing different kind of operators.
 """
