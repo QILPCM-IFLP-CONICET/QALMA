@@ -66,7 +66,9 @@ class ProductOperator(Operator):
         system: Optional[SystemDescriptor] = None,
         _qutip_factors: Optional[Dict[str, _Qobj]] = None,
     ):
-        """Parameters
+        """Initialize a ProductOperator.
+
+        Parameters
         ----------
         sites_operators : dict[str, np.ndarray or Qobj or scalar]
             Mapping from site name to local operator. Scalar values are
@@ -116,7 +118,7 @@ class ProductOperator(Operator):
 
     @cached_property
     def site_factors_qutip(self) -> Dict[str, _Qobj]:
-        """QuTiP representations of the local site factors.
+        """Qutip representations of the local site factors.
 
         Returns
         -------
@@ -129,8 +131,9 @@ class ProductOperator(Operator):
 
     @cached_property
     def _dense_tensor(self):
-        """Stacked dense representation for *homogeneous* systems, i.e. where
-        every site has the same local Hilbert-space dimension d.
+        """Build the stacked dense representation for homogeneous systems.
+
+        Only valid where every site has the same local Hilbert-space dimension d.
 
         Returns ``(sites, tensor)`` where:
           - ``sites``  is a sorted tuple of site names matching axis-0, and
@@ -199,6 +202,7 @@ class ProductOperator(Operator):
         )
 
     def __repr__(self):
+        """Return a human-readable string representation of the product operator."""
         result = "  " + str(self.prefactor) + " * (\n  "
         result += "  (x)\n  ".join(
             f"({item[1].full()} <-  {item[0]})"
@@ -307,8 +311,7 @@ class ProductOperator(Operator):
         return self
 
     def hermitician_part(self):
-        r"""Return the Hermitian part of the operator, :math:`(O +
-        O^\\dagger)/2`.
+        r"""Return the Hermitian part of the operator, ``(O + O†) / 2``.
 
         Returns
         -------
@@ -499,10 +502,10 @@ class ProductOperator(Operator):
         )
 
     def reduce(self, sites: Iterable, state=None) -> Operator:
-        """Partial trace of the product of the operator and the density
-        operator acting on the subsystem which is traced out. If the state is
-        not provided, the result is the partial trace, divided by the dimension
-        of the subsystem traced out.
+        """Compute the partial trace over sites not listed in ``sites``.
+
+        If the state is not provided, the result is the partial trace divided
+        by the dimension of the subsystem traced out.
 
         Parameters
         ----------
@@ -744,6 +747,7 @@ class ScalarOperator(ProductOperator):
         return ScalarOperator(-self.prefactor, self.system)
 
     def __repr__(self):
+        """Return a human-readable string representation of the scalar operator."""
         result = (
             str(self.prefactor) + " * Identity_{" + ",".join(self.system.sites) + "} "
         )
@@ -761,8 +765,7 @@ class ScalarOperator(ProductOperator):
         )
 
     def acts_over(self) -> frozenset:
-        """Return the empty set — a scalar operator acts trivially on all
-        sites.
+        """Return the empty frozenset — a scalar operator acts trivially on all sites.
 
         Returns
         -------
@@ -802,8 +805,13 @@ class ScalarOperator(ProductOperator):
 
     @property
     def isherm(self):
-        """``True`` if the scalar prefactor is real (up to
-        ``QALMA_TOLERANCE``).
+        """Return ``True`` if the scalar prefactor is real (up to ``QALMA_TOLERANCE``).
+
+        Returns
+        -------
+        bool
+            Whether the prefactor has negligible imaginary part.
+
         """
         prefactor = self.prefactor
         return not (
