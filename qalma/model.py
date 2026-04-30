@@ -653,7 +653,7 @@ class SystemDescriptor:
 
         result = self.operators["global_operators"].get(name, None)
         if result is not None:
-            logging.warning("%s already defined. Return from cache.", name)
+            logging.info("%s already defined. Return from cache.", name)
             return result
         # Build the global_operator from the descriptor
         op_descr = self.spec["model"].global_ops.get(name, None)
