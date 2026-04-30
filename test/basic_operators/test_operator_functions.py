@@ -89,7 +89,7 @@ def qutip_relative_entropy(qutip_1, qutip_2):
 
 
 @pytest.mark.parametrize(("name", "operator"), list(OPERATORS.items()))
-def test_decompose_hermitician(name, operator):
+def test_decompose_hermitian(name, operator):
     """Test the decomposition as Q=A+iB with A=A.dag() and B=B.dag()."""
     print("name", name, type(operator))
     op_re, op_im = hermitian_and_antihermitian_parts(operator)
@@ -193,7 +193,7 @@ def test_log_op():
     clean = True
     for name, operator in OPERATORS.items():
         test_op = operator + 0.0001
-        # logm does now work well with non hermitician operators
+        # logm does now work well with non hermitian operators
         if not test_op.isherm:
             continue
         print("\n\nname:", name, type(operator))

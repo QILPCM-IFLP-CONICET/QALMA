@@ -14,9 +14,9 @@ from qalma.scalarprod.gram import (
 
 REFERENCE_STATE_NAMES = (
     "ProductGibbs from scalar, zero",
-    "ProductGibbs from product operator, hermitician",
+    "ProductGibbs from product operator, hermitian",
     "ProductGibbs from sum local qutip operator and local operator",
-    "ProductGibbs from One body, hermitician",
+    "ProductGibbs from One body, hermitian",
 )
 
 SCALAR_PRODUCTS = {

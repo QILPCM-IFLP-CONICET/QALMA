@@ -108,7 +108,7 @@ class CovariantScalarProductFunction:
     ) -> NDArray:
         """Compute the cross gram matrix for basis basis_1 and basis_2.
 
-        Operators are assumed to be hermitician.
+        Operators are assumed to be hermitian.
         """
         sigma = self.sigma
         basis_1 = tuple(b.simplify().flat() for b in basis_1)
@@ -170,9 +170,9 @@ class CovariantScalarProductFunction:
 
     def compute_gram_matrix(self, basis: Tuple[Operator, ...]) -> NDArray:
         """
-        Compute the Gram's matrix for hermitician basis.
+        Compute the Gram's matrix for hermitian basis.
 
-        Compute the gram matrix associated to the hermitician operators
+        Compute the gram matrix associated to the hermitian operators
         specified in `basis`.
         """
         basis_size = len(basis)
@@ -392,7 +392,7 @@ def _term_sp_cov_prod_g(
     """
     Compute the covariance scalar product for single term hermitian operators.
 
-    Compute the cov scalar product assocated to rho for two hermitician
+    Compute the cov scalar product assocated to rho for two hermitian
     single-term operators.
     """
     overlap = op1.acts_over().intersection(op2.acts_over())
@@ -415,7 +415,7 @@ def _term_sp_cov_prod_h(
     """
     Compute the square of covariance norm for single term operators.
 
-    Compute the cov scalar product assocated to rho for two hermitician
+    Compute the cov scalar product assocated to rho for two hermitian
     single-term operators.
     """
     overlap = op1.acts_over().intersection(op2.acts_over())
@@ -477,10 +477,10 @@ def _compute_cov_prod_sp_h(
     av_cache: Optional[Dict[Operator, complex]] = None,
 ) -> float:
     """
-    Compute the covariance scalar product for hermitician operators.
+    Compute the covariance scalar product for hermitian operators.
 
     Compute the covariance scalar product associated to a product state for
-    two hermitician operators.
+    two hermitian operators.
     """
     if av_cache is None:
         av_cache = {}
@@ -550,10 +550,10 @@ def _compute_cov_prod_sp_g(
     av_cache: Optional[Dict[Operator, complex]] = None,
 ) -> complex:
     """
-    Compute the covariance scalar product for hermitician operators.
+    Compute the covariance scalar product for hermitian operators.
 
     Compute the covariance scalar product associated to a product state for
-    two hermitician operators.
+    two hermitian operators.
     """
     if av_cache is None:
         av_cache = {}

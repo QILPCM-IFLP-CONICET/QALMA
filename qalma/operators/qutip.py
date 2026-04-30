@@ -19,7 +19,7 @@ from qalma.operators.product import (
 )
 from qalma.qutip_tools.tools import (
     decompose_qutip_operator,
-    decompose_qutip_operator_hermitician,
+    decompose_qutip_operator_hermitian,
     empty_op,
     is_diagonal_op,
     scalar_value,
@@ -118,7 +118,7 @@ class QutipOperator(Operator):
         site_names = self.site_names
         sites = sorted(site_names, key=lambda x: site_names[x])
         if isherm:
-            decomposition = decompose_qutip_operator_hermitician(
+            decomposition = decompose_qutip_operator_hermitian(
                 self.prefactor * self.operator.tidyup()
             )
         else:
@@ -144,7 +144,7 @@ class QutipOperator(Operator):
         return SumOperator(terms, self.system, isherm=isherm)
 
     def dag(self):
-        """Build the hermitician adjoint operator."""
+        """Build the hermitian adjoint operator."""
         prefactor = self.prefactor
         operator = self.operator
         if isinstance(prefactor, complex):
@@ -168,8 +168,8 @@ class QutipOperator(Operator):
         evals, evecs = self.operator.eigenstates()
         return evals * self.prefactor, evecs
 
-    def hermitician_part(self):
-        """Compute the hermitician part of the operator."""
+    def hermitian_part(self):
+        """Compute the hermitian part of the operator."""
         if self.isherm:
             return self
         qop = self.operator
@@ -195,9 +195,9 @@ class QutipOperator(Operator):
     @property
     def isherm(self) -> bool:
         """
-        Check if the operator is hermitician.
+        Check if the operator is hermitian.
 
-        Return True if operator is hermitician.
+        Return True if operator is hermitian.
         """
         isherm = self.operator.isherm
         if imag(self.prefactor) == 0.0:

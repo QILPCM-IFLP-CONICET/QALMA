@@ -65,8 +65,8 @@ def test_trace(name, value):
         return
     # TODO: check the trace of quadratic operators.
     if name in (
-        "hermitician quadratic operator",
-        "non hermitician quadratic operator",
+        "hermitian quadratic operator",
+        "non hermitian quadratic operator",
     ):
         return
     value_tr = value.tr()
@@ -86,7 +86,7 @@ def test_isherm_operator(key, observable):
                 do_test_case(name, op_case)
             return
 
-        assert observable.isherm, f"{key} is not hermitician?"
+        assert observable.isherm, f"{key} is not hermitian?"
 
         ham = OBSERVABLE_CASES["hamiltonian"]
         print("***addition***")

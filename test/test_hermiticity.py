@@ -39,13 +39,13 @@ def test_consistency_as_sum_of_products1(operator_name):
 @pytest.mark.parametrize(
     ["operator_name"], list((x,) for x in OPERATORS_AND_STATE_CASES)
 )
-def test_hermiticity_hermitician_part(operator_name):
+def test_hermiticity_hermitian_part(operator_name):
     op_case = OPERATORS_AND_STATE_CASES[operator_name]
     herm_part = (op_case + op_case.dag()) * 0.5
     check_isherm = herm_part.isherm
     assert (
         check_isherm
-    ), f"{check_isherm} instead of `True` for hermitician part of {type(op_case)} ({type(herm_part)}))."
+    ), f"{check_isherm} instead of `True` for hermitian part of {type(op_case)} ({type(herm_part)}))."
     # TODO: Fix these cases
     if type(op_case) in (
         # QuadraticFormOperator,

@@ -259,12 +259,15 @@ class Operator:  # pylint: disable=too-many-public-methods
         """Simplifies sums and products."""
         return self
 
-    def hermitician_part(self):
+    def hermitian_part(self):
         r"""Return the Hermitian part of the operator, $(O + O^\dagger) / 2$."""
+        if self.isherm:
+            return self
+        return (self + self.dag()) * 0.5
 
     @property
     def isherm(self) -> bool:
-        """Check if the operator is hermitician."""
+        """Check if the operator is hermitian."""
         return self.to_qutip(tuple()).tidyup().isherm
 
     @property
@@ -493,7 +496,7 @@ class LocalOperator(Operator):
         """
         return LocalOperator(self.site, self.operator_qutip.expm(), self.system)
 
-    def hermitician_part(self):
+    def hermitian_part(self):
         """Return the Hermitian part of the local operator, (O + O†) / 2."""
         op = self.operator
         if self.isherm:

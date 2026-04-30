@@ -19,7 +19,7 @@ from qalma.operators.qutip import QutipOperator
 from qalma.qutip_tools.tools import (
     data_is_diagonal,
     decompose_qutip_operator,
-    decompose_qutip_operator_hermitician,
+    decompose_qutip_operator_hermitian,
     empty_op,
 )
 
@@ -329,7 +329,7 @@ def simplify_qutip_sums(sum_operator: SumOperator) -> Operator:
             continue
         changed = True
         new_qterm = sum(q_term.to_qutip(block_tuple) for q_term in q_terms)
-        # Reinforce hermiticity if the operator is hermitician, but the term isn't.
+        # Reinforce hermiticity if the operator is hermitian, but the term isn't.
         if isherm and not new_qterm.isherm:
             new_qterm = (new_qterm + new_qterm.dag()) * 0.5
 
@@ -418,7 +418,7 @@ def rewrite_nbody_term_using_qutip(
     if isherm:
         factor_terms = decompose_qutip_operator(qutip_subop)
     else:
-        factor_terms = decompose_qutip_operator_hermitician(qutip_subop)
+        factor_terms = decompose_qutip_operator_hermitian(qutip_subop)
     new_terms = (
         ProductOperator(
             dict(zip(block_sites, factors)),

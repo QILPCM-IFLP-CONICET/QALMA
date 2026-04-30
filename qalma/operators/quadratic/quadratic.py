@@ -345,7 +345,7 @@ class QuadraticFormOperator(Operator):
         if isherm is not None:
             return isherm
 
-        # We start assumig that the operator is hermitician
+        # We start assumig that the operator is hermitian
         isherm = True
         for term in (self.offset, self.linear_term):
             if term is None:
@@ -581,7 +581,7 @@ def selfconsistent_meanfield_from_quadratic_form(
     return rho
 
 
-def one_body_operator_hermitician_hs_sp(x_op: OneBodyOperator, y_op: OneBodyOperator):
+def one_body_operator_hermitian_hs_sp(x_op: OneBodyOperator, y_op: OneBodyOperator):
     """Hilbert Schmidt scalar product optimized for OneBodyOperators."""
     result = 0
     terms_x: Tuple[ScalarOperator | LocalOperator] = cast(
@@ -609,7 +609,7 @@ def one_body_operator_hermitician_hs_sp(x_op: OneBodyOperator, y_op: OneBodyOper
 def simplify_quadratic_form(
     operator: QuadraticFormOperator,
     hermitic: bool = True,
-    scalar_product: Callable = one_body_operator_hermitician_hs_sp,
+    scalar_product: Callable = one_body_operator_hermitian_hs_sp,
 ):
     """Take a 2-body operator and returns lists weights, ops.
 
@@ -655,7 +655,7 @@ def simplify_quadratic_form(
     new_qf_op = build_quadratic_form_from_operator(
         qf_op.as_sum_of_products(), True, hermitic
     )
-    # If the new basis is larger and the hermitician character haven´t changed, keep the older.
+    # If the new basis is larger and the hermitian character haven´t changed, keep the older.
     if changed or len(new_qf_op.basis) < len(qf_op.basis):
         qf_op = new_qf_op
         changed = True
