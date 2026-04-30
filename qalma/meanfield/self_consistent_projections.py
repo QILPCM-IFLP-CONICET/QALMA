@@ -84,7 +84,7 @@ def self_consistent_project_meanfield(
         k_one_body = n_body_projection(k_op, 1, sigma_curr).simplify()
         if not k_one_body.isherm:
             logging.debug("hermiticity lost at iteration", it)
-            k_one_body = k_one_body.hermitician_part()
+            k_one_body = k_one_body.hermitian_part()
 
         sigma_new = GibbsProductDensityOperator(k_one_body)
         rel_s_new = np.real(cast(complex, sigma_curr.expect(k_op + sigma_new.logm())))

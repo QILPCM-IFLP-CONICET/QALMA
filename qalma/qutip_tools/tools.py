@@ -372,8 +372,8 @@ def empty_op(op) -> bool:
     return False
 
 
-def hermitician_part(op: _Qobj, tol=None) -> _Qobj:
-    """Return the hermitician part of the operator `op`."""
+def hermitian_part(op: _Qobj, tol=None) -> _Qobj:
+    """Return the hermitian part of the operator `op`."""
     if op.isherm:
         return op
     return (op + op.dag()).tidyup(tol) * 0.5
@@ -538,13 +538,13 @@ def schmidt_dec_first_rest_qutip_operator(
     return ops_1, ops_2
 
 
-def schmidt_dec_first_rest_qutip_operator_hermitician(
+def schmidt_dec_first_rest_qutip_operator_hermitian(
     operator: _Qobj, tol: float = 1e-10
 ) -> Tuple[List[_Qobj], ...]:
     """
-    Decompose an hermitician operator as a sum of tensor products.
+    Decompose an hermitian operator as a sum of tensor products.
 
-    Decompose a hermitician qutip operator acting over H_1 (x) H_2 (x) H_3
+    Decompose a hermitian qutip operator acting over H_1 (x) H_2 (x) H_3
     (x) as a sum of terms of the form Q_{k} (x) Rest_{k}.
     """
     opsh_1 = []
@@ -554,8 +554,8 @@ def schmidt_dec_first_rest_qutip_operator_hermitician(
         return (ops_1,)
     ops_2 = rest[0]
 
-    # First, remove pairs of non-hermitician terms whose
-    # sum is hermitician:
+    # First, remove pairs of non-hermitian terms whose
+    # sum is hermitian:
     candidates = [i for i, op_1 in enumerate(ops_1) if not op_1.isherm]
     remove_me = []
     while candidates:
@@ -571,28 +571,28 @@ def schmidt_dec_first_rest_qutip_operator_hermitician(
     ops_1 = [op_1 for pos, op_1 in enumerate(ops_1) if pos not in remove_me]
     ops_2 = [op_2 for pos, op_2 in enumerate(ops_2) if pos not in remove_me]
 
-    # Process products of hermitician terms
+    # Process products of hermitian terms
     for op_1, op_2 in zip(ops_1, ops_2):
         if op_1.isherm:
             opsh_1.append(op_1)
-            opsh_2.append(hermitician_part(op_2, tol))
+            opsh_2.append(hermitian_part(op_2, tol))
             continue
 
-        op_1h = hermitician_part(op_1, tol)
+        op_1h = hermitian_part(op_1, tol)
         if data_is_zero(op_1h.data):
             continue
-        op_2h = hermitician_part(op_2, tol)
+        op_2h = hermitian_part(op_2, tol)
         opsh_1.append(op_1h)
         opsh_2.append(op_2h)
 
-    # process products of anti-hermitician terms
+    # process products of anti-hermitian terms
     for op_1, op_2 in zip(ops_1, ops_2):
         if op_1.isherm:
             continue
-        op_1h = hermitician_part(op_1 * 1j, tol)
+        op_1h = hermitian_part(op_1 * 1j, tol)
         if data_is_zero(op_1h.data):
             continue
-        op_2h = hermitician_part(op_2 * (-1j), tol)
+        op_2h = hermitian_part(op_2 * (-1j), tol)
         opsh_1.append(op_1h)
         opsh_2.append(op_2h)
 
@@ -634,11 +634,11 @@ def schmidt_dec_rest_last_qutip_operator(
     return ops_1, ops_2
 
 
-def schmidt_dec_rest_last_qutip_operator_hermitician(
+def schmidt_dec_rest_last_qutip_operator_hermitian(
     operator: _Qobj, tol: float = 1e-10
 ) -> Tuple[List[_Qobj], ...]:
     """
-    Decompose an hermitician operator as a sum of tensor products.
+    Decompose an hermitian operator as a sum of tensor products.
 
     Decompose a qutip operator acting over H_1 (x) H_2 (x) H_3 (x) as a sum
     of terms of the form Q_{k} (x) Rest_{k}.
@@ -650,8 +650,8 @@ def schmidt_dec_rest_last_qutip_operator_hermitician(
         return (ops_1,)
     ops_2 = rest[0]
 
-    # First, remove pairs of non-hermitician terms whose
-    # sum is hermitician:
+    # First, remove pairs of non-hermitian terms whose
+    # sum is hermitian:
     candidates = [i for i, op_2 in enumerate(ops_2) if not op_2.isherm]
     remove_me = []
     while candidates:
@@ -669,24 +669,24 @@ def schmidt_dec_rest_last_qutip_operator_hermitician(
 
     for op_1, op_2 in zip(ops_1, ops_2):
         if op_2.isherm:
-            opsh_1.append(hermitician_part(op_1, tol))
+            opsh_1.append(hermitian_part(op_1, tol))
             opsh_2.append(op_2)
             continue
 
-        op_2h = hermitician_part(op_2, tol)
+        op_2h = hermitian_part(op_2, tol)
         if data_is_zero(op_2h.data):
             continue
-        op_1h = hermitician_part(op_1)
+        op_1h = hermitian_part(op_1)
         opsh_1.append(op_1h)
         opsh_2.append(op_2h)
 
     for op_1, op_2 in zip(ops_1, ops_2):
         if op_2.isherm:
             continue
-        op_2h = hermitician_part(op_2 * 1j, tol)
+        op_2h = hermitian_part(op_2 * 1j, tol)
         if data_is_zero(op_2h.data):
             continue
-        op_1h = hermitician_part(op_1 * (-1j), tol)
+        op_1h = hermitian_part(op_1 * (-1j), tol)
         opsh_1.append(op_1h)
         opsh_2.append(op_2h)
 
@@ -731,17 +731,17 @@ def decompose_qutip_operator(operator: _Qobj, tol: float = 1e-10) -> List[Tuple]
     return []
 
 
-def decompose_qutip_operator_hermitician(
+def decompose_qutip_operator_hermitian(
     operator: _Qobj, tol: float = 1e-10
 ) -> List[Tuple]:
-    """Decompose a hermitician qutip operator q123...
+    """Decompose a hermitian qutip operator q123...
 
     into a sum of tensor products sum_{ka, kb, kc...} q1^{ka} q2^{kakb}
     q3^{kakbkc}... return a list of tuples, with each factor.
     """
     dims = operator.dims[0]
 
-    ops_1, *rest = schmidt_dec_first_rest_qutip_operator_hermitician(operator, tol)
+    ops_1, *rest = schmidt_dec_first_rest_qutip_operator_hermitian(operator, tol)
 
     if len(rest) == 0:
         return [(op_l,) for op_l in ops_1]
@@ -751,7 +751,7 @@ def decompose_qutip_operator_hermitician(
 
     if len(dims) < 3:
         return list(zip(ops_1, ops_2))
-    ops_2_factors = [decompose_qutip_operator_hermitician(op2, tol) for op2 in ops_2]
+    ops_2_factors = [decompose_qutip_operator_hermitian(op2, tol) for op2 in ops_2]
     result = [
         (op1,) + tuple((op_2 for op_2 in factors))
         for op1, op21_factors in zip(ops_1, ops_2_factors)

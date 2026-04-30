@@ -83,7 +83,7 @@ def orthonormal_hs_local_basis(local_generators_dict: LocalBasisDict) -> LocalBa
         basis: List[Qobj] = []
         # Now, go over each local basis:
         for generator in generators:
-            # Split in hermitician and antihermitician parts:
+            # Split in hermitian and antihermitian parts:
             components = (
                 (generator,)
                 if generator.isherm
@@ -95,7 +95,7 @@ def orthonormal_hs_local_basis(local_generators_dict: LocalBasisDict) -> LocalBa
             # GS orthogonalization of each component regarding the existent base.
             # If the norm is under the tolerance, discard the element.
             for hcomponent in components:
-                # Ensure that components are tagged as hermitician.
+                # Ensure that components are tagged as hermitian.
                 hcomponent = hcomponent - np.real(
                     hcomponent.tr() / hcomponent.dims[0][0]
                 )
@@ -311,8 +311,8 @@ def build_quadratic_form_from_operator(
     # SumOperators, and operators acting on at least size 2 blocks:
     isherm = isherm or operator.isherm
 
-    # For non-hermitician, convert the hermitician
-    # and the anti-hermitician parts, and sum both.
+    # For non-hermitian, convert the hermitian
+    # and the anti-hermitian parts, and sum both.
     if not isherm:
         return sum(
             build_quadratic_form_from_operator(
@@ -328,7 +328,7 @@ def build_quadratic_form_from_operator(
             )
         )
 
-    # Process hermitician operators
+    # Process hermitian operators
     # Classify terms
     system = operator.system
     terms_by_2body_block, linear_terms, offset_terms = classify_terms(
@@ -424,7 +424,7 @@ def decompose_matrix(
 
 
 def force_hermitic_t(t):
-    """Force `t` to be hermitician."""
+    """Force `t` to be hermitian."""
     if t is None:
         return t
     if not t.isherm:

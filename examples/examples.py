@@ -66,7 +66,7 @@ observable_cases = {
     "sz_B": sz_B,  # Diagonal local operator
     "sh_AB": sh_AB,  # ProductOperator
     "exchange_AB": sx_A * sx_B + sy_A * sy_B,  # Sum operator
-    "hamiltonian": hamiltonian,  # Sum operator, hermitician
+    "hamiltonian": hamiltonian,  # Sum operator, hermitian
     "observable array": [[sh_AB, sh_A], [sz_A, sx_A]],
 }
 
@@ -74,21 +74,21 @@ observable_cases = {
 operator_type_cases = {
     "scalar, real": ScalarOperator(1.0, system),
     "scalar, complex": ScalarOperator(1.0 + 3j, system),
-    "local operator, hermitician": sx_A,  # LocalOperator
-    "local operator, non hermitician": sx_A + sy_A * 1j,
-    "One body, hermitician": sz_total,
-    "One body, non hermitician": sx_total + sy_total * 1j,
-    "three body, hermitician": (sx_A * sy_B * sz_C),
-    "three body, non hermitician": (sminus_A * sminus_B + sy_A * sy_B) * sz_total,
-    "product operator, hermitician": sh_AB,
-    "product operator, non hermitician": sminus_A * splus_B,
-    "sum operator, hermitician": sx_A * sx_B + sy_A * sy_B,  # Sum operator
-    "sum operator, hermitician from non hermitician": splus_A * splus_B
+    "local operator, hermitian": sx_A,  # LocalOperator
+    "local operator, non hermitian": sx_A + sy_A * 1j,
+    "One body, hermitian": sz_total,
+    "One body, non hermitian": sx_total + sy_total * 1j,
+    "three body, hermitian": (sx_A * sy_B * sz_C),
+    "three body, non hermitian": (sminus_A * sminus_B + sy_A * sy_B) * sz_total,
+    "product operator, hermitian": sh_AB,
+    "product operator, non hermitian": sminus_A * splus_B,
+    "sum operator, hermitian": sx_A * sx_B + sy_A * sy_B,  # Sum operator
+    "sum operator, hermitian from non hermitian": splus_A * splus_B
     + sminus_A * sminus_B,
-    "sum operator, anti-hermitician": splus_A * splus_B - sminus_A * sminus_B,
+    "sum operator, anti-hermitian": splus_A * splus_B - sminus_A * sminus_B,
     "qutip operator": hamiltonian.to_qutip_operator(),
-    "hermitician quadratic operator": build_quadratic_form_from_operator(hamiltonian),
-    "non hermitician quadratic operator": build_quadratic_form_from_operator(
+    "hermitian quadratic operator": build_quadratic_form_from_operator(hamiltonian),
+    "non hermitian quadratic operator": build_quadratic_form_from_operator(
         hamiltonian - sz_total * 1j
     ),
 }

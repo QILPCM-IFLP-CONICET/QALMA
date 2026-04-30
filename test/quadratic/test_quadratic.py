@@ -21,8 +21,8 @@ CHAIN_SIZE = 6
 
 
 nonquadratic_test_cases = [
-    "three body, hermitician",
-    "three body, non hermitician",
+    "three body, hermitian",
+    "three body, non hermitian",
     "qutip operator",
 ]
 
@@ -49,10 +49,10 @@ def test_simplify_quadratic_form(name):
     check_operator_equality(qutip_operator, simplified.to_qutip())
     assert (
         operator.isherm == simplified.isherm
-    ), "quadratic form changed its hermitician character after simplification."
+    ), "quadratic form changed its hermitian character after simplification."
     assert (
         qutip_operator.isherm == operator.isherm
-    ), "qutip operator and the quadratic form have different hermitician character."
+    ), "qutip operator and the quadratic form have different hermitian character."
 
 
 @pytest.mark.parametrize(["name"], list((name,) for name in QUADRATIC_OPERATORS))
@@ -71,7 +71,7 @@ def test_flat_quadratic(name):
     check_operator_equality(qutip_operator, flat_operator.to_qutip())
     assert (
         operator.isherm == flat_operator.isherm
-    ), "quadratic form changed its hermitician character after simplification."
+    ), "quadratic form changed its hermitian character after simplification."
     assert (
         qutip_operator.isherm == operator.isherm
-    ), "qutip operator and the quadratic form have different hermitician character."
+    ), "qutip operator and the quadratic form have different hermitian character."

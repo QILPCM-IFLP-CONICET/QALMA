@@ -254,7 +254,7 @@ class SumOperator(Operator):
             return SumOperator(tuple(terms), self.system, isherm=self._isherm)
         return self
 
-    def hermitician_part(self):
+    def hermitian_part(self):
         r"""Return the Hermitian part :math:`(O + O^\\dagger)/2`.
 
         Returns
@@ -267,7 +267,7 @@ class SumOperator(Operator):
         if self._isherm is True:
             return self
         return SumOperator(
-            tuple(t.hermitician_part() for t in self.terms),
+            tuple(t.hermitian_part() for t in self.terms),
             system=self.system,
             isherm=True,
         )
@@ -284,8 +284,8 @@ class SumOperator(Operator):
         """
         isherm = self._isherm
 
-        def aggresive_hermitician_test(non_hermitian_tuple: Tuple[Operator, ...]):
-            """Determine if the antihermitician part is zero."""
+        def aggresive_hermitian_test(non_hermitian_tuple: Tuple[Operator, ...]):
+            """Determine if the antihermitian part is zero."""
             # Here we assume that after simplify, the operator is a single term
             # (not a SumOperator), a OneBodyOperator, or a sum of a one-body operator
             # and terms acting over an specific block.
@@ -293,13 +293,13 @@ class SumOperator(Operator):
             if not hasattr(nh_sum, "terms"):
                 self._isherm = nh_sum.isherm
                 return self._isherm
-            # Hermitician until the opposite is shown:
+            # Hermitian until the opposite is shown:
             isherm = True
             for term in nh_sum.terms:
                 term_isherm = term.isherm
                 # if term_isherm could not determine by itself if the
-                # term is hermitician, try harder looking at the frobenious norm
-                # of its anti-hermitician part. This step can be very costly...
+                # term is hermitian, try harder looking at the frobenious norm
+                # of its anti-hermitian part. This step can be very costly...
                 if term_isherm is None:
                     # Last resource:
                     ah_part = term - term.dag()
@@ -311,12 +311,12 @@ class SumOperator(Operator):
             return isherm
 
         if isherm is None:
-            # First, collect the non-hermitician terms
+            # First, collect the non-hermitian terms
             non_hermitian = tuple((term for term in self.terms if not term.isherm))
-            # If there are non-hermitician terms, try the more aggressive strategy
+            # If there are non-hermitian terms, try the more aggressive strategy
             # over these terms.
             if non_hermitian:
-                return aggresive_hermitician_test(non_hermitian)
+                return aggresive_hermitian_test(non_hermitian)
 
             self._isherm = True
             return True
@@ -662,7 +662,7 @@ class OneBodyOperator(SumOperator):
         prefactor = np.exp(ln_prefactor)
         return ProductOperator(sites_op, prefactor=prefactor, system=self.system)
 
-    def hermitician_part(self):
+    def hermitian_part(self):
         r"""Return the Hermitian part :math:`(O + O^\\dagger)/2`.
 
         Returns
@@ -675,7 +675,7 @@ class OneBodyOperator(SumOperator):
         if self._isherm is True:
             return self
         return OneBodyOperator(
-            tuple(t.hermitician_part() for t in self.terms),
+            tuple(t.hermitian_part() for t in self.terms),
             system=self.system,
             isherm=True,
         )

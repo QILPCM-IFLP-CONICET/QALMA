@@ -404,12 +404,12 @@ class HierarchicalOperatorBasis(OperatorBasis):
                     comm_norm = np.abs(sp(new_elem, new_elem))
 
             if not new_elem.isherm:
-                new_elem = new_elem.hermitician_part()
+                new_elem = new_elem.hermitian_part()
 
             new_elem = new_elem.tidyup()
 
             if not new_elem.isherm:
-                new_elem = new_elem.hermitician_part()
+                new_elem = new_elem.hermitian_part()
 
             if np.abs(comm_norm) < tol_sq:
                 closed = True
@@ -646,8 +646,8 @@ def append_basis(basis_1: OperatorBasis, basis_2: OperatorBasis | Iterable[Opera
         if reuse and hij_block is not None:
             if n_block != len(hij_block):
                 rows_li = tuple(rows_it)
-                ops = tuple(ops[idx].hermitician_part() for idx in rows_li)
-                assert all(op.isherm for op in ops), "must be hermitician"
+                ops = tuple(ops[idx].hermitian_part() for idx in rows_li)
+                assert all(op.isherm for op in ops), "must be hermitian"
                 errors = np.array([errors[idx] for idx in rows_li])
                 hij_block = cast(NDArray, hij_block)[rows_li, :][:, rows_li]
 
@@ -655,7 +655,7 @@ def append_basis(basis_1: OperatorBasis, basis_2: OperatorBasis | Iterable[Opera
 
         # If not reuse, just remove the ld operators from ops and return empty blocks.
         if n_block != len(ops):
-            ops = tuple(ops[idx].hermitician_part() for idx in rows_it)
+            ops = tuple(ops[idx].hermitian_part() for idx in rows_it)
 
         return (
             np.empty(
@@ -787,8 +787,8 @@ def do_compute_cross_gram_matrix(sp, ops1, ops2, dtype=np.float128):
     return g12
 
 
-def _relative_non_hermitician_part(x: Operator):
-    """Auxiliar function to check how much `x` fails being hermitician.
+def _relative_non_hermitian_part(x: Operator):
+    """Auxiliar function to check how much `x` fails being hermitian.
 
     Used for test only.
     """

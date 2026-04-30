@@ -18,19 +18,19 @@ from qalma.scalarprod.gram import gram_matrix
 from qalma.scalarprod.utils import find_linearly_independent_rows
 
 
-def build_hermitician_basis(basis, sp=lambda x, y: ((x.dag() * y).tr())):
-    """Build a basis of of hermitician operators.
+def build_hermitian_basis(basis, sp=lambda x, y: ((x.dag() * y).tr())):
+    """Build a basis of of hermitian operators.
 
-    Build a basis of independent hermitician operators from a set of
+    Build a basis of independent hermitian operators from a set of
     operators, and the coefficients for the expansion of basis in terms of the
     new orthogonal basis.
     """
-    # First, find a basis of hermitician operators that generates
+    # First, find a basis of hermitian operators that generates
     # basis.
     new_basis = []
     indx = 0
     # indices is a list that keeps the connection between the original
-    # basis and the hermitician basis
+    # basis and the hermitian basis
     indices = []
     for b in basis:
         indices.append([])
@@ -66,7 +66,7 @@ def build_hermitician_basis(basis, sp=lambda x, y: ((x.dag() * y).tr())):
                 )
                 indx += 1
 
-    # Now, we work with the hermitician basis.
+    # Now, we work with the hermitian basis.
     # The first step is to build the Gram's matrix
     gram_mat = gram_matrix(new_basis, sp)
 
@@ -74,13 +74,13 @@ def build_hermitician_basis(basis, sp=lambda x, y: ((x.dag() * y).tr())):
     u_mat, s_mat, vd_mat = _svd(gram_mat, full_matrices=False, hermitian=True)
     # And find a change of basis to an orthonormalized basis
     t = np.array([row * s ** (-0.5) for row, s in zip(vd_mat, s_mat) if s > 1e-10])
-    # and build the hermitician, orthogonalized basis
+    # and build the hermitian, orthogonalized basis
     new_basis = [
         sum(c * op for c, op in zip(row, new_basis)) for row, s in zip(t, s_mat)
     ]
-    # Then, we build the change back to the hermitician basis
+    # Then, we build the change back to the hermitian basis
     q = np.array([row * s ** (0.5) for row, s in zip(u_mat.T, s_mat) if s > 1e-10]).T
-    # Finally, we apply the change of basis to the original (non-hermitician)
+    # Finally, we apply the change of basis to the original (non-hermitian)
     # basis
     q = np.array([sum(spec[1] * q[spec[0]] for spec in row) for row in indices])
 

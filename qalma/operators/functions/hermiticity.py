@@ -27,9 +27,9 @@ def compute_dagger(operator):
 
 def hermitian_part(operator: Operator) -> Operator:
     r"""Compute (A+A^\dagger)/2."""
-    return operator.hermitician_part()
+    return operator.hermitian_part()
 
 
 def hermitian_and_antihermitian_parts(operator: Operator) -> Tuple[Operator, Operator]:
     """Decompose an operator Q as A + i B with A and B self-adjoint operators."""
-    return operator.hermitician_part(), (operator * (-1j)).hermitician_part()
+    return operator.hermitian_part(), (operator * (-1j)).hermitian_part()

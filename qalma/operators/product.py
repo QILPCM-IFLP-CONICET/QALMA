@@ -310,7 +310,7 @@ class ProductOperator(Operator):
             return LocalOperator(name, self.prefactor * op_factor, self.system)
         return self
 
-    def hermitician_part(self):
+    def hermitian_part(self):
         r"""Return the Hermitian part of the operator, ``(O + O†) / 2``.
 
         Returns
@@ -363,7 +363,7 @@ class ProductOperator(Operator):
         An operator is Hermitian if all local factors are Hermitian and
         the prefactor is real (up to ``QALMA_TOLERANCE``).
         """
-        # TODO: check if it worth to check that factors are not hermitician
+        # TODO: check if it worth to check that factors are not hermitian
         # up to a phase factor.
         if not all(ishermitian(loc_op) for loc_op in self.site_factors.values()):
             return False
@@ -789,7 +789,7 @@ class ScalarOperator(ProductOperator):
             return ScalarOperator(self.prefactor.conjugate(), self.system)
         return self
 
-    def hermitician_part(self):
+    def hermitian_part(self):
         """Return the Hermitian part of the scalar operator.
 
         Returns

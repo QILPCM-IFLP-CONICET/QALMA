@@ -17,8 +17,8 @@ from qalma.operators.quadratic.build import (
 from qalma.operators.states import ProductDensityOperator
 
 nonquadratic_test_cases = [
-    "three body, hermitician",
-    "three body, non hermitician",
+    "three body, hermitian",
+    "three body, non hermitian",
     "qutip operator",
 ]
 
@@ -32,7 +32,7 @@ nonquadratic_test_cases = [
     ),
 )
 def test_build_quadratic(operator_name, state_name):
-    """Test the function build_quadratic_hermitician.
+    """Test the function build_quadratic_hermitian.
 
     No assumptions on the hermiticity of the operator are done.
     """
@@ -59,7 +59,7 @@ def test_build_quadratic(operator_name, state_name):
     ), "qutip form does not match."
     assert quadratic_form.isherm == qutip_operator.isherm, (
         "operator and its conversion to qutip "
-        "should have the same hermitician character."
+        "should have the same hermitian character."
     )
 
     linear_term = quadratic_form.linear_term
@@ -94,13 +94,13 @@ def test_build_quadratic(operator_name, state_name):
             assert check_equality(
                 state.expect(basis_elem), 0.0
             ), "expectation values must be zero"
-        assert basis_elem.isherm, "basis elements must be hermitician"
+        assert basis_elem.isherm, "basis elements must be hermitian"
 
 
 @pytest.mark.parametrize(["name"], list((name,) for name in OPERATOR_TYPE_CASES))
-def test_build_quadratic_hermitician(name):
-    """Test the function build_quadratic_hermitician if is assumed that the
-    original operator is hermitician.
+def test_build_quadratic_hermitian(name):
+    """Test the function build_quadratic_hermitian if is assumed that the
+    original operator is hermitian.
     """
 
     def self_adjoint_part(op_g):
@@ -108,13 +108,13 @@ def test_build_quadratic_hermitician(name):
 
     operator = OPERATOR_TYPE_CASES[name]
     print("\n *******\n\n name: ", name)
-    print("quadratic form. Forcing hermitician", type(operator))
+    print("quadratic form. Forcing hermitian", type(operator))
 
     quadratic_form = build_quadratic_form_from_operator(operator, True, True)
     qutip_operator = self_adjoint_part(operator.to_qutip())
 
     check_operator_equality(quadratic_form.to_qutip(), qutip_operator)
-    assert quadratic_form.isherm, "quadratic form must be hermitician"
+    assert quadratic_form.isherm, "quadratic form must be hermitian"
 
 
 @pytest.mark.parametrize(

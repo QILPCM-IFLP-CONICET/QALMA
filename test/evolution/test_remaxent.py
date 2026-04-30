@@ -140,7 +140,7 @@ def test_build_hierarchical_basis(name_ham, ham, name_k0, k0, sigma_name, sigma)
     h_basis = build_hierarchical_basis(ham, k0, deep)
     assert all(
         b_op.isherm for b_op in h_basis
-    ), "operators in a Hierarchical basis must be hermitician."
+    ), "operators in a Hierarchical basis must be hermitian."
     h_basis_qutip = [qutip_k0]
     for _ in range(deep):
         h_basis_qutip.append(

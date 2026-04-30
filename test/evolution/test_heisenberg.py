@@ -21,7 +21,7 @@ np.set_printoptions(
 
 def test_rabi_evolution():
     rho0 = TEST_CASES_STATES[
-        "ProductGibbs from local operator, hermitician"
+        "ProductGibbs from local operator, hermitian"
     ].to_product_state()
     H = SY_TOTAL
     ts = np.linspace(0, 5, 100)

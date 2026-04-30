@@ -59,7 +59,7 @@ def compute_mean_field_state(
     """
     sigma_result = variational_quadratic_mfa(k, sigma_ref=sigma)
     generator = -sigma_result.logm()
-    assert generator.isherm, "generator should be hermitician"
+    assert generator.isherm, "generator should be hermitian"
     return generator, sigma_result
 
 
@@ -156,7 +156,7 @@ def update_basis(
     if k_ref is None:
         k_ref_new, sigma = compute_mean_field_state(k, sigma)
         k_ref_new = k_ref_new + sigma.expect(k - k_ref_new)
-        k_ref_new = k_ref_new.hermitician_part()
+        k_ref_new = k_ref_new.hermitian_part()
     else:
         k_ref_new = k_ref
 
@@ -225,7 +225,7 @@ def update_basis_heavy(
     if k_ref is None:
         k_ref_new, sigma = compute_mean_field_state(k, sigma)
         k_ref_new = k_ref_new + sigma.expect(k - k_ref_new)
-        k_ref_new = k_ref_new.hermitician_part()
+        k_ref_new = k_ref_new.hermitian_part()
     else:
         k_ref_new = k_ref
 
@@ -750,9 +750,9 @@ def trim_and_project_function(sigma, n_body, tol=1e-6):
         op_b = n_body_projection(op_b, n_max=n_body, sigma=sigma).simplify()
         op_b = trim_terms_by_tolerance(sigma, op_b, tol)
         if isherm:
-            op_b = op_b.hermitician_part()
+            op_b = op_b.hermitian_part()
         else:
-            print("basis element of type ", type(op_b), "is not hermitician")
+            print("basis element of type ", type(op_b), "is not hermitian")
         return op_b
 
     return trim_and_project
