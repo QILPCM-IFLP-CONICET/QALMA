@@ -1,4 +1,4 @@
-name: CI
+name: Check docstrings and documentation
 
 on:
   push:
@@ -54,7 +54,7 @@ jobs:
         run: |
           interrogate qalma/ \
             --verbose \
-            --fail-under 0 \
+            --fail-under 90 \
             --ignore-magic \
             --ignore-semiprivate
 

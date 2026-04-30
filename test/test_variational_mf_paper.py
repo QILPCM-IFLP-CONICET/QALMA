@@ -188,8 +188,7 @@ def test_exact_validation(label, parms, L_list, beta_list, L, beta):
     )
     sigma_sc = variational_quadratic_mfa(
         beta * ham,
-        numfields=1,
-        its=0,
+        numfields=0,
         max_self_consistent_steps=100,
     )
 
