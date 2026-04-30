@@ -110,6 +110,7 @@ class GibbsDensityOperator(DensityOperatorMixin, Operator):
         return -(self.to_qutip_operator())
 
     def __repr__(self):
+        """Build the repr str."""
         tqo = self.to_qutip_operator()
         result = "Gibbs operator"
         result += f"\n->as Qutip Operator {type(tqo)}\n"
@@ -445,6 +446,7 @@ class GibbsProductDensityOperator(DensityOperatorMixin, Operator):
         return -(self.to_product_state())
 
     def __repr__(self):
+        """Build the repr str."""
         result = "Gibbs Product density operator:\n"
         result += "\n".join(
             f"{site}:exp(-1*{op})" for site, op in self.k_by_site.items()

@@ -1,4 +1,6 @@
-"""Arithmetic handlers involving non-product density operators:
+"""Arithmetic handlers for QutipDensityOperators.
+
+Arithmetic handlers involving non-product density operators:
 QutipDensityOperator.
 
 The common strategy for all handlers here is to unwrap the density operator

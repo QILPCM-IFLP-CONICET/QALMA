@@ -30,7 +30,10 @@ class MixtureDensityOperator(DensityOperatorMixin, SumOperator):
     terms: Tuple[Operator]
 
     def __init__(self, terms: tuple, system: Optional[SystemDescriptor] = None):
-        """Parameters
+        """
+        Initialize a MixtureDensityOperator.
+
+        Parameters
         ----------
         terms : tuple[Operator, ...]
             Tuple of density operators to mix. Each term must have a
@@ -43,12 +46,16 @@ class MixtureDensityOperator(DensityOperatorMixin, SumOperator):
         super().__init__(terms, system, True)
 
     def __neg__(self):
+        """Multiply the operator by -1."""
         logging.warning("Negate a DensityOperator leads to a regular operator.")
         new_terms = tuple(((-t) * (t.prefactor) for t in self.terms))
         return SumOperator(new_terms, self.system, isherm=True)
 
     def acts_over(self) -> frozenset:
-        """Return a set with the name of the sites where the operator
+        """
+        Return the block over which the operator acts over.
+
+        Return a set with the name of the sites where the operator
         nontrivially acts.
         """
         sites: Set[str] = set()
@@ -82,9 +89,7 @@ class MixtureDensityOperator(DensityOperatorMixin, SumOperator):
         """
 
         def compute_results(curr_obs, sub_averages, prefactors):
-            """Combine per-component averages into the mixture expectation
-            value.
-            """
+            """Combine per-component averages into the mixture expectation value."""
             if isinstance(curr_obs, dict):
                 result = {}
                 for key in curr_obs:
@@ -128,7 +133,10 @@ class MixtureDensityOperator(DensityOperatorMixin, SumOperator):
         return MixtureDensityOperator(new_terms, subsystem)
 
     def simplify(self):
-        """Return ``self`` — mixture density operators are already in
+        """
+        Return a simplified representation of the operator.
+
+        Return ``self`` — mixture density operators are already in
         simplified form.
 
         Returns
@@ -140,6 +148,7 @@ class MixtureDensityOperator(DensityOperatorMixin, SumOperator):
         return self
 
     def __setstate__(self, state):
+        """Set the state of the object."""
         state = pickle.loads(state)
         self.__dict__.update(state)
         self._set_system_(self.system)

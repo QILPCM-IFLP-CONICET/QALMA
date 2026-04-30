@@ -18,7 +18,7 @@ WRAPPERS_BY_TYPE: Dict[Any, Callable] = {}
 
 
 def _wrapper_generic(rho, prefactor: complex = 1) -> Operator:
-    """Generic wrapper."""
+    """Apply a generic wrapper."""
     try:
         return WRAPPERS_BY_TYPE[type(rho)](rho, prefactor)
     except KeyError:
@@ -56,9 +56,10 @@ def _wrapper_qutip(
 def _wrapper_product(
     y_op: ProductDensityOperator, prefactor: complex = 1
 ) -> ProductOperator:
-    """Convert a ProductDensityOperator into a ProductOperator Missing factors
-    in  ProductDensityOperator are not treated as the identity operator, but as
-    a prefactor 1/dim_local.
+    """Convert a ProductDensityOperator into a ProductOperator.
+
+    Missing factors in  ProductDensityOperator are not treated
+    as the identity operator, but as a prefactor 1/dim_local.
     """
     return ProductOperator(y_op.site_factors, prefactor=prefactor, system=y_op.system)
 

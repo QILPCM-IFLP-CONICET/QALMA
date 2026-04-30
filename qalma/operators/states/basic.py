@@ -16,7 +16,9 @@ from qalma.operators.quadratic import QuadraticFormOperator
 
 
 class DensityOperatorMixin:
-    """DensityOperatorMixin is a Mixing class that
+    """Base class for Density Operators.
+
+    DensityOperatorMixin is a Mixing class that
     contributes operator subclasses with the method
     ``expect``.
 
@@ -89,10 +91,12 @@ class DensityOperatorMixin:
     system: SystemDescriptor
 
     def __neg__(self):
+        """Multiply the operator by -1."""
         logging.warning("Negate a DensityOperator leads to a regular operator.")
         return -self.to_qutip_operator()
 
     def __getstate__(self):
+        """Get the state for persistency."""
         if hasattr(self, "_serialized"):
             return self._serialized
         state = self.__dict__.copy()
@@ -100,15 +104,16 @@ class DensityOperatorMixin:
         return self._serialized
 
     def __setstate__(self, state):
+        """Set the state from persistency."""
         state_dict = pickle.loads(state)
         self.__dict__.update(state_dict)
 
     def dag(self) -> Operator:
-        """Adjoint operator."""
+        """Build the adjoint operator."""
         return cast(Operator, self)
 
     def eigenstates(self) -> list:
-        """Eigendecomposition."""
+        """Compute the eigendecomposition."""
         if isinstance(self, Operator):
             return super().eigenstates()  # type: ignore[misc]
         raise NotImplementedError
@@ -179,7 +184,7 @@ class DensityOperatorMixin:
 
     @property
     def isherm(self):
-        """Isherm property."""
+        """Evaluate the isherm property."""
         return True
 
     def simplify(self):
@@ -188,7 +193,7 @@ class DensityOperatorMixin:
         return self
 
     def to_qutip_operator(self):
-        """QutipOperator representation."""
+        """Convert to the QutipOperator representation."""
         from qalma.operators.states import QutipDensityOperator
 
         prefactor = getattr(self, "prefactor", 1.0)
@@ -203,7 +208,7 @@ class DensityOperatorMixin:
         )
 
     def tr(self):
-        """The trace of the operator."""
+        """Compute the trace of the operator."""
         return 1
 
 
@@ -217,16 +222,16 @@ class DensityOperatorProtocol(Protocol):
         """Return a list of sites over which this operator acts."""
 
     def __add__(self, other):
-        """Add method."""
+        """Compute the sum with another number or operator."""
 
     def __radd__(self, other):
-        """Radd method."""
+        """Compute the sum with another number or operator."""
 
     def __mul__(self, other):
-        """Mul method."""
+        """Compute the product."""
 
     def __rmul__(self, other):
-        """Rmul method."""
+        """Compute the product from left."""
 
     def expect(
         self,

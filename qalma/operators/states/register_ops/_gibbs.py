@@ -202,17 +202,13 @@ def _(x_op: GibbsDensityOperator, y_op: GibbsDensityOperator):
 
 @Operator.register_mul_handler((GibbsProductDensityOperator, GibbsDensityOperator))
 def _(x_op: GibbsProductDensityOperator, y_op: GibbsDensityOperator):
-    """Multiply a gibbs density operator with a gibbs product density
-    operator.
-    """
+    """Multiply a gibbs density operator with a gibbs product density operator."""
     return _wrapper_gibbs_product(x_op) * _wrapper(y_op)
 
 
 @Operator.register_mul_handler((GibbsDensityOperator, GibbsProductDensityOperator))
 def _(x_op: GibbsDensityOperator, y_op: GibbsProductDensityOperator):
-    """Multiply a gibbs density operator with a gibbs product density
-    operator.
-    """
+    """Multiply a gibbs density operator with a gibbs product density operator."""
     return _wrapper(x_op) * _wrapper_gibbs_product(y_op)
 
 
@@ -240,9 +236,7 @@ def _(x_op: GibbsDensityOperator, y_op: DensityOperatorMixin):
     ]
 )
 def _(x_op: DensityOperatorMixin, y_op: GibbsDensityOperator):
-    """Multiply a gibbs density operator with a gibbs general density
-    operator.
-    """
+    """Multiply a gibbs density operator with a gibbs general density operator."""
     return x_op * _wrapper(y_op)
 
 
