@@ -18,7 +18,6 @@ from qutip import (  # type: ignore[import-untyped]
     qeye as _qeye,
     tensor as _qutip_tensor,
 )
-
 from qutip.core.data.csr import CSR as _Qutip_CSR, fast_from_scipy as _fast_from_scipy
 from qutip.core.data.dense import (
     Dense as _Qutip_Dense,

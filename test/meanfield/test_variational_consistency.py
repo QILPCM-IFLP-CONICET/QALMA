@@ -18,12 +18,12 @@ Three independent properties are verified:
 import numpy as np
 import pytest
 
-from qalma.model import build_system
 from qalma.meanfield.variational import compute_free_energy, variational_quadratic_mfa
+from qalma.model import build_system
 from qalma.operators.states import ProductDensityOperator
 
-
 # ── helpers ───────────────────────────────────────────────────────────────────
+
 
 def _spin_chain_nn(L: int, Jz: float = 1.0, Jxy: float = 1.0, Gamma: float = 0.0):
     """
@@ -82,19 +82,22 @@ def _sz_profile(state: ProductDensityOperator, system) -> np.ndarray:
     """Return the array [<Sz_i>]_{i=0..L-1} for *state*."""
     sites = list(system.sites.keys())
     return np.array(
-        [float(np.real(state.expect(system.site_operator(f"Sz@{s}"))))
-         for s in sites]
+        [float(np.real(state.expect(system.site_operator(f"Sz@{s}")))) for s in sites]
     )
 
 
 # ── Test 1: monotonicidad de la energía libre con numfields ───────────────────
 
-@pytest.mark.parametrize("L,Jz,Jxy,Gamma,label", [
-    (4, 1.0, 0.0, 1.0, "ising_L4"),
-    (4, 0.0, 1.0, 0.0, "xx_L4"),
-    (4, 1.0, 1.0, 0.0, "xxx_L4"),
-    (6, 1.0, 0.0, 1.0, "ising_L6"),
-])
+
+@pytest.mark.parametrize(
+    "L,Jz,Jxy,Gamma,label",
+    [
+        (4, 1.0, 0.0, 1.0, "ising_L4"),
+        (4, 0.0, 1.0, 0.0, "xx_L4"),
+        (4, 1.0, 1.0, 0.0, "xxx_L4"),
+        (6, 1.0, 0.0, 1.0, "ising_L6"),
+    ],
+)
 def test_free_energy_nonincreasing_with_numfields(L, Jz, Jxy, Gamma, label):
     """
     compute_free_energy(sigma_nf, H) must be non-increasing as numfields grows.
@@ -124,12 +127,16 @@ def test_free_energy_nonincreasing_with_numfields(L, Jz, Jxy, Gamma, label):
 
 # ── Test 2: mejora sobre el estado mixto en modelos solubles ──────────────────
 
-@pytest.mark.parametrize("L,Jz,Jxy,Gamma,label", [
-    (4, 1.0, 0.0, 1.0, "ising_L4"),
-    (4, 0.0, 1.0, 0.0, "xx_L4"),
-    (6, 1.0, 0.0, 1.0, "ising_L6"),
-    (6, 0.0, 1.0, 0.0, "xx_L6"),
-])
+
+@pytest.mark.parametrize(
+    "L,Jz,Jxy,Gamma,label",
+    [
+        (4, 1.0, 0.0, 1.0, "ising_L4"),
+        (4, 0.0, 1.0, 0.0, "xx_L4"),
+        (6, 1.0, 0.0, 1.0, "ising_L6"),
+        (6, 0.0, 1.0, 0.0, "xx_L6"),
+    ],
+)
 def test_variational_improves_over_mixed_state(L, Jz, Jxy, Gamma, label):
     """
     For quasi-free models (transverse Ising, XX chain) the variational MFA
@@ -159,16 +166,19 @@ def test_variational_improves_over_mixed_state(L, Jz, Jxy, Gamma, label):
 
 # ── Test 3: detección de orden espiral en la cadena J1-J2 ─────────────────────
 
-_BETA = 3.0          # temperatura inversa; a beta=1 el MFA no rompe simetría en XX ni J1-J2
+_BETA = 3.0  # temperatura inversa; a beta=1 el MFA no rompe simetría en XX ni J1-J2
 _POINT_FIELD = 1e-2  # amplitud del campo puntual en el sitio central
-_NUMFIELDS = 6       # independiente de L: captura al menos 2 modos no triviales
-                     # dado que H XXX tiene degeneración 3 en la matriz de acoplamientos
+_NUMFIELDS = 6  # independiente de L: captura al menos 2 modos no triviales
+# dado que H XXX tiene degeneración 3 en la matriz de acoplamientos
 
 
-@pytest.mark.parametrize("L,J2_over_J1,label", [
-    (12, 0.6, "j1j2_L12_J2=0.6"),
-    (12, 0.8, "j1j2_L12_J2=0.8"),
-])
+@pytest.mark.parametrize(
+    "L,J2_over_J1,label",
+    [
+        (12, 0.6, "j1j2_L12_J2=0.6"),
+        (12, 0.8, "j1j2_L12_J2=0.8"),
+    ],
+)
 def test_j1j2_spiral_order_detection(L, J2_over_J1, label):
     """
     For J2/J1 > 0.5 the J1-J2 chain develops incommensurate (spiral) magnetic
@@ -220,7 +230,7 @@ def test_j1j2_spiral_order_detection(L, J2_over_J1, label):
     # rfft gives modes k = 0, 1, ..., L//2  (q = 2*pi*k/L)
     sq = np.abs(np.fft.rfft(sz)) ** 2
     dominant_k = int(np.argmax(sq))
-    af_k = len(sq) - 1   # k = L//2 corresponds to q = pi
+    af_k = len(sq) - 1  # k = L//2 corresponds to q = pi
 
     assert sz.std() > 1e-4, (
         f"[{label}] <Sz_i> profile is homogeneous (std={sz.std():.2e}); "

@@ -39,7 +39,7 @@ class QuadraticFormOperator(Operator):
 
     The operator ``T`` is represented in terms of operators $Q_\alpha$ and
     weights $w_\alpha$ s.t.
-    
+
     .. math::
 
         T = sum_alpha w_alpha * Q_alpha^2
@@ -613,8 +613,8 @@ def simplify_quadratic_form(
 ):
     """Take a 2-body operator and returns lists weights, ops.
 
-    The original operator is spanned as 
-    
+    The original operator is spanned as
+
     .. code-block:: Python
         sum(w * op**2 for w,op in zip(weights,ops))
     """

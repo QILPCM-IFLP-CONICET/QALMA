@@ -318,9 +318,11 @@ def variational_quadratic_mfa(
         return GibbsProductDensityOperator(ham.hermitician_part()).to_product_state()
 
     if numfields == 0:
-        sigma, _ = self_consistent_mf(ham, sigma_ref, max_steps=max_self_consistent_steps)
+        sigma, _ = self_consistent_mf(
+            ham, sigma_ref, max_steps=max_self_consistent_steps
+        )
         return sigma
-    
+
     for _ in range(its):
         # We start by projecting the generator `ham` to the two-body sector
         # relative to `sigma_ref`:
@@ -340,7 +342,7 @@ def variational_quadratic_mfa(
             sigma_candidate = mf_quadratic_form_exponential(
                 qf_op, numfields, method, callback_optimizer, ham
             )
-            
+
         if current_rel_entropy is None:
             changed = True
             sigma_ref = sigma_candidate

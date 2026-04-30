@@ -279,7 +279,7 @@ class SystemDescriptor:
 
     def site_operator(self, name: str, site: str = ""):  # -> "Operator"
         """Return a site operator.
-        
+
         Return a global operator representing an operator `name` acting over
         the site `site`.
 

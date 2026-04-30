@@ -5,12 +5,10 @@
 @author: mauricio
 """
 
-from . import geometry, model, operators, utils
+from . import geometry, model, operators, restricted_maxent_toolkit, utils
 from .alpsmodels import list_models_in_alps_xml, model_from_alps_xml
 from .geometry import graph_from_alps_xml, list_geometries_in_alps_xml
 from .model import build_system
-
-from . import restricted_maxent_toolkit
 
 __all__ = [
     "build_system",
