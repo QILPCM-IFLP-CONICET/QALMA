@@ -23,11 +23,6 @@ jobs:
           python-version: ${{ matrix.python-version }}
           cache: pip
 
-      - name: Install Pandoc
-        uses: pandoc/actions/setup@v1
-        with:
-          pandoc-version: '3.1.1' # Optional: defaults to latest
-
       - name: Install dependencies
         run: |
           pip install --upgrade pip
@@ -79,6 +74,11 @@ jobs:
         with:
           python-version: "3.11"
           cache: pip
+
+      - name: Install Pandoc
+        uses: pandoc/actions/setup@v1
+        with:
+          pandoc-version: '3.1.1' # Optional: defaults to latest
 
       - name: Install QALMA + doc dependencies
         run: |
