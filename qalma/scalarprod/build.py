@@ -14,7 +14,10 @@ from .covar import CovariantScalarProductFunction
 
 
 def fetch_kubo_scalar_product(sigma: Operator, threshold=0) -> Callable:
-    """Build a KMB scalar product function associated to the state
+    """
+    Fetch a KMB scalar product callable. Spectral implementation.
+
+    Build a KMB scalar product function associated to the state
     ``sigma``.
     """
     evals_evecs = sorted(zip(*sigma.eigenstates()), key=lambda x: -x[0])
@@ -45,7 +48,10 @@ def fetch_kubo_scalar_product(sigma: Operator, threshold=0) -> Callable:
 
 
 def fetch_kubo_int_scalar_product(sigma: Operator) -> Callable:
-    """Build a KMB scalar product function associated to the state ``sigma``,
+    """
+    Fetch a KMB scalar product callable. Integral implementation.
+
+    Build a KMB scalar product function associated to the state ``sigma``,
     from its integral form.
     """
     evals, evecs = sigma.eigenstates()
@@ -68,7 +74,10 @@ def fetch_kubo_int_scalar_product(sigma: Operator) -> Callable:
 
 
 def fetch_covar_scalar_product(sigma: DensityOperatorProtocol) -> Callable:
-    r"""Returns a scalar product function based on the covariance of a density
+    r"""
+    Fetch a Covar scalar product callable.
+
+    Returns a scalar product function based on the covariance of a density
     operator.
 
     The scalar product for two operators op1 and op2 is defined as:
@@ -96,5 +105,5 @@ def fetch_covar_scalar_product(sigma: DensityOperatorProtocol) -> Callable:
 
 
 def fetch_HS_scalar_product() -> Callable:
-    """Build a HS scalar product function."""
+    """Fetch a HS scalar product function."""
     return lambda op1, op2: (op1.dag() * op2).tr()

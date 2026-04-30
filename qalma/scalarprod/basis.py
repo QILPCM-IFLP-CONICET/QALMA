@@ -18,7 +18,10 @@ from qalma.settings import QALMA_TOLERANCE
 
 
 class OperatorBasis:
-    """Represent a basis of a subspace of the operator algebra with a
+    """
+    Operator Basis.
+
+    Represent a basis of a subspace of the operator algebra with a
     metric given by a scalar product function.
 
     If a generator is given, the basis stores an array hij, which
@@ -82,12 +85,15 @@ class OperatorBasis:
             self.build_tensors()
 
     def __add__(self, other_basis):
+        """Add two basis."""
         return append_basis(self, other_basis)
 
     def __radd__(self, other_basis):
+        """Add two basis."""
         return prepend_basis(self, other_basis)
 
     def __repr__(self):
+        """Build a repr str."""
         result = "Basis in the "
         result += f"{max(op.n_body_sector() for op in self.operator_basis)}"
         result += "-body sector"
@@ -104,8 +110,10 @@ class OperatorBasis:
     def build_tensors(
         self, generator: Optional[Operator] = None, sp: Optional[Callable] = None
     ):
-        """Build the arrays required to compute projections, expansions and
-        evolutions.
+        """
+        Build the internal tensors.
+
+        Build the arrays required to compute projections, expansions and evolutions.
 
         Parameters
         ----------
@@ -225,7 +233,7 @@ class OperatorBasis:
         )
 
     def operator_norm(self, operator: Operator):
-        """The induced norm of operator."""
+        """Compute the induced norm of operator."""
         return self.sp(operator, operator) ** 0.5
 
     def operator_from_coefficients(self, phi) -> Operator:
@@ -262,8 +270,14 @@ class OperatorBasis:
         return self.operator_from_coefficients(self.coefficient_expansion(operator))
 
     def evolve(self, t: float, a_0: np.ndarray) -> Tuple[np.ndarray, float]:
-        """Compute the coefficients for the expansion of the operator
-        operator(t) = sum a_i(t) b_i
+        """
+        Evolve the coefficients $a_0$ of an operator expansion.
+
+        Compute the coefficients for the expansion of the operator.
+
+        .. math::
+            operator(t) = sum_i a_i(t) b_i
+
         evolving according the projected evolution,
         given its expansion at t=0, and the estimated error induced by
         the projection.
@@ -291,7 +305,10 @@ class OperatorBasis:
 
 
 class HierarchicalOperatorBasis(OperatorBasis):
-    """A HierarchicalOperatorBasis is a basis where the elements are linear
+    """
+    Hierarchical Operator Basis.
+
+    A HierarchicalOperatorBasis is a basis where the elements are linear
     combinations of iterated commutators of a seed element and the generator of
     the evolutions.
     """
@@ -318,6 +335,7 @@ class HierarchicalOperatorBasis(OperatorBasis):
         self.build_tensors()
 
     def __add__(self, other):
+        """Add two basis."""
         return (
             OperatorBasis(
                 self.operator_basis,
@@ -502,7 +520,10 @@ class HierarchicalOperatorBasis(OperatorBasis):
 
 
 def append_basis(basis_1: OperatorBasis, basis_2: OperatorBasis | Iterable[Operator]):
-    """Build a new basis with the elements of basis_1 and the elements of
+    """
+    Append basis.
+
+    Build a new basis with the elements of basis_1 and the elements of
     basis_2, given preference to the elements in basis_1. Efficiently reuses
     precomputed tensors from basis_1.
 
@@ -727,7 +748,10 @@ def append_basis(basis_1: OperatorBasis, basis_2: OperatorBasis | Iterable[Opera
 def prepend_basis(
     basis_1: OperatorBasis, basis_2: OperatorBasis | Iterable[Operator]
 ) -> OperatorBasis:
-    """Build a new basis with the elements of basis_1 and the elements of
+    """
+    Prepend basis.
+
+    Build a new basis with the elements of basis_1 and the elements of
     basis_2, given preference to the elements in basis_2.
     """
     # If the changes are trivial, return basis_1
@@ -744,7 +768,10 @@ def prepend_basis(
 
 
 def do_compute_cross_gram_matrix(sp, ops1, ops2, dtype=np.float128):
-    """Compute the cross elements of the Gram's matrix between operators ops1
+    """
+    Compute cross Gram's matrix.
+
+    Compute the cross elements of the Gram's matrix between operators ops1
     and ops2 regarding the scalar product `sp`.
     """
     g12 = np.empty(

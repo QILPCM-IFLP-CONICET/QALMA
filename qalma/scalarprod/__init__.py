@@ -1,4 +1,7 @@
-"""Routines to compute scalar products of operators and related functions, like
+"""
+Scalar Product on operator spaces routines.
+
+Routines to compute scalar products of operators and related functions, like
 orthogonalize sets of operators.
 """
 

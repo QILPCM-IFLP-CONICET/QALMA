@@ -16,7 +16,10 @@ from qalma.settings import QALMA_TOLERANCE
 
 
 class ErrorCummulator:
-    """A class to track the accumulated error introduced by discarding terms
+    """
+    Error Cummulator.
+
+    A class to track the accumulated error introduced by discarding terms
     into a sum.
     """
 
@@ -31,7 +34,10 @@ class ErrorCummulator:
         self.margin = tol
 
     def query(self, mag, steps=1) -> bool:
-        """Check if mag times the remaining number of terms is bellow the
+        """
+        Check if a the magnitud of a term affects the norm of the sum.
+
+        Check if mag times the remaining number of terms is below the
         difference between the tolerance and the accumulated error.
         """
         margin = self.margin
@@ -44,7 +50,10 @@ class ErrorCummulator:
 
 
 class CovariantScalarProductFunction:
-    """A callable object that computes the Covariance scalar product of two
+    """
+    Covariant Scalar Product function.
+
+    A callable object that computes the Covariance scalar product of two
     operators, relative to a given reference state sigma.
     """
 
@@ -54,6 +63,7 @@ class CovariantScalarProductFunction:
         self.sigma = state
 
     def __call__(self, op1, op2):
+        """Evaluate the scalar product."""
         sigma = self.sigma
 
         if hasattr(sigma, "terms"):
@@ -159,7 +169,10 @@ class CovariantScalarProductFunction:
         return cross_gram_matrix
 
     def compute_gram_matrix(self, basis: Tuple[Operator, ...]) -> NDArray:
-        """Compute the gram matrix associated to the hermitician operators
+        """
+        Compute the Gram's matrix for hermitician basis.
+
+        Compute the gram matrix associated to the hermitician operators
         specified in `basis`.
         """
         basis_size = len(basis)
@@ -241,7 +254,10 @@ def compute_cov_sqnorm(
     operator: Operator,
     av_cache: Optional[Dict[Operator, complex]] = None,
 ) -> complex:
-    """Compute the square of the covar operator norm of `op1` associated to the
+    """
+    Compute the square of the covariance norm of an operator.
+
+    Compute the square of the covar operator norm of `op1` associated to the
     state `rho`.
 
     Parameters
@@ -295,7 +311,10 @@ def compute_cov_prod_sp(
 def compute_list_terms_with_norms(
     rho: ProductDensityOperator, terms=Tuple[Operator, ...]
 ) -> List[Tuple[float, Operator]]:
-    """Return a list of terms that decompose operator with their corresponding
+    """
+    Compute the list of terms and norms.
+
+    Return a list of terms that decompose operator with their corresponding
     squared covar norms relative to rho, sorted in norm decreasing order.
     """
     return sorted(
@@ -313,7 +332,10 @@ def compute_list_terms_with_norms(
 def remove_under_tolerance_terms(
     terms_with_norms=Tuple[Operator, ...], tol=QALMA_TOLERANCE
 ) -> List[Tuple[float, Operator]]:
-    """Return a list of terms that decompose operator with their corresponding
+    """
+    Return a list of terms of the decomposition of an operator, ordered by norm.
+
+    Return a list of terms that decompose operator with their corresponding
     squared covar norms relative to rho, sorted in norm decreasing order.
     """
     n = len(terms_with_norms)
@@ -329,7 +351,10 @@ def remove_under_tolerance_terms(
 def trim_terms_by_tolerance(
     rho: ProductDensityOperator, operator: Operator, tol: float = QALMA_TOLERANCE
 ) -> Operator:
-    """Compute squared norms of each term, and remove those with smaller
+    """
+    Compute the square of covariance norm, and trim contributions under a threshold.
+
+    Compute squared norms of each term, and remove those with smaller
     norm.
     """
     isherm = operator.isherm
@@ -364,7 +389,10 @@ def _term_sp_cov_prod_g(
     op2: Operator,
     av_cache: Optional[Dict[Operator, complex]] = None,
 ) -> complex:
-    """Compute the cov scalar product assocated to rho for two hermitician
+    """
+    Compute the covariance scalar product for single term hermitian operators.
+
+    Compute the cov scalar product assocated to rho for two hermitician
     single-term operators.
     """
     overlap = op1.acts_over().intersection(op2.acts_over())
@@ -384,7 +412,10 @@ def _term_sp_cov_prod_h(
     op2: Operator,
     av_cache: Optional[Dict[Operator, complex]] = None,
 ) -> float:
-    """Compute the cov scalar product assocated to rho for two hermitician
+    """
+    Compute the square of covariance norm for single term operators.
+
+    Compute the cov scalar product assocated to rho for two hermitician
     single-term operators.
     """
     overlap = op1.acts_over().intersection(op2.acts_over())
@@ -405,7 +436,10 @@ def _compute_cov_prod_normsq(
     term_sp: Callable = _term_sp_cov_prod_g,
     av_cache: Optional[Dict[Operator, complex]] = None,
 ) -> float:
-    """Compute the square of the induced norm by the covariance scalar product
+    """
+    Compute the square of covariance norm for general operators.
+
+    Compute the square of the induced norm by the covariance scalar product
     associated to a product state for general operators.
     """
     terms_1 = op1.terms if hasattr(op1, "terms") else [op1]
@@ -442,7 +476,10 @@ def _compute_cov_prod_sp_h(
     tol: float = QALMA_TOLERANCE,
     av_cache: Optional[Dict[Operator, complex]] = None,
 ) -> float:
-    """Compute the covariance scalar product associated to a product state for
+    """
+    Compute the covariance scalar product for hermitician operators.
+
+    Compute the covariance scalar product associated to a product state for
     two hermitician operators.
     """
     if av_cache is None:
@@ -512,7 +549,10 @@ def _compute_cov_prod_sp_g(
     tol: float = QALMA_TOLERANCE,
     av_cache: Optional[Dict[Operator, complex]] = None,
 ) -> complex:
-    """Compute the covariance scalar product associated to a product state for
+    """
+    Compute the covariance scalar product for hermitician operators.
+
+    Compute the covariance scalar product associated to a product state for
     two hermitician operators.
     """
     if av_cache is None:
