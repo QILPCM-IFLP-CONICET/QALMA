@@ -683,18 +683,6 @@ class ProductOperator(Operator):
             return ScalarOperator(prefactor, self.system)
         return super().to_qutip_operator()
 
-    def tr(self):
-        r"""Return the trace of the operator over the full system.
-
-        Returns
-        -------
-        complex
-            The trace :math:`\\mathrm{Tr}(\\lambda \\bigotimes_i O_i)`.
-
-        """
-        result = self.partial_trace(frozenset())
-        return result.prefactor
-
     def tidyup(self, atol=None):
         """Return a copy of the operator with small matrix elements zeroed out.
 

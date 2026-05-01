@@ -259,14 +259,14 @@ class SumOperator(Operator):
 
         Returns
         -------
-        SumOperator
+        SumOperator/OneBodyOperator
             A sum of the Hermitian parts of each term, marked as Hermitian.
             Returns ``self`` if already marked as Hermitian.
 
         """
         if self._isherm is True:
             return self
-        return SumOperator(
+        return type(self)(
             tuple(t.hermitian_part() for t in self.terms),
             system=self.system,
             isherm=True,
@@ -661,24 +661,6 @@ class OneBodyOperator(SumOperator):
 
         prefactor = np.exp(ln_prefactor)
         return ProductOperator(sites_op, prefactor=prefactor, system=self.system)
-
-    def hermitian_part(self):
-        r"""Return the Hermitian part :math:`(O + O^\\dagger)/2`.
-
-        Returns
-        -------
-        OneBodyOperator
-            Sum of the Hermitian parts of each local term, marked as
-            Hermitian. Returns ``self`` if already Hermitian.
-
-        """
-        if self._isherm is True:
-            return self
-        return OneBodyOperator(
-            tuple(t.hermitian_part() for t in self.terms),
-            system=self.system,
-            isherm=True,
-        )
 
     def simplify(self):
         """Simplify by grouping local operators acting on the same site.
