@@ -23,7 +23,11 @@ from qalma.projections import (
     one_body_from_qutip_operator,
     project_operator_to_n_body as project_to_n_body_operator,
 )
-from qalma.scalarprod import covar_scalar_product, operator_components, orthogonalize_basis
+from qalma.scalarprod import (
+    covar_scalar_product,
+    operator_components,
+    orthogonalize_basis,
+)
 
 plt.style.use("seaborn-v0_8-whitegrid")
 plt.rcParams.update(
@@ -165,8 +169,7 @@ def run_restricted_simulation(params, system_data, k_0, sigma_0):
         ev_obs_maxent_act_partial_sum_ell.append(sigma_proj.expect(obs_sz))
 
         local_bound_error_ell.append(
-            m_th_partial_sum(phi=phi_proj, m=2)
-            / m_th_partial_sum(phi=phi_proj, m=0)
+            m_th_partial_sum(phi=phi_proj, m=2) / m_th_partial_sum(phi=phi_proj, m=0)
         )
 
         if abs(local_bound_error_ell[-1]) >= eps_tol:
