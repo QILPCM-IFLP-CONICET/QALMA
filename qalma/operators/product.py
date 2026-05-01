@@ -1,6 +1,7 @@
 """Different representations for operators."""
 
 import logging
+import warnings
 from functools import cached_property, reduce
 
 # from types import MappingProxyType
@@ -9,6 +10,7 @@ from typing import Dict, Iterable, Optional, Tuple, Union
 import numpy as np
 from qutip import Qobj as _Qobj
 from scipy.linalg import expm as _scp_expm, logm as _scp_logm
+from scipy.linalg._matfuncs_inv_ssq import LogmExactlySingularWarning
 
 from qalma.model import SystemDescriptor
 from qalma.qutip_tools.tools import (
@@ -405,10 +407,12 @@ class ProductOperator(Operator):
         from qalma.operators.arithmetic import OneBodyOperator
 
         system = self.system
+        warnings.filterwarnings("ignore", category=LogmExactlySingularWarning)
         terms = tuple(
             LocalOperator(site, _scp_logm(loc_op), system)
             for site, loc_op in self.site_factors.items()
         )
+        warnings.resetwarnings()
         result = OneBodyOperator(terms, system, False)
         result = result + ScalarOperator(np.log(self.prefactor), system)
         return result

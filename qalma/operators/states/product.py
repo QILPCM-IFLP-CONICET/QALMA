@@ -1,6 +1,7 @@
 """Density operator classes."""
 
 import logging
+import warnings
 from typing import Any, Dict, Optional, Tuple, Union, cast
 
 import numpy as np
@@ -11,6 +12,7 @@ from qutip import (  # type: ignore[import-untyped]
     tensor as _qutip_tensor,
 )
 from scipy.linalg import logm as _scp_logm
+from scipy.linalg._matfuncs_inv_ssq import LogmExactlySingularWarning
 
 from qalma.model import SystemDescriptor
 from qalma.operators.arithmetic import OneBodyOperator, SumOperator
@@ -248,10 +250,12 @@ class ProductDensityOperator(DensityOperatorMixin, ProductOperator):
         """
         system = self.system
         sites_op = self.site_factors
+        warnings.filterwarnings("ignore", category=LogmExactlySingularWarning)
         terms = tuple(
             LocalOperator(site, _scp_logm(loc_op), system)
             for site, loc_op in sites_op.items()
         )
+        warnings.resetwarnings()
         if system:
             norm = -sum(
                 np.log(dim)

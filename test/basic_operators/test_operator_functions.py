@@ -1,5 +1,6 @@
 """Basic unit test for operator functions."""
 
+import warnings
 from test.helper import (
     CHAIN_SIZE,
     HAMILTONIAN,
@@ -17,6 +18,7 @@ from test.helper import (
 import numpy as np
 import pytest
 import qutip
+from scipy.linalg import LinAlgWarning
 
 from qalma.operators import SumOperator
 from qalma.operators.functions import (
@@ -272,6 +274,8 @@ def test_spectral_norm(name, operator):
 def test_fidelity(name_rho, name_sigma):
     from qutip import fidelity as qutip_fidelity
 
+    warnings.filterwarnings("ignore", category=LinAlgWarning)
+
     rho = TEST_CASES_STATES[name_rho]
     sigma = TEST_CASES_STATES[name_sigma]
     rho_qutip = QUTIP_TEST_CASES_STATES[name_rho]
@@ -315,6 +319,7 @@ def test_fidelity(name_rho, name_sigma):
         assert np.allclose(
             fidelity1_qutip, fidelity1, rtol=0.45
         ), f"Fidelity({name_rho},{name_sigma}) gives a different value in qutip. {fidelity1}!={fidelity1_qutip}"
+        warnings.resetwarnings()
 
 
 # test_load()

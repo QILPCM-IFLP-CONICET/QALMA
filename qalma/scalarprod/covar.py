@@ -432,6 +432,93 @@ def _compute_cov_prod_normsq(
     return result
 
 
+def _cov_prod_sp_index_iterator(m_1: int, m_2: int) -> Generator:
+    """Yield (i, j) index pairs for the covariance scalar-product accumulation loop.
+
+    Pairs are ordered so that the smallest-norm contributions come first,
+    allowing :class:`ErrorCummulator` to prune the iteration early.
+
+    Parameters
+    ----------
+    m_1, m_2:
+        Last valid indices for the first and second term lists (both sorted
+        in ascending norm order).
+    """
+    for j in range(m_2, m_1, -1):
+        for i in range(m_1, -1, -1):
+            yield (i, j)
+    for j in range(m_1, -1, -1):
+        yield (j, j)
+        for i in range(j - 1, -1, -1):
+            yield (i, j)
+            yield (j, i)
+
+
+def _compute_cov_prod_sp(
+    rho: ProductDensityOperator,
+    op1: Operator,
+    op2: Operator,
+    tol: float = QALMA_TOLERANCE,
+    av_cache: Optional[Dict[Operator, complex]] = None,
+    *,
+    hermitian: bool = False,
+) -> complex:
+    """Compute the covariance scalar product for a product state.
+
+    Parameters
+    ----------
+    rho:
+        Product density operator defining the state.
+    op1, op2:
+        Operators whose covariance scalar product is computed.
+    tol:
+        Discard threshold forwarded to :class:`ErrorCummulator`.
+    av_cache:
+        Optional cache mapping operators to their expectation values under
+        ``rho``, shared across calls.
+    hermitian:
+        If ``True``, both ``op1`` and ``op2`` are assumed Hermitian and the
+        faster real-valued kernel :func:`_term_sp_cov_prod_h` is used.
+        The return value is then guaranteed to be real (returned as
+        ``float``).  If ``False`` (default), the general complex kernel
+        :func:`_term_sp_cov_prod_g` is used.
+
+    Returns
+    -------
+    complex
+        The covariance scalar product :math:`\\langle op1, op2 \\rangle_\\rho`.
+    """
+    if av_cache is None:
+        av_cache = {}
+
+    term_sp: Callable = _term_sp_cov_prod_h if hermitian else _term_sp_cov_prod_g
+    conjugate: bool = False
+
+    terms_1 = op1.flat().terms if hasattr(op1, "terms") else (op1,)
+    terms_2 = op2.flat().terms if hasattr(op2, "terms") else (op2,)
+
+    if len(terms_2) < len(terms_1):
+        if not hermitian:
+            conjugate = True
+        terms_1, terms_2 = terms_2, terms_1
+
+    terms_norms_1 = compute_list_terms_with_norms(rho, terms_1)
+    terms_norms_2 = compute_list_terms_with_norms(rho, terms_2)
+    discard_check = ErrorCummulator(tol, len(terms_norms_1) * len(terms_norms_2))
+
+    result: complex = 0.0
+    m_1 = len(terms_norms_1) - 1
+    m_2 = len(terms_norms_2) - 1
+    for i, j in _cov_prod_sp_index_iterator(m_1, m_2):
+        norm1, t1 = terms_norms_1[i]
+        norm2, t2 = terms_norms_2[j]
+        if discard_check.query(norm1 * norm2, 1):
+            continue
+        result += term_sp(rho, t1, t2, av_cache)
+
+    return np.conj(result) if conjugate else result
+
+
 def _compute_cov_prod_sp_h(
     rho: ProductDensityOperator,
     op1: Operator,
@@ -439,70 +526,12 @@ def _compute_cov_prod_sp_h(
     tol: float = QALMA_TOLERANCE,
     av_cache: Optional[Dict[Operator, complex]] = None,
 ) -> float:
+    """Compute the covariance scalar product for two Hermitian operators.
+
+    Convenience wrapper for :func:`_compute_cov_prod_sp` with
+    ``hermitian=True``.
     """
-    Compute the covariance scalar product for hermitian operators.
-
-    Compute the covariance scalar product associated to a product state for
-    two hermitian operators.
-    """
-    if av_cache is None:
-        av_cache = {}
-
-    result: float = 0.0
-    term_sp: Callable = _term_sp_cov_prod_h
-
-    terms_1 = op1.flat().terms if hasattr(op1, "terms") else (op1,)
-    terms_2 = op2.flat().terms if hasattr(op2, "terms") else (op2,)
-
-    if len(terms_2) < len(terms_1):
-        terms_1, terms_2 = terms_2, terms_1
-
-    terms_norms_1 = compute_list_terms_with_norms(rho, terms_1)
-    terms_norms_2 = compute_list_terms_with_norms(rho, terms_2)
-    discard_check = ErrorCummulator(tol, len(terms_norms_1) * len(terms_norms_2))
-
-    # Go over terms with the smaller norms, and try to discard them
-    def iterator():
-        m_1 = len(terms_norms_1) - 1
-        m_2 = len(terms_norms_2) - 1
-        for j in range(m_2, m_1, -1):
-            for i in range(m_1, -1, -1):
-                yield (
-                    (
-                        i,
-                        j,
-                    )
-                )
-        for j in range(m_1, -1, -1):
-            yield (
-                (
-                    j,
-                    j,
-                )
-            )
-            for i in range(j - 1, -1, -1):
-                yield (
-                    (
-                        i,
-                        j,
-                    )
-                )
-                yield (
-                    (
-                        j,
-                        i,
-                    )
-                )
-
-    # Go over terms with the smaller norms, and try to discard them
-    for i, j in iterator():
-        norm1, t1 = terms_norms_1[i]
-        norm2, t2 = terms_norms_2[j]
-        if discard_check.query(norm1 * norm2, 1):
-            continue
-        result += term_sp(rho, t1, t2, av_cache)
-
-    return result
+    return _compute_cov_prod_sp(rho, op1, op2, tol, av_cache, hermitian=True)  # type: ignore[return-value]
 
 
 def _compute_cov_prod_sp_g(
@@ -512,70 +541,9 @@ def _compute_cov_prod_sp_g(
     tol: float = QALMA_TOLERANCE,
     av_cache: Optional[Dict[Operator, complex]] = None,
 ) -> complex:
+    """Compute the covariance scalar product for general (non-Hermitian) operators.
+
+    Convenience wrapper for :func:`_compute_cov_prod_sp` with
+    ``hermitian=False`` (the default).
     """
-    Compute the covariance scalar product for hermitian operators.
-
-    Compute the covariance scalar product associated to a product state for
-    two hermitian operators.
-    """
-    if av_cache is None:
-        av_cache = {}
-
-    conjugate: bool = False
-    result: complex = 0.0
-    term_sp: Callable = _term_sp_cov_prod_g
-
-    terms_1 = op1.flat().terms if hasattr(op1, "terms") else (op1,)
-    terms_2 = op2.flat().terms if hasattr(op2, "terms") else (op2,)
-
-    if len(terms_2) < len(terms_1):
-        conjugate = True
-        terms_1, terms_2 = terms_2, terms_1
-
-    terms_norms_1 = compute_list_terms_with_norms(rho, terms_1)
-    terms_norms_2 = compute_list_terms_with_norms(rho, terms_2)
-
-    discard_check = ErrorCummulator(tol, len(terms_norms_1) * len(terms_norms_2))
-    # Go over terms with the smaller norms, and try to discard them
-
-    def iterator() -> Generator:
-        m_1 = len(terms_norms_1) - 1
-        m_2 = len(terms_norms_2) - 1
-        for j in range(m_2, m_1, -1):
-            for i in range(m_1, -1, -1):
-                yield (
-                    (
-                        i,
-                        j,
-                    )
-                )
-        for j in range(m_1, -1, -1):
-            yield (
-                (
-                    j,
-                    j,
-                )
-            )
-            for i in range(j - 1, -1, -1):
-                yield (
-                    (
-                        i,
-                        j,
-                    )
-                )
-                yield (
-                    (
-                        j,
-                        i,
-                    )
-                )
-
-    # Go over terms with the smaller norms, and try to discard them
-    for i, j in iterator():
-        norm1, t1 = terms_norms_1[i]
-        norm2, t2 = terms_norms_2[j]
-        if discard_check.query(norm1 * norm2, 1):
-            continue
-        result += term_sp(rho, t1, t2, av_cache)
-
-    return np.conj(result) if conjugate else result
+    return _compute_cov_prod_sp(rho, op1, op2, tol, av_cache, hermitian=False)

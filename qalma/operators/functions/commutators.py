@@ -10,7 +10,7 @@ from qalma.operators.arithmetic import SumOperator, iterable_to_operator
 from qalma.operators.basic import (
     Operator,
 )
-from qalma.operators.simplify import collect_nbody_terms
+from qalma.operators.simplify import _commutator_term_pairs, collect_nbody_terms
 from qalma.parallel import USE_PARALLEL, commutator_qalma_parallel
 
 # from qalma.operators.simplify import simplify_sum_operator
@@ -111,22 +111,10 @@ def commutator_qalma_serial(op_1: Operator, op_2: Operator) -> Operator:
     op_1_terms = collect_nbody_terms(op_1.flat())
     op_2_terms = collect_nbody_terms(op_2.flat())
 
-    def fetch_terms():
-        for block_1, terms_1 in op_1_terms.items():
-            for block_2, terms_2 in op_2_terms.items():
-                if (
-                    block_1 is not None
-                    and block_2 is not None
-                    and not block_1.intersection(block_2)
-                ):
-                    continue
-                for term_1 in terms_1:
-                    for term_2 in terms_2:
-                        if term_1 is term_2:
-                            continue
-                        yield (term_1, term_2)
-
-    terms = tuple(op_1 * op_2 - op_2 * op_1 for op_1, op_2 in fetch_terms())
+    terms = tuple(
+        op_1 * op_2 - op_2 * op_1
+        for op_1, op_2 in _commutator_term_pairs(op_1_terms, op_2_terms)
+    )
     return iterable_to_operator(terms, system).simplify()
 
 
