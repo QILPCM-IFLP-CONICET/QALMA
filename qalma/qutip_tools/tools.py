@@ -2,7 +2,6 @@
 
 import logging
 from functools import reduce
-from itertools import combinations
 from numbers import Real
 from typing import Dict, Iterable, Iterator, List, Optional, Tuple
 
@@ -15,7 +14,6 @@ from packaging.version import parse as parse_version
 from qutip import (  # type: ignore[import-untyped]
     Qobj as _Qobj,
     __version__ as qutip_version_string,
-    qeye as _qeye,
     tensor as _qutip_tensor,
 )
 from qutip.core.data.csr import CSR as _Qutip_CSR, fast_from_scipy as _fast_from_scipy
@@ -825,61 +823,6 @@ def reduce_to_proper_spaces(operator: _Qobj, observable: _Qobj) -> _Qobj:
         copy=False,
         # dtype=operator.dtype, # Not supported in Qutip <5.2
     )
-
-
-def project_qutip_to_m_body(
-    op_qutip: _Qobj, m_max: int = 2, local_sigmas: Optional[list] = None
-) -> _Qobj:
-    """
-    Project a Qobj operator into the m-body sector.
-
-    Project a qutip operator onto a m_max - body operators sub-algebra
-    relative to the local states `local_sigmas`.
-    If `local_sigmas` is not given, maximally mixed states are assumed.
-    """
-    scalar_term = 0
-    dimensions = op_qutip.dims[0]
-    site_indx = list(range(len(dimensions)))
-    idops = [_qeye(dim) for dim in dimensions]
-    result = _qutip_tensor([0 * local_id for local_id in idops])
-    # Decompose the operator
-    decompose = decompose_qutip_operator(op_qutip)
-    # Build the local states
-    if local_sigmas is None:
-        local_sigmas = [1 / dim for dim in dimensions]
-    for term in decompose:
-        term_tuple = tuple(t.tidyup() for t in term)
-        local_exp_vals = [
-            (state * factor).tr() for state, factor in zip(local_sigmas, term_tuple)
-        ]
-        local_delta_op = [
-            factor - exp_val for factor, exp_val in zip(term_tuple, local_exp_vals)
-        ]
-        scalar_term += reduce(lambda x, y: x * y, local_exp_vals)
-        for m in range(m_max):
-            for fluc_sites in combinations(site_indx, m + 1):
-                prefactor = reduce(
-                    lambda x, y: x * y,
-                    [
-                        e_val
-                        for i, e_val in enumerate(local_exp_vals)
-                        if i not in fluc_sites
-                    ],
-                    1,
-                )
-                if abs(prefactor) < 1e-10:
-                    continue
-                new_term = (
-                    _qutip_tensor(
-                        [
-                            local_delta_op[idx] if idx in fluc_sites else idops[idx]
-                            for idx in site_indx
-                        ]
-                    )
-                    * prefactor
-                )
-                result += new_term
-    return result + scalar_term
 
 
 def safe_exp_and_normalize(operator: _Qobj) -> Tuple[_Qobj, float]:

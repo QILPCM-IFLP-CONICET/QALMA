@@ -4,8 +4,6 @@
 import logging
 from typing import Callable, Dict, List, Optional, Sequence, cast
 
-from qutip import Qobj, tensor
-
 from qalma.model import SystemDescriptor
 from qalma.operators.arithmetic import OneBodyOperator, SumOperator
 from qalma.operators.basic import (
@@ -17,9 +15,6 @@ from qalma.operators.product import (
 )
 from qalma.operators.qutip import QutipOperator
 from qalma.qutip_tools.tools import (
-    data_is_diagonal,
-    decompose_qutip_operator,
-    decompose_qutip_operator_hermitian,
     empty_op,
 )
 
@@ -348,88 +343,3 @@ def simplify_qutip_sums(sum_operator: SumOperator) -> Operator:
     if not changed:
         return sum_operator
     return sum_operator_sequence(terms, system=system, simplified=True, isherm=isherm)
-
-
-def rewrite_nbody_term_using_qutip(
-    operator_list: list,
-    block: tuple,
-    system: SystemDescriptor,
-    isherm: Optional[bool] = None,
-    isdiag: Optional[bool] = None,
-) -> Operator:
-    """Do the decomposition work using qutip.
-
-    Parameters
-    ----------
-    operator_list: list :
-
-    block: tuple :
-
-    system: SystemDescriptor :
-
-    isherm: bool :
-         (Default value = None)
-    isdiag: bool :
-         (Default value = None)
-
-    Returns
-    -------
-    Operator
-        the simplified operator.
-
-    """
-    block_sites = sorted(block)
-    sites_identity: Dict[str, Qobj] = {}
-
-    def op_or_identity(term, site):
-        """
-        Return ``term`` or ``identity``.
-
-        Parameters
-        ----------
-        term : Operator
-
-        site : Operator
-
-
-        Returns
-        -------
-           If the term acts on ``site``, return the term. Otherwise, return
-           the identity operator on the site.
-
-        """
-        result = term.sites_op.get(site, None) or sites_identity.get(site, None)
-        if result is None:
-            result = system.sites[site]["operators"]["identity"]
-            sites_identity[site] = result
-        return result
-
-    qutip_subop = sum(
-        tensor(*(op_or_identity(term, site) for site in block_sites)) * term.prefactor
-        for term in operator_list
-    )
-    if isherm and not qutip_subop.isherm:
-        qutip_subop = (qutip_subop + qutip_subop.dag()) * 0.5
-    elif isherm is None:
-        isherm = qutip_subop.isherm
-    if isdiag is None:
-        isdiag = data_is_diagonal(qutip_subop.data)
-    # Now, decompose the operator again as a sum of n-body terms
-    if isherm:
-        factor_terms = decompose_qutip_operator(qutip_subop)
-    else:
-        factor_terms = decompose_qutip_operator_hermitian(qutip_subop)
-    new_terms = (
-        ProductOperator(
-            dict(zip(block_sites, factors)),
-            1.0,
-            system,
-        )
-        for factors in factor_terms
-    )
-    return SumOperator(
-        tuple(new_terms),
-        system,
-        isherm=isherm,
-        isdiag=isdiag,
-    )

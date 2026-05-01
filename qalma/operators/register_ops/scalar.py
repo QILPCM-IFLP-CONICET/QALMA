@@ -22,6 +22,7 @@ from ._common import NUMERIC_TYPES
     ]
 )
 def _standard_sum_operator(op1: Operator, op2: Operator):
+    # OK
     system = op1.system.union(op2.system)
     return SumOperator(tuple((op1, op2)), system)
 

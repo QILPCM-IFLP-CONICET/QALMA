@@ -12,12 +12,9 @@ with L and M_a one-body operators, w_a certain weights and \delta Q a
 from numbers import Number
 
 # from numbers import Number
-from time import time
 from typing import Callable, Iterable, Optional, Set, Tuple, Union, cast
 
 import numpy as np
-from numpy.random import random
-from numpy.typing import NDArray
 
 from qalma.model import SystemDescriptor
 from qalma.operators.arithmetic import OneBodyOperator, SumOperator
@@ -518,67 +515,6 @@ class QuadraticFormOperator(Operator):
             if term is not None:
                 result += term.to_qutip(block)
         return result
-
-
-def quadratic_form_expect(sq_op, state):
-    """Compute the expectation value of op.
-
-    The evaluation takes advantage of the operator structure.
-    """
-    sq_op = sq_op.as_sum_of_products(False)
-    return state.expect(sq_op)
-
-
-def selfconsistent_meanfield_from_quadratic_form(
-    quadratic_form: QuadraticFormOperator, max_it, logdict=None
-):
-    """Build a meanfield approximation.
-
-    Build a self-consistent mean field approximation to the gibbs state
-    associated to the quadratic form.
-    """
-    from qalma.operators.states.gibbs import GibbsProductDensityOperator
-
-    #    quadratic_form = simplify_quadratic_form(quadratic_form)
-    system = quadratic_form.system
-    terms = quadratic_form.terms
-    weights = quadratic_form.weights
-
-    operators = [2 * w * b for w, b in zip(weights, terms)]
-    basis = [b for w, b in zip(weights, terms)]
-
-    phi: NDArray = np.array([2.0 * random() - 1.0])
-
-    evolution: list = []
-    timestamps: list = []
-
-    if isinstance(logdict, dict):
-        logdict["states"] = evolution
-        logdict["timestamps"] = timestamps
-
-    remaining_iterations = max_it
-    while remaining_iterations:
-        remaining_iterations -= 1
-        k_exp = OneBodyOperator(
-            tuple(phi_i * operator for phi_i, operator in zip(phi, basis)),
-            system,
-        )
-        k_exp = ((k_exp + k_exp.dag()).simplify()) * 0.5
-        assert k_exp.isherm
-        rho = GibbsProductDensityOperator(k_exp, prefactor=1.0, system=system)
-        new_phi = -(cast(NDArray, rho.expect(operators)).conj())
-        if isinstance(logdict, dict):
-            evolution.append(new_phi)
-            timestamps.append(time())
-
-        change = sum(
-            abs(old_phi_i - new_phi_i) for old_phi_i, new_phi_i in zip(new_phi, phi)
-        )
-        if change < 1e3 * QALMA_TOLERANCE:
-            break
-        phi = new_phi
-
-    return rho
 
 
 def one_body_operator_hermitian_hs_sp(x_op: OneBodyOperator, y_op: OneBodyOperator):

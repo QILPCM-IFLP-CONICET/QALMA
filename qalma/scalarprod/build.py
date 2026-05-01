@@ -13,7 +13,7 @@ from .covar import CovariantScalarProductFunction
 #  ### Functions that build the scalar products ###
 
 
-def fetch_kubo_scalar_product(sigma: Operator, threshold=0) -> Callable:
+def kubo_scalar_product(sigma: Operator, threshold=0) -> Callable:
     """
     Fetch a KMB scalar product callable. Spectral implementation.
 
@@ -47,7 +47,7 @@ def fetch_kubo_scalar_product(sigma: Operator, threshold=0) -> Callable:
     return ksp
 
 
-def fetch_kubo_int_scalar_product(sigma: Operator) -> Callable:
+def kubo_integral_representation_scalar_product(sigma: Operator) -> Callable:
     """
     Fetch a KMB scalar product callable. Integral implementation.
 
@@ -73,7 +73,7 @@ def fetch_kubo_int_scalar_product(sigma: Operator) -> Callable:
     return return_func
 
 
-def fetch_covar_scalar_product(sigma: DensityOperatorProtocol) -> Callable:
+def covar_scalar_product(sigma: DensityOperatorProtocol) -> Callable:
     r"""
     Fetch a Covar scalar product callable.
 
@@ -104,6 +104,6 @@ def fetch_covar_scalar_product(sigma: DensityOperatorProtocol) -> Callable:
     return CovariantScalarProductFunction(sigma)
 
 
-def fetch_HS_scalar_product() -> Callable:
+def hs_scalar_product() -> Callable:
     """Fetch a HS scalar product function."""
     return lambda op1, op2: (op1.dag() * op2).tr()

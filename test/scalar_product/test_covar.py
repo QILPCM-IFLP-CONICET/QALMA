@@ -7,7 +7,7 @@ from test.helper import (
 
 import pytest
 
-from qalma.scalarprod.build import fetch_covar_scalar_product
+from qalma.scalarprod.build import covar_scalar_product
 from qalma.settings import QALMA_TOLERANCE
 
 
@@ -18,7 +18,7 @@ from qalma.settings import QALMA_TOLERANCE
 @pytest.mark.parametrize(["rho_name"], [(rho_name,) for rho_name in TEST_CASES_STATES])
 def test_sp(rho_name):
     rho = TEST_CASES_STATES[rho_name]
-    sp = fetch_covar_scalar_product(rho)
+    sp = covar_scalar_product(rho)
     rho_qutip = rho.to_qutip()
     for a_name in OPERATOR_TYPE_CASES:
         a = OPERATOR_TYPE_CASES[a_name]

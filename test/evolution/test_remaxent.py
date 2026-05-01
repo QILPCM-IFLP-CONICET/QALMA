@@ -25,7 +25,7 @@ from qalma.evolution import (
 from qalma.operators.functions import commutator, spectral_norm
 from qalma.operators.quadratic import QuadraticFormOperator
 from qalma.operators.states.gibbs import GibbsProductDensityOperator
-from qalma.scalarprod import fetch_covar_scalar_product, orthogonalize_basis
+from qalma.scalarprod import covar_scalar_product, orthogonalize_basis
 
 np.set_printoptions(
     edgeitems=30, linewidth=100000, formatter={"float": lambda x: "%.3g" % x}
@@ -150,7 +150,7 @@ def test_build_hierarchical_basis(name_ham, ham, name_k0, k0, sigma_name, sigma)
     print("Comparing basis against raw qutip")
     compare_basis(h_basis, h_basis_qutip)
 
-    sp = fetch_covar_scalar_product(sigma)
+    sp = covar_scalar_product(sigma)
 
     def sp_qutip(x, y):
         return np.real((qutip_sigma * x * y).tr())

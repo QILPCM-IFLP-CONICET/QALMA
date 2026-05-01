@@ -13,7 +13,7 @@ from numpy.typing import NDArray
 from qalma.operators import Operator
 from qalma.operators.states import DensityOperatorProtocol
 from qalma.scalarprod.basis import HierarchicalOperatorBasis, OperatorBasis
-from qalma.scalarprod.build import fetch_covar_scalar_product
+from qalma.scalarprod.build import covar_scalar_product
 
 from .simulation import Simulation
 
@@ -40,7 +40,7 @@ def heisenberg_solve(
         options = {}
 
     if sp is None:
-        sp = fetch_covar_scalar_product(rho0)
+        sp = covar_scalar_product(rho0)
 
     if not isinstance(e_ops, dict):
         e_ops = dict(enumerate(e_ops))

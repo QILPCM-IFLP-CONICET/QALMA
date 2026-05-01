@@ -26,7 +26,7 @@ from qalma.projections import n_body_projection
 from qalma.scalarprod import (
     HierarchicalOperatorBasis,
     OperatorBasis,
-    fetch_covar_scalar_product,
+    covar_scalar_product,
     trim_terms_by_tolerance,
 )
 
@@ -164,7 +164,7 @@ def update_basis(
         k,
         ham,
         order,
-        fetch_covar_scalar_product(sigma),
+        covar_scalar_product(sigma),
         n_body_projection=trim_and_project_function(sigma, n_body, tol=1e-9),
     )
     rest_elements = tuple(extra_observables)
@@ -229,7 +229,7 @@ def update_basis_heavy(
     else:
         k_ref_new = k_ref
 
-    sp = fetch_covar_scalar_product(sigma)
+    sp = covar_scalar_product(sigma)
     new_basis: OperatorBasis = HierarchicalOperatorBasis(
         k,
         ham,
@@ -320,7 +320,7 @@ def update_basis_light(
         k_ref_new,
         ham,
         order,
-        fetch_covar_scalar_product(sigma),
+        covar_scalar_product(sigma),
     )
 
     rest_elements = tuple(extra_observables)
@@ -669,7 +669,7 @@ def projected_evolution(ham, k0, t_span, order, n_body: int = -1) -> Simulation:
 
     """
     sigma_0 = GibbsProductDensityOperator(k0)
-    sp = fetch_covar_scalar_product(sigma_0)
+    sp = covar_scalar_product(sigma_0)
 
     basis = HierarchicalOperatorBasis(
         k0,
