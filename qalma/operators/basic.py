@@ -38,51 +38,42 @@ class Operator:  # pylint: disable=too-many-public-methods
     __mul__dispatch__: Dict[Tuple, Callable] = {}
 
     @staticmethod
-    def register_add_handler(key: Tuple | List[Tuple]):
-        """Register a function to implement add."""
+    def _register_handler(dispatch_table: Dict, key: Tuple | List[Tuple]):
+        """Return a decorator that registers a handler in ``dispatch_table``.
+
+        Parameters
+        ----------
+        dispatch_table:
+            One of ``Operator.__add__dispatch__`` or
+            ``Operator.__mul__dispatch__``.
+        key:
+            A single ``(TypeA, TypeB)`` pair, or a list of such pairs, that
+            map to the decorated function.
+        """
 
         def register_func(func):
-            """Register ``func`` as the add handler for ``key`` and return it."""
-            if isinstance(key[0], (list, tuple)):
-                keys = key
-            else:
-                keys = (key,)
-
+            keys = key if isinstance(key[0], (list, tuple)) else (key,)
             for curr_key in keys:
-                if curr_key in Operator.__add__dispatch__:
+                if curr_key in dispatch_table:
                     if not QALMA_ALLOW_OVERWRITE_BINDINGS:
-                        assert curr_key not in Operator.__add__dispatch__, (
+                        assert curr_key not in dispatch_table, (
                             f"{curr_key} already registered in "
-                            f"{Operator.__add__dispatch__[curr_key].__code__}."
+                            f"{dispatch_table[curr_key].__code__}."
                         )
-                # print(f"registering add operation for {curr_key} with {func} {func.__code__}")
-                Operator.__add__dispatch__[curr_key] = func
+                dispatch_table[curr_key] = func
             return func
 
         return register_func
 
     @staticmethod
+    def register_add_handler(key: Tuple | List[Tuple]):
+        """Return a decorator that registers an addition handler."""
+        return Operator._register_handler(Operator.__add__dispatch__, key)
+
+    @staticmethod
     def register_mul_handler(key: Tuple | List[Tuple]):
-        """Register a function to implement mul."""
-
-        def register_func(func):
-            """Register ``func`` as the mul handler for ``key`` and return it."""
-            if isinstance(key[0], (list, tuple)):
-                keys = key
-            else:
-                keys = (key,)
-
-            for curr_key in keys:
-                if curr_key in Operator.__mul__dispatch__:
-                    if not QALMA_ALLOW_OVERWRITE_BINDINGS:
-                        assert curr_key not in Operator.__mul__dispatch__, (
-                            f"{curr_key} already registered in "
-                            f"{Operator.__mul__dispatch__[curr_key].__code__}."
-                        )
-                Operator.__mul__dispatch__[curr_key] = func
-            return func
-
-        return register_func
+        """Return a decorator that registers a multiplication handler."""
+        return Operator._register_handler(Operator.__mul__dispatch__, key)
 
     def __bool__(self):
         """Return False if the operator is zero, True otherwise."""
@@ -397,11 +388,14 @@ class Operator:  # pylint: disable=too-many-public-methods
     def tr(self) -> complex:
         r"""Return the trace of the operator over the full system.
 
+        Delegates to :meth:`partial_trace` with an empty site set, then
+        returns the scalar ``prefactor`` of the result.  Subclasses that
+        compute ``tr`` via a different code-path should override this.
+
         Returns
         -------
         complex
-            :math:`\\mathrm{Tr}(O) \\cdot \\prod_{j \\neq i} d_j`, where
-            the product runs over all sites not acted on by this operator.
+            :math:`\mathrm{Tr}(O)`.
 
         """
         return self.partial_trace(frozenset()).prefactor

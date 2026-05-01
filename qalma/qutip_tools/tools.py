@@ -702,62 +702,66 @@ def to_qobj(array: np.ndarray, atol: float = 1e-12) -> _Qobj:
     return _Qobj(_fast_from_numpy(array), dims=dims, copy=False)
 
 
-def decompose_qutip_operator(operator: _Qobj, tol: float = 1e-10) -> List[Tuple]:
-    """Decompose a qutip operator q123...
+def decompose_qutip_operator(
+    operator: _Qobj, tol: float = 1e-10, hermitian: bool = False
+) -> List[Tuple]:
+    r"""Decompose a qutip operator into a sum of tensor products.
 
-    into a sum of tensor products sum_{ka, kb, kc...} q1^{ka} q2^{kakb}
-    q3^{kakbkc}... return a list of tuples, with each factor.
+    Decomposes ``operator`` acting on :math:`H_1 \otimes H_2 \otimes \cdots`
+    into a list of tuples ``(q1, q2, ...)`` such that
+    ``operator ≈ Σ_k q1^k ⊗ q2^k ⊗ …``.
+
+    Parameters
+    ----------
+    operator : qutip.Qobj
+        The operator to decompose.
+    tol : float, optional
+        Schmidt coefficients below this threshold are discarded.
+    hermitian : bool, optional
+        If ``True``, use the Hermitian-aware Schmidt decomposition
+        (:func:`schmidt_dec_first_rest_qutip_operator_hermitian`) so that
+        all factors in the output are Hermitian operators.  Default is
+        ``False``.
+
+    Returns
+    -------
+    list of tuple of qutip.Qobj
+        Each tuple is one tensor-product term in the decomposition.
     """
+    _dec = (
+        schmidt_dec_first_rest_qutip_operator_hermitian
+        if hermitian
+        else schmidt_dec_first_rest_qutip_operator
+    )
     dims = operator.dims[0]
-    ops_1, *rest = schmidt_dec_first_rest_qutip_operator(operator, tol)
+    ops_1, *rest = _dec(operator, tol)
     if len(rest) == 0:
         return [(op_l,) for op_l in ops_1]
     ops_2 = rest[0]
     if not ops_1:
         return []
-
     if len(dims) < 3:
         return list(zip(ops_1, ops_2))
-    ops_2_factors = [decompose_qutip_operator(op2, tol) for op2 in ops_2]
+    ops_2_factors = [
+        decompose_qutip_operator(op2, tol, hermitian=hermitian) for op2 in ops_2
+    ]
     result = [
-        (op1,) + tuple((op_2 for op_2 in factors))
+        (op1,) + tuple(op_2 for op_2 in factors)
         for op1, op21_factors in zip(ops_1, ops_2_factors)
         for factors in op21_factors
     ]
-    if result:
-        return result
-    return []
+    return result if result else []
 
 
 def decompose_qutip_operator_hermitian(
     operator: _Qobj, tol: float = 1e-10
 ) -> List[Tuple]:
-    """Decompose a hermitian qutip operator q123...
+    """Decompose a Hermitian qutip operator into Hermitian tensor-product terms.
 
-    into a sum of tensor products sum_{ka, kb, kc...} q1^{ka} q2^{kakb}
-    q3^{kakbkc}... return a list of tuples, with each factor.
+    Convenience alias for :func:`decompose_qutip_operator` with
+    ``hermitian=True``.
     """
-    dims = operator.dims[0]
-
-    ops_1, *rest = schmidt_dec_first_rest_qutip_operator_hermitian(operator, tol)
-
-    if len(rest) == 0:
-        return [(op_l,) for op_l in ops_1]
-    ops_2 = rest[0]
-    if not ops_1:
-        return []
-
-    if len(dims) < 3:
-        return list(zip(ops_1, ops_2))
-    ops_2_factors = [decompose_qutip_operator_hermitian(op2, tol) for op2 in ops_2]
-    result = [
-        (op1,) + tuple((op_2 for op_2 in factors))
-        for op1, op21_factors in zip(ops_1, ops_2_factors)
-        for factors in op21_factors
-    ]
-    if result:
-        return result
-    return []
+    return decompose_qutip_operator(operator, tol, hermitian=True)
 
 
 def get_proper_spaces(spectrum: Iterable) -> List[List[int]]:

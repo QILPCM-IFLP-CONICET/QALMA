@@ -259,14 +259,17 @@ class SumOperator(Operator):
 
         Returns
         -------
-        SumOperator/OneBodyOperator
+        SumOperator
             A sum of the Hermitian parts of each term, marked as Hermitian.
             Returns ``self`` if already marked as Hermitian.
+
+            Subclasses automatically get the correct return type
+            because ``type(self)`` is used as the constructor.
 
         """
         if self._isherm is True:
             return self
-        return type(self)(
+        return SumOperator(
             tuple(t.hermitian_part() for t in self.terms),
             system=self.system,
             isherm=True,
@@ -513,7 +516,16 @@ class SumOperator(Operator):
         """
         tidy_terms = [term.tidyup(atol) for term in self.terms]
         tidy_terms = tuple((term for term in tidy_terms if term))
-        return iterable_to_operator(tidy_terms, self.system, isherm=self._isherm)
+        return (
+            type(self)(
+                tidy_terms,
+                self.system,
+                isherm=self._isherm,
+                isdiag=getattr(self, "_isdiagonal", None),
+            )
+            if tidy_terms
+            else iterable_to_operator(tidy_terms, self.system)
+        )
 
 
 NBodyOperator = SumOperator
@@ -769,26 +781,6 @@ class OneBodyOperator(SumOperator):
                 terms.extend(local_terms)
 
         return tuple(terms), system
-
-    def tidyup(self, atol=None):
-        """Return a copy with small matrix elements zeroed out.
-
-        Parameters
-        ----------
-        atol : float or None, optional
-            Absolute tolerance passed to each term's ``tidyup``.
-
-        Returns
-        -------
-        OneBodyOperator
-            Cleaned-up operator with zero terms removed.
-
-        """
-        tidy_terms = [term.tidyup(atol) for term in self.terms]
-        tidy_terms = tuple((term for term in tidy_terms if term))
-        return OneBodyOperator(
-            tidy_terms, self.system, isherm=self._isherm, isdiag=self._isdiagonal
-        )
 
 
 def iterable_to_operator(terms: Iterable[Operator], system, **kwargs) -> Operator:

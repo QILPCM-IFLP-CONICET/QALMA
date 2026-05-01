@@ -346,6 +346,16 @@ class SimulationHDF5(Simulation):
                     return 0
                 return len(group)
 
+        @staticmethod
+        def _next_key(group) -> str:
+            """Return the next available state key in ``group``."""
+            idx = len(group)
+            key = "rho_" + f"{idx}".rjust(6, "0")
+            while key in group:
+                idx += 1
+                key = "rho_" + f"{idx}".rjust(6, "0")
+            return key
+
         def append(self, elem):
             """Append a state to the end of the HDF5 states group.
 
@@ -356,15 +366,8 @@ class SimulationHDF5(Simulation):
 
             """
             with h5py.File(self.filename, "r+") as f:
-                group = f.get("states", None)
-                if group is None:
-                    group = f.create_group("states")
-                idx = len(group)
-                key = "rho_" + f"{idx}".rjust(6, "0")
-                while key in group:
-                    idx += 1
-                    key = "rho_" + f"{idx}".rjust(6, "0")
-                self[key] = elem
+                group = f.require_group("states")
+                self[self._next_key(group)] = elem
 
         def extend(self, elems):
             """Append multiple states to the HDF5 states group.
@@ -376,16 +379,9 @@ class SimulationHDF5(Simulation):
 
             """
             with h5py.File(self.filename, "r+") as f:
-                group = f["states"]
-                if group is None:
-                    group = f.create_group("states")
-                idx = len(group)
-                key = "rho_" + f"{idx}".rjust(6, "0")
+                group = f.require_group("states")
                 for elem in elems:
-                    while key in group:
-                        idx += 1
-                        key = "rho_" + f"{idx}".rjust(6, "0")
-                    self[key] = elem
+                    self[self._next_key(group)] = elem
 
     def __init__(self, filename):
         """Create an interface with an HDF5 file that stores a simulation."""

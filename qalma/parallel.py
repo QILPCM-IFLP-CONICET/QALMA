@@ -7,7 +7,7 @@ from typing import Any, Dict, Optional, Tuple
 import qalma.settings as qalma_settings
 from qalma.operators import Operator
 from qalma.operators.arithmetic import iterable_to_operator
-from qalma.operators.simplify import collect_nbody_terms
+from qalma.operators.simplify import _commutator_term_pairs, collect_nbody_terms
 from qalma.operators.states.gibbs import (
     GibbsProductDensityOperator,
 )
@@ -93,22 +93,7 @@ def commutator_qalma_parallel(
     op_1_terms = collect_nbody_terms(op_1.flat())
     op_2_terms = collect_nbody_terms(op_2.flat())
 
-    def fetch_terms():
-        for block_1, terms_1 in op_1_terms.items():
-            for block_2, terms_2 in op_2_terms.items():
-                if (
-                    block_1 is not None
-                    and block_2 is not None
-                    and not block_1.intersection(block_2)
-                ):
-                    continue
-                for term_1 in terms_1:
-                    for term_2 in terms_2:
-                        if term_1 is term_2:
-                            continue
-                        yield (term_1, term_2)
-
-    terms_pairs = tuple(pair for pair in fetch_terms())
+    terms_pairs = tuple(_commutator_term_pairs(op_1_terms, op_2_terms))
     len_terms_pairs = len(terms_pairs)
     # The wall-time estimated for a task can be estimated as
     # WallTime =   N_TASKS / NUM_PROC * TIME_SINGLE_TASK + NUM_PROC * PARALLELIZING_OVERHEAD_TIME

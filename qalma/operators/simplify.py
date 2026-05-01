@@ -343,3 +343,38 @@ def simplify_qutip_sums(sum_operator: SumOperator) -> Operator:
     if not changed:
         return sum_operator
     return sum_operator_sequence(terms, system=system, simplified=True, isherm=isherm)
+
+
+def _commutator_term_pairs(op_1_terms, op_2_terms):
+    """Yield all (term_1, term_2) pairs that can contribute to a commutator.
+
+    Pairs whose support blocks are disjoint are skipped because their
+    commutator is identically zero.  Pairs where both terms are the same
+    object are also skipped.
+
+    Parameters
+    ----------
+    op_1_terms : dict
+        Output of :func:`collect_nbody_terms` for the first operator.
+    op_2_terms : dict
+        Output of :func:`collect_nbody_terms` for the second operator.
+
+    Yields
+    ------
+    tuple[Operator, Operator]
+        Pairs ``(t1, t2)`` for which the commutator ``t1 * t2 - t2 * t1``
+        may be non-zero.
+    """
+    for block_1, terms_1 in op_1_terms.items():
+        for block_2, terms_2 in op_2_terms.items():
+            if (
+                block_1 is not None
+                and block_2 is not None
+                and not block_1.intersection(block_2)
+            ):
+                continue
+            for term_1 in terms_1:
+                for term_2 in terms_2:
+                    if term_1 is term_2:
+                        continue
+                    yield (term_1, term_2)
