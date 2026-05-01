@@ -15,14 +15,14 @@ from numpy.linalg import inv
 from qalma.operators.functions import commutator
 from qalma.operators.states.gibbs import GibbsProductDensityOperator
 from qalma.scalarprod.basis import HierarchicalOperatorBasis, OperatorBasis
-from qalma.scalarprod.build import fetch_covar_scalar_product
+from qalma.scalarprod.build import covar_scalar_product
 from qalma.settings import QALMA_TOLERANCE
 
 K0_REFERENCE = SX_A
 HAMILTONIAN_REFERENCE = HAMILTONIAN + SX_TOTAL
 GENERATOR_REFERENCE = HAMILTONIAN_REFERENCE * 1j
 SIGMA_REFERENCE = GibbsProductDensityOperator(K0_REFERENCE)
-REFERENCE_SP = fetch_covar_scalar_product(SIGMA_REFERENCE)
+REFERENCE_SP = covar_scalar_product(SIGMA_REFERENCE)
 
 
 BASIS_NORMS = [REFERENCE_SP(K0_REFERENCE, K0_REFERENCE) ** 0.5]

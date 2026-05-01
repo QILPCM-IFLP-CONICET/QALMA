@@ -141,7 +141,7 @@ def run_restricted_simulation(params, system_data, k_0, sigma_0):
     )
 
     # Compute the scalar product operator used for orthogonalization
-    sp_local = me.fetch_covar_scalar_product(sigma=sigma_0)
+    sp_local = me.covar_scalar_product(sigma=sigma_0)
     local_t_value = 0.0
 
     # Build the initial Krylov basis and orthogonalize it
@@ -221,7 +221,7 @@ def run_restricted_simulation(params, system_data, k_0, sigma_0):
             _, sigma_act = me.mft_state_it(k_proj, sigma_act, max_it=10)
 
             # Recompute the scalar product using the MF state
-            sp_local = me.fetch_covar_scalar_product(sigma=sigma_act)
+            sp_local = me.covar_scalar_product(sigma=sigma_act)
 
             # The new basis is spanned from the K_proj state
             hbb_ell_act = me.build_Hierarch(

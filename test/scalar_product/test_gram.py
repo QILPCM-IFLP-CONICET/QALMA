@@ -7,7 +7,7 @@ import numpy as np
 import pytest
 
 from qalma.scalarprod.basis import HierarchicalOperatorBasis
-from qalma.scalarprod.build import fetch_covar_scalar_product
+from qalma.scalarprod.build import covar_scalar_product
 from qalma.scalarprod.gram import (
     gram_matrix,
 )
@@ -20,8 +20,7 @@ REFERENCE_STATE_NAMES = (
 )
 
 SCALAR_PRODUCTS = {
-    key: fetch_covar_scalar_product(TEST_CASES_STATES[key])
-    for key in REFERENCE_STATE_NAMES
+    key: covar_scalar_product(TEST_CASES_STATES[key]) for key in REFERENCE_STATE_NAMES
 }
 SCALAR_PRODUCTS["HS scalar product"] = lambda x, y: np.real((x * y).tr())
 

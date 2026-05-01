@@ -7,10 +7,10 @@ orthogonalize sets of operators.
 
 from qalma.scalarprod.basis import HierarchicalOperatorBasis, OperatorBasis
 from qalma.scalarprod.build import (
-    fetch_covar_scalar_product,
-    fetch_HS_scalar_product,
-    fetch_kubo_int_scalar_product,
-    fetch_kubo_scalar_product,
+    covar_scalar_product,
+    hs_scalar_product,
+    kubo_integral_representation_scalar_product,
+    kubo_scalar_product,
 )
 from qalma.scalarprod.covar import trim_terms_by_tolerance
 from qalma.scalarprod.gram import gram_matrix
@@ -27,10 +27,10 @@ __all__ = [
     "OperatorBasis",
     "HierarchicalOperatorBasis",
     "build_hermitian_basis",
-    "fetch_HS_scalar_product",
-    "fetch_covar_scalar_product",
-    "fetch_kubo_int_scalar_product",
-    "fetch_kubo_scalar_product",
+    "hs_scalar_product",
+    "covar_scalar_product",
+    "kubo_integral_representation_scalar_product",
+    "kubo_scalar_product",
     "gram_matrix",
     "operator_components",
     "orthogonalize_basis",

@@ -11,7 +11,7 @@ from scipy.linalg import expm as _linalg_expm
 from qalma.operators.arithmetic import SumOperator
 from qalma.operators.basic import Operator
 from qalma.operators.functions import commutator
-from qalma.scalarprod.build import fetch_HS_scalar_product
+from qalma.scalarprod.build import hs_scalar_product
 from qalma.scalarprod.gram import gram_matrix, merge_gram_matrices
 from qalma.scalarprod.utils import find_linearly_independent_rows
 from qalma.settings import QALMA_TOLERANCE
@@ -65,7 +65,7 @@ class OperatorBasis:
             self.generator = None
 
         if sp is None:
-            sp = fetch_HS_scalar_product()
+            sp = hs_scalar_product()
 
         self.sp = sp
 
@@ -327,7 +327,7 @@ class HierarchicalOperatorBasis(OperatorBasis):
             generator = 1j * generator
 
         if sp is None:
-            sp = fetch_HS_scalar_product()
+            sp = hs_scalar_product()
 
         self.sp = sp
         self.generator = generator.simplify()
@@ -785,16 +785,3 @@ def do_compute_cross_gram_matrix(sp, ops1, ops2, dtype=np.float128):
         for j_idx, o2 in enumerate(ops2):
             g12[i_idx, j_idx] = np.real(sp(o1, o2))
     return g12
-
-
-def _relative_non_hermitian_part(x: Operator):
-    """Auxiliar function to check how much `x` fails being hermitian.
-
-    Used for test only.
-    """
-    if x.isherm:
-        return True
-    x_dag = x.dag()
-    x_ah = x_dag - x
-    error = abs((x_ah * x_ah).tr()) ** 0.5 / ((x_dag * x).tr()) ** 0.5
-    return error < QALMA_TOLERANCE
