@@ -1,5 +1,6 @@
 import multiprocessing as mp
 import pickle
+import warnings
 
 import pytest
 
@@ -26,17 +27,20 @@ def pool():
     Creates a persistent pool of workers for this test module.
     The 'forkserver' overhead is paid only once when the pool starts.
     """
-    ctx = mp.get_context(MP_CONTEXT_TYPE)
-    # Preload your library in the server to speed up worker creation
-    try:
-        mp.set_forkserver_preload(["qalma"])
-    except (AttributeError, ImportError):
-        pass
+    with warnings.catch_warnings():
+        warnings.filterwarnings("ignore", message=".*use of fork().*")
 
-    p = ctx.Pool(processes=4)
-    yield p
-    p.terminate()
-    p.join()
+        ctx = mp.get_context(MP_CONTEXT_TYPE)
+        # Preload your library in the server to speed up worker creation
+        try:
+            mp.set_forkserver_preload(["qalma"])
+        except (AttributeError, ImportError):
+            pass
+
+        p = ctx.Pool(processes=4)
+        yield p
+        p.terminate()
+        p.join()
 
 
 def test_serialize_graph():
