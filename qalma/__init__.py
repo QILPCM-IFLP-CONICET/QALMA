@@ -8,11 +8,11 @@
 from . import (
     evolution,
     geometry,
+    maxent,
     meanfield,
     model,
     operators,
     projections,
-    restricted_maxent_toolkit,
     scalarprod,
     utils,
 )
@@ -32,11 +32,11 @@ __all__ = [
     "model_from_alps_xml",
     # Core subpackages
     "evolution",
+    "maxent",
     "meanfield",
     "operators",
     "projections",
     "scalarprod",
     # Utilities
-    "restricted_maxent_toolkit",
     "utils",
 ]
