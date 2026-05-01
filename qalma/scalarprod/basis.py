@@ -785,16 +785,3 @@ def do_compute_cross_gram_matrix(sp, ops1, ops2, dtype=np.float128):
         for j_idx, o2 in enumerate(ops2):
             g12[i_idx, j_idx] = np.real(sp(o1, o2))
     return g12
-
-
-def _relative_non_hermitian_part(x: Operator):
-    """Auxiliar function to check how much `x` fails being hermitian.
-
-    Used for test only.
-    """
-    if x.isherm:
-        return True
-    x_dag = x.dag()
-    x_ah = x_dag - x
-    error = abs((x_ah * x_ah).tr()) ** 0.5 / ((x_dag * x).tr()) ** 0.5
-    return error < QALMA_TOLERANCE

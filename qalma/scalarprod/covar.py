@@ -249,43 +249,6 @@ def compute_cov_mix_sp(rho, op1: Operator, op2: Operator) -> complex:
     )
 
 
-def compute_cov_sqnorm(
-    rho: ProductDensityOperator,
-    operator: Operator,
-    av_cache: Optional[Dict[Operator, complex]] = None,
-) -> complex:
-    """
-    Compute the square of the covariance norm of an operator.
-
-    Compute the square of the covar operator norm of `op1` associated to the
-    state `rho`.
-
-    Parameters
-    ----------
-    rho : ProductDensityOperator
-        The state that defines the scalar product.
-    operator : Operator
-        the operator argument of the norm.
-
-    Returns
-    -------
-    complex
-        the covar-induced operator norm.
-
-    """
-    if av_cache is None:
-        av_cache = {}
-    # TODO:
-    # The following routines are optimized for handling products of
-    # large sums of operators. Consider branch this to handle
-    # special cases.
-    if operator.isherm:
-        return _compute_cov_prod_normsq(
-            rho, operator, term_sp=_term_sp_cov_prod_h, av_cache=av_cache
-        )
-    return _compute_cov_prod_normsq(rho, operator, av_cache=av_cache)
-
-
 def compute_cov_prod_sp(
     rho: ProductDensityOperator,
     op1: Operator,
