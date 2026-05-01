@@ -23,7 +23,6 @@ from qalma.operators.states.meanfield import (
 )
 
 # function used to safely and robustly map K-states to states
-# from qalma.proj_evol import safe_exp_and_normalize
 
 # long term ev
 
