@@ -3,6 +3,15 @@
 Operators.
 
 Classes representing different kind of operators.
+
+Subpackages
+-----------
+functions
+    Operator-level functions: commutator, anticommutator, fidelity,
+    spectral_norm, relative_entropy, eigenvalues, log_op, compute_dagger.
+states
+    Density-operator classes: ProductDensityOperator, GibbsDensityOperator,
+    GibbsProductDensityOperator, QutipDensityOperator, MixtureDensityOperator.
 """
 
 import importlib
@@ -23,10 +32,16 @@ from .product import (
 from .quadratic import QuadraticFormOperator
 from .qutip import QutipOperator
 
+# register_ops wires arithmetic dispatch tables; must run before states/functions
+# so that operator arithmetic works when those subpackages are loaded.
 importlib.import_module(".register_ops", __name__)
 
+# states and functions are imported last because they depend on the operator
+# classes and dispatch tables being fully initialised above.
+from . import functions, states  # noqa: E402
 
 __all__ = [
+    # Operator classes
     "LocalOperator",
     "OneBodyOperator",
     "Operator",
@@ -36,5 +51,7 @@ __all__ = [
     "ScalarOperator",
     "SumOperator",
     "iterable_to_operator",
-    #    "register_ops",
+    # Subpackages
+    "functions",
+    "states",
 ]

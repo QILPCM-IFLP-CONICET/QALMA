@@ -395,7 +395,15 @@ class Operator:  # pylint: disable=too-many-public-methods
 
     # pylint: disable=invalid-name
     def tr(self) -> complex:
-        """Return the trace of the operator."""
+        r"""Return the trace of the operator over the full system.
+
+        Returns
+        -------
+        complex
+            :math:`\\mathrm{Tr}(O) \\cdot \\prod_{j \\neq i} d_j`, where
+            the product runs over all sites not acted on by this operator.
+
+        """
         return self.partial_trace(frozenset()).prefactor
 
     def tidyup(self, _atol=None):
@@ -710,19 +718,6 @@ class LocalOperator(Operator):
         factors_dict = (operator if s == site else sites[s]["identity"] for s in block)
         self._to_qutip_cache[orig_block] = result = fast_tensor(*factors_dict)
         return result
-
-    def tr(self):
-        r"""Return the trace of the operator over the full system.
-
-        Returns
-        -------
-        complex
-            :math:`\\mathrm{Tr}(O) \\cdot \\prod_{j \\neq i} d_j`, where
-            the product runs over all sites not acted on by this operator.
-
-        """
-        result = self.partial_trace(frozenset())
-        return result.prefactor
 
     def tidyup(self, atol=None):
         """Remove tiny elements of the operator."""

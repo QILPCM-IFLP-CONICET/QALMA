@@ -519,7 +519,7 @@ class QuadraticFormOperator(Operator):
 
 def one_body_operator_hermitian_hs_sp(x_op: OneBodyOperator, y_op: OneBodyOperator):
     """Hilbert Schmidt scalar product optimized for OneBodyOperators."""
-    result = 0
+    result: complex = 0
     terms_x: Tuple[ScalarOperator | LocalOperator] = cast(
         Tuple[ScalarOperator | LocalOperator],
         (x_op.terms if isinstance(x_op, OneBodyOperator) else (x_op,)),

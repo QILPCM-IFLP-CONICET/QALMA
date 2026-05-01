@@ -20,10 +20,11 @@ from qalma.evolution.tools import (
     slice_times,
 )
 
-from .simulation import Simulation
+from .simulation import Simulation, SimulationHDF5
 
 __all__ = [
     "Simulation",
+    "SimulationHDF5",
     "adaptive_projected_evolution",
     "build_hierarchical_basis",
     "fn_hij_tensor",

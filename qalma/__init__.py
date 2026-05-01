@@ -5,20 +5,38 @@
 @author: mauricio
 """
 
-from . import geometry, model, operators, restricted_maxent_toolkit, utils
+from . import (
+    evolution,
+    geometry,
+    meanfield,
+    model,
+    operators,
+    projections,
+    restricted_maxent_toolkit,
+    scalarprod,
+    utils,
+)
 from .alpsmodels import list_models_in_alps_xml, model_from_alps_xml
 from .geometry import graph_from_alps_xml, list_geometries_in_alps_xml
 from .model import build_system
 
 __all__ = [
+    # Top-level factories
     "build_system",
+    # Geometry / model
     "geometry",
     "graph_from_alps_xml",
     "list_geometries_in_alps_xml",
     "list_models_in_alps_xml",
-    "model_from_alps_xml",
     "model",
+    "model_from_alps_xml",
+    # Core subpackages
+    "evolution",
+    "meanfield",
     "operators",
+    "projections",
+    "scalarprod",
+    # Utilities
     "restricted_maxent_toolkit",
     "utils",
 ]
