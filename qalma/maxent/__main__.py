@@ -17,9 +17,9 @@ from qalma.alpsmodels import model_from_alps_xml
 from qalma.geometry import graph_from_alps_xml
 from qalma.model import SystemDescriptor
 from qalma.operators.states import GibbsDensityOperator, GibbsProductDensityOperator
-from qalma.operators.states.meanfield import (
+from qalma.projections import (
     one_body_from_qutip_operator,
-    project_to_n_body_operator,
+    project_operator_to_n_body as project_to_n_body_operator,
 )
 
 # function used to safely and robustly map K-states to states
