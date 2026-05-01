@@ -875,6 +875,76 @@ n_body_projection = project_to_n_body_operator
 # _project_qutip_operator_to_n_body_recursive = _project_qutip_operator_recursive
 
 
+def estimate_log_of_partial_trace(K0: _Qobj, local_sigmas, sites) -> _Qobj:
+    """Estimate the log of the partial trace of K0 over the given sites.
+
+    Parameters
+    ----------
+    K0 : Qobj
+        The operator whose partial trace is estimated.
+    local_sigmas : list of Qobj
+        Local density operators for each site.
+    sites : list of int
+        Indices of sites to keep in the partial trace.
+
+    Returns
+    -------
+    Qobj
+        The estimated partial trace restricted to `sites`.
+    """
+    return (
+        qutip.tensor(
+            [
+                qutip.qeye(dim) if i in sites else local_sigmas[i]
+                for i, dim in enumerate(K0.dims[0])
+            ]
+        )
+        * K0
+    ).ptrace(sites)
+
+
+def project_k_to_sep(K: _Qobj, maxit: int = 200) -> list:
+    """Project a global K operator to a separable form via alternating optimization.
+
+    Parameters
+    ----------
+    K : Qobj
+        The global K operator to project.
+    maxit : int, optional
+        Maximum number of iterations. Default is 200.
+
+    Returns
+    -------
+    list of Qobj
+        List of local density operators representing the separable approximation.
+    """
+    import logging
+
+    from qutip import fidelity as _fidelity, jmat as _jmat
+
+    from qalma.qutip_tools.tools import safe_exp_and_normalize
+
+    length = len(K.dims[0])
+    phis = 2 * np.random.rand(length, 3) - 1.0
+    loc_ops = _jmat(0.5)
+    local_Ks = [sum((c * op for c, op in zip(phi, loc_ops))) for phi in phis]
+    local_sigmas = [safe_exp_and_normalize(-localK) for localK in local_Ks]
+    for it in range(maxit):
+        for i in range(len(local_sigmas)):
+            new_local_K = estimate_log_of_partial_trace(K, local_sigmas, [i])
+            local_Ks[i] = 0.3 * local_Ks[i] + 0.7 * new_local_K
+
+        new_local_sigmas = [safe_exp_and_normalize(-localK) for localK in local_Ks]
+        min_fid = min(
+            _fidelity(old, new) for old, new in zip(local_sigmas, new_local_sigmas)
+        )
+        if min_fid > 0.995:
+            logging.info("project_k_to_sep converged after %d iterations.", it)
+            break
+        local_sigmas = new_local_sigmas
+    return local_sigmas
+
+
 DISPATCH_PROJECTION_METHOD = {
     ScalarOperator: lambda x, y, z: x,
     ProductOperator: _project_product_operator_recursive,
