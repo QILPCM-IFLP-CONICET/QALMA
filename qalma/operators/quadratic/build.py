@@ -1,12 +1,41 @@
-r"""QuadraticForm Operators.
+r"""Factory and helpers for building :class:`QuadraticFormOperator` objects.
 
-Quadratic Form Operators provides a representation for quantum operators
-of the form
+Given an arbitrary two-body quantum operator :math:`T`, this module provides
+the machinery to decompose it as
 
-Q= L + \sum_a w_a M_a ^2 + \delta Q
+.. math::
 
-with L and M_a one-body operators, w_a certain weights and \delta Q a
-*remainder* as a sum of n-body terms.
+    T = L + \sum_\alpha w_\alpha Q_\alpha^2 + \delta T
+
+by diagonalising the coupling matrix of :math:`T` in a Hilbert–Schmidt
+orthonormal local basis.  The main entry point is
+:func:`build_quadratic_form_from_operator`.
+
+Pipeline overview
+-----------------
+The decomposition proceeds in five steps:
+
+1. **Classify** (:func:`classify_terms`): split :math:`T` into two-site
+   blocks, a one-body (linear) part, and a high-body remainder
+   :math:`\delta T` using :func:`~qalma.projections.n_body_projection`.
+2. **Local basis** (:func:`build_local_basis`, :func:`orthonormal_hs_local_basis`):
+   build a traceless, HS-orthonormal basis of local operators on each site
+   from the one-body factors that appear in the two-site blocks.
+3. **Coupling matrix** (:func:`build_quadratic_form_matrix`,
+   :func:`fill_array_from_block`): assemble the real symmetric matrix
+   :math:`M_{\mu\nu}` whose entries are the coefficients of the coupling
+   of each pair of basis elements.
+4. **Diagonalise** (:func:`decompose_matrix`): compute :math:`(w_\alpha, v_\alpha) = \text{eigh}(M)`,
+   optionally sort and truncate, and build one-body operators
+   :math:`Q_\alpha = \sum_i (v_\alpha)_i \hat{e}_i`.
+5. **Normalise** (:func:`basis_and_weights`): rescale each :math:`Q_\alpha`
+   to spectral norm 1 and absorb the squared norm into :math:`w_\alpha`.
+
+Optional: if a reference state ``sigma_ref`` is provided,
+:func:`zero_expectation_value_basis` shifts every basis element so that
+:math:`\langle Q_\alpha \rangle_{\sigma_{\rm ref}} = 0` before the
+diagonalisation step.  This is the decomposition relative to
+:math:`\sigma_{\rm ref}` used in the self-consistent MFA loop.
 """
 
 # from numbers import Number
@@ -42,10 +71,25 @@ __all__ = ["build_quadratic_form_from_operator"]
 def build_local_basis(
     terms_by_block: BlockTermsDict,
 ) -> LocalBasisDict:
-    """Build a local basis from a list of two-body operators.
+    r"""Build an HS-orthonormal local operator basis from two-site blocks.
 
-    Build a local basis of operators from a list of two-body operators on
-    each pair of sites.
+    Extracts the one-body factors of each two-site product operator in
+    ``terms_by_block`` and assembles a Hilbert–Schmidt orthonormal basis of
+    traceless Hermitian operators on each site via
+    :func:`orthonormal_hs_local_basis`.
+
+    Parameters
+    ----------
+    terms_by_block : dict[tuple[str, str], list[Operator]]
+        Mapping from pairs of site labels to the list of two-body
+        :class:`~qalma.operators.product.ProductOperator` terms acting on
+        those sites.  Each key must be a 2-tuple of site names.
+
+    Returns
+    -------
+    dict[str, list[Qobj]]
+        Mapping from site label to the list of HS-orthonormal traceless
+        Hermitian ``Qobj`` operators forming the local basis on that site.
     """
     basis_by_site: Dict[str, List[Qobj]] = {}
     # First, collect the one-body factors
@@ -75,11 +119,28 @@ def build_local_basis(
 
 
 def orthonormal_hs_local_basis(local_generators_dict: LocalBasisDict) -> LocalBasisDict:
-    """Build a HS orthonormal basis of local operators.
+    r"""Gram–Schmidt orthonormalise a set of local operators under the HS inner product.
 
-    From a set of operators associated to each site, build an
-    orthonormalized basis of hermitian operators regarding the HS scalar
-    product on each site.
+    For each site, takes the supplied generators, splits non-Hermitian ones
+    into Hermitian and anti-Hermitian parts, subtracts the trace to enforce
+    tracelessness, and orthonormalises the result via Gram–Schmidt with
+    respect to the Hilbert–Schmidt scalar product
+    :math:`\langle A, B \rangle = \operatorname{Tr}[A B]`.
+    Operators whose squared norm falls below :data:`~qalma.settings.QALMA_TOLERANCE`
+    are discarded as linearly dependent.
+
+    Parameters
+    ----------
+    local_generators_dict : dict[str, list[Qobj]]
+        Mapping from site label to the list of local ``Qobj`` operators that
+        seed the basis on that site.
+
+    Returns
+    -------
+    dict[str, list[Qobj]]
+        Mapping from site label to the orthonormal traceless Hermitian basis.
+        Each returned ``Qobj`` satisfies ``b.isherm is True`` and
+        :math:`\operatorname{Tr}[b_\mu b_\nu] = \delta_{\mu\nu}`.
     """
     basis_dict: Dict[str, List[Qobj]] = {}
     for site, generators in local_generators_dict.items():
@@ -117,10 +178,40 @@ def orthonormal_hs_local_basis(local_generators_dict: LocalBasisDict) -> LocalBa
 
 
 def zero_expectation_value_basis(basis: LocalBasisDict, sigma_ref):
-    """Build a zero expectation value basis.
+    r"""Shift each basis element so that its expectation value in ``sigma_ref`` is zero.
 
-    Add an offset of each element of the local basis in a way that each
-    operator have zero mean regarding sigma_ref.
+    Replaces every local basis operator :math:`e_\mu` on each site by
+
+    .. math::
+
+        \tilde{e}_\mu = \operatorname{herm}\!\bigl(e_\mu
+                         - \operatorname{Tr}[\sigma_{\rm ref}^{(i)} e_\mu]\bigr),
+
+    where :math:`\sigma_{\rm ref}^{(i)}` is the single-site reduced density
+    matrix and :math:`\operatorname{herm}(\cdot)` projects onto the Hermitian
+    part.  After this shift, the zero-th order contribution of each
+    :math:`Q_\alpha = \sum_i c_{\alpha i} \tilde{e}_i` to the free-energy
+    gradient vanishes, making the subsequent optimisation better conditioned.
+
+    Parameters
+    ----------
+    basis : dict[str, list[Qobj]]
+        Local basis obtained from :func:`build_local_basis` or
+        :func:`orthonormal_hs_local_basis`.
+    sigma_ref : ProductDensityOperator
+        Reference product state.  Its ``site_factors_qutip`` attribute
+        must return a mapping from site label to local ``Qobj`` density matrix.
+
+    Returns
+    -------
+    dict[str, list[Qobj]]
+        Shifted basis with the same structure as ``basis``.
+
+    Notes
+    -----
+    This function does **not** re-orthonormalise the shifted basis.  If
+    orthonormality is required after the shift, pass the result back through
+    :func:`orthonormal_hs_local_basis`.
     """
     local_sigmas = sigma_ref.site_factors_qutip
 
@@ -144,16 +235,48 @@ def zero_expectation_value_basis(basis: LocalBasisDict, sigma_ref):
 def classify_terms(
     operator: Operator, sigma_ref
 ) -> Tuple[BlockTermsDict, List[Operator], List[Operator]]:
-    """Decompose ``operator`` as a sum of two-site operators.
+    r"""Split ``operator`` into two-site blocks, a one-body part, and a remainder.
 
-    Decompose `operator` as list of terms
-    associated to each pairs of sites,
-    and offset terms
-    operator = sum_{ij} sum_a q_ija +  sum_{b} offset_{b}.
+    Decomposes ``operator`` as
 
-    If sigma_ref is None, two-body and many-body terms
-    have zero trace. Otherwise, operators have zero expectation
-    value relative to sigma_ref.
+    .. math::
+
+        T = \underbrace{\sum_{i<j} \sum_a q_{a,ij}}_{\text{two-site blocks}}
+            + \underbrace{\sum_b L_b}_{\text{one-body}}
+            + \underbrace{\sum_c \delta_c}_{n \geq 3\text{-body remainder}},
+
+    where every :math:`q_{a,ij}` is a two-site product operator and each
+    :math:`L_b` is a local or one-body operator.
+
+    For each two-site ``ProductOperator``, the function subtracts the
+    mean-field one-body contribution induced by the reference state
+    :math:`\sigma_{\rm ref}` (or the maximally mixed state if
+    ``sigma_ref is None``), so the two-body part is *centred* around
+    :math:`\sigma_{\rm ref}`.  Terms acting on more than two sites are first
+    projected onto the two-body sector using
+    :func:`~qalma.projections.n_body_projection`; the residual goes into the
+    offset.
+
+    Parameters
+    ----------
+    operator : Operator
+        The operator to classify.  Must be already simplified.
+    sigma_ref : ProductDensityOperator or None
+        Reference product state defining the one-body subtraction.  If
+        ``None``, the maximally mixed state :math:`\mathbb{1}/d` is used on
+        each site.
+
+    Returns
+    -------
+    terms_by_block : dict[tuple[str, str], list[ProductOperator]]
+        Two-site product operators grouped by the pair of sites they act on.
+        Keys are alphabetically sorted 2-tuples of site labels.
+    linear_terms : list[Operator]
+        One-body contributions (including the mean-field shifts extracted
+        from the two-site terms).
+    offset_terms : list[Operator]
+        High-body remainder terms (:math:`n \geq 3`) that could not be
+        captured by the two-body projection.
     """
     local_sigmas = (
         sigma_ref.site_factors_qutip
@@ -250,7 +373,36 @@ def classify_terms(
 def build_quadratic_form_matrix(
     terms_by_block: BlockTermsDict, local_basis: LocalBasisDict
 ) -> Tuple[np.ndarray, Dict[str, int]]:
-    """Build the matrix associated to the quadratic form in a given basis."""
+    r"""Assemble the real symmetric coupling matrix of the quadratic form.
+
+    Concatenates the local bases from all sites into a single global index
+    and fills a real symmetric matrix :math:`M` such that
+
+    .. math::
+
+        \sum_{(i,j)} \sum_a q_{a,ij}
+        = \sum_{\mu,\nu} M_{\mu\nu}\, \hat{e}_\mu \otimes \hat{e}_\nu,
+
+    where :math:`\hat{e}_\mu` are the HS-orthonormal basis elements on their
+    respective sites and the sum runs over all site pairs.
+
+    Parameters
+    ----------
+    terms_by_block : dict[tuple[str, str], list[ProductOperator]]
+        Output of :func:`classify_terms`.
+    local_basis : dict[str, list[Qobj]]
+        HS-orthonormal local basis, output of :func:`build_local_basis`.
+
+    Returns
+    -------
+    qf_array : np.ndarray, shape (N, N)
+        Real symmetric coupling matrix, where :math:`N` is the total number
+        of local basis elements across all sites.
+    positions : dict[str, int]
+        Offset of each site's block in the global index, i.e.
+        ``positions[site]`` is the row/column index where site ``site``
+        starts.
+    """
     positions: Dict[str, int]
     full_size: int
     positions, full_size = build_positions_and_full_size(local_basis)
@@ -278,31 +430,90 @@ def build_quadratic_form_from_operator(
     sort_imag_fn: Optional[Callable[[float], float]] = None,
     count: Optional[int] = None,
 ) -> QuadraticFormOperator:
-    """Build a QuadraticFormOperator from ``operator``.
+    r"""Decompose ``operator`` into a :class:`QuadraticFormOperator`.
+
+    Main factory function of the module.  Converts an arbitrary operator
+    into the structured form
+
+    .. math::
+
+        T = L + \sum_\alpha w_\alpha Q_\alpha^2 + \delta T
+
+    by classifying its terms, building a local HS-orthonormal basis,
+    assembling the coupling matrix :math:`M`, and diagonalising it.
 
     Parameters
     ----------
-        operator: Operator
-            The operator to be converted.
-        simplify: bool
-            Simplify the operator before converting it.
-        isherm: bool
-            If work with the hermitian part of operator.
-        sigma_ref: DensityOperatorMixin
-            Reference state to decompose the operator into
-            a one-body part and a zero-mean two-body part.
-        sort_fn: Optional[Callable[[float],float]]
-            Function that sorts the real coefficient of the quadratic form.
-        sort_imag_fn: Optional[Callable[[float],float]]
-            Function that sorts the imaginary coefficient of the quadratic form.
-        count: Optional[int]
-            If given, the maximum number of terms to be kept in the expansion.
-            By default, keep all the terms.
+    operator : Operator
+        The operator to decompose.  May be any concrete subclass of
+        :class:`~qalma.operators.basic.Operator`.
+    simplify : bool, optional
+        If ``True`` (default), simplify ``operator`` before decomposing.
+    isherm : bool or None, optional
+        If ``True``, force the output to be Hermitian: take the real parts
+        of the weights and project ``linear_term`` and ``offset`` onto their
+        Hermitian parts.  If ``None``, inferred from ``operator.isherm``.
+    sigma_ref : ProductDensityOperator or None, optional
+        Reference product state.  When provided, the two-body part is
+        *centred* around :math:`\sigma_{\rm ref}`, so that each
+        :math:`Q_\alpha` has zero expectation value in :math:`\sigma_{\rm ref}`.
+        This is the form required by the variational mean-field loop in
+        :mod:`qalma.meanfield.variational`.
+    sort_fn : callable or None, optional
+        Sorting key applied to the *real* eigenvalues :math:`w_\alpha` before
+        truncation.  Use ``lambda x: x`` to sort ascending (most negative
+        first), which selects the modes that lower the variational free energy
+        the most.  If ``None``, eigenvalues are returned in the order produced
+        by :func:`numpy.linalg.eigh` (ascending).
+    sort_imag_fn : callable or None, optional
+        Sorting key for the imaginary part of the eigenvalues when processing
+        the anti-Hermitian component of a non-Hermitian operator.  Ignored
+        when ``isherm=True``.
+    count : int or None, optional
+        Maximum number of quadratic terms to retain after sorting.  Corresponds
+        to the ``numfields`` parameter of
+        :func:`~qalma.meanfield.variational.variational_quadratic_mfa`.
+        If ``None``, all terms above the numerical tolerance are kept.
 
-        Result
-        ------
-        QuadraticFormOperator
-          A quadratic form representation of the operator.
+    Returns
+    -------
+    QuadraticFormOperator
+        The decomposed operator with at most ``count`` quadratic terms.
+
+    Notes
+    -----
+    For non-Hermitian operators the function splits into Hermitian and
+    anti-Hermitian parts,
+
+    .. math::
+
+        T = T_H + i T_{aH}, \quad
+        T_H = \tfrac{1}{2}(T + T^\dagger), \quad
+        T_{aH} = \tfrac{1}{2i}(T - T^\dagger),
+
+    processes each with ``isherm=True`` and ``sort_imag_fn``, and sums the
+    results as :math:`T_H \cdot 1 + T_{aH} \cdot i`.
+
+    Examples
+    --------
+    Build the quadratic form for the two-body projection of an Ising
+    Hamiltonian, keeping only the 6 modes with the most negative eigenvalues:
+
+    .. code-block:: python
+
+        from qalma.operators.quadratic import build_quadratic_form_from_operator
+        from qalma.projections import n_body_projection
+
+        ham_2b = n_body_projection(ham, n_max=2, sigma=sigma).hermitian_part()
+        qf = build_quadratic_form_from_operator(
+            ham_2b,
+            isherm=True,
+            sigma_ref=sigma,
+            sort_fn=lambda x: x,
+            count=6,
+        )
+        print(qf.weights)     # 6 most-negative eigenvalues of the coupling matrix
+        print(len(qf.basis))  # 6
     """
     if simplify:
         operator = operator.simplify()
@@ -406,7 +617,31 @@ def build_quadratic_form_from_operator(
 
 
 def basis_and_weights(qf_basis_list: List[List[Operator]]):
-    """Build basis and weights."""
+    r"""Normalise generators to spectral norm 1 and absorb the norm into the weights.
+
+    Given a list of ``(raw_weight, raw_generator)`` pairs produced by
+    :func:`decompose_matrix`, rescales each generator :math:`G_\alpha` as
+
+    .. math::
+
+        Q_\alpha = G_\alpha / \|G_\alpha\|_\infty, \quad
+        w_\alpha = w_\alpha^{\rm raw} \cdot \|G_\alpha\|_\infty^2,
+
+    so that every :math:`Q_\alpha` has spectral norm 1 and the product
+    :math:`w_\alpha Q_\alpha^2` is unchanged.
+
+    Parameters
+    ----------
+    qf_basis_list : list of [raw_weight, raw_generator]
+        Pairs ``[w, G]`` as returned by :func:`decompose_matrix`.
+
+    Returns
+    -------
+    weights : tuple[complex, ...]
+        Rescaled weights :math:`w_\alpha`.
+    basis : tuple[OneBodyOperator, ...]
+        Normalised generators :math:`Q_\alpha` with spectral norm 1.
+    """
 
     def spectral_norm(ob_op: Operator) -> complex:
         if isinstance(ob_op, ScalarOperator):
@@ -441,7 +676,45 @@ def decompose_matrix(
     sort_fn: Optional[Callable[[float], float]] = None,
     count: Optional[int] = None,
 ):
-    """Decompose the array into."""
+    r"""Diagonalise the coupling matrix and build one-body mode operators.
+
+    Computes the eigendecomposition :math:`M = V \Lambda V^\top` via
+    :func:`numpy.linalg.eigh`, optionally sorts and truncates the modes, and
+    constructs the corresponding one-body operators
+
+    .. math::
+
+        G_\alpha = \sum_i (v_\alpha)_i\, \hat{e}_i,
+
+    where :math:`\hat{e}_i` are the HS-orthonormal local basis elements and
+    the index :math:`i` runs over all sites in the concatenated global basis.
+
+    Parameters
+    ----------
+    qf_array : np.ndarray, shape (N, N)
+        Real symmetric coupling matrix from :func:`build_quadratic_form_matrix`.
+    local_basis : dict[str, list[Qobj]]
+        HS-orthonormal local basis from :func:`build_local_basis`.
+    local_basis_offsets : dict[str, int]
+        Starting column of each site's block in the global index, as returned
+        by :func:`build_quadratic_form_matrix`.
+    system : SystemDescriptor
+        System descriptor propagated to the constructed operators.
+    sort_fn : callable or None, optional
+        Sorting key for the eigenvalues before truncation.  ``None`` keeps the
+        default ascending order from :func:`numpy.linalg.eigh`.
+    count : int or None, optional
+        Maximum number of modes to return.  ``None`` returns all modes whose
+        eigenvalue exceeds :data:`~qalma.settings.QALMA_TOLERANCE`.
+
+    Returns
+    -------
+    list of [float, OneBodyOperator]
+        Pairs ``[w/2, G]`` sorted by ``sort_fn(w)`` and truncated to
+        ``count`` entries.  The factor :math:`1/2` appears because
+        :math:`w_\alpha Q_\alpha^2 = \tfrac{w_\alpha}{2}(Q_\alpha + Q_\alpha^\dagger)^2/2`
+        in the Hermitian convention used here.
+    """
     e_vals, e_vecs = eigh(qf_array)
     e_vecs = e_vecs.T
 
@@ -483,7 +756,22 @@ def decompose_matrix(
 
 
 def force_hermitic_t(t):
-    """Force `t` to be hermitian."""
+    """Project ``t`` onto its Hermitian part, or return ``None`` unchanged.
+
+    Replaces ``t`` by ``(t + t.dag()) * 0.5`` when ``t`` is not already
+    Hermitian, then simplifies.  If ``t`` is ``None`` the function is a
+    no-op and returns ``None``.
+
+    Parameters
+    ----------
+    t : Operator or None
+        Operator to project.
+
+    Returns
+    -------
+    Operator or None
+        Hermitian projection of ``t``, or ``None``.
+    """
     if t is None:
         return t
     if not t.isherm:
@@ -495,7 +783,26 @@ def force_hermitic_t(t):
 def build_positions_and_full_size(
     local_basis: LocalBasisDict,
 ) -> Tuple[Dict[str, int], int]:
-    """Build the positions."""
+    """Compute the global-index offset of each site's local basis block.
+
+    Given a local basis ``{site: [e_0, e_1, ...]}`` for each site, builds a
+    mapping from site name to the starting column in the concatenated
+    (alphabetically sorted) global index, and returns the total number of
+    basis elements.
+
+    Parameters
+    ----------
+    local_basis : dict[str, list[Qobj]]
+        Local basis as produced by :func:`build_local_basis`.
+
+    Returns
+    -------
+    positions : dict[str, int]
+        Mapping ``site -> start_index`` in the global basis.
+    full_size : int
+        Total number of local basis elements, i.e. the dimension of the
+        coupling matrix produced by :func:`build_quadratic_form_matrix`.
+    """
     sizes: Dict[str, int] = {
         site: len(local_base) for site, local_base in local_basis.items()
     }
@@ -516,7 +823,33 @@ def fill_array_from_block(
     block: Tuple[str, ...],
     terms: List[Operator],
 ) -> None:
-    """Full result_array with the coefficients obtained from the local basis."""
+    r"""Accumulate the coupling-matrix entries from a single two-site block.
+
+    For each product operator ``prefactor * A_{site1} ⊗ B_{site2}`` in
+    ``terms``, adds its coefficients in the local HS basis to
+    ``result_array``:
+
+    .. math::
+
+        M_{\mu,\nu} \mathrel{+}= \operatorname{prefactor}
+            \cdot \operatorname{Tr}[A\, b_\mu]\,\operatorname{Tr}[B\, b_\nu],
+
+    and symmetrises as :math:`M_{\nu,\mu} = M_{\mu,\nu}`.  The function
+    operates **in-place** on ``result_array``.
+
+    Parameters
+    ----------
+    result_array : np.ndarray, shape (N, N)
+        Coupling matrix to update in-place.
+    local_basis : dict[str, list[Qobj]]
+        HS-orthonormal local basis on each site.
+    positions : dict[str, int]
+        Global-index offsets from :func:`build_positions_and_full_size`.
+    block : tuple[str, str]
+        The two site labels ``(site1, site2)`` of this block.
+    terms : list[ProductOperator]
+        Two-site product operators acting on ``block``.
+    """
     site1, site2 = block
     position_1 = positions[site1]
     position_2 = positions[site2]
