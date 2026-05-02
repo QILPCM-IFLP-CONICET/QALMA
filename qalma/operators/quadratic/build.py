@@ -10,7 +10,7 @@ with L and M_a one-body operators, w_a certain weights and \delta Q a
 """
 
 # from numbers import Number
-from typing import Dict, Generator, List, Optional, Tuple, cast
+from typing import Callable, Dict, Generator, List, Optional, Tuple, cast
 
 import numpy as np
 from numpy.linalg import eigh
@@ -124,12 +124,19 @@ def zero_expectation_value_basis(basis: LocalBasisDict, sigma_ref):
     """
     local_sigmas = sigma_ref.site_factors_qutip
 
+    def hermitian_part(qobj):
+        """project a Qobj to its hermitian part"""
+        if qobj.isherm:
+            return qobj
+        qobj = qobj * 0.5
+        return qobj + qobj.dag()
+
     new_basis = {}
     for site, _ in basis.items():
         local_sigma = local_sigmas[site]
-        new_basis_site = [elem - (elem * local_sigma).tr() for elem in basis[site]]
-        for elem in new_basis_site:
-            elem.isherm = True
+        new_basis_site = [
+            hermitian_part(elem - (elem * local_sigma).tr()) for elem in basis[site]
+        ]
         new_basis[site] = new_basis_site
     return new_basis
 
@@ -267,8 +274,36 @@ def build_quadratic_form_from_operator(
     simplify: bool = True,
     isherm: Optional[bool] = None,
     sigma_ref=None,
+    sort_fn: Optional[Callable[[float], float]] = None,
+    sort_imag_fn: Optional[Callable[[float], float]] = None,
+    count: Optional[int] = None,
 ) -> QuadraticFormOperator:
-    """Build a QuadraticFormOperator from `operator`."""
+    """Build a QuadraticFormOperator from ``operator``.
+
+    Parameters
+    ----------
+        operator: Operator
+            The operator to be converted.
+        simplify: bool
+            Simplify the operator before converting it.
+        isherm: bool
+            If work with the hermitian part of operator.
+        sigma_ref: DensityOperatorMixin
+            Reference state to decompose the operator into
+            a one-body part and a zero-mean two-body part.
+        sort_fn: Optional[Callable[[float],float]]
+            Function that sorts the real coefficient of the quadratic form.
+        sort_imag_fn: Optional[Callable[[float],float]]
+            Function that sorts the imaginary coefficient of the quadratic form.
+        count: Optional[int]
+            If given, the maximum number of terms to be kept in the expansion.
+            By default, keep all the terms.
+
+        Result
+        ------
+        QuadraticFormOperator
+          A quadratic form representation of the operator.
+    """
     if simplify:
         operator = operator.simplify()
 
@@ -323,11 +358,13 @@ def build_quadratic_form_from_operator(
                 simplify=True,
                 isherm=True,
                 sigma_ref=sigma_ref,
+                sort_fn=sort_imag_fn,
+                count=count,
             )
             * w
             for op, w in (
-                (operator.dag() + operator, 0.5),
-                (operator.dag() * 1j - operator * 1j, 0.5j),
+                (operator.hermitian_part(), 1.0),
+                ((operator * (-1j)).hermitian_part(), 1.0j),
             )
         )
 
@@ -354,7 +391,9 @@ def build_quadratic_form_from_operator(
         local_basis = zero_expectation_value_basis(local_basis, sigma_ref)
 
     weights, qf_basis = basis_and_weights(
-        decompose_matrix(qf_array, local_basis, local_basis_offsets, system)
+        decompose_matrix(
+            qf_array, local_basis, local_basis_offsets, system, sort_fn, count
+        )
     )
 
     return QuadraticFormOperator(
@@ -395,10 +434,27 @@ def basis_and_weights(qf_basis_list: List[List[Operator]]):
 
 
 def decompose_matrix(
-    qf_array: np.ndarray, local_basis, local_basis_offsets, system: SystemDescriptor
+    qf_array: np.ndarray,
+    local_basis,
+    local_basis_offsets,
+    system: SystemDescriptor,
+    sort_fn: Optional[Callable[[float], float]] = None,
+    count: Optional[int] = None,
 ):
     """Decompose the array into."""
     e_vals, e_vecs = eigh(qf_array)
+    e_vecs = e_vecs.T
+
+    if sort_fn is not None:
+        sorted_eval_evec = sorted(
+            tuple(zip(e_vals, e_vecs)), key=lambda x: sort_fn(x[0])
+        )
+        e_vals = np.array([e_val for e_val, e_vec in sorted_eval_evec])
+        e_vecs = np.array([e_vec for e_val, e_vec in sorted_eval_evec])
+
+    if count is not None and len(e_vals) > count:
+        e_vals = e_vals[:count]
+        e_vecs = e_vecs[:count]
 
     return sorted(
         [
@@ -419,7 +475,7 @@ def decompose_matrix(
                     system,
                 ),
             )
-            for e_val, e_vec in zip(e_vals, e_vecs.T)
+            for e_val, e_vec in zip(e_vals, e_vecs)
             if abs(e_val) > QALMA_TOLERANCE
         ],
         key=lambda x: x[0],
