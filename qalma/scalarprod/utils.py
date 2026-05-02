@@ -8,6 +8,12 @@ from scipy.linalg import qr
 
 from qalma.settings import QALMA_TOLERANCE
 
+__all__ = [
+    "iterator_transverse",
+    "iterator_transverse_upper",
+    "find_linearly_independent_rows",
+]
+
 
 def find_linearly_independent_rows(
     mat: NDArray, tol: float = QALMA_TOLERANCE

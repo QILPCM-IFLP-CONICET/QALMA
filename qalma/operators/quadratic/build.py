@@ -36,6 +36,9 @@ BlockTermsDict = Dict[Tuple[str, ...], List[Operator]]
 # from typing import Union
 
 
+__all__ = ["build_quadratic_form_from_operator"]
+
+
 def build_local_basis(
     terms_by_block: BlockTermsDict,
 ) -> LocalBasisDict:

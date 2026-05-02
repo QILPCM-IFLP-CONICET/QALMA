@@ -11,6 +11,8 @@ from qalma.scalarprod.basis import HierarchicalOperatorBasis
 
 from .simulation import Simulation
 
+__all__ = ["series_evolution"]
+
 
 def series_evolution(
     ham, k0, t_span, order, *, e_ops: Optional[Callable | Dict] = None

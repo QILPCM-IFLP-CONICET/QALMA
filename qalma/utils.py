@@ -179,7 +179,7 @@ def find_ref(node, root):
 
     Parameters
     ----------
-    node : TYPE
+    node : object
         the key of the node.
     root : dict
         a nested tree structure of

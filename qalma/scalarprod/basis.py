@@ -16,6 +16,8 @@ from qalma.scalarprod.gram import gram_matrix, merge_gram_matrices
 from qalma.scalarprod.utils import find_linearly_independent_rows
 from qalma.settings import QALMA_TOLERANCE
 
+__all__ = ["OperatorBasis", "HierarchicalOperatorBasis"]
+
 
 class OperatorBasis:
     """
@@ -241,7 +243,7 @@ class OperatorBasis:
 
         Parameters
         ----------
-        phi : TYPE
+        phi : array-like
             The coefficients of the expansion.
 
         Returns
@@ -257,7 +259,7 @@ class OperatorBasis:
 
         Parameters
         ----------
-        operator : TYPE
+        operator : Operator
             The operator to be projected.
 
         Returns
@@ -270,30 +272,29 @@ class OperatorBasis:
         return self.operator_from_coefficients(self.coefficient_expansion(operator))
 
     def evolve(self, t: float, a_0: np.ndarray) -> Tuple[np.ndarray, float]:
-        """
-        Evolve the coefficients $a_0$ of an operator expansion.
+        """Evolve the coefficients ``a_0`` of an operator expansion.
 
-        Compute the coefficients for the expansion of the operator.
+        Compute the coefficients for the expansion of the operator
 
         .. math::
-            operator(t) = sum_i a_i(t) b_i
+            O(t) = \\sum_i a_i(t)\\, b_i
 
-        evolving according the projected evolution,
-        given its expansion at t=0, and the estimated error induced by
+        evolving according to the projected evolution,
+        given its expansion at :math:`t=0`, and the estimated error induced by
         the projection.
 
         Parameters
         ----------
         t : float
-            DESCRIPTION.
+            Target time.
         a_0 : np.ndarray
-            DESCRIPTION.
+            Initial coefficient vector.
 
         Returns
         -------
-        Tuple(ndarray, float)
-            Returns two ndarrays: the first with the evolved coefficient, and
-            the second with the estimated error.
+        tuple[np.ndarray, float]
+            A pair ``(a_t, error)`` where ``a_t`` holds the evolved
+            coefficients and ``error`` is the estimated projection error.
 
         """
         a_t = _linalg_expm(t * self.gen_matrix) @ a_0
@@ -466,7 +467,7 @@ class HierarchicalOperatorBasis(OperatorBasis):
 
         Returns
         -------
-        None.
+        None
 
         """
         if generator is not None or sp is not None:

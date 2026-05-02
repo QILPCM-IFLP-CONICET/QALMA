@@ -30,6 +30,8 @@ from qalma.operators.states.product import (
 )
 from qalma.settings import MAXIMUM_GIBBS_EXACT_PARTIAL_TRACE
 
+__all__ = ["gibbs_meanfield_partial_trace"]
+
 
 def project_boundary_term(term, sigma: ProductDensityOperator, sites: frozenset):
     """

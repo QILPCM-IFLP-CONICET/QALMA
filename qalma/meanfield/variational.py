@@ -21,25 +21,26 @@ from qalma.operators.states.gibbs import GibbsProductDensityOperator
 from qalma.projections import n_body_projection
 from qalma.settings import DEFAULT_MAX_NUMBER_OF_FIELDS, QALMA_TOLERANCE
 
+__all__ = ["compute_free_energy", "variational_quadratic_mfa", "self_consistent_mf"]
+
 
 def compute_free_energy(state: ProductDensityOperator, ham: Operator) -> float:
-    """
-    Estimate the free energy of ``ham`` from the approximate Gibbs product state.
+    r"""Estimate the free energy of ``ham`` from an approximate Gibbs product state.
 
-    Compute the approfree energy relative to the gibbs state exp(-ham) from
-    `state`.
+    Computes the relative entropy :math:`S(\sigma | e^{-H})` of ``state``
+    with respect to the Gibbs state :math:`e^{-H}`.
 
     Parameters
     ----------
-    state: GibbsProductDensityOperator
-         the reference state
-    ham: Operator
-         the generator of rho=exp(-ham)
+    state : GibbsProductDensityOperator
+        The reference (approximate) state.
+    ham : Operator
+        The generator of the target state :math:`\\rho = e^{-H}`.
 
     Returns
     -------
-    float64
-    The relative entropy S(sigma|exp(-ham))
+    float
+        The relative entropy :math:`S(\\sigma | e^{-H}) = \\mathrm{Tr}[\\sigma (H + \\log \\sigma)]`.
 
     """
     if state is None:
@@ -159,7 +160,9 @@ def reduced_quadratic_form_operator(
     Returns
     -------
     QuadraticFormOperator
-    A new `QuadraticFormOperator` with all its weights equal to 1.
+        A new :class:`~qalma.operators.quadratic.QuadraticFormOperator`
+        keeping only the ``num_terms`` largest positive weights, rescaled
+        so all weights equal 1.
 
     """
     assert num_terms > 0, f"num_terms must be an integer number >0. Got {num_terms}."
@@ -193,31 +196,31 @@ def self_consistent_mf(
     max_steps: int = 10,
     callback: Optional[Callable] = None,
 ) -> Tuple[ProductDensityOperator, float]:
-    """
-    Build a self-consistent approximation of $exp(-ham)$.
+    """Build a self-consistent approximation of :math:`e^{-H}`.
 
-    Starting from `sigma_ref` compute an approximation of exp(-ham)
-    following a self-consistent algorithm.
+    Starting from ``sigma_ref``, compute an approximation of :math:`e^{-H}`
+    following a self-consistent mean-field algorithm.
 
     Parameters
     ----------
     ham : Operator
-        The generator of the exact state rho=exp(-ham).
-    sigma_ref : DensityOperatorProtocol, optional
+        The generator of the exact state :math:`\\rho = e^{-H}`.
+    sigma_ref : ProductDensityOperator, optional
         The initial state to begin the self-consistent loop.
-        The default is None. In that case, the initial state is
-        the fully mixed state.
+        Defaults to the fully mixed state.
     max_steps : int, optional
-        Maximum number of self-consistent steps used to improve the solution.
-        The default is 10.
-    callback: Callable, optional
-        Function called on each self-consistent round. The default is None.
+        Maximum number of self-consistent steps (default 10).
+    callback : Callable, optional
+        Called on each self-consistent round with signature
+        ``callback(sigma, rel_entropy, step)``.
 
     Returns
     -------
-    Tuple[ProductDensityOperator, float]
-        A tuple of the Gibbs product operators that approximates exp(-ham),
-    and the corresponding relative entropy.
+    tuple
+        A pair ``(sigma, rel_entropy)`` where ``sigma`` is the
+        :class:`~qalma.operators.states.product.ProductDensityOperator`
+        that approximates :math:`e^{-H}`, and ``rel_entropy`` is the
+        corresponding relative entropy.
 
     """
     if sigma_ref is None:

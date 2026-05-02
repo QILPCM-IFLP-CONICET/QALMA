@@ -48,7 +48,7 @@ state factorizes:
 
 This is represented by
 :class:`~qalma.operators.states.gibbs.GibbsProductDensityOperator`, which
-stores one local :class:`qutip.Qobj` per site and computes expectation values
+stores one local ``qutip.Qobj`` per site and computes expectation values
 efficiently using the product structure::
 
     from qalma.operators.states import GibbsProductDensityOperator
@@ -67,7 +67,7 @@ and used internally as the mean-field reference state.
 Expectation values
 ------------------
 
-All state objects support :meth:`expect` for computing
+All state objects support :meth:`~qalma.operators.states.basic.DensityOperatorMixin.expect` for computing
 :math:`\langle O \rangle_\rho = \mathrm{Tr}(\rho\, O)`::
 
     val = rho.expect(observable)               # single operator → complex
@@ -80,16 +80,16 @@ site-by-site without constructing the full many-body matrix.
 Partial traces and reductions
 ------------------------------
 
-The :meth:`partial_trace` method returns the reduced state on a subsystem::
+The :meth:`~qalma.operators.states.basic.DensityOperatorProtocol.partial_trace` method returns the reduced state on a subsystem::
 
     rho_sub = rho.partial_trace(frozenset({"site0", "site1"}))
 
 For :class:`~qalma.operators.states.gibbs.GibbsDensityOperator`, the partial
 trace uses the mean-field Gibbs approximation
-(:mod:`qalma.meanfield.gibbs_partial_trace`), returning a
+(:doc:`/api/meanfield`), returning a
 :class:`~qalma.operators.states.gibbs.GibbsProductDensityOperator`.
 
-The :meth:`reduce` method computes the effective operator on a subsystem
+The ``reduce`` method computes the effective operator on a subsystem
 weighted by a reference state:
 
 .. math::
@@ -100,4 +100,4 @@ where :math:`\bar{S}` is the complement of the kept sites.
 
 .. seealso::
 
-   :mod:`qalma.operators.states`, :mod:`qalma.meanfield`
+   :doc:`/api/states`, :doc:`/api/meanfield`

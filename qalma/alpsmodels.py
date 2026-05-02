@@ -28,9 +28,9 @@ def list_models_in_alps_xml(filename=MODEL_LIB_FILE):
 
     Returns
     -------
-    tuple[str, ...]
+    tuple
         Names of all models (``HAMILTONIAN`` and ``BASIS``) defined
-        in the library.
+        in the library (a tuple of strings).
     """
     result = set()
     xmltree = ET.parse(filename)
@@ -675,8 +675,8 @@ def qutip_model_from_dims(dims: Iterable, model_name="qutip") -> ModelDescriptor
 
     Parameters
     ----------
-    dims : iterable of int
-        Dimensions of the local Hilbert spaces.
+    dims : list or iterable
+        Dimensions (int) of the local Hilbert spaces.
     model_name : str, optional
         Name assigned to the resulting model.
 

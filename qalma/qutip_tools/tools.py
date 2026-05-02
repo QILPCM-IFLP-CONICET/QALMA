@@ -31,6 +31,14 @@ from scipy.sparse.linalg import (
 qutip_version = parse_version(qutip_version_string)
 
 
+__all__ = [
+    "get_proper_spaces",
+    "data_element_iterator",
+    "empty_op",
+    "decompose_qutip_operator_hermitian",
+]
+
+
 def ishermitian(array: np.ndarray):
     """Determine if the array is hermitian."""
     return np.allclose(array, array.T.conj())
@@ -435,7 +443,9 @@ def norm(
     n : float or ndarray
         Norm of the matrix or vector(s).
 
-    `ord` is interpreted as:
+    Notes
+    -----
+    ``ord`` is interpreted as:
 
     =====  ============================  ==========================
     ord    norm for matrices             norm for vectors
@@ -453,7 +463,7 @@ def norm(
     other  --                            sum(abs(a)**ord)**(1./ord)
     =====  ============================  ==========================
 
-    See scipy.linalg.norm
+    See also ``scipy.linalg.norm``.
 
     """
     if isinstance(op, _Qobj):

@@ -28,6 +28,8 @@ from qalma.qutip_tools.tools import (
     _to_array,
 )
 
+__all__ = ["ProductDensityOperator"]
+
 
 class ProductDensityOperator(DensityOperatorMixin, ProductOperator):
     """An uncorrelated density operator."""

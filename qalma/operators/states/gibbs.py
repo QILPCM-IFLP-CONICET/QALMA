@@ -28,6 +28,8 @@ from qalma.operators.states.product import ProductDensityOperator
 from qalma.operators.states.utils import k_by_site_from_operator
 from qalma.qutip_tools.tools import is_diagonal_op, safe_exp_and_normalize
 
+__all__ = ["GibbsDensityOperator", "GibbsProductDensityOperator"]
+
 
 class GibbsDensityOperator(DensityOperatorMixin, Operator):
     r"""Density operator of the form :math:`\\rho = \\lambda\\, e^{-K} / \\mathrm{Tr}(e^{-K})`.
@@ -35,8 +37,8 @@ class GibbsDensityOperator(DensityOperatorMixin, Operator):
     Stores the operator implicitly through its generator :math:`K` rather
     than as an explicit matrix, enabling efficient representation of
     many-body Gibbs states. The full QuTiP matrix is computed on demand via
-    :meth:`to_qutip` and the normalization is performed lazily on the first
-    call.
+    :meth:`~qalma.operators.states.gibbs.GibbsDensityOperator.to_qutip`
+    and the normalization is performed lazily on the first call.
 
     Parameters
     ----------
@@ -249,7 +251,7 @@ class GibbsDensityOperator(DensityOperatorMixin, Operator):
         return gibbs_meanfield_partial_trace(self, sites)
 
     def reduce(self, sites, state=None):
-        """Alias of :meth:`partial_trace`.
+        """Alias of :meth:`~qalma.operators.states.gibbs.GibbsDensityOperator.partial_trace`.
 
         Parameters
         ----------
@@ -268,11 +270,11 @@ class GibbsDensityOperator(DensityOperatorMixin, Operator):
         return self.partial_trace(sites)
 
     def to_qutip_operator(self):
-        r"""Return a :class:`QutipDensityOperator` representation.
+        r"""Return a :class:`~qalma.operators.states.qutip.QutipDensityOperator` representation.
 
-        Computes the full matrix :math:`\\rho = e^{-K}/Z` as a
-        :class:`qutip.Qobj` and wraps it in a
-        :class:`~qalma.operators.states.QutipDensityOperator`.
+        Computes the full matrix :math:`\rho = e^{-K}/Z` as a
+        ``qutip.Qobj`` and wraps it in a
+        :class:`~qalma.operators.states.qutip.QutipDensityOperator`.
 
         Returns
         -------
@@ -566,7 +568,7 @@ class GibbsProductDensityOperator(DensityOperatorMixin, Operator):
         )
 
     def reduce(self, sites, state=None):
-        """Alias of :meth:`partial_trace`.
+        """Alias of :meth:`~qalma.operators.states.gibbs.GibbsProductDensityOperator.partial_trace`.
 
         Parameters
         ----------
@@ -609,8 +611,9 @@ class GibbsProductDensityOperator(DensityOperatorMixin, Operator):
     def to_qutip(self, block: Optional[Tuple[str, ...]] = None):
         r"""Return the QuTiP matrix representation of the product Gibbs state.
 
-        Delegates to :meth:`to_product_state` and then calls its
-        :meth:`to_qutip` method.
+        Delegates to :meth:`~qalma.operators.states.gibbs.GibbsProductDensityOperator.to_product_state`
+        and then calls its
+        :meth:`~qalma.operators.states.product.ProductDensityOperator.to_qutip` method.
 
         Parameters
         ----------

@@ -10,11 +10,13 @@ from qalma.operators.basic import (
     Operator,
 )
 
+__all__ = ["compute_dagger", "hermitian_and_antihermitian_parts"]
+
 
 def compute_dagger(operator):
-    """Compute the adjoint of an `operator.
+    """Compute the adjoint of ``operator``.
 
-    If `operator` is a number, return its complex conjugate.
+    If ``operator`` is a number, return its complex conjugate.
     """
     if isinstance(operator, Real):
         return operator

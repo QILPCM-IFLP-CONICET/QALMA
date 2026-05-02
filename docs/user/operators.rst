@@ -79,7 +79,7 @@ operator acts non-trivially::
 Converting to QuTiP
 -------------------
 
-Any operator can be converted to a :class:`qutip.Qobj` via
+Any operator can be converted to a ``qutip.Qobj`` via
 :meth:`~qalma.operators.basic.Operator.to_qutip`::
 
     qobj = op.to_qutip()                    # full system, lexicographic order
@@ -90,5 +90,4 @@ output. Sites not in the operator's support contribute identity factors.
 
 .. seealso::
 
-   :mod:`qalma.operators`, :mod:`qalma.operators.basic`,
-   :mod:`qalma.operators.arithmetic`, :mod:`qalma.operators.product`
+   :doc:`/api/operators`

@@ -53,6 +53,7 @@ docs = [
     "nbsphinx",          # para ejecutar notebooks como páginas
     "myst-parser",       # si se usan archivos .md además de .rst
     "sphinx-rtd-theme",
+    "ipython",
 ]
  
 # ── Configuración de interrogate ─────────────────────────────────────────────

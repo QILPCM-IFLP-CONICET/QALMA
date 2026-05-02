@@ -35,6 +35,9 @@ from .simulation import Simulation
 # function used to safely and robustly map K-states to states
 
 
+__all__ = ["adaptive_projected_evolution"]
+
+
 def compute_mean_field_state(
     k: Operator, sigma: ProductDensityOperator, **kwargs
 ) -> Tuple[Operator, ProductDensityOperator]:
@@ -82,22 +85,23 @@ def compute_n_body_sector(k: Operator) -> int:
 
 
 def occupation_factor(phi: NDArray, threshold: float = 0.995) -> int:
-    """Compute an estimation of how spread is the operator over the basis.
+    """Compute an estimate of how spread an operator is over a basis.
 
-    Return the number of terms in the partial sum  of the squared modules
-    of the components of `phi` required to reach the `threshold`.
+    Returns the number of terms in the partial sum of squared moduli of the
+    components of ``phi`` needed to reach ``threshold``.
 
     Parameters
     ----------
-    phi: NDArray
-       an array of numerical coefficients.
-    threshold: float
-       the threshold value for the partial sums.
+    phi : numpy.ndarray of float or complex
+        Coefficient vector.
+    threshold : float, optional
+        Target cumulative fraction of the squared norm (default 0.995).
 
-    Return
-    ------
-    int:
-    num of terms in the partial sum which reach the threshold.
+    Returns
+    -------
+    int
+        Number of leading components (sorted by magnitude) required to
+        account for ``threshold`` of the total squared norm.
 
     """
     if len(phi) < 2:

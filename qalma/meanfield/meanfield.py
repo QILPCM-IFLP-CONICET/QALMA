@@ -10,6 +10,8 @@ from qalma.operators.states import DensityOperatorProtocol, ProductDensityOperat
 from qalma.operators.states.gibbs import GibbsProductDensityOperator
 from qalma.projections import project_operator_to_n_body
 
+__all__ = ["project_meanfield"]
+
 
 def project_meanfield(
     k_op,

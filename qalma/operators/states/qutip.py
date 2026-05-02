@@ -19,6 +19,8 @@ from qalma.operators.states.basic import (
     DensityOperatorProtocol,
 )
 
+__all__ = ["QutipDensityOperator"]
+
 
 class QutipDensityOperator(DensityOperatorMixin, QutipOperator):
     """Qutip representation of a density operator."""

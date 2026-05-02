@@ -12,6 +12,8 @@ from .covar import CovariantScalarProductFunction
 
 #  ### Functions that build the scalar products ###
 
+__all__ = ["kubo_scalar_product", "covar_scalar_product", "hs_scalar_product"]
+
 
 def kubo_scalar_product(sigma: Operator, threshold=0) -> Callable:
     """
@@ -74,31 +76,30 @@ def kubo_integral_representation_scalar_product(sigma: Operator) -> Callable:
 
 
 def covar_scalar_product(sigma: DensityOperatorProtocol) -> Callable:
-    r"""
-    Fetch a Covar scalar product callable.
+    r"""Fetch a covariance scalar product callable.
 
     Returns a scalar product function based on the covariance of a density
     operator.
 
-    The scalar product for two operators op1 and op2 is defined as:
+    The scalar product for two operators ``op1`` and ``op2`` is defined as:
 
     .. math::
 
-        0.5 * Tr(sigma * {op1^\dagger, op2}),
+        \frac{1}{2} \mathrm{Tr}\!\left(\sigma\,\{op_1^\dagger, op_2\}\right),
 
-    where sigma is a density operator, ${op1^\dagger, op2}$ is the
-    anticommutator of the Hermitian conjugate of ``op1`` and ``op2``,
-    and $Tr$ denotes the trace.
+    where :math:`\sigma` is a density operator, :math:`\{A, B\}` is the
+    anticommutator, and :math:`\mathrm{Tr}` the trace.
 
     Parameters
     ----------
-        sigma: The density operator (quantum state) used to define the scalar
-        product.
+    sigma : DensityOperatorProtocol
+        The density operator (quantum state) used to define the scalar product.
 
     Returns
     -------
-        A function that takes two operators (op1, op2) and computes their
-        covariance-based scalar product.
+    Callable
+        A function ``f(op1, op2) -> complex`` that computes the
+        covariance-based scalar product of two operators.
 
     """
     return CovariantScalarProductFunction(sigma)

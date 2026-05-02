@@ -25,6 +25,8 @@ from qalma.settings import (
 
 from .utils import find_arithmetic_implementation
 
+__all__ = ["Operator", "LocalOperator"]
+
 
 class Operator:  # pylint: disable=too-many-public-methods
     """Base class for operators."""
@@ -388,7 +390,7 @@ class Operator:  # pylint: disable=too-many-public-methods
     def tr(self) -> complex:
         r"""Return the trace of the operator over the full system.
 
-        Delegates to :meth:`partial_trace` with an empty site set, then
+        Delegates to ``partial_trace`` with an empty site set, then
         returns the scalar ``prefactor`` of the result.  Subclasses that
         compute ``tr`` via a different code-path should override this.
 

@@ -104,26 +104,9 @@ mathjax3_config = {
     }
 }
 
-# -- Warning suppression -----------------------------------------------------
 
-# Duplicate object descriptions arise from __init__.py re-exporting symbols
-# that autodoc already indexed in their submodules. Listed explicitly until
-# the __init__.py imports are refactored.
-nitpick_ignore = [
-    ("py:attr", "qalma.operators.arithmetic.SumOperator.terms"),
-    ("py:attr", "qalma.operators.product.ProductOperator.site_factors"),
-    ("py:attr", "qalma.operators.product.ProductOperator.system"),
-    ("py:attr", "qalma.operators.states.gibbs.GibbsDensityOperator.k"),
-    ("py:attr", "qalma.operators.states.gibbs.GibbsDensityOperator.normalized"),
-    ("py:attr", "qalma.operators.states.gibbs.GibbsProductDensityOperator.isherm"),
-    (
-        "py:attr",
-        "qalma.operators.states.gibbs.GibbsProductDensityOperator.free_energies",
-    ),
-    ("py:attr", "qalma.operators.states.gibbs.GibbsProductDensityOperator.k_by_site"),
-]
-
-suppress_warnings = ["ref.python", "misc.highlighting_failure"]
+# SyntaxWarning from LaTeX strings in notebook cell outputs (Python 3.12+)
+import warnings
 
 # Register ipython3 as an alias for ipython so nbsphinx notebooks render correctly
 from pygments.lexers import get_lexer_by_name  # noqa: E402

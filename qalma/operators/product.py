@@ -32,6 +32,9 @@ from .basic import LocalOperator, Operator
 # from scipy.linalg import ishermitian
 
 
+__all__ = ["ProductOperator", "ScalarOperator"]
+
+
 class ProductOperator(Operator):
     r"""Tensor product of local operators acting on different sites.
 
@@ -267,7 +270,7 @@ class ProductOperator(Operator):
         r"""Return the matrix exponential :math:`e^{\\lambda O}`.
 
         For single-site operators the exponential is computed exactly via
-        :func:`scipy.linalg.expm`. For multi-site operators falls back to
+        ``scipy.linalg.expm``. For multi-site operators falls back to
         the base-class implementation.
 
         Returns
@@ -394,7 +397,7 @@ class ProductOperator(Operator):
         Uses the identity :math:`\\log(\\lambda \\bigotimes_i O_i) =
         \\log\\lambda + \\sum_i \\log O_i` valid when the local factors
         commute. Each local logarithm is computed via
-        :func:`scipy.linalg.logm`.
+        ``scipy.linalg.logm``.
 
         Returns
         -------
