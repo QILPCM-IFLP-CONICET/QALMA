@@ -123,9 +123,9 @@ def plot_figure1(exact_data: list, out_dir: Path):
 
     fig, axes = plt.subplots(1, 2, figsize=(COL2, COL2 * 0.42))
 
-    # ---- Panel (a): S_rel vs beta, L=8, XXX model -------------------------
+    # ---- Panel (a): S_rel vs beta, L=8, Ising transverse -----------------
     ax = axes[0]
-    model_label = "XXX Heisenberg AFM"
+    model_label = "Ising transverse (Gamma=0.5J)"
     L_fixed = 8
     betas = sorted({row["beta"] for row in exact_data if row["label"] == model_label})
 
@@ -167,13 +167,13 @@ def plot_figure1(exact_data: list, out_dir: Path):
 
     ax.set_xlabel(r"$\beta$")
     ax.set_ylabel(r"$S_{\rm rel}(\sigma \| e^{-\beta H})$")
-    ax.set_title(f"XXX Heisenberg AFM, $L={L_fixed}$")
+    ax.set_title(f"Ising transverse ($\\Gamma=0.5J$), $L={L_fixed}$")
     ax.legend()
     ax.text(-0.18, 1.02, "(a)", transform=ax.transAxes, fontweight="bold")
 
-    # ---- Panel (b): quality ratio vs L, beta=2 ----------------------------
+    # ---- Panel (b): quality ratio vs L, beta=5 ----------------------------
     ax = axes[1]
-    beta_fixed = 2.0
+    beta_fixed = 5.0
     models_to_show = [
         "XX chain",
         "XXX Heisenberg AFM",
@@ -209,7 +209,7 @@ def plot_figure1(exact_data: list, out_dir: Path):
     ax.axhline(1.0, color="0.6", linewidth=0.8, linestyle="--")
     ax.set_xlabel(r"$L$")
     ax.set_ylabel(r"$S_{\rm rel}^{\rm var} / S_{\rm rel}^{\rm mixed}$")
-    ax.set_title(r"Quality ratio, $\beta=2$")
+    ax.set_title(r"Quality ratio, $\beta=5$")
     ax.legend(fontsize=7)
     ax.text(-0.18, 1.02, "(b)", transform=ax.transAxes, fontweight="bold")
 
@@ -225,7 +225,7 @@ def plot_figure1(exact_data: list, out_dir: Path):
 # ---------------------------------------------------------------------------
 
 
-def plot_figure2(nf_data: list, out_dir: Path, L_plot: int = 8, beta_plot: float = 2.0):
+def plot_figure2(nf_data: list, out_dir: Path, L_plot: int = 12, beta_plot: float = 5.0):
     """Two panels:
     (a) S_rel vs numfields for each J2/J1 at fixed L and beta
     (b) Magnetization pattern <Sz_i> for max frustration (J2/J1=0.5)
@@ -425,16 +425,16 @@ def print_summary_table(exact_data: list, nf_data: list):
     print(r"\hline")
     print(r"\end{tabular}")
 
-    print("\n% --- Table: S_rel vs numfields for J1-J2 (L=8, beta=2) ---")
+    print("\n% --- Table: S_rel vs numfields for J1-J2 (L=12, beta=5) ---")
     print(r"\begin{tabular}{lcccc}")
     print(r"\hline")
     print(r"$J_2/J_1$ & $m=1$ & $m=4$ & $m=10$ & " r"$\Delta S_{\rm rel}$ \\ \hline")
     j2_ratios = sorted({r["J2_over_J1"] for r in nf_data})
     idx_nf = index_nf(nf_data)
     for j2r in j2_ratios:
-        s1 = idx_nf.get((j2r, 8, 2.0, 1), {}).get("s_rel", float("nan"))
-        s4 = idx_nf.get((j2r, 8, 2.0, 4), {}).get("s_rel", float("nan"))
-        s10 = idx_nf.get((j2r, 8, 2.0, 10), {}).get("s_rel", float("nan"))
+        s1 = idx_nf.get((j2r, 12, 5.0, 1), {}).get("s_rel", float("nan"))
+        s4 = idx_nf.get((j2r, 12, 5.0, 4), {}).get("s_rel", float("nan"))
+        s10 = idx_nf.get((j2r, 12, 5.0, 10), {}).get("s_rel", float("nan"))
         delta = s1 - s10 if not (np.isnan(s1) or np.isnan(s10)) else float("nan")
         print(f"{j2r:.2f} & {s1:.4f} & {s4:.4f} & {s10:.4f} & " f"{delta:.4f} \\\\")
     print(r"\hline")
@@ -471,12 +471,8 @@ if __name__ == "__main__":
         plot_figure1(exact_data, out_dir)
 
     if nf_data:
-        # Plot for L=8 and L=12 if available
-        Ls_available = sorted({r["L"] for r in nf_data})
-        betas_available = sorted({r["beta"] for r in nf_data})
-        for L in Ls_available[:2]:
-            for beta in betas_available[:2]:
-                plot_figure2(nf_data, out_dir, L_plot=L, beta_plot=beta)
+        plot_figure2(nf_data, out_dir, L_plot=12, beta_plot=5.0)
+        plot_figure2(nf_data, out_dir, L_plot=16, beta_plot=5.0)
         plot_figure3(nf_data, out_dir)
 
     if exact_data or nf_data:

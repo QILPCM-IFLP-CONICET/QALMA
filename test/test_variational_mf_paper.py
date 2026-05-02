@@ -333,7 +333,7 @@ if __name__ == "__main__":
 
                 t0 = time.perf_counter()
                 sigma_sc = variational_quadratic_mfa(
-                    beta * ham, numfields=1, its=0, max_self_consistent_steps=100
+                    beta * ham, numfields=0, max_self_consistent_steps=100
                 )
                 t_sc = time.perf_counter() - t0
 
