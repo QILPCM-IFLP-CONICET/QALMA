@@ -28,6 +28,8 @@ from qalma.operators.states.product import ProductDensityOperator
 from qalma.operators.states.utils import k_by_site_from_operator
 from qalma.qutip_tools.tools import is_diagonal_op, safe_exp_and_normalize
 
+__all__ = ["GibbsDensityOperator", "GibbsProductDensityOperator"]
+
 
 class GibbsDensityOperator(DensityOperatorMixin, Operator):
     r"""Density operator of the form :math:`\\rho = \\lambda\\, e^{-K} / \\mathrm{Tr}(e^{-K})`.

@@ -32,6 +32,9 @@ from .basic import LocalOperator, Operator
 # from scipy.linalg import ishermitian
 
 
+__all__ = ["ProductOperator", "ScalarOperator"]
+
+
 class ProductOperator(Operator):
     r"""Tensor product of local operators acting on different sites.
 

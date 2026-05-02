@@ -19,6 +19,8 @@ from qalma.operators.product import (
 
 # from qalma.operators.simplify import simplify_sum_operator
 
+__all__ = ["eigenvalues", "spectral_norm", "log_op", "relative_entropy"]
+
 
 def eigenvalues(
     operator: Operator,

@@ -12,6 +12,8 @@ from .covar import CovariantScalarProductFunction
 
 #  ### Functions that build the scalar products ###
 
+__all__ = ["kubo_scalar_product", "covar_scalar_product", "hs_scalar_product"]
+
 
 def kubo_scalar_product(sigma: Operator, threshold=0) -> Callable:
     """

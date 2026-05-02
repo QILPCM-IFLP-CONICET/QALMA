@@ -32,6 +32,8 @@ import numpy as np
 from qalma.model import SystemDescriptor
 from qalma.operators.basic import Operator
 
+__all__ = ["Simulation", "SimulationHDF5"]
+
 
 def store_hdf5_dict(group: h5py.Group, data_dict: Dict[str, Any]):
     """Store data in a Python dict in a group of a hdf5 file.

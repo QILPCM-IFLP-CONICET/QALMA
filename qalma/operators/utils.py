@@ -7,6 +7,8 @@ from qalma.settings import (
     QALMA_INFER_ARITHMETICS,
 )
 
+__all__ = ["find_arithmetic_implementation"]
+
 
 def find_arithmetic_implementation(
     op1, op2, dispatch_table: dict

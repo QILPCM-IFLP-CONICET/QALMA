@@ -30,6 +30,8 @@ from qalma.settings import QALMA_TOLERANCE
 
 # from typing import Union
 
+__all__ = ["QuadraticFormOperator"]
+
 
 class QuadraticFormOperator(Operator):
     r"""Represent a two-body operator as a sum of squares with coefficients.

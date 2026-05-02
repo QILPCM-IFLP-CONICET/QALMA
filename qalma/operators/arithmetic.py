@@ -19,6 +19,8 @@ from qalma.operators.product import (
 from qalma.operators.qutip import QutipOperator
 from qalma.settings import QALMA_TOLERANCE
 
+__all__ = ["SumOperator", "OneBodyOperator", "iterable_to_operator", "NBodyOperator"]
+
 
 class SumOperator(Operator):
     r"""Linear combination of operators.

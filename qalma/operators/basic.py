@@ -25,6 +25,8 @@ from qalma.settings import (
 
 from .utils import find_arithmetic_implementation
 
+__all__ = ["Operator", "LocalOperator"]
+
 
 class Operator:  # pylint: disable=too-many-public-methods
     """Base class for operators."""

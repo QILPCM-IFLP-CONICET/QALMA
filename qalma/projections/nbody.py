@@ -51,6 +51,8 @@ ProjectingOperatorFunction = Callable[
 
 _FEW_BODY_APPROACH_THRESHOLD_ = 3
 
+__all__ = ["n_body_projection"]
+
 
 def np_prod(a, initial=None):
     """

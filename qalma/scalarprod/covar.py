@@ -14,6 +14,8 @@ from qalma.settings import QALMA_TOLERANCE
 
 #  ### Functions that build the scalar products ###
 
+__all__ = ["ErrorCummulator", "CovariantScalarProductFunction"]
+
 
 class ErrorCummulator:
     """

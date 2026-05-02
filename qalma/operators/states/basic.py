@@ -14,6 +14,8 @@ from qalma.operators.basic import (
 )
 from qalma.operators.quadratic import QuadraticFormOperator
 
+__all__ = ["DensityOperatorMixin", "DensityOperatorProtocol"]
+
 
 class DensityOperatorMixin:
     """Base class for Density Operators.

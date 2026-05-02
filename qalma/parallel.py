@@ -15,6 +15,8 @@ from qalma.operators.states.product import (
     ProductDensityOperator,
 )
 
+__all__ = ["commutator_qalma_parallel"]
+
 USE_PARALLEL = qalma_settings.USE_PARALLEL
 MAX_WORKERS = qalma_settings.PARALLEL_MAX_WORKERS
 USE_THREADS = qalma_settings.PARALLEL_USE_THREADS

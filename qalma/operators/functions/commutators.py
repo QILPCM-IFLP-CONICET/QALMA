@@ -19,6 +19,9 @@ from qalma.parallel import USE_PARALLEL, commutator_qalma_parallel
 # from datetime import datetime
 
 
+__all__ = ["anticommutator", "commutator"]
+
+
 def anticommutator(
     op_1: Union[Qobj, Operator], op_2: Union[Qobj, Operator]
 ) -> Union[Qobj, Operator]:

@@ -13,6 +13,9 @@ from qalma.operators.functions import commutator
 # function used to safely and robustly map K-states to states
 
 
+__all__ = ["build_hierarchical_basis"]
+
+
 def build_hierarchical_basis(
     generator: Operator, seed_op: Operator, deep: int, to_qutip_operator: bool = False
 ) -> List[Operator]:

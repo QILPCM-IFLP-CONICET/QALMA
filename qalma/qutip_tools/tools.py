@@ -31,6 +31,14 @@ from scipy.sparse.linalg import (
 qutip_version = parse_version(qutip_version_string)
 
 
+__all__ = [
+    "get_proper_spaces",
+    "data_element_iterator",
+    "empty_op",
+    "decompose_qutip_operator_hermitian",
+]
+
+
 def ishermitian(array: np.ndarray):
     """Determine if the array is hermitian."""
     return np.allclose(array, array.T.conj())

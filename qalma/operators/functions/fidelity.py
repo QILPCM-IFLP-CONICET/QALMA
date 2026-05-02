@@ -5,6 +5,8 @@ from scipy.linalg import eigvals as _scp_eigvals
 
 from qalma.operators import ProductOperator
 
+__all__ = ["fidelity"]
+
 
 def fidelity(rho1, rho2) -> float:
     """Compute the fidelity between two states.

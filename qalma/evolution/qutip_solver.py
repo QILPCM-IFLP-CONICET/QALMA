@@ -13,6 +13,8 @@ from qalma.operators.states import QutipDensityOperator
 
 from .simulation import Simulation
 
+__all__ = ["qutip_me_solve"]
+
 
 def qutip_me_solve(
     H: Operator,  # pylint: disable=invalid-name

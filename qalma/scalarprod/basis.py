@@ -16,6 +16,8 @@ from qalma.scalarprod.gram import gram_matrix, merge_gram_matrices
 from qalma.scalarprod.utils import find_linearly_independent_rows
 from qalma.settings import QALMA_TOLERANCE
 
+__all__ = ["OperatorBasis", "HierarchicalOperatorBasis"]
+
 
 class OperatorBasis:
     """
