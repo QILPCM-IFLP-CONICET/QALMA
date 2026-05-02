@@ -225,7 +225,9 @@ def plot_figure1(exact_data: list, out_dir: Path):
 # ---------------------------------------------------------------------------
 
 
-def plot_figure2(nf_data: list, out_dir: Path, L_plot: int = 12, beta_plot: float = 5.0):
+def plot_figure2(
+    nf_data: list, out_dir: Path, L_plot: int = 12, beta_plot: float = 5.0
+):
     """Two panels:
     (a) S_rel vs numfields for each J2/J1 at fixed L and beta
     (b) Magnetization pattern <Sz_i> for max frustration (J2/J1=0.5)
