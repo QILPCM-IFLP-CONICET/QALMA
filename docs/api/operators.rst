@@ -11,14 +11,14 @@ qalma.operators
 .. autosummary::
    :nosignatures:
 
-   qalma.operators.basic.Operator
-   qalma.operators.basic.LocalOperator
-   qalma.operators.product.ProductOperator
-   qalma.operators.product.ScalarOperator
-   qalma.operators.arithmetic.SumOperator
-   qalma.operators.arithmetic.OneBodyOperator
-   qalma.operators.quadratic.QuadraticFormOperator
-   qalma.operators.qutip.QutipOperator
+   basic.Operator
+   basic.LocalOperator
+   product.ProductOperator
+   product.ScalarOperator
+   arithmetic.SumOperator
+   arithmetic.OneBodyOperator
+   quadratic.QuadraticFormOperator
+   qutip.QutipOperator
 
 qalma.operators.basic
 ---------------------
@@ -28,6 +28,7 @@ qalma.operators.basic
    :undoc-members:
    :show-inheritance:
 
+
 qalma.operators.arithmetic
 --------------------------
 
@@ -35,6 +36,7 @@ qalma.operators.arithmetic
    :members:
    :undoc-members:
    :show-inheritance:
+   :no-index:
 
 qalma.operators.product
 -----------------------
@@ -43,6 +45,8 @@ qalma.operators.product
    :members:
    :undoc-members:
    :show-inheritance:
+   :no-index:
+      
 
 qalma.operators.quadratic
 -------------------------
@@ -87,10 +91,13 @@ qalma.operators.functions
    :undoc-members:
    :show-inheritance:
 
+
 .. automodule:: qalma.operators.functions.fidelity
    :members:
    :undoc-members:
    :show-inheritance:
+   :no-index:
+      
 
 .. automodule:: qalma.operators.functions.hermiticity
    :members:
