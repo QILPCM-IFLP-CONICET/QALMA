@@ -354,7 +354,11 @@ def variational_quadratic_mfa(
             # with |Q_a|_{infty}=1 and
             # w_1 <= w_2 <=... <=w_l < 0 <= w_{k+1} <= ... w_n
             qf_op: QuadraticFormOperator = build_quadratic_form_from_operator(
-                ham_proj, isherm=True, sigma_ref=sigma_ref
+                ham_proj,
+                isherm=True,
+                sigma_ref=sigma_ref,
+                sort_fn=lambda x: x,
+                count=numfields,
             )
             sigma_candidate = mf_quadratic_form_exponential(
                 qf_op, numfields, method, callback_optimizer, ham
