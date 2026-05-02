@@ -1,11 +1,6 @@
 qalma.operators.states
 ======================
 
-.. automodule:: qalma.operators.states
-   :members:
-   :show-inheritance:
-   :no-index:
-
 qalma.operators.states.basic
 ----------------------------
 
