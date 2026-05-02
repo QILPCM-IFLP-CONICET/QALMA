@@ -274,8 +274,8 @@ def build_quadratic_form_from_operator(
     simplify: bool = True,
     isherm: Optional[bool] = None,
     sigma_ref=None,
-    sort_fn: Optional[Callable[float, float]] = None,
-    sort_imag_fn: Optional[Callable[float, float]] = None,
+    sort_fn: Optional[Callable[[float], float]] = None,
+    sort_imag_fn: Optional[Callable[[float], float]] = None,
     count: Optional[int] = None,
 ) -> QuadraticFormOperator:
     """Build a QuadraticFormOperator from ``operator``.
@@ -291,9 +291,9 @@ def build_quadratic_form_from_operator(
         sigma_ref: DensityOperatorMixin
             Reference state to decompose the operator into
             a one-body part and a zero-mean two-body part.
-        sort_fn: Optional[Callable[float,float]]
+        sort_fn: Optional[Callable[[float],float]]
             Function that sorts the real coefficient of the quadratic form.
-        sort_imag_fn: Optional[Callable[float,float]]
+        sort_imag_fn: Optional[Callable[[float],float]]
             Function that sorts the imaginary coefficient of the quadratic form.
         count: Optional[int]
             If given, the maximum number of terms to be kept in the expansion.
@@ -438,18 +438,19 @@ def decompose_matrix(
     local_basis,
     local_basis_offsets,
     system: SystemDescriptor,
-    sort_fn: Optional[Callable] = None,
+    sort_fn: Optional[Callable[[float], float]] = None,
     count: Optional[int] = None,
 ):
     """Decompose the array into."""
     e_vals, e_vecs = eigh(qf_array)
+    e_vecs = e_vecs.T
 
     if sort_fn is not None:
         sorted_eval_evec = sorted(
             tuple(zip(e_vals, e_vecs)), key=lambda x: sort_fn(x[0])
         )
-        e_vals = [e_val for e_val, e_vec in sorted_eval_evec]
-        e_vecs = [e_vec for e_val, e_vec in sorted_eval_evec]
+        e_vals = np.array([e_val for e_val, e_vec in sorted_eval_evec])
+        e_vecs = np.array([e_vec for e_val, e_vec in sorted_eval_evec])
 
     if count is not None and len(e_vals) > count:
         e_vals = e_vals[:count]
@@ -474,7 +475,7 @@ def decompose_matrix(
                     system,
                 ),
             )
-            for e_val, e_vec in zip(e_vals, e_vecs.T)
+            for e_val, e_vec in zip(e_vals, e_vecs)
             if abs(e_val) > QALMA_TOLERANCE
         ],
         key=lambda x: x[0],
