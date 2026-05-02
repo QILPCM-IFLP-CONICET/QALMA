@@ -124,12 +124,19 @@ def zero_expectation_value_basis(basis: LocalBasisDict, sigma_ref):
     """
     local_sigmas = sigma_ref.site_factors_qutip
 
+    def hermitian_part(qobj):
+        """project a Qobj to its hermitian part"""
+        if qobj.isherm:
+            return qobj
+        qobj = qobj * 0.5
+        return qobj + qobj.dag()
+
     new_basis = {}
     for site, _ in basis.items():
         local_sigma = local_sigmas[site]
-        new_basis_site = [elem - (elem * local_sigma).tr() for elem in basis[site]]
-        for elem in new_basis_site:
-            elem.isherm = True
+        new_basis_site = [
+            hermitian_part(elem - (elem * local_sigma).tr()) for elem in basis[site]
+        ]
         new_basis[site] = new_basis_site
     return new_basis
 
@@ -326,8 +333,8 @@ def build_quadratic_form_from_operator(
             )
             * w
             for op, w in (
-                (operator.dag() + operator, 0.5),
-                (operator.dag() * 1j - operator * 1j, 0.5j),
+                (operator.hermitian_part(), 1.0),
+                ((operator * (-1j)).hermitian_part(), 1.0j),
             )
         )
 

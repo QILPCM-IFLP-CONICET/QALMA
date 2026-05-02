@@ -271,11 +271,11 @@ class SumOperator(Operator):
         """
         if self._isherm is True:
             return self
-        return SumOperator(
+        return type(self)(
             tuple(t.hermitian_part() for t in self.terms),
             system=self.system,
             isherm=True,
-        )
+        ).simplify()
 
     @property
     def isherm(self) -> bool:
