@@ -21,6 +21,8 @@ from qalma.operators.states.gibbs import GibbsProductDensityOperator
 from qalma.projections import n_body_projection
 from qalma.settings import DEFAULT_MAX_NUMBER_OF_FIELDS, QALMA_TOLERANCE
 
+__all__ = ["compute_free_energy", "variational_quadratic_mfa", "self_consistent_mf"]
+
 
 def compute_free_energy(state: ProductDensityOperator, ham: Operator) -> float:
     r"""Estimate the free energy of ``ham`` from an approximate Gibbs product state.

@@ -27,6 +27,8 @@ from qalma.qutip_tools.tools import (
     safe_exp_and_normalize as safe_exp_and_normalize_qobj,
 )
 
+__all__ = ["compute_expectation_values"]
+
 
 def _trivial_compute_epectation_values_product_op(obs):
     result = obs.prefactor

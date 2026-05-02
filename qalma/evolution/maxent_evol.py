@@ -35,6 +35,9 @@ from .simulation import Simulation
 # function used to safely and robustly map K-states to states
 
 
+__all__ = ["adaptive_projected_evolution"]
+
+
 def compute_mean_field_state(
     k: Operator, sigma: ProductDensityOperator, **kwargs
 ) -> Tuple[Operator, ProductDensityOperator]:

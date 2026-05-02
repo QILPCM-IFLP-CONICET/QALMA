@@ -25,6 +25,8 @@ from qalma.qutip_tools.tools import (
     scalar_value,
 )
 
+__all__ = ["QutipOperator"]
+
 
 class QutipOperator(Operator):
     """Represents a Qutip operator that acts over a block of sites of a system.

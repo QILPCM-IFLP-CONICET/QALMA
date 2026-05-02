@@ -16,6 +16,13 @@ from qalma.scalarprod.utils import find_linearly_independent_rows
 
 # from datetime import datetime
 
+__all__ = [
+    "MAX_WORKERS",
+    "USE_THREADS",
+    "gram_matrix_parallel",
+    "gram_matrix_serial",
+    "merge_gram_matrices",
+]
 
 MAX_WORKERS = qalma_settings.PARALLEL_MAX_WORKERS
 USE_THREADS = qalma_settings.PARALLEL_USE_THREADS

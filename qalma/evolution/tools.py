@@ -10,6 +10,9 @@ from numpy.typing import NDArray
 # function used to safely and robustly map K-states to states
 
 
+__all__ = ["slice_times", "m_th_partial_sum"]
+
+
 def slice_times(tlist: NDArray, tcuts: List[float]) -> List[NDArray]:
     """
     Slice a list of times (``tcuts``).

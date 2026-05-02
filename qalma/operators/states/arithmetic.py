@@ -23,6 +23,8 @@ from qalma.operators.states.basic import (
     DensityOperatorProtocol,
 )
 
+__all__ = ["MixtureDensityOperator"]
+
 
 class MixtureDensityOperator(DensityOperatorMixin, SumOperator):
     """A mixture of density operators."""

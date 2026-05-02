@@ -17,6 +17,8 @@ from qalma.scalarprod.build import covar_scalar_product
 
 from .simulation import Simulation
 
+__all__ = ["heisenberg_solve"]
+
 
 def heisenberg_solve(
     H: Operator,  # pylint: disable=invalid-name

@@ -17,6 +17,8 @@ from qalma.operators import Operator
 from qalma.scalarprod.gram import gram_matrix
 from qalma.scalarprod.utils import find_linearly_independent_rows
 
+__all__ = ["build_hermitian_basis", "orthogonalize_basis", "operator_components"]
+
 
 def build_hermitian_basis(basis, sp=lambda x, y: ((x.dag() * y).tr())):
     """Build a basis of of hermitian operators.

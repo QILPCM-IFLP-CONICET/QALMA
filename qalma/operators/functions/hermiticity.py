@@ -10,6 +10,8 @@ from qalma.operators.basic import (
     Operator,
 )
 
+__all__ = ["compute_dagger", "hermitian_and_antihermitian_parts"]
+
 
 def compute_dagger(operator):
     """Compute the adjoint of an `operator.

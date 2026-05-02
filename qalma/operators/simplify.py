@@ -18,6 +18,8 @@ from qalma.qutip_tools.tools import (
     empty_op,
 )
 
+__all__ = ["collect_nbody_terms", "group_terms_by_blocks", "simplify_qutip_sums"]
+
 
 def sum_operator_sequence(
     seq: Sequence[Operator], system: SystemDescriptor, **attrs

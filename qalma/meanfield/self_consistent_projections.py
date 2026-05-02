@@ -13,6 +13,8 @@ from qalma.projections import (
     n_body_projection,
 )
 
+__all__ = ["self_consistent_project_meanfield"]
+
 
 def self_consistent_project_meanfield(
     k_op: Operator,
