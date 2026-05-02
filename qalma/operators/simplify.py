@@ -26,7 +26,7 @@ def sum_operator_sequence(
 
     Parameters
     ----------
-    seq : sequence of Operator
+    seq : list or tuple of Operator
         The operators to sum.
     system : SystemDescriptor
         The system the operators act on.
@@ -113,7 +113,7 @@ def group_terms_by_blocks(operator: Operator, fn: Optional[Callable] = None):
     ----------
     operator : Operator
         The operator to be reduced.
-    fn : callable or None, optional
+    fn : Callable or None, optional
         A function to implement specific simplifications. The default is None.
 
     Returns
@@ -154,7 +154,7 @@ def group_terms_by_blocks(operator: Operator, fn: Optional[Callable] = None):
         ----------
         op_in : Operator
             The operator to simplify.
-        fn : callable or None
+        fn : Callable or None
             The simplification function, or ``None`` to skip.
 
         Returns

@@ -208,7 +208,7 @@ def self_consistent_mf(
         Defaults to the fully mixed state.
     max_steps : int, optional
         Maximum number of self-consistent steps (default 10).
-    callback : callable, optional
+    callback : Callable, optional
         Called on each self-consistent round with signature
         ``callback(sigma, rel_entropy, step)``.
 

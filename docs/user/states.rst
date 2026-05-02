@@ -80,7 +80,7 @@ site-by-site without constructing the full many-body matrix.
 Partial traces and reductions
 ------------------------------
 
-The :meth:`~qalma.operators.states.basic.DensityOperatorMixin.partial_trace` method returns the reduced state on a subsystem::
+The :meth:`~qalma.operators.states.basic.DensityOperatorProtocol.partial_trace` method returns the reduced state on a subsystem::
 
     rho_sub = rho.partial_trace(frozenset({"site0", "site1"}))
 

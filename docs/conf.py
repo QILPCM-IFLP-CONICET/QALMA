@@ -129,6 +129,10 @@ nitpick_ignore = [
     ("py:class", "dn)``"),
     ("py:obj", "Ellipsis"),
     ("py:obj", "random"),
+    ("py:obj", "Coefficient"),
+    # Shape fragments from numpy.linalg / scipy.linalg docstrings
+    ("py:class", "(..."),
+    ("py:class", "(2"),
 ]
 
 suppress_warnings = ["ref.python", "ref.ref", "misc.highlighting_failure", "app.add_directive", "autosummary.import_cycle"]
@@ -250,8 +254,18 @@ nitpick_ignore_regex = [
     ("py:func",  r"_project_qutip_operator_recursive"),
     ("py:func",  r"_project_product_operator_to_one_body"),
     ("py:func",  r"_project_qutip_operator_to_one_body"),
-    # --- Misc ---
-    ("py:obj",   r"Coefficient"),
+    # --- Lowercase builtin-like type names used as informal type hints ---
+    ("py:class", r"callable"),
+    ("py:class", r"sequence"),
+    ("py:class", r"array"),
+    ("py:class", r"number"),
+    # --- Single-letter shape fragments from numpy docstrings (e.g. (M, N)) ---
+    ("py:class", r"^[A-Z]$"),
+    ("py:class", r"^\.\.\.$"),
+    ("py:class", r"^\(\.\.\. .*"),   # (... , M, N) shape fragments
+    ("py:class", r"^\(2 .*"),        # (2, M) shape fragments from scipy eigvals
+    # --- Additional scipy cross-references without intersphinx ---
+    ("py:obj",   r"scipy\.linalg\.inv"),
     ("py:obj",   r"Ellipsis"),
     ("py:obj",   r"random"),
     ("py:class", r"collections\.abc\.Buffer"),

@@ -89,7 +89,7 @@ def occupation_factor(phi: NDArray, threshold: float = 0.995) -> int:
 
     Parameters
     ----------
-    phi : array of float or complex
+    phi : numpy.ndarray of float or complex
         Coefficient vector.
     threshold : float, optional
         Target cumulative fraction of the squared norm (default 0.995).
