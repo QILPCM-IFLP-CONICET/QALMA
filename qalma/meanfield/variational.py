@@ -229,7 +229,7 @@ def self_consistent_mf(
     rel_entropy = compute_free_energy(sigma_ref, ham)
     converged = False
     for curr_step in range(max_steps):
-        gen_sc = n_body_projection(ham, n_max=1, sigma=sigma_ref)
+        gen_sc = n_body_projection(ham, n_max=1, sigma=sigma_ref).hermitician_part()
         sigma_sc = GibbsProductDensityOperator(gen_sc).to_product_state()
         new_rel_entropy = compute_free_energy(sigma_sc, ham)
         if callback is not None:
