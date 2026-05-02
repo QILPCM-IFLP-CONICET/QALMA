@@ -23,7 +23,7 @@ from qalma.settings import DEFAULT_MAX_NUMBER_OF_FIELDS, QALMA_TOLERANCE
 
 
 def compute_free_energy(state: ProductDensityOperator, ham: Operator) -> float:
-    """Estimate the free energy of ``ham`` from an approximate Gibbs product state.
+    r"""Estimate the free energy of ``ham`` from an approximate Gibbs product state.
 
     Computes the relative entropy :math:`S(\sigma | e^{-H})` of ``state``
     with respect to the Gibbs state :math:`e^{-H}`.
