@@ -135,5 +135,4 @@ memory saturation for long simulations.
 
 .. seealso::
 
-   :mod:`qalma.evolution`, :mod:`qalma.evolution.simulation`,
-   :mod:`qalma.scalarprod`
+   :doc:`/api/evolution`, :doc:`/api/scalarprod`

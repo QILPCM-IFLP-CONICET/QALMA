@@ -411,7 +411,7 @@ class SumOperator(Operator):
     def reduce(self, sites: Iterable, state=None):
         """Reduce the operator to a subsystem, optionally weighted by a state.
 
-        Applies :meth:`reduce` to each term and assembles the result. If
+        Applies ``reduce`` to each term and assembles the result. If
         ``state`` is ``None``, the reduction is a partial trace normalized
         by the dimension of the traced-out subsystem.
 
@@ -500,7 +500,7 @@ class SumOperator(Operator):
     def tidyup(self, atol=None):
         """Return a copy with small matrix elements zeroed out.
 
-        Applies :meth:`tidyup` to each term and drops zero terms.
+        Applies ``tidyup`` to each term and drops zero terms.
 
         Parameters
         ----------
@@ -644,7 +644,7 @@ class OneBodyOperator(SumOperator):
 
             e^{\\lambda_0 + \\sum_i O_i} = e^{\\lambda_0} \\bigotimes_i e^{O_i}
 
-        Each local exponential is computed via :func:`scipy.linalg.expm`.
+        Each local exponential is computed via ``scipy.linalg.expm``.
         The diagonal of each local operator is shifted to avoid numerical
         overflow before exponentiation.
 

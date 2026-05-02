@@ -22,25 +22,21 @@ from qalma.qutip_tools.tools import (
 def sum_operator_sequence(
     seq: Sequence[Operator], system: SystemDescriptor, **attrs
 ) -> Operator:
-    """Convert a sequence of operators in its sume.
+    """Convert a sequence of operators into their sum.
 
     Parameters
     ----------
-    seq : Sequence[Operator]
-        A sequence of operators.
+    seq : sequence of Operator
+        The operators to sum.
     system : SystemDescriptor
-
-    seq: Sequence[Operator] :
-
-    system: SystemDescriptor :
-
-    **attrs :
-
+        The system the operators act on.
+    **attrs
+        Additional keyword arguments forwarded to :class:`SumOperator`.
 
     Returns
     -------
     Operator
-        the sum of the terms in the sequence.
+        The sum of the terms in the sequence.
 
     """
     if not seq:
@@ -51,24 +47,21 @@ def sum_operator_sequence(
 
 
 def collect_nbody_terms(operator: Operator) -> dict:
-    """
-    Collect terms by the block on which acts over.
+    """Collect terms by the block on which they act.
 
-    This functio builds a dictionary whose keys are subsystems and the values are lists of
-    operators acting exactly over the subsystem.
+    Builds a dictionary whose keys are subsystems (frozensets of site names)
+    and the values are lists of operators acting exactly on that subsystem.
 
     Parameters
     ----------
     operator : Operator
         The operator to be decomposed.
-    operator: Operator :
-
 
     Returns
     -------
-    Dict[frozenset, Operator]
-        A dict whose keys are set of sites, and their values are the terms
-        actin on these sites.
+    dict[frozenset, list[Operator]]
+        A dict whose keys are sets of sites, and whose values are the terms
+        acting on those sites.
 
     """
     full_acts_over: frozenset
@@ -120,12 +113,8 @@ def group_terms_by_blocks(operator: Operator, fn: Optional[Callable] = None):
     ----------
     operator : Operator
         The operator to be reduced.
-    fn : Optional[Callable], optional
+    fn : callable or None, optional
         A function to implement specific simplifications. The default is None.
-    operator: Operator :
-
-    fn: Optional[Callable] :
-         (Default value = None)
 
     Returns
     -------
@@ -159,19 +148,19 @@ def group_terms_by_blocks(operator: Operator, fn: Optional[Callable] = None):
     scalar_terms = []
 
     def apply_simplification_fn(op_in: Operator, fn: Optional[Callable]):
-        """
-        Apply the simplification function.
+        """Apply the simplification function.
 
         Parameters
         ----------
-        op_in: Operator :
-
-        fn: Optional[Callable] :
+        op_in : Operator
+            The operator to simplify.
+        fn : callable or None
+            The simplification function, or ``None`` to skip.
 
         Returns
         -------
-        Operator:
-           the simplified operator.
+        Operator
+            The simplified operator.
         """
         try:
             if isinstance(op_in, SumOperator):
@@ -256,23 +245,20 @@ def group_terms_by_blocks(operator: Operator, fn: Optional[Callable] = None):
 
 
 def simplify_qutip_sums(sum_operator: SumOperator) -> Operator:
-    """
-    Simplify terms which are qutip operators.
+    """Simplify terms that are qutip operators.
 
-    This function collect terms acting on the same block of sites, and reduce it to a
-    single qutip operator.
+    Collects terms acting on the same block of sites and reduces them to a
+    single :class:`~qalma.operators.qutip.QutipOperator`.
 
     Parameters
     ----------
     sum_operator : SumOperator
         The operator to be reduced.
-    sum_operator: SumOperator :
-
 
     Returns
     -------
     Operator
-        the simplified operator.
+        The simplified operator.
 
     """
     if not isinstance(sum_operator, SumOperator):

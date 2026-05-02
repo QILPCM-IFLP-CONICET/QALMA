@@ -34,8 +34,9 @@ terms, one per bond or site term in the Hamiltonian definition.
 Site and bond operators
 -----------------------
 
-Individual site and bond operators from the ALPS model can be built with
-:func:`~qalma.model.build_operator`::
+Individual site and bond operators from the ALPS model can be built using
+:func:`~qalma.model.build_system` together with the ``operators`` attribute
+of the returned system::
 
     Sz_total = build_operator("Sz", system)      # sum of local Sz
     Sz_0 = build_operator("Sz", system, site="site0")  # single-site
@@ -62,4 +63,4 @@ fixed quantum number sectors::
 
 .. seealso::
 
-   :mod:`qalma.model`, :mod:`qalma.alpsmodels`, :mod:`qalma.projections`
+   :doc:`/api/qalma`, :doc:`/api/projections`

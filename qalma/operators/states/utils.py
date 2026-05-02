@@ -94,14 +94,14 @@ def collect_blocks_for_expect(obs_objs: Union[Operator, Iterable]) -> List[froze
 
     Parameters
     ----------
-    obs_objs: Union[Operator, Iterable]
-        an object, or a container of objects.
+    obs_objs : Operator or iterable
+        An operator or a container of operators.
 
-    Result
-    ======
-
-    List:
-    a list of `frozenset` objects, sorted from the larger to the smaller in size.
+    Returns
+    -------
+    list[frozenset]
+        A list of ``frozenset`` objects (site sets), sorted from largest to
+        smallest.
 
     """
     if isinstance(obs_objs, dict):
@@ -130,19 +130,22 @@ def collect_local_states(
     """Collect local states required for evaluating expectation values.
 
     Build a dict of local states required to compute the expectation values
-    of the observable or the observables contained in obs_objs.
+    of the observable or the observables contained in ``obs_objs``.
 
     Parameters
     ----------
-    obs_objs: Union[Operator], Iterable
-       an Operator or an iterable containing the operators required to compute the
-       required expectation values.
+    obs_objs : Operator or iterable
+        An operator or an iterable containing the operators whose expectation
+        values are needed.
+    global_state : DensityOperatorProtocol
+        The full many-body state.
+    _local_states : dict, optional
+        Cache of already-computed local states; updated in place.
 
-    Return
-    ======
-    Dict[frozenset, DensityOperatorProtocol]
-
-    A dict of local states associated to the sites enumerated in the keys.
+    Returns
+    -------
+    dict[frozenset, DensityOperatorProtocol]
+        A dict of local states associated to the sites in each key.
 
     """
     assert obs_objs is not None
@@ -405,18 +408,20 @@ def safe_exp_and_normalize_qutip_operator(
 def safe_exp_and_normalize(operator):
     """Exponenciate an operator avoiding overflows.
 
-    Compute the decomposition of exp(operator) as rho*exp(f)
-    with f = Tr[exp(operator)], for operator a Qutip operator.
+    Compute the decomposition ``exp(operator) = rho * exp(f)`` where
+    ``f = log Tr[exp(operator)]``, avoiding numerical overflow.
 
     Parameters
     ----------
-        operator: Operator | Qobj
+    operator : Operator
+        The operator to exponentiate.
 
-    Result
-    ------
-
-    Tuple[Operator|Qobj, float]
-         A tuple (exp(operator)/f , f)
+    Returns
+    -------
+    tuple
+        A pair ``(rho, f)`` where ``rho = exp(operator) / Tr[exp(operator)]``
+        is the normalised exponential and ``f`` is the log of the
+        normalisation constant.
 
     """
     if isinstance(operator, ScalarOperator):

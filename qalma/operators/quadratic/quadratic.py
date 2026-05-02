@@ -456,23 +456,22 @@ class QuadraticFormOperator(Operator):
     def reduce(self, sites: Iterable, state=None) -> Operator:
         """Compute the reduced operator relative to ``state``.
 
-        The relative reduced state operator is the partial trace of the
-        product of the operator and the density operator acting on the
-        subsystem which is traced out. If the state is not provided,
-        the result is the partial trace, divided by the dimension
-        of the subsystem traced out.
+        The reduced operator is the partial trace of the product of this
+        operator and the density operator acting on the complementary
+        subsystem. If no state is provided, the result is the partial trace
+        divided by the dimension of the traced-out subsystem.
 
         Parameters
         ----------
-        sites: Iterable
+        sites : iterable
+            The sites to keep.
+        state : DensityOperatorProtocol, optional
+            The state relative to which the reduction is performed.
 
-        state: Optional[DensityOperatorProtocol]
-               The state relative to which make the reduction.
-
-        Return
-        ======
-
-        The reduced operator.
+        Returns
+        -------
+        Operator
+            The reduced operator acting on the subsystem specified by ``sites``.
 
         """
         # An alternative would be to build a new QuadraticOperator
@@ -551,7 +550,8 @@ def simplify_quadratic_form(
 
     The original operator is spanned as
 
-    .. code-block:: Python
+    .. code-block:: python
+
         sum(w * op**2 for w,op in zip(weights,ops))
     """
     from .build import build_quadratic_form_from_operator

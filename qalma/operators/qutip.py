@@ -232,20 +232,17 @@ class QutipOperator(Operator):
         return QutipOperator(log_op, self.system, self.site_names)
 
     def partial_trace(self, sites: Union[frozenset, SystemDescriptor]):
-        """
-        Compute the partial trace.
+        """Compute the partial trace of this operator over a subsystem.
 
         Parameters
         ----------
-        sites: Union[frozenset :
-
-        SystemDescriptor] :
-
+        sites : frozenset or SystemDescriptor
+            The sites to keep; all other sites are traced out.
 
         Returns
         -------
         Operator
-        The partial trace of the operator.
+            The partial trace of the operator over the complementary subsystem.
 
         """
         if isinstance(sites, SystemDescriptor):
@@ -301,24 +298,24 @@ class QutipOperator(Operator):
         )
 
     def reduce(self, sites: Iterable, state=None) -> Operator:
-        """Compute the reduced operator.
+        """Compute the reduced operator on a subsystem.
 
-        Partial trace of the product of the operator and the density
-        operator acting on the subsystem which is traced out. If the state is
-        not provided, the result is the partial trace, divided by the dimension
-        of the subsystem traced out.
+        Partial trace of the product of this operator and a density operator
+        acting on the complementary subsystem. If no state is provided, the
+        result is the partial trace divided by the dimension of the traced-out
+        subsystem.
 
         Parameters
         ----------
-        sites: Iterable
+        sites : iterable
+            The sites to keep.
+        state : DensityOperatorProtocol, optional
+            The state relative to which the reduction is performed.
 
-        state: Optional[DensityOperatorProtocol]
-               The state relative to which make the reduction.
-
-        Return
-        ------
-
-        The reduced operator.
+        Returns
+        -------
+        Operator
+            The reduced operator acting on the subsystem specified by ``sites``.
 
         """
         system = self.system

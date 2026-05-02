@@ -758,7 +758,7 @@ def build_system_from_dims(dims_by_name: Dict[str, int]) -> SystemDescriptor:
 
     Parameters
     ----------
-    dims_by_name: Dict[str, int]
+    dims_by_name: dict[str, int]
        a dictionary specifying the dimension of each site in the system.
 
     Return

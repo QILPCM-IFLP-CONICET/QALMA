@@ -22,15 +22,19 @@ from qalma.parallel import USE_PARALLEL, commutator_qalma_parallel
 def anticommutator(
     op_1: Union[Qobj, Operator], op_2: Union[Qobj, Operator]
 ) -> Union[Qobj, Operator]:
-    """Compute the anticommutator of two operators, defined as {op1, op2} = op1 * op2 + op2 * op1.
+    """Compute the anticommutator of two operators, {op1, op2} = op1*op2 + op2*op1.
 
     Parameters
     ----------
-        op1, op2: operators (can be a matrix or a quantum operator object).
+    op_1 : Operator or qutip.Qobj
+        First operator.
+    op_2 : Operator or qutip.Qobj
+        Second operator.
 
     Returns
     -------
-        The anticommutator of op1 and op2.
+    Operator or qutip.Qobj
+        The anticommutator ``op_1 * op_2 + op_2 * op_1``.
 
     """
     if isinstance(op_1, Qobj):
@@ -45,21 +49,25 @@ def anticommutator(
 
 
 def anticommutator_qalma_serial(op_1: Operator, op_2: Operator) -> Operator:
-    r"""Compute the anticommutator of two operators.
+    r"""Compute the anticommutator of two QALMA operators.
 
-    The anticommutator of two operators ``op1`` and ``op2`` is defined as
+    The anticommutator is defined as
 
     .. math::
 
-    \{op1, op2\} = op1 * op2 + op2 * op1.
+        \{op_1, op_2\} = op_1 \cdot op_2 + op_2 \cdot op_1.
 
     Parameters
     ----------
-        op1, op2: operators (can be a matrix or a quantum operator object).
+    op_1 : Operator
+        First operator.
+    op_2 : Operator
+        Second operator.
 
     Returns
     -------
-        The anticommutator of op1 and op2.
+    Operator
+        The anticommutator ``op_1 * op_2 + op_2 * op_1``, simplified.
 
     """
     system = op_1.system or op_2.system

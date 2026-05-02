@@ -435,7 +435,9 @@ def norm(
     n : float or ndarray
         Norm of the matrix or vector(s).
 
-    `ord` is interpreted as:
+    Notes
+    -----
+    ``ord`` is interpreted as:
 
     =====  ============================  ==========================
     ord    norm for matrices             norm for vectors
@@ -453,7 +455,7 @@ def norm(
     other  --                            sum(abs(a)**ord)**(1./ord)
     =====  ============================  ==========================
 
-    See scipy.linalg.norm
+    See also ``scipy.linalg.norm``.
 
     """
     if isinstance(op, _Qobj):
