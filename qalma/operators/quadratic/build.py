@@ -38,7 +38,6 @@ diagonalisation step.  This is the decomposition relative to
 :math:`\sigma_{\rm ref}` used in the self-consistent MFA loop.
 """
 
-# from numbers import Number
 from typing import Callable, Dict, Generator, List, Optional, Tuple, cast
 
 import numpy as np
@@ -62,7 +61,6 @@ from .quadratic import QuadraticFormOperator
 
 LocalBasisDict = Dict[str, List[Qobj]]
 BlockTermsDict = Dict[Tuple[str, ...], List[Operator]]
-# from typing import Union
 
 
 __all__ = ["build_quadratic_form_from_operator"]
@@ -167,7 +165,7 @@ def orthonormal_hs_local_basis(local_generators_dict: LocalBasisDict) -> LocalBa
                     (hcomponent * b_op).tr() * b_op for b_op in basis
                 )
                 normsq = abs((hcomponent * hcomponent).tr())
-                if normsq < QALMA_TOLERANCE:
+                if normsq <= 0 or normsq < QALMA_TOLERANCE:
                     continue
                 hcomponent = hcomponent * abs(normsq ** (-0.5))
                 hcomponent.isherm = True
@@ -290,8 +288,8 @@ def classify_terms(
     def decompose_two_body_product_operator(prod_op) -> Tuple[Operator, Operator]:
         prefactor = prod_op.prefactor
         system = prod_op.system
-        assert isinstance(operator, ProductOperator)
-        sites_op = operator.site_factors_qutip
+        assert isinstance(prod_op, ProductOperator)
+        sites_op = prod_op.site_factors_qutip
         assert len(sites_op) == 2
         averages = {
             site: (
@@ -521,9 +519,6 @@ def build_quadratic_form_from_operator(
     if sigma_ref is not None:
         if hasattr(sigma_ref, "to_product_state"):
             sigma_ref = sigma_ref.to_product_state()
-        # assert isinstance(
-        #    sigma_ref, ProductDensityOperator
-        # ), f"sigma_ref must be a ProductDensityOperator. Got {type(sigma_ref)}"
 
     system = operator.system
     # Trivial cases
@@ -569,13 +564,13 @@ def build_quadratic_form_from_operator(
                 simplify=True,
                 isherm=True,
                 sigma_ref=sigma_ref,
-                sort_fn=sort_imag_fn,
+                sort_fn=sfn,
                 count=count,
             )
             * w
-            for op, w in (
-                (operator.hermitian_part(), 1.0),
-                ((operator * (-1j)).hermitian_part(), 1.0j),
+            for op, w, sfn in (
+                (operator.hermitian_part(), 1.0, sort_fn),
+                ((operator * (-1j)).hermitian_part(), 1.0j, sort_imag_fn),
             )
         )
 
@@ -729,30 +724,27 @@ def decompose_matrix(
         e_vals = e_vals[:count]
         e_vecs = e_vecs[:count]
 
-    return sorted(
-        [
-            (
-                0.5 * e_val,
-                OneBodyOperator(
-                    tuple(
-                        LocalOperator(
-                            site,
-                            sum(
-                                local_op * e_vec[mu + local_basis_offsets[site]]
-                                for mu, local_op in enumerate(local_base)
-                            ),
-                            system,
-                        )
-                        for site, local_base in local_basis.items()
-                    ),
-                    system,
+    return [
+        (
+            0.5 * e_val,
+            OneBodyOperator(
+                tuple(
+                    LocalOperator(
+                        site,
+                        sum(
+                            local_op * e_vec[mu + local_basis_offsets[site]]
+                            for mu, local_op in enumerate(local_base)
+                        ),
+                        system,
+                    )
+                    for site, local_base in local_basis.items()
                 ),
-            )
-            for e_val, e_vec in zip(e_vals, e_vecs)
-            if abs(e_val) > QALMA_TOLERANCE
-        ],
-        key=lambda x: x[0],
-    )
+                system,
+            ),
+        )
+        for e_val, e_vec in zip(e_vals, e_vecs)
+        if abs(e_val) > QALMA_TOLERANCE
+    ]
 
 
 def force_hermitic_t(t):
@@ -775,8 +767,7 @@ def force_hermitic_t(t):
     if t is None:
         return t
     if not t.isherm:
-        t = (t + t.dag()).simplify()
-        t = t * 0.5
+        t = (t * 0.5 + t.dag() * 0.5).simplify()
     return t
 
 
