@@ -21,8 +21,6 @@ e.g. when combining two quadratic forms or when unit-testing.
 """
 
 from numbers import Number
-
-# from numbers import Number
 from typing import Callable, Iterable, Optional, Set, Tuple, Union, cast
 
 import numpy as np
@@ -38,8 +36,6 @@ from qalma.operators.product import (
     ScalarOperator,
 )
 from qalma.settings import QALMA_TOLERANCE
-
-# from typing import Union
 
 __all__ = ["QuadraticFormOperator"]
 
@@ -153,9 +149,9 @@ class QuadraticFormOperator(Operator):
 
         """
         # If the system is not given, infer it from the terms
-        if offset:
+        if offset is not None:
             offset = offset.simplify()
-        if linear_term:
+        if linear_term is not None:
             linear_term = linear_term.simplify()
             assert (
                 isinstance(linear_term, OneBodyOperator)
@@ -165,23 +161,17 @@ class QuadraticFormOperator(Operator):
         assert isinstance(basis, tuple)
         assert isinstance(weights, tuple)
         for pos, gen in enumerate(basis):
-            assert (
-                gen.isherm
-            ), f"Operator at pos {pos} got {gen.isherm}\n{gen}"  # TODO: REMOVE ME
+            assert gen.isherm, f"Basis operator at pos {pos} is not Hermitian:\n{gen}"
         assert (
             isinstance(linear_term, (OneBodyOperator, LocalOperator, ScalarOperator))
             or linear_term is None
-        ), f"{type(offset)} should be a LocalOperator or a OneBodyOperator"
+        ), f"{type(linear_term)} should be a LocalOperator, OneBodyOperator, or ScalarOperator"
         if system is None:
             for term in basis:
                 if system is None:
                     system = term.system
                 else:
                     system = system.union(term.system)
-
-        # If check_and_simplify, ensure that all the terms are
-        # one-body operators and try to use the simplified forms
-        # of the operators.
 
         self.weights = weights
         self.basis = basis
@@ -240,7 +230,7 @@ class QuadraticFormOperator(Operator):
             basis = self.basis
             weights = self.weights
             return QuadraticFormOperator(
-                basis, weights, system, linear_term, offset=None
+                basis, weights, system, linear_term, offset=self.offset
             )
         return SumOperator(
             (
@@ -354,9 +344,8 @@ class QuadraticFormOperator(Operator):
         """
         isherm = self._isherm
         isdiag = self.isdiagonal
-        assert all(b_op.isherm for b_op in self.basis)
         terms = tuple(
-            (((op_term * op_term) * w) for w, op_term in zip(self.weights, self.basis))
+            (op_term * op_term) * w for w, op_term in zip(self.weights, self.basis)
         )
 
         for term in (self.offset, self.linear_term):
@@ -455,10 +444,9 @@ class QuadraticFormOperator(Operator):
             return isherm
         if isherm:
             isherm = all(abs(np.imag(weight)) < QALMA_TOLERANCE for weight in weights)
-            if isherm is not None:
-                if isherm or len(weights) == 1:
-                    self._isherm = isherm
-                    return isherm
+            if isherm:
+                self._isherm = isherm
+                return isherm
         # A more drastic approach: convert it to a sum of products
         isherm = self.as_sum_of_products().simplify().isherm or False
         self._isherm = isherm
