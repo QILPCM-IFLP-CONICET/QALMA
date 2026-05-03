@@ -55,12 +55,8 @@ qalma.operators.quadratic
    :members:
    :undoc-members:
    :show-inheritance:
-
-.. automodule:: qalma.operators.quadratic.quadratic
-   :members:
-   :undoc-members:
-   :show-inheritance:
    :no-index:
+
 
 qalma.operators.qutip
 ---------------------
