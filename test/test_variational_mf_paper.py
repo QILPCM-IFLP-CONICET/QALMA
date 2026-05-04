@@ -118,7 +118,7 @@ def exact_free_energy(ham, system, beta: float) -> float:
     e0 = evals.min()
     # log Z = log Tr[exp(-beta*(H - e0))] + beta*e0  (shift cancels in ratio)
     log_Z = np.log(np.exp(-beta * (evals - e0)).sum()) + beta * e0
-    return -log_Z   # = -log Tr[exp(-beta*H)], in units of k = beta*H
+    return -log_Z  # = -log Tr[exp(-beta*H)], in units of k = beta*H
 
 
 def mf_free_energy(sigma, ham, beta: float) -> float:

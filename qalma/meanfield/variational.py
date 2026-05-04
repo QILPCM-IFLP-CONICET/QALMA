@@ -135,7 +135,7 @@ def compute_t_score(
         f"T-score: F_mf={f_mf:.6g} < F_exact={_f_exact:.6g} by {-delta:.2e}; "
         "this should not happen — check units or numerical precision."
     )
-    tscore = var_f / delta**2
+    tscore = size * var_f / delta**2
     return tscore, f_mf, var_f
 
 

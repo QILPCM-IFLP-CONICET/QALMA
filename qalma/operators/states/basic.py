@@ -256,7 +256,7 @@ class DensityOperatorMixin:
         ...     <= sigma_mixed.variational_free_energy(beta * ham)
         True
         """
-        return float(np.real(self.expect(ham + self.logm())))
+        return float(np.real(cast(complex, self.expect(ham + self.logm()))))
 
 
 class DensityOperatorProtocol(Protocol):
