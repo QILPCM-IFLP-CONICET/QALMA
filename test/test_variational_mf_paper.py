@@ -129,7 +129,7 @@ def t_score(sigma, ham, beta, f_exact: Optional[float]):
     """Compute the T-score associated to ham"""
     if f_exact is None:
         return None
-    return float(compute_t_score(sigma, ham * beta, f_exact)[0])
+    return float(compute_t_score(sigma, ham * beta, beta * f_exact)[0])
 
 
 # ---------------------------------------------------------------------------
