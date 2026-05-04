@@ -35,7 +35,6 @@ import pytest
 
 from qalma import graph_from_alps_xml, model_from_alps_xml
 from qalma.meanfield import (
-    compute_free_energy,
     compute_t_score,
     variational_quadratic_mfa,
 )
@@ -119,21 +118,24 @@ def exact_free_energy(ham, system, beta: float) -> float:
     e0 = evals.min()
     # log Z = log Tr[exp(-beta*(H - e0))] + beta*e0  (shift cancels in ratio)
     log_Z = np.log(np.exp(-beta * (evals - e0)).sum()) + beta * e0
-    return -log_Z   # = -log Tr[exp(-beta*H)], in units of k = beta*H
+    return -log_Z  # = -log Tr[exp(-beta*H)], in units of k = beta*H
 
 
 def mf_free_energy(sigma, ham, beta: float) -> float:
     """F_{mf} = Tr[sigma(log sigma + beta H)].
 
-    compute_free_energy returns Tr[sigma(log sigma + K)] with K = beta*H.
-    This equals F_exact + KL(sigma||rho), so it is always >= F_exact and
-    sufficient for comparing approximations at fixed (H, beta).
+    Equals S_rel(sigma || e^{-beta H}) up to the constant log Z,
+    which is sufficient for comparing approximations at fixed (H, beta).
     """
-    return float(np.real(compute_free_energy(sigma, beta * ham)))
+    return sigma.variational_free_energy(beta * ham)
 
 
 def t_score(sigma, ham, beta, f_exact: Optional[float]):
-    """Compute the T-score for sigma relative to exp(-beta*H).
+    """Compute the T-score associated to ham.
+
+    ``f_exact`` is the Helmholtz free energy F = -(1/beta)*log Z returned by
+    ``exact_free_energy``.  ``compute_t_score`` expects log Z = -beta * F,
+    so we convert here.
 
     Parameters
     ----------
@@ -149,7 +151,8 @@ def t_score(sigma, ham, beta, f_exact: Optional[float]):
     """
     if f_exact is None:
         return None
-    return float(compute_t_score(sigma, ham * beta, f_exact)[0])
+    log_z = -beta * f_exact  # log Tr[e^{-beta*H}]
+    return float(compute_t_score(sigma, ham * beta, log_z)[0])
 
 
 # ---------------------------------------------------------------------------

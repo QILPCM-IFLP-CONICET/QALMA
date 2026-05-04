@@ -204,6 +204,35 @@ class GibbsDensityOperator(DensityOperatorMixin, Operator):
         k = self.k
         return -k
 
+    def variational_free_energy(self, ham: Operator) -> float:
+        r"""Compute the variational free energy of ``ham`` under this state.
+
+        Overrides the base-class implementation with an analytic shortcut:
+        after normalization :math:`\mathrm{Tr}(e^{-K}) = 1`, so
+        :math:`\log\rho = -K` exactly and
+
+        .. math::
+
+            F_{\rm var}[\rho, H]
+                = \mathrm{Tr}[\rho\,(H + \log\rho)]
+                = \mathrm{Tr}[\rho\,(H - K)].
+
+        This avoids building the explicit :math:`H + \log\rho` operator.
+
+        Parameters
+        ----------
+        ham : Operator
+            The generator :math:`H` of the target Gibbs state.
+
+        Returns
+        -------
+        float
+            :math:`\mathrm{Tr}[\rho\,(H - K)]`.
+
+        """
+        self.normalize()
+        return float(np.real(self.expect(ham - self.k)))
+
     def normalize(self) -> Operator:
         r"""Normalize :math:`K` so that :math:`\\mathrm{Tr}(e^{-K}) = 1`.
 

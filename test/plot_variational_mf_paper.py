@@ -322,9 +322,7 @@ def plot_figure2(exact_data: list, out_dir: Path):
 
             # Row labels (beta) on leftmost column only
             if col_j == 0:
-                ax.set_ylabel(
-                    f"$T_{{\\rm score}}$\n($\\beta={beta}$)", fontsize=8
-                )
+                ax.set_ylabel(f"$T_{{\\rm score}}$\n($\\beta={beta}$)", fontsize=8)
 
             # x-axis label on bottom row only
             if row_i == n_betas - 1:
@@ -480,7 +478,7 @@ def plot_figure4(
     idx = index_nf(nf_data)
 
     j2_ratios = sorted({r["J2_over_J1"] for r in nf_data})
-    nf_vals   = sorted({r["numfields"]   for r in nf_data})
+    nf_vals = sorted({r["numfields"] for r in nf_data})
 
     fig, axes = plt.subplots(1, 2, figsize=(COL2, COL2 * 0.44))
 
@@ -500,7 +498,8 @@ def plot_figure4(
         if len(nfs) < 2:
             continue
         ax.plot(
-            nfs, ratios,
+            nfs,
+            ratios,
             color=J2_COLORS[i % len(J2_COLORS)],
             marker="o",
             label=f"$J_2/J_1={j2r:.1f}$",
@@ -531,7 +530,8 @@ def plot_figure4(
         if len(nfs) < 2:
             continue
         ax.plot(
-            nfs, var_fs,
+            nfs,
+            var_fs,
             color=J2_COLORS[i % len(J2_COLORS)],
             marker="o",
             label=f"$J_2/J_1={j2r:.1f}$",
@@ -609,9 +609,7 @@ def plot_figure5(nf_data: list, out_dir: Path):
         label="$J_2/J_1=0.5$ (critical)",
     )
     ax.set_xlabel(r"$J_2 / J_1$")
-    ax.set_ylabel(
-        rf"$\Delta F = F[\sigma_{{m=1}}] - F[\sigma_{{m={nf_max}}}]$"
-    )
+    ax.set_ylabel(rf"$\Delta F = F[\sigma_{{m=1}}] - F[\sigma_{{m={nf_max}}}]$")
     ax.set_title("Frustration detector")
     ax.legend(fontsize=7, ncol=2)
 
@@ -676,10 +674,7 @@ def print_summary_table(exact_data: list, nf_data: list):
     print("\n% --- Table 2: F vs numfields, J1-J2 (L=12, beta=5) ---")
     print(r"\begin{tabular}{lccccc}")
     print(r"\hline")
-    print(
-        r"$J_2/J_1$ & $F(m=1)$ & $F(m=4)$ & $F(m=10)$ & "
-        r"$\Delta F$ \\ \hline"
-    )
+    print(r"$J_2/J_1$ & $F(m=1)$ & $F(m=4)$ & $F(m=10)$ & " r"$\Delta F$ \\ \hline")
     j2_ratios = sorted({r["J2_over_J1"] for r in nf_data})
     idx_nf_map = index_nf(nf_data)
     for j2r in j2_ratios:

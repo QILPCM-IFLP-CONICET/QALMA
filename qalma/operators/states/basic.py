@@ -213,6 +213,51 @@ class DensityOperatorMixin:
         """Compute the trace of the operator."""
         return 1
 
+    def variational_free_energy(self, ham: "Operator") -> float:
+        r"""Compute the variational free energy of ``ham`` under this state.
+
+        Returns the relative entropy :math:`S(\sigma \| e^{-H})` of this
+        state :math:`\sigma` with respect to the Gibbs state
+        :math:`\rho = e^{-H} / Z`, up to the constant :math:`\log Z`:
+
+        .. math::
+
+            F_{\rm var}[\sigma, H]
+                = \mathrm{Tr}[\sigma\,(H + \log\sigma)]
+                = S(\sigma \| e^{-H}) - \log Z.
+
+        This quantity is an upper bound on the true free energy
+        :math:`-\log Z`, with equality if and only if :math:`\sigma = \rho`.
+        It is the objective minimized by the variational mean-field algorithms
+        in :mod:`qalma.meanfield.variational`.
+
+        Parameters
+        ----------
+        ham : Operator
+            The generator :math:`H` of the target Gibbs state
+            :math:`\rho \propto e^{-H}`.  Pass ``beta * H_physical`` to
+            include inverse temperature explicitly.
+
+        Returns
+        -------
+        float
+            :math:`\mathrm{Tr}[\sigma\,(H + \log\sigma)]`.
+
+        See Also
+        --------
+        qalma.meanfield.variational.compute_free_energy :
+            Module-level function that delegates to this method.
+
+        Examples
+        --------
+        >>> sigma_mixed = ProductDensityOperator({}, system=system)
+        >>> sigma_var = variational_quadratic_mfa(beta * ham)
+        >>> sigma_var.variational_free_energy(beta * ham) \
+        ...     <= sigma_mixed.variational_free_energy(beta * ham)
+        True
+        """
+        return float(np.real(cast(complex, self.expect(ham + self.logm()))))
+
 
 class DensityOperatorProtocol(Protocol):
     """Minimal interface of DensityOperators."""
