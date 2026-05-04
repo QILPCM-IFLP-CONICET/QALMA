@@ -454,102 +454,99 @@ def plot_figure3(
 
 
 # ---------------------------------------------------------------------------
-# Figure 4 — T-score vs numfields (J1-J2 chain)
+# Figure 4 — Variance ratio vs numfields (J1-J2 chain)
 # ---------------------------------------------------------------------------
 
 
 def plot_figure4(
     nf_data: list, out_dir: Path, L_plot: int = 12, beta_plot: float = 5.0
 ):
-    """T-score vs number of variational fields for each J2/J1 ratio.
+    """Variance ratio R_m = Var[sigma_m] / Var[sigma_SC] vs numfields.
 
-    The T-score stored in the data was computed using sigma(nf_max) as a
-    proxy for the exact Gibbs state, so it measures *relative* convergence
-    within the variational family rather than absolute approximation quality.
+    For large systems where F_exact is unavailable, R_m is a natural
+    convergence diagnostic:
+
+    * R_m = 1  at nf = 0 (the SC baseline, by construction).
+    * R_m < 1  means the variational state sigma_m has smaller fluctuations
+      of hat{F} than the SC state — a direct measure of improvement.
+    * R_m -> 0 would indicate convergence to the exact Gibbs state in
+      distribution.
 
     Two panels:
-    (a) T-score vs numfields -- one curve per J2/J1 ratio (log scale).
-        A rapidly decaying T-score indicates quick convergence in both the
-        energy and the fluctuation structure of the approximation.
-    (b) Normalized T-score: T(nf) / T(nf=1), showing the fraction of
-        residual fluctuations that remain at each field count.
+    (a) R_m vs numfields — one curve per J2/J1 ratio.
+    (b) Absolute Var[sigma_m] vs numfields on a log scale, showing the
+        raw scale of residual fluctuations across frustration regimes.
     """
     idx = index_nf(nf_data)
 
     j2_ratios = sorted({r["J2_over_J1"] for r in nf_data})
-    nf_vals = sorted({r["numfields"] for r in nf_data})
+    nf_vals   = sorted({r["numfields"]   for r in nf_data})
 
     fig, axes = plt.subplots(1, 2, figsize=(COL2, COL2 * 0.44))
 
-    # ---- Panel (a): absolute T-score vs numfields -------------------------
+    # ---- Panel (a): variance ratio R_m vs numfields -----------------------
     ax = axes[0]
 
     for i, j2r in enumerate(j2_ratios):
-        t_by_nf = {}
+        nfs, ratios = [], []
         for nf in nf_vals:
             key = (j2r, L_plot, beta_plot, nf)
-            if key in idx:
-                val = idx[key].get("T_score")
-                if val is not None:
-                    t_by_nf[nf] = val
-
-        if len(t_by_nf) < 2:
+            if key not in idx:
+                continue
+            val = idx[key].get("var_f_ratio")
+            if val is not None:
+                nfs.append(nf)
+                ratios.append(val)
+        if len(nfs) < 2:
             continue
-
-        nfs_plot = sorted(t_by_nf)
         ax.plot(
-            nfs_plot,
-            [t_by_nf[nf] for nf in nfs_plot],
+            nfs, ratios,
             color=J2_COLORS[i % len(J2_COLORS)],
             marker="o",
             label=f"$J_2/J_1={j2r:.1f}$",
         )
 
+    ax.axhline(1.0, color="0.55", linewidth=0.8, linestyle="--", label="SC baseline")
     ax.set_xlabel("Number of fields $m$")
-    ax.set_ylabel(r"$T_{\rm score}[\sigma_m\,|\,\sigma_{m_{\max}}]$")
-    ax.set_title(f"T-score convergence, $L={L_plot}$, $\beta={beta_plot}$")
-    ax.set_yscale("log")
+    ax.set_ylabel(
+        r"$R_m = \mathrm{Var}[\sigma_m]\,/\,\mathrm{Var}[\sigma_{\mathrm{SC}}]$"
+    )
+    ax.set_title(f"Variance ratio, $L={L_plot}$, $\beta={beta_plot}$")
     ax.legend(fontsize=7, ncol=2)
     ax.text(-0.18, 1.02, "(a)", transform=ax.transAxes, fontweight="bold")
 
-    # ---- Panel (b): normalized T-score vs numfields -----------------------
+    # ---- Panel (b): absolute Var[sigma_m] on log scale --------------------
     ax = axes[1]
 
     for i, j2r in enumerate(j2_ratios):
-        t_by_nf = {}
+        nfs, var_fs = [], []
         for nf in nf_vals:
             key = (j2r, L_plot, beta_plot, nf)
-            if key in idx:
-                val = idx[key].get("T_score")
-                if val is not None:
-                    t_by_nf[nf] = val
-
-        if 1 not in t_by_nf or t_by_nf[1] < 1e-12:
+            if key not in idx:
+                continue
+            val = idx[key].get("var_f")
+            if val is not None:
+                nfs.append(nf)
+                var_fs.append(val)
+        if len(nfs) < 2:
             continue
-
-        t_worst = t_by_nf[1]
-        nfs_plot = sorted(t_by_nf)
-        norm_t = [t_by_nf[nf] / t_worst for nf in nfs_plot]
-
         ax.plot(
-            nfs_plot,
-            norm_t,
+            nfs, var_fs,
             color=J2_COLORS[i % len(J2_COLORS)],
             marker="o",
             label=f"$J_2/J_1={j2r:.1f}$",
         )
 
-    ax.axhline(0.0, color="0.6", linewidth=0.7, linestyle="--")
     ax.set_xlabel("Number of fields $m$")
-    ax.set_ylabel(r"$T_{\rm score}[\sigma_m] \,/\, T_{\rm score}[\sigma_1]$")
-    ax.set_title(f"Normalized T-score, $L={L_plot}$, $\beta={beta_plot}$")
-    ax.set_ylim(-0.05, 1.15)
+    ax.set_ylabel(r"$\mathrm{Var}_{\sigma_m}[\hat{F}]$")
+    ax.set_title(f"Absolute variance, $L={L_plot}$, $\beta={beta_plot}$")
+    ax.set_yscale("log")
     ax.legend(fontsize=7, ncol=2)
     ax.text(-0.18, 1.02, "(b)", transform=ax.transAxes, fontweight="bold")
 
     fig.tight_layout()
     suffix = f"L{L_plot}_b{int(beta_plot)}"
-    out = out_dir / f"fig4_tscore_vs_numfields_{suffix}.pdf"
+    out = out_dir / f"fig4_variance_ratio_vs_numfields_{suffix}.pdf"
     fig.savefig(out)
     print(f"Saved {out}")
     plt.close(fig)
