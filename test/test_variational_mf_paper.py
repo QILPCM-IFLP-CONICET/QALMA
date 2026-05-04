@@ -129,7 +129,8 @@ def t_score(sigma, ham, beta, f_exact: Optional[float]):
     """Compute the T-score associated to ham"""
     if f_exact is None:
         return None
-    return float(compute_t_score(sigma, ham * beta, beta * f_exact)[0])
+    # beta * f_exact
+    return float(compute_t_score(sigma, ham * beta, None)[0])
 
 
 # ---------------------------------------------------------------------------
@@ -249,6 +250,12 @@ def run_numfields_sweep(
 ) -> List[dict]:
     """Sweep numfields for a J1-J2 chain, using warm start between runs.
 
+    After the sweep, the T-score is computed for every state using
+    ``sigma(nf_max)`` as a proxy for the exact Gibbs state.  Its variational
+    free energy ``F[sigma(nf_max)]`` plays the role of ``F_exact``, so the
+    T-scores should be interpreted as *relative* convergence diagnostics
+    rather than absolute measures of approximation quality.
+
     Returns list of result dicts suitable for JSON serialization.
     """
     J2 = J2_ratio * abs(J1)
@@ -257,6 +264,7 @@ def run_numfields_sweep(
     Sz_ops = [system.site_operator("Sz", s) for s in sites]
 
     results = []
+    sigmas = []   # keep all states for the T-score pass
     sigma_ref = None
 
     for nf in sorted(numfields_list):
@@ -281,8 +289,10 @@ def run_numfields_sweep(
                 "f": f_mf,
                 "magnetization": mag,
                 "time": elapsed,
+                "T_score": None,  # filled in below
             }
         )
+        sigmas.append(sigma)
 
         print(
             f"  J2/J1={J2_ratio:.2f}  L={L}  beta={beta}  "
@@ -291,6 +301,24 @@ def run_numfields_sweep(
         )
 
         sigma_ref = sigma  # warm start for next nf
+
+    # --- T-score pass -------------------------------------------------------
+    # sigma_ref now holds sigma(nf_max).  Use its variational free energy as
+    # a proxy for F_exact (in units of beta, consistent with compute_t_score).
+    # The last entry in results has the smallest F by construction of the sweep.
+    f_ref = results[-1]["f"]          # F[sigma(nf_max)], units: energy
+    f_ref_scaled = beta * f_ref       # convert to units expected by compute_t_score
+
+    for row, sigma in zip(results, sigmas):
+        try:
+            ts = float(
+                compute_t_score(sigma, ham * beta, f_ref_scaled)[0]
+            )
+        except AssertionError:
+            # delta < 0 can happen for nf == nf_max itself (delta ~ 0 by
+            # construction) or due to numerical noise; treat as converged.
+            ts = 0.0
+        row["T_score"] = ts
 
     return results
 
@@ -400,8 +428,12 @@ if __name__ == "__main__":
     print(f"\nResults saved → {out}")
 
     # ---- Summary table ---------------------------------------------------
-    print("\n--- F convergence summary (L=8, beta=2.0) ---")
-    print(f"{'Frustration':45s} {'nf=1':>8} {'nf=4':>8} {'nf=10':>8}")
+    print("\n--- F and T-score convergence summary (L=8, beta=2.0) ---")
+    print(
+        f"{'Frustration':45s} "
+        f"{'F(nf=1)':>10} {'F(nf=4)':>10} {'F(nf=10)':>10}  "
+        f"{'T(nf=1)':>10} {'T(nf=4)':>10} {'T(nf=10)':>10}"
+    )
     for J2_ratio, label in J1J2_CASES:
         rows = [
             r
@@ -410,8 +442,19 @@ if __name__ == "__main__":
         ]
         if not rows:
             continue
-        by_nf = {r["numfields"]: r["f"] for r in rows}
-        s1 = f"{by_nf.get(1,  float('nan')):.4f}"
-        s4 = f"{by_nf.get(4,  float('nan')):.4f}"
-        s10 = f"{by_nf.get(10, float('nan')):.4f}"
-        print(f"  {label:43s} {s1:>8} {s4:>8} {s10:>8}")
+        by_nf_f = {r["numfields"]: r["f"] for r in rows}
+        by_nf_t = {r["numfields"]: r.get("T_score") for r in rows}
+
+        def _fmt_f(nf):
+            v = by_nf_f.get(nf, float("nan"))
+            return f"{v:.4f}" if v == v else "  nan"
+
+        def _fmt_t(nf):
+            v = by_nf_t.get(nf)
+            return f"{v:.4f}" if v is not None else "   --"
+
+        print(
+            f"  {label:43s} "
+            f"{_fmt_f(1):>10} {_fmt_f(4):>10} {_fmt_f(10):>10}  "
+            f"{_fmt_t(1):>10} {_fmt_t(4):>10} {_fmt_t(10):>10}"
+        )

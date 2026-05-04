@@ -37,14 +37,14 @@ def compute_t_score(
 ):
     r"""Compute the T-score of a variational mean-field state.
 
-    The generator ``k`` absorbs the inverse temperature, i.e. the caller
-    should pass ``k = beta * H`` (``beta = 1`` is the natural convention
-    inside this module).
+    The convention in this module is that the generator ``k`` carries the
+    inverse temperature, i.e. the caller passes ``k = beta * H``.  The
+    target Gibbs state is :math:`\rho = e^{-k}/Z` with
+    :math:`Z = \mathrm{Tr}\,e^{-k}`.
 
-    Given a target state :math:`\rho = e^{-k}/Z` with
-    :math:`Z = \mathrm{Tr}\,e^{-k}`, and a trial product state
-    :math:`\sigma` with generator :math:`\kappa = -\log\sigma`, the T-score
-    quantifies how much the operator
+    Given a trial product state :math:`\sigma` with generator
+    :math:`\kappa = -\log\sigma`, the T-score quantifies how much the
+    operator
 
     .. math::
 
@@ -86,9 +86,9 @@ def compute_t_score(
         Should include the inverse temperature, i.e. ``k = beta * H``.
     _f_exact : float, optional
         The value :math:`-\log Z = -\log\mathrm{Tr}\,e^{-k}`, i.e. the
-        exact free energy in the units set by ``k``.  If not provided it
-        is computed by full diagonalization (only feasible for small
-        systems).
+        exact variational free energy in the units set by ``k``.  If not
+        provided it is computed by full diagonalization (only feasible for
+        small systems).
 
     Returns
     -------
@@ -126,17 +126,23 @@ def compute_t_score(
     kappa = -sigma.logm()
     f_hat = (k - kappa).simplify()
     mean_f, mean_fsq = cast(np.ndarray, sigma.expect([f_hat, f_hat**2]))
-    var_f = mean_fsq - mean_f**2
+    var_f = float(np.real(mean_fsq - mean_f**2))
     # if not given, compute
     if _f_exact is None:
-        _, _f_exact = safe_exp_and_normalize(k.to_qutip(tuple()))
+        # safe_exp_and_normalize(A) returns (exp(A)/Z, log Z).
+        # We need F_exact = -log Tr[exp(-k)], so we pass -k and negate:
+        #   log_prefactor = log Tr[exp(-k)] = log Z  =>  _f_exact = -log Z.
+        # This mirrors the convention in gibbs.py, where rho = exp(-k)/Z
+        # and safe_exp_and_normalize is always called with -k.
+        _, log_prefactor = safe_exp_and_normalize(-k.to_qutip(tuple()))
+        _f_exact = -log_prefactor
         k_acts_over = k.acts_over()
         _f_exact += sum(
             np.log(dim)
             for site, dim in k.system.dimensions.items()
             if site not in k_acts_over
         )
-    f_mf = mean_f
+    f_mf = float(np.real(mean_f))
     delta = f_mf - _f_exact
     if abs(delta) < 1e-15:
         return 0.0, f_mf, var_f

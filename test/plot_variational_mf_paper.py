@@ -322,7 +322,9 @@ def plot_figure2(exact_data: list, out_dir: Path):
 
             # Row labels (beta) on leftmost column only
             if col_j == 0:
-                ax.set_ylabel(f"$T_{{\\rm score}}$\n($\\beta={beta}$)", fontsize=8)
+                ax.set_ylabel(
+                    f"$T_{{\\rm score}}$\n($\\beta={beta}$)", fontsize=8
+                )
 
             # x-axis label on bottom row only
             if row_i == n_betas - 1:
@@ -461,105 +463,93 @@ def plot_figure4(
 ):
     """T-score vs number of variational fields for each J2/J1 ratio.
 
-    Shows how quickly the variational approximation converges (as measured
-    by the T-score) for different levels of frustration.
+    The T-score stored in the data was computed using sigma(nf_max) as a
+    proxy for the exact Gibbs state, so it measures *relative* convergence
+    within the variational family rather than absolute approximation quality.
 
     Two panels:
-    (a) T-score vs numfields — each curve is a J2/J1 ratio.
-    (b) Relative T-score improvement: (T(nf=1) - T(nf)) / T(nf=1),
-        showing the fraction of improvement captured by each field count.
+    (a) T-score vs numfields -- one curve per J2/J1 ratio (log scale).
+        A rapidly decaying T-score indicates quick convergence in both the
+        energy and the fluctuation structure of the approximation.
+    (b) Normalized T-score: T(nf) / T(nf=1), showing the fraction of
+        residual fluctuations that remain at each field count.
     """
     idx = index_nf(nf_data)
 
     j2_ratios = sorted({r["J2_over_J1"] for r in nf_data})
     nf_vals = sorted({r["numfields"] for r in nf_data})
 
-    # Collect T-score values (may be absent if F_exact was not computed)
-    # In Family 2 (J1-J2 chain) F_exact is not in the benchmark data,
-    # so T_score is not stored in those rows. We compute a proxy instead:
-    # the convergence residual  delta_F = F(nf) - F(nf_max), normalised by
-    # F(nf=1) - F(nf_max).  This is always available from the stored "f" field
-    # and serves as a well-defined convergence measure.
-
     fig, axes = plt.subplots(1, 2, figsize=(COL2, COL2 * 0.44))
 
-    # ---- Panel (a): absolute delta_F vs numfields -------------------------
+    # ---- Panel (a): absolute T-score vs numfields -------------------------
     ax = axes[0]
-    nf_max = max(nf_vals)
 
     for i, j2r in enumerate(j2_ratios):
-        # Gather f values indexed by nf
-        f_by_nf = {}
+        t_by_nf = {}
         for nf in nf_vals:
             key = (j2r, L_plot, beta_plot, nf)
             if key in idx:
-                f_by_nf[nf] = idx[key]["f"]
+                val = idx[key].get("T_score")
+                if val is not None:
+                    t_by_nf[nf] = val
 
-        if nf_max not in f_by_nf or 1 not in f_by_nf:
+        if len(t_by_nf) < 2:
             continue
 
-        f_ref = f_by_nf[nf_max]
-        nfs_plot = sorted(f_by_nf)
-        delta_f = [f_by_nf[nf] - f_ref for nf in nfs_plot]
-
+        nfs_plot = sorted(t_by_nf)
         ax.plot(
             nfs_plot,
-            delta_f,
+            [t_by_nf[nf] for nf in nfs_plot],
             color=J2_COLORS[i % len(J2_COLORS)],
             marker="o",
             label=f"$J_2/J_1={j2r:.1f}$",
         )
 
     ax.set_xlabel("Number of fields $m$")
-    ax.set_ylabel(r"$F[\sigma_m] - F[\sigma_{m_{\max}}]$")
-    ax.set_title(f"Convergence of $F$, $L={L_plot}$, $\\beta={beta_plot}$")
+    ax.set_ylabel(r"$T_{\rm score}[\sigma_m\,|\,\sigma_{m_{\max}}]$")
+    ax.set_title(f"T-score convergence, $L={L_plot}$, $\beta={beta_plot}$")
     ax.set_yscale("log")
     ax.legend(fontsize=7, ncol=2)
     ax.text(-0.18, 1.02, "(a)", transform=ax.transAxes, fontweight="bold")
 
-    # ---- Panel (b): relative improvement vs numfields ---------------------
+    # ---- Panel (b): normalized T-score vs numfields -----------------------
     ax = axes[1]
 
     for i, j2r in enumerate(j2_ratios):
-        f_by_nf = {}
+        t_by_nf = {}
         for nf in nf_vals:
             key = (j2r, L_plot, beta_plot, nf)
             if key in idx:
-                f_by_nf[nf] = idx[key]["f"]
+                val = idx[key].get("T_score")
+                if val is not None:
+                    t_by_nf[nf] = val
 
-        if nf_max not in f_by_nf or 1 not in f_by_nf:
+        if 1 not in t_by_nf or t_by_nf[1] < 1e-12:
             continue
 
-        f_ref = f_by_nf[nf_max]
-        f_worst = f_by_nf[1]
-        total_gain = f_worst - f_ref
-        if abs(total_gain) < 1e-12:
-            continue
-
-        nfs_plot = sorted(f_by_nf)
-        rel_improvement = [(f_worst - f_by_nf[nf]) / total_gain for nf in nfs_plot]
+        t_worst = t_by_nf[1]
+        nfs_plot = sorted(t_by_nf)
+        norm_t = [t_by_nf[nf] / t_worst for nf in nfs_plot]
 
         ax.plot(
             nfs_plot,
-            rel_improvement,
+            norm_t,
             color=J2_COLORS[i % len(J2_COLORS)],
             marker="o",
             label=f"$J_2/J_1={j2r:.1f}$",
         )
 
-    ax.axhline(1.0, color="0.6", linewidth=0.7, linestyle="--")
+    ax.axhline(0.0, color="0.6", linewidth=0.7, linestyle="--")
     ax.set_xlabel("Number of fields $m$")
-    ax.set_ylabel(
-        r"$\frac{F[\sigma_1] - F[\sigma_m]}{F[\sigma_1] - F[\sigma_{m_{\max}}]}$"
-    )
-    ax.set_title(f"Relative improvement, $L={L_plot}$, $\\beta={beta_plot}$")
+    ax.set_ylabel(r"$T_{\rm score}[\sigma_m] \,/\, T_{\rm score}[\sigma_1]$")
+    ax.set_title(f"Normalized T-score, $L={L_plot}$, $\beta={beta_plot}$")
     ax.set_ylim(-0.05, 1.15)
     ax.legend(fontsize=7, ncol=2)
     ax.text(-0.18, 1.02, "(b)", transform=ax.transAxes, fontweight="bold")
 
     fig.tight_layout()
     suffix = f"L{L_plot}_b{int(beta_plot)}"
-    out = out_dir / f"fig4_freeenergy_convergence_vs_numfields_{suffix}.pdf"
+    out = out_dir / f"fig4_tscore_vs_numfields_{suffix}.pdf"
     fig.savefig(out)
     print(f"Saved {out}")
     plt.close(fig)
@@ -622,7 +612,9 @@ def plot_figure5(nf_data: list, out_dir: Path):
         label="$J_2/J_1=0.5$ (critical)",
     )
     ax.set_xlabel(r"$J_2 / J_1$")
-    ax.set_ylabel(rf"$\Delta F = F[\sigma_{{m=1}}] - F[\sigma_{{m={nf_max}}}]$")
+    ax.set_ylabel(
+        rf"$\Delta F = F[\sigma_{{m=1}}] - F[\sigma_{{m={nf_max}}}]$"
+    )
     ax.set_title("Frustration detector")
     ax.legend(fontsize=7, ncol=2)
 
@@ -687,7 +679,10 @@ def print_summary_table(exact_data: list, nf_data: list):
     print("\n% --- Table 2: F vs numfields, J1-J2 (L=12, beta=5) ---")
     print(r"\begin{tabular}{lccccc}")
     print(r"\hline")
-    print(r"$J_2/J_1$ & $F(m=1)$ & $F(m=4)$ & $F(m=10)$ & " r"$\Delta F$ \\ \hline")
+    print(
+        r"$J_2/J_1$ & $F(m=1)$ & $F(m=4)$ & $F(m=10)$ & "
+        r"$\Delta F$ \\ \hline"
+    )
     j2_ratios = sorted({r["J2_over_J1"] for r in nf_data})
     idx_nf_map = index_nf(nf_data)
     for j2r in j2_ratios:
