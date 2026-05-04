@@ -2,6 +2,8 @@
 
 import logging
 import pickle
+
+from abc import abstractmethod
 from typing import Dict, Iterable, List, Optional, Protocol, Tuple, Union, cast, overload
 
 import numpy as np
@@ -205,6 +207,9 @@ class DensityOperatorMixin:
     def isherm(self):
         """Evaluate the isherm property."""
         return True
+
+    @abstractmethod
+    def logm(self) -> "Operator": ...
 
     def simplify(self):
         """Build an operator in a simplified representation."""
