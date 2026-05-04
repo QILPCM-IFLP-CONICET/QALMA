@@ -49,22 +49,23 @@ def compute_t_score(
 
     .. math::
 
-        T_{\rm score} = \frac{N \langle \hat{F}^2 \rangle_\sigma
-                              - \langle \hat{F} \rangle_\sigma^2}
-                             {\langle \hat{F} \rangle_\sigma^2}
-                       = \frac{\operatorname{Var}_\sigma(\hat{F})}
-                              {\langle \hat{F} \rangle_\sigma^2}
-
-    with :math:`N` the number of sites over which ``k`` acts.
+        T_{\rm score}
+            = \frac{\operatorname{Var}_\sigma(\hat{F})}
+                   {\langle \hat{F} \rangle_\sigma^2}
+            = \frac{\langle \hat{F}^2 \rangle_\sigma
+                    - \langle \hat{F} \rangle_\sigma^2}
+                   {\langle \hat{F} \rangle_\sigma^2}.
 
     The T-score is zero if and only if :math:`\hat{F}` is constant on the
-    support of :math:`\sigma`, which happens precisely when :math:`\sigma = \rho`.
-    It is therefore a *complementary* diagnostic to :math:`S_{\rm rel}`:
+    support of :math:`\sigma`, which happens precisely when
+    :math:`\sigma = \rho`.  It is therefore a *complementary* diagnostic
+    to the variational free energy :math:`F[\sigma]`:
 
-    * Large :math:`S_{\rm rel}`, small :math:`T_{\rm score}`:
-      systematic energy offset, shape is well captured.
-    * Small :math:`S_{\rm rel}`, large :math:`T_{\rm score}`:
-      large residual fluctuations despite a good average energy.
+    * Large :math:`F[\sigma]`, small :math:`T_{\rm score}`:
+      systematic energy offset, but the shape of the distribution is
+      well captured.
+    * Small :math:`F[\sigma]`, large :math:`T_{\rm score}`:
+      good average energy but large residual fluctuations.
 
     In the limit :math:`|k|, |\kappa|\rightarrow \infty`, :math:`|\kappa|/|k|\leq \infty`,
     :math:`T_{\rm score}\rightarrow V_{\rm score}=\frac{N\,\mathrm{Var}}{|E_{mf}-E_{gs}|^2}`
@@ -88,11 +89,12 @@ def compute_t_score(
         under :math:`\sigma` (without the :math:`\ln Z` shift).
         Useful as a sanity check.
     var_f : float
-        :math:`\operatorname{Var}_\sigma(\hat{F})` (numerator of T-score).
+        :math:`\operatorname{Var}_\sigma(\hat{F})`, the numerator of the
+        T-score.
 
     See Also
     --------
-    compute_free_energy : Computes :math:`F[\sigma] = \operatorname{Tr}[\sigma(K + \log\sigma)]`.
+    compute_free_energy : Computes :math:`F[\sigma] = \mathrm{Tr}[\sigma(k + \log\sigma)]`.
     variational_quadratic_mfa : Main variational solver.
 
     Examples
@@ -102,10 +104,12 @@ def compute_t_score(
     >>> system = build_system("chain lattice", "spin", L=6)
     >>> ham = system.global_operator("Hamiltonian")
     >>> sz_total = system.global_operator("Sz")
-    >>> tscore, mean_F, var_F = compute_tscore(GibbsProductDensityOperator(sz_total), sz_total)
+    >>> sigma = GibbsProductDensityOperator(sz_total)
+    >>> tscore, mean_F, var_F = compute_t_score(sigma, sz_total)
     >>> tscore
     0.0
-    >>> tscore, mean_F, var_F = compute_tscore(sz_total, ham)
+    >>> sigma_ham = GibbsProductDensityOperator(ham)
+    >>> tscore, mean_F, var_F = compute_t_score(sigma_ham, ham)
     >>> tscore
     0.0
     """
@@ -123,11 +127,15 @@ def compute_t_score(
             for site, dim in k.system.dimensions.items()
             if site not in k_acts_over
         )
-    f_mf = mean_f
+    f_mf = float(np.real(mean_f))
     delta = f_mf - _f_exact
-    if delta < 1e-15:
+    if abs(delta) < 1e-15:
         return 0.0, f_mf, var_f
-    tscore = (size * mean_fsq) / (delta) ** 2
+    assert delta > 0, (
+        f"T-score: F_mf={f_mf:.6g} < F_exact={_f_exact:.6g} by {-delta:.2e}; "
+        "this should not happen — check units or numerical precision."
+    )
+    tscore = var_f / delta**2
     return tscore, f_mf, var_f
 
 

@@ -188,7 +188,6 @@ class GibbsDensityOperator(DensityOperatorMixin, Operator):
 
         """
         self._free_energy = value
-        return self._free_energy
 
     def logm(self) -> Operator:
         r"""Return the matrix logarithm :math:`\\log\\rho = -K`.

@@ -103,19 +103,26 @@ def build_j1j2_chain(L: int, J1: float, J2: float) -> Tuple[SystemDescriptor, ob
 
 
 def exact_free_energy(ham, system, beta: float) -> float:
-    """Exact Helmholtz free energy F = -1/beta * log Z.
-    Only feasible for L <= 10 (Hilbert space dim = 2^L).
+    """Exact log-partition function -log Z for k = beta * H.
+
+    Returns the value expected by ``compute_t_score`` as ``_f_exact``:
+
+        -log Z = -log Tr[exp(-beta * H)]
+
+    Uses a numerically stable shift by the ground-state energy to avoid
+    overflow.  Only feasible for L <= 10 (Hilbert-space dim = 2^L).
     """
     sites = tuple(sorted(system.sites.keys()))
     ham_qutip = ham.to_qutip(sites)
     evals = ham_qutip.eigenenergies()
     e0 = evals.min()
-    log_Z = np.log(np.exp(-beta * (evals - e0)).sum())
-    return -(1.0 / beta) * log_Z - e0
+    # log Z = log Tr[exp(-beta*(H - e0))] + beta*e0  (shift cancels in ratio)
+    log_Z = np.log(np.exp(-beta * (evals - e0)).sum()) + beta * e0
+    return -log_Z   # = -log Tr[exp(-beta*H)], in units of k = beta*H
 
 
 def mf_free_energy(sigma, ham, beta: float) -> float:
-    """F_{mf}(sigma || e^{-beta H}) = Tr[sigma(log sigma + beta H)].
+    """F_{mf} = Tr[sigma(log sigma + beta H)].
 
     Equals S_rel(sigma || e^{-beta H}) up to the constant log Z,
     which is sufficient for comparing approximations at fixed (H, beta).
@@ -129,6 +136,18 @@ def t_score(sigma, ham, beta, f_exact: Optional[float]):
     ``f_exact`` is the Helmholtz free energy F = -(1/beta)*log Z returned by
     ``exact_free_energy``.  ``compute_t_score`` expects log Z = -beta * F,
     so we convert here.
+
+    Parameters
+    ----------
+    sigma : ProductDensityOperator
+        Trial state.
+    ham : Operator
+        Hamiltonian (without beta).
+    beta : float
+        Inverse temperature.
+    f_exact : float or None
+        -log Tr[exp(-beta*H)], as returned by ``exact_free_energy``.
+        If None, returns None (T-score not computed).
     """
     if f_exact is None:
         return None
@@ -245,6 +264,17 @@ NUMFIELDS_LIST = [1, 2, 3, 4, 6, 8, 10]
 J1 = -1.0  # AFM nearest-neighbor
 
 
+def _var_f(sigma, ham, beta: float) -> float:
+    """Var_sigma[hat{F}] = <(k - kappa)^2>_sigma - <k - kappa>_sigma^2.
+
+    Uses compute_t_score with no _f_exact so the variance is computed
+    internally without needing the exact partition function.  The mean
+    and variance are the second and third return values.
+    """
+    _, _, var = compute_t_score(sigma, ham * beta)
+    return float(np.real(var))
+
+
 def run_numfields_sweep(
     J2_ratio: float,
     L: int,
@@ -253,6 +283,24 @@ def run_numfields_sweep(
 ) -> List[dict]:
     """Sweep numfields for a J1-J2 chain, using warm start between runs.
 
+    For large systems where F_exact is not available, the quality of each
+    variational state sigma_m is characterised by two quantities:
+
+    * ``var_f``       Var_{sigma_m}[hat{F}], the variance of the log-ratio
+                      operator hat{F} = k - kappa_m under sigma_m.  This is
+                      the numerator of the T-score and is available without
+                      knowing F_exact.
+
+    * ``var_f_ratio`` Var_{sigma_m}[hat{F}] / Var_{sigma_SC}[hat{F}], the
+                      ratio of the variance of the variational state to that
+                      of the self-consistent (nf=0) baseline.  A value < 1
+                      means the variational method reduces the fluctuations of
+                      hat{F} relative to the SC solution; a value approaching
+                      0 indicates near-exact convergence in distribution.
+
+    Both quantities are intensive (scale as O(L) for local Hamiltonians) and
+    do not require F_exact, making them suitable for large systems.
+
     Returns list of result dicts suitable for JSON serialization.
     """
     J2 = J2_ratio * abs(J1)
@@ -260,8 +308,24 @@ def run_numfields_sweep(
     sites = list(system.sites.keys())
     Sz_ops = [system.site_operator("Sz", s) for s in sites]
 
+    # --- Self-consistent baseline (nf=0) -----------------------------------
+    t0 = time.perf_counter()
+    sigma_sc = variational_quadratic_mfa(
+        beta * ham,
+        numfields=0,
+        max_self_consistent_steps=100,
+    )
+    t_sc = time.perf_counter() - t0
+    f_sc = mf_free_energy(sigma_sc, ham, beta)
+    var_f_sc = _var_f(sigma_sc, ham, beta)
+
+    print(
+        f"  J2/J1={J2_ratio:.2f}  L={L}  beta={beta}  "
+        f"nf= 0 (SC):  F_mf={f_sc:.6f}  Var={var_f_sc:.4g}  t={t_sc:.2f}s"
+    )
+
     results = []
-    sigma_ref = None
+    sigma_ref = sigma_sc  # warm start from SC solution
 
     for nf in sorted(numfields_list):
         t0 = time.perf_counter()
@@ -274,6 +338,8 @@ def run_numfields_sweep(
         elapsed = time.perf_counter() - t0
 
         f_mf = mf_free_energy(sigma, ham, beta)
+        var_f = _var_f(sigma, ham, beta)
+        var_f_ratio = var_f / var_f_sc if var_f_sc > 1e-15 else None
         mag = [float(np.real(sigma.expect(sz))) for sz in Sz_ops]
 
         results.append(
@@ -283,14 +349,18 @@ def run_numfields_sweep(
                 "beta": beta,
                 "numfields": nf,
                 "f": f_mf,
+                "var_f": var_f,
+                "var_f_ratio": var_f_ratio,
                 "magnetization": mag,
                 "time": elapsed,
             }
         )
 
+        ratio_str = f"{var_f_ratio:.4f}" if var_f_ratio is not None else "  n/a"
         print(
             f"  J2/J1={J2_ratio:.2f}  L={L}  beta={beta}  "
-            f"nf={nf:2d}:  F_mf={f_mf:.6f}  t={elapsed:.2f}s  "
+            f"nf={nf:2d}:  F_mf={f_mf:.6f}  Var={var_f:.4g}  "
+            f"Var_ratio={ratio_str}  t={elapsed:.2f}s  "
             f"<Sz>=[{', '.join(f'{m:.3f}' for m in mag[:5])}...]"
         )
 
@@ -355,6 +425,8 @@ if __name__ == "__main__":
                 )
                 t_sc = time.perf_counter() - t0
 
+                # F_exact = -log Tr[exp(-beta*H)], same units as F_mixed/sc/var.
+                # This is what compute_t_score expects as _f_exact.
                 F_exact = exact_free_energy(ham, system, beta) if L <= 8 else None
 
                 row = {
@@ -375,7 +447,7 @@ if __name__ == "__main__":
                 all_results["exact_validation"].append(row)
 
                 print(
-                    f"  F: mixed={row['F_mixed']:.4f}  "
+                    f"  F [beta units]: mixed={row['F_mixed']:.4f}  "
                     f"SC={row['F_sc']:.4f}  "
                     f"var={row['F_variational']:.4f}  "
                     f"(t_var={t_var:.1f}s  t_sc={t_sc:.1f}s)"
@@ -404,8 +476,13 @@ if __name__ == "__main__":
     print(f"\nResults saved → {out}")
 
     # ---- Summary table ---------------------------------------------------
-    print("\n--- F convergence summary (L=8, beta=2.0) ---")
-    print(f"{'Frustration':45s} {'nf=1':>8} {'nf=4':>8} {'nf=10':>8}")
+    print("\n--- Convergence summary (L=8, beta=2.0) ---")
+    print(
+        f"{'Frustration':45s} "
+        f"{'F(nf=1)':>10} {'F(nf=4)':>10} {'F(nf=10)':>10}  "
+        f"{'R(nf=1)':>10} {'R(nf=4)':>10} {'R(nf=10)':>10}"
+    )
+    print(f"  {'':43s} {'--- F [beta*E] ---':>32}   {'--- Var_m/Var_SC ---':>32}")
     for J2_ratio, label in J1J2_CASES:
         rows = [
             r
@@ -414,8 +491,19 @@ if __name__ == "__main__":
         ]
         if not rows:
             continue
-        by_nf = {r["numfields"]: r["f"] for r in rows}
-        s1 = f"{by_nf.get(1,  float('nan')):.4f}"
-        s4 = f"{by_nf.get(4,  float('nan')):.4f}"
-        s10 = f"{by_nf.get(10, float('nan')):.4f}"
-        print(f"  {label:43s} {s1:>8} {s4:>8} {s10:>8}")
+        by_nf_f = {r["numfields"]: r["f"] for r in rows}
+        by_nf_r = {r["numfields"]: r.get("var_f_ratio") for r in rows}
+
+        def _fmt_f(nf):
+            v = by_nf_f.get(nf, float("nan"))
+            return f"{v:.4f}" if v == v else "  nan"
+
+        def _fmt_r(nf):
+            v = by_nf_r.get(nf)
+            return f"{v:.4f}" if v is not None else "   --"
+
+        print(
+            f"  {label:43s} "
+            f"{_fmt_f(1):>10} {_fmt_f(4):>10} {_fmt_f(10):>10}  "
+            f"{_fmt_r(1):>10} {_fmt_r(4):>10} {_fmt_r(10):>10}"
+        )
