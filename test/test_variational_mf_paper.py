@@ -28,14 +28,17 @@ import json
 import os
 import time
 from pathlib import Path
-from typing import List, Tuple
+from typing import List, Optional, Tuple
 
 import numpy as np
 import pytest
 
 from qalma import graph_from_alps_xml, model_from_alps_xml
-from qalma.meanfield import variational_quadratic_mfa
-from qalma.meanfield.variational import compute_free_energy
+from qalma.meanfield import (
+    compute_free_energy,
+    compute_t_score,
+    variational_quadratic_mfa,
+)
 from qalma.model import SystemDescriptor
 from qalma.operators.states import ProductDensityOperator
 
@@ -112,8 +115,8 @@ def exact_free_energy(ham, system, beta: float) -> float:
     return -(1.0 / beta) * log_Z - e0
 
 
-def s_rel(sigma, ham, beta: float) -> float:
-    """S_rel(sigma || e^{-beta H}) = Tr[sigma(log sigma + beta H)] + log Z.
+def mf_free_energy(sigma, ham, beta: float) -> float:
+    """F_{mf}(sigma || e^{-beta H}) = Tr[sigma(log sigma + beta H)].
 
     compute_free_energy returns Tr[sigma(log sigma + K)] with K = beta*H,
     which equals S_rel up to the constant log Z — sufficient for comparing
@@ -122,58 +125,70 @@ def s_rel(sigma, ham, beta: float) -> float:
     return float(np.real(compute_free_energy(sigma, beta * ham)))
 
 
+def t_score(sigma, ham, beta, f_exact: Optional[float]):
+    """Compute the T-score associated to ham"""
+    if f_exact is None:
+        return None
+    return float(compute_t_score(sigma, ham * beta, f_exact)[0])
+
+
 # ---------------------------------------------------------------------------
 # Family 1 — Validation against exact diagonalization
 # ---------------------------------------------------------------------------
 
 # (label, parms, L_list, beta_list)
+
+MF_LENGTH_TESTS = [8, 12, 16]
+LENGTHS_FOR_EXACT_TESTS = [4, 6, 8]
+BETAS = [0.5, 1.0, 2.0, 5.0]
+
 EXACT_CASES = [
     (
         "Ising transverse (Gamma=0.5J)",
         {"Jz": 1.0, "Jxy": 0.0, "Gamma": 0.5},
-        [4, 6, 8],
-        [0.5, 1.0, 2.0, 5.0],
+        LENGTHS_FOR_EXACT_TESTS,
+        BETAS,
     ),
     (
         "Ising transverse critical (Gamma=J)",
         {"Jz": 1.0, "Jxy": 0.0, "Gamma": 1.0},
-        [4, 6, 8],
+        LENGTHS_FOR_EXACT_TESTS,
         [0.5, 1.0, 2.0],
     ),
     (
         "XX chain",
         {"Jz": 0.0, "Jxy": 1.0},
-        [4, 6, 8],
-        [0.5, 1.0, 2.0, 5.0],
+        LENGTHS_FOR_EXACT_TESTS,
+        BETAS,
     ),
     (
         "XXX Heisenberg AFM",
         {"Jz": 1.0, "Jxy": 1.0},
-        [4, 6, 8],
-        [0.5, 1.0, 2.0, 5.0],
+        LENGTHS_FOR_EXACT_TESTS,
+        BETAS,
     ),
     (
         "XXX Heisenberg FM",
         {"Jz": -1.0, "Jxy": -1.0},
-        [4, 6, 8],
-        [0.5, 1.0, 2.0, 5.0],
+        LENGTHS_FOR_EXACT_TESTS,
+        BETAS,
     ),
     (
         "XYZ anisotropic (Jz=1, Jxy=0.5)",
         {"Jz": 1.0, "Jxy": 0.5},
-        [4, 6, 8],
-        [0.5, 1.0, 2.0],
+        LENGTHS_FOR_EXACT_TESTS,
+        BETAS,
     ),
 ]
 
 
 @pytest.mark.parametrize("label,parms,L_list,beta_list", EXACT_CASES)
-@pytest.mark.parametrize("L", [4, 6, 8])
-@pytest.mark.parametrize("beta", [0.5, 1.0, 2.0])
+@pytest.mark.parametrize("L", LENGTHS_FOR_EXACT_TESTS)
+@pytest.mark.parametrize("beta", BETAS)
 def test_exact_validation(label, parms, L_list, beta_list, L, beta):
     """Variational MF must improve over the fully mixed state.
 
-    The mixed state is the trivial upper bound on S_rel.
+    The mixed state is the trivial upper bound on F_mf.
     """
     if L not in L_list or beta not in beta_list:
         pytest.skip(f"Not in test matrix for {label}")
@@ -192,23 +207,23 @@ def test_exact_validation(label, parms, L_list, beta_list, L, beta):
         max_self_consistent_steps=100,
     )
 
-    s_mixed = s_rel(sigma_mixed, ham, beta)
-    s_sc = s_rel(sigma_sc, ham, beta)
-    s_var = s_rel(sigma_var, ham, beta)
+    f_mixed = mf_free_energy(sigma_mixed, ham, beta)
+    f_sc = mf_free_energy(sigma_sc, ham, beta)
+    f_var = mf_free_energy(sigma_var, ham, beta)
 
     print(f"\n{label}  L={L}  beta={beta}")
-    print(f"  S_rel mixed: {s_mixed:.6f}")
-    print(f"  S_rel SC:    {s_sc:.6f}")
-    print(f"  S_rel var:   {s_var:.6f}")
-    print(f"  Delta(var vs SC):   {s_sc - s_var:.6f}")
+    print(f"  F_mf mixed: {f_mixed:.6f}")
+    print(f"  F_mf SC:    {f_sc:.6f}")
+    print(f"  F_mf var:   {f_var:.6f}")
+    print(f"  Delta(var vs SC):   {f_sc - f_var:.6f}")
 
     assert (
-        s_var <= s_mixed + 1e-6
-    ), f"Variational ({s_var:.4f}) not better than mixed ({s_mixed:.4f})"
+        f_var <= f_mixed + 1e-6
+    ), f"Variational ({f_var:.4f}) not better than mixed ({f_mixed:.4f})"
 
 
 # ---------------------------------------------------------------------------
-# Family 2 — S_rel vs numfields for the J1-J2 chain
+# Family 2 — F_mf vs numfields for the J1-J2 chain
 # ---------------------------------------------------------------------------
 
 # (J2/J1, label)
@@ -254,7 +269,7 @@ def run_numfields_sweep(
         )
         elapsed = time.perf_counter() - t0
 
-        sr = s_rel(sigma, ham, beta)
+        f_mf = mf_free_energy(sigma, ham, beta)
         mag = [float(np.real(sigma.expect(sz))) for sz in Sz_ops]
 
         results.append(
@@ -263,7 +278,7 @@ def run_numfields_sweep(
                 "L": L,
                 "beta": beta,
                 "numfields": nf,
-                "s_rel": sr,
+                "f": f_mf,
                 "magnetization": mag,
                 "time": elapsed,
             }
@@ -271,7 +286,7 @@ def run_numfields_sweep(
 
         print(
             f"  J2/J1={J2_ratio:.2f}  L={L}  beta={beta}  "
-            f"nf={nf:2d}:  S_rel={sr:.6f}  t={elapsed:.2f}s  "
+            f"nf={nf:2d}:  F_mf={f_mf:.6f}  t={elapsed:.2f}s  "
             f"<Sz>=[{', '.join(f'{m:.3f}' for m in mag[:5])}...]"
         )
 
@@ -285,22 +300,21 @@ def run_numfields_sweep(
     reason="set BENCHMARKS=1 to run",
 )
 @pytest.mark.parametrize("J2_ratio,label", J1J2_CASES)
-@pytest.mark.parametrize("L", [8, 12, 16])
-@pytest.mark.parametrize("beta", [1.0, 2.0, 5.0])
+@pytest.mark.parametrize("L", MF_LENGTH_TESTS)
+@pytest.mark.parametrize("beta", BETAS)
 def test_numfields_convergence(J2_ratio, label, L, beta):
-    """S_rel must be non-increasing as numfields grows.
+    """F must be non-increasing as numfields grows.
 
     Tolerance of 1e-4 allows for numerical noise in the optimizer.
     """
     print(f"\n--- {label}  L={L}  beta={beta} ---")
     results = run_numfields_sweep(J2_ratio, L, beta)
-    s_rels = [r["s_rel"] for r in results]
-    for i in range(1, len(s_rels)):
+    fs = [r["f"] for r in results]
+    for i in range(1, len(fs)):
         nf_prev = results[i - 1]["numfields"]
         nf_curr = results[i]["numfields"]
-        assert s_rels[i] <= s_rels[i - 1] + 1e-4, (
-            f"S_rel increased: nf={nf_prev} → {nf_curr}  "
-            f"({s_rels[i-1]:.5f} → {s_rels[i]:.5f})"
+        assert fs[i] <= fs[i - 1] + 1e-4, (
+            f"F increased: nf={nf_prev} → {nf_curr}  " f"({fs[i-1]:.5f} → {fs[i]:.5f})"
         )
 
 
@@ -345,30 +359,33 @@ if __name__ == "__main__":
                     "L": L,
                     "beta": beta,
                     "F_exact": F_exact,
-                    "s_rel_mixed": s_rel(sigma_mixed, ham, beta),
-                    "s_rel_sc": s_rel(sigma_sc, ham, beta),
-                    "s_rel_variational": s_rel(sigma_var, ham, beta),
+                    "F_mixed": mf_free_energy(sigma_mixed, ham, beta),
+                    "F_sc": mf_free_energy(sigma_sc, ham, beta),
+                    "F_variational": mf_free_energy(sigma_var, ham, beta),
+                    "T_score_mixed": t_score(sigma_mixed, ham, beta, F_exact),
+                    "T_score_sc": t_score(sigma_sc, ham, beta, F_exact),
+                    "T_score_variational": t_score(sigma_var, ham, beta, F_exact),
                     "time_variational": t_var,
                     "time_sc": t_sc,
                 }
                 all_results["exact_validation"].append(row)
 
                 print(
-                    f"  S_rel: mixed={row['s_rel_mixed']:.4f}  "
-                    f"SC={row['s_rel_sc']:.4f}  "
-                    f"var={row['s_rel_variational']:.4f}  "
+                    f"  F: mixed={row['F_mixed']:.4f}  "
+                    f"SC={row['F_sc']:.4f}  "
+                    f"var={row['F_variational']:.4f}  "
                     f"(t_var={t_var:.1f}s  t_sc={t_sc:.1f}s)"
                     + (f"  F_exact={F_exact:.4f}" if F_exact is not None else "")
                 )
 
     # ---- Family 2 --------------------------------------------------------
     print("\n" + "=" * 70)
-    print("Family 2: S_rel vs numfields  (J1-J2 frustrated chain)")
+    print("Family 2: F vs numfields  (J1-J2 frustrated chain)")
     print("=" * 70)
 
     for J2_ratio, label in J1J2_CASES:
-        for L in [8, 12, 16]:
-            for beta in [1.0, 2.0, 5.0]:
+        for L in MF_LENGTH_TESTS:
+            for beta in BETAS:
                 print(f"\n{label}  L={L}  beta={beta}")
                 try:
                     rows = run_numfields_sweep(J2_ratio, L, beta)
@@ -383,7 +400,7 @@ if __name__ == "__main__":
     print(f"\nResults saved → {out}")
 
     # ---- Summary table ---------------------------------------------------
-    print("\n--- S_rel convergence summary (L=8, beta=2.0) ---")
+    print("\n--- F convergence summary (L=8, beta=2.0) ---")
     print(f"{'Frustration':45s} {'nf=1':>8} {'nf=4':>8} {'nf=10':>8}")
     for J2_ratio, label in J1J2_CASES:
         rows = [
@@ -393,7 +410,7 @@ if __name__ == "__main__":
         ]
         if not rows:
             continue
-        by_nf = {r["numfields"]: r["s_rel"] for r in rows}
+        by_nf = {r["numfields"]: r["f"] for r in rows}
         s1 = f"{by_nf.get(1,  float('nan')):.4f}"
         s4 = f"{by_nf.get(4,  float('nan')):.4f}"
         s10 = f"{by_nf.get(10, float('nan')):.4f}"
