@@ -231,7 +231,7 @@ class GibbsDensityOperator(DensityOperatorMixin, Operator):
 
         """
         self.normalize()
-        return float(np.real(self.expect(ham - self.k)))
+        return float(np.real(cast(complex, self.expect(ham - self.k))))
 
     def normalize(self) -> Operator:
         r"""Normalize :math:`K` so that :math:`\\mathrm{Tr}(e^{-K}) = 1`.

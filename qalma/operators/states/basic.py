@@ -213,7 +213,9 @@ class DensityOperatorMixin:
         """Compute the trace of the operator."""
         return 1
 
-    def variational_free_energy(self, ham: "Operator") -> float:
+    def variational_free_energy(
+        self: "DensityOperatorProtocol", ham: "Operator"
+    ) -> float:
         r"""Compute the variational free energy of ``ham`` under this state.
 
         Returns the relative entropy :math:`S(\sigma \| e^{-H})` of this
@@ -256,6 +258,7 @@ class DensityOperatorMixin:
         ...     <= sigma_mixed.variational_free_energy(beta * ham)
         True
         """
+        # assert hasattr(self, "logm")
         return float(np.real(cast(complex, self.expect(ham + self.logm()))))
 
 
@@ -286,6 +289,9 @@ class DensityOperatorProtocol(Protocol):
         _local_states: Optional[Dict[frozenset, "DensityOperatorProtocol"]] = None,
     ) -> Union[np.ndarray, dict, complex]:
         """Compute expectation values."""
+
+    def logm(self):
+        """Compute the logarithm of the operator"""
 
     def partial_trace(self, sites: Union[frozenset, SystemDescriptor]):
         """Compute the partial trace."""
