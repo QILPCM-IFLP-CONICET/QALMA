@@ -4,7 +4,6 @@ Build variational approximations to a Gibbsian state.
 """
 
 import logging
-from numbers import Complex, Real
 from typing import Callable, Optional, Tuple, cast
 
 import numpy as np
@@ -39,14 +38,14 @@ def compute_t_score(
 
     Given a target state :math:`\rho=e^{-k}/Z` with :math:`Z={\rm Tr}e^{-k}`,
     and a trial state :math:`\sigma = e^{-\kappa}/Z_{trial}`, with
-    :math:`Z_{trial}=e^{-\kappa}`, the T-score quantifies how much
+    :math:`Z_{trial}={\rm Tr}e^{-\kappa}`, the T-score quantifies how much
     the operator
 
     .. math::
 
-       \hat{F} = \ln(\sigma)-\ln(rho)=k-\kappa + \ln(Z/Z_{trial})
+       \hat{F} = \ln(\sigma)-\ln(\rho)=k-\kappa + \ln(Z/Z_{trial})
 
-    fluctuates relative to its mean value relative to :math:`\rho`:
+    fluctuates relative to its mean value under :math:`\sigma`:
 
     .. math::
 
@@ -67,27 +66,27 @@ def compute_t_score(
     * Small :math:`S_{\rm rel}`, large :math:`T_{\rm score}`:
       large residual fluctuations despite a good average energy.
 
-    In the limit :math:`|k|, |kappa|\rightarrow \infty`, :math:`|kappa|/|k|\leq \infty`,
-    :math:`T_{\rm score}\rightarrow V_{\rm score}=\frac{N Var}{|E_{mf}-E_{gs}|^2}`
+    In the limit :math:`|k|, |\kappa|\rightarrow \infty`, :math:`|\kappa|/|k|\leq \infty`,
+    :math:`T_{\rm score}\rightarrow V_{\rm score}=\frac{N\,\mathrm{Var}}{|E_{mf}-E_{gs}|^2}`
 
     Parameters
     ----------
-    kappa : Operator
-        The tryial generator.
-    k: Operator
-        The target generator.
-    _f_exact: Optional[float]
-        The value of :math:`-\ln({\rm Tr}e^{-k})`. If not given, its value
-        is computed.
+    sigma : GibbsProductDensityOperator | ProductDensityOperator
+        The trial (approximate) state.
+    k : Operator
+        The target generator: the exact state is :math:`\rho = e^{-k}/Z`.
+    _f_exact : Optional[float]
+        The value of :math:`\ln{\rm Tr}[e^{-k}]` (i.e. :math:`+\log Z_k`,
+        **positive** sign convention).  If not given, it is computed exactly.
 
     Returns
     -------
     tscore : float
         The T-score.  Always :math:`\ge 0`.
     f_mf : float
-        :math:`\langle \hat{F} \rangle_\sigma -\ln {\rm Tr }e^{-\kappa} = {\rm Tr}[\sigma(K-\kappa)]-\ln {\rm Tr }e^{-\kappa}`.
-        Useful as a sanity check (should equal :math:`S_{\rm rel}` up to a
-        constant :math:`\log Z_\sigma`).
+        :math:`{\rm Tr}[\sigma(k-\kappa)]`, the mean of :math:`\hat{F}`
+        under :math:`\sigma` (without the :math:`\ln Z` shift).
+        Useful as a sanity check.
     var_f : float
         :math:`\operatorname{Var}_\sigma(\hat{F})` (numerator of T-score).
 
@@ -115,9 +114,9 @@ def compute_t_score(
     mean_f, mean_fsq = cast(np.ndarray, sigma.expect([f_hat, f_hat**2]))
     size = len(f_hat.acts_over())
     var_f = mean_fsq - mean_f**2
-    # if not given, compute
+    # if not given, compute log Z_k = log Tr[e^{-k}]
     if _f_exact is None:
-        _, _f_exact = safe_exp_and_normalize(k.to_qutip(tuple()))
+        _, _f_exact = safe_exp_and_normalize(-k.to_qutip(tuple()))
         k_acts_over = k.acts_over()
         _f_exact += sum(
             np.log(dim)
@@ -133,27 +132,30 @@ def compute_t_score(
 
 
 def compute_free_energy(state: ProductDensityOperator, ham: Operator) -> float:
-    r"""Estimate the free energy of ``ham`` from an approximate Gibbs product state.
+    r"""Estimate the variational free energy of ``ham`` from an approximate state.
 
-    Computes the relative entropy :math:`S(\sigma | e^{-H})` of ``state``
-    with respect to the Gibbs state :math:`e^{-H}`.
+    Delegates to
+    :meth:`~qalma.operators.states.DensityOperatorMixin.variational_free_energy`.
+    Kept as a module-level function for backwards compatibility.
 
     Parameters
     ----------
-    state : GibbsProductDensityOperator
-        The reference (approximate) state.
+    state : ProductDensityOperator
+        The trial (approximate) state :math:`\sigma`.  If ``None``, the
+        fully mixed state is used.
     ham : Operator
-        The generator of the target state :math:`\\rho = e^{-H}`.
+        The generator :math:`H` of the target Gibbs state
+        :math:`\rho \propto e^{-H}`.
 
     Returns
     -------
     float
-        The relative entropy :math:`S(\\sigma | e^{-H}) = \\mathrm{Tr}[\\sigma (H + \\log \\sigma)]`.
+        :math:`\mathrm{Tr}[\sigma\,(H + \log\sigma)]`.
 
     """
     if state is None:
         state = ProductDensityOperator({}, system=ham.system)
-    return float(np.real(cast(Real | Complex, state.expect(ham + state.logm()))))
+    return state.variational_free_energy(ham)
 
 
 def mf_quadratic_form_exponential(
