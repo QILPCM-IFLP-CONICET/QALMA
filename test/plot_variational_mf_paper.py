@@ -277,30 +277,6 @@ def plot_figure1_Tscore(exact_data: list, out_dir: Path):
     ax.legend()
     ax.text(-0.18, 1.02, "(a)", transform=ax.transAxes, fontweight="bold")
 
-    # ---- Panel (b): quality ratio vs L, beta=5 ----------------------------
-    ax = axes[1]
-    beta_fixed = 5.0
-    models_to_show = [
-        "XX chain",
-        "XXX Heisenberg AFM",
-        "XXX Heisenberg FM",
-        "Ising transverse (Gamma=0.5J)",
-        "XYZ anisotropic (Jz=1, Jxy=0.5)",
-    ]
-    ls_cycle = ["-", "--", "-.", ":", (0, (3, 1, 1, 1))]
-    marker_cycle = ["o", "s", "^", "D", "v"]
-
-    for i, label in enumerate(models_to_show):
-        Ls, ratios = [], []
-        for row in exact_data:
-            if row["label"] != label or row["beta"] != beta_fixed:
-                continue
-            if row["F_mixed"] == 0:
-                continue
-            Ls.append(row["L"])
-            # ratios.append(row["T_score_variational"] / row["T_score_mixed"])
-
-
     ax.axhline(1.0, color="0.6", linewidth=0.8, linestyle="--")
     ax.set_xlabel(r"$L$")
     ax.set_ylabel(r"$S_{\rm rel}^{\rm var} / S_{\rm rel}^{\rm mixed}$")
@@ -313,6 +289,7 @@ def plot_figure1_Tscore(exact_data: list, out_dir: Path):
     fig.savefig(out)
     print(f"Saved {out}")
     plt.close(fig)
+
 
 # ---------------------------------------------------------------------------
 # Figure 2 — F vs numfields (J1-J2 chain)
