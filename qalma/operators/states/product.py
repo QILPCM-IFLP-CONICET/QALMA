@@ -82,7 +82,7 @@ class ProductDensityOperator(DensityOperatorMixin, ProductOperator):
                 if _qutip_factors is not None:
                     self.__dict__["site_factors_qutip"] = _qutip_factors
             else:
-                assert (z > 0 for z in local_zs.values())
+                assert all(z > 0 for z in local_zs.values())
                 local_states = {
                     site: sigma / local_zs[site] for site, sigma in local_states.items()
                 }

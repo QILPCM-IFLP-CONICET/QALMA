@@ -37,63 +37,74 @@ def compute_t_score(
 ):
     r"""Compute the T-score of a variational mean-field state.
 
-    Given a target state :math:`\rho=e^{-k}/Z` with :math:`Z={\rm Tr}e^{-k}`,
-    and a trial state :math:`\sigma = e^{-\kappa}/Z_{trial}`, with
-    :math:`Z_{trial}=e^{-\kappa}`, the T-score quantifies how much
-    the operator
+    The convention in this module is that the generator ``k`` carries the
+    inverse temperature, i.e. the caller passes ``k = beta * H``.  The
+    target Gibbs state is :math:`\rho = e^{-k}/Z` with
+    :math:`Z = \mathrm{Tr}\,e^{-k}`.
+
+    Given a trial product state :math:`\sigma` with generator
+    :math:`\kappa = -\log\sigma`, the T-score quantifies how much the
+    operator
 
     .. math::
 
-       \hat{F} = \ln(\sigma)-\ln(rho)=k-\kappa + \ln(Z/Z_{trial})
+       \hat{F} = \log\sigma - \log\rho = k - \kappa + \log(Z/Z_\sigma)
 
-    fluctuates relative to its mean value relative to :math:`\rho`:
+    fluctuates about its mean under :math:`\sigma`:
 
     .. math::
 
-        T_{\rm score} = \frac{N \langle \hat{F}^2 \rangle_\sigma
-                              - \langle \hat{F} \rangle_\sigma^2}
-                             {\langle \hat{F} \rangle_\sigma^2}
-                       = \frac{\operatorname{Var}_\sigma(\hat{F})}
-                              {\langle \hat{F} \rangle_\sigma^2}
-
-    with :math:`N` the number of sites over which ``k`` acts.
+        T_{\rm score}
+            = \frac{\operatorname{Var}_\sigma(\hat{F})}
+                   {\langle \hat{F} \rangle_\sigma^2}
+            = \frac{\langle \hat{F}^2 \rangle_\sigma
+                    - \langle \hat{F} \rangle_\sigma^2}
+                   {\langle \hat{F} \rangle_\sigma^2}.
 
     The T-score is zero if and only if :math:`\hat{F}` is constant on the
-    support of :math:`\sigma`, which happens precisely when :math:`\sigma = \rho`.
-    It is therefore a *complementary* diagnostic to :math:`S_{\rm rel}`:
+    support of :math:`\sigma`, which happens precisely when
+    :math:`\sigma = \rho`.  It is therefore a *complementary* diagnostic
+    to the variational free energy :math:`F[\sigma]`:
 
-    * Large :math:`S_{\rm rel}`, small :math:`T_{\rm score}`:
-      systematic energy offset, shape is well captured.
-    * Small :math:`S_{\rm rel}`, large :math:`T_{\rm score}`:
-      large residual fluctuations despite a good average energy.
+    * Large :math:`F[\sigma]`, small :math:`T_{\rm score}`:
+      systematic energy offset, but the shape of the distribution is
+      well captured.
+    * Small :math:`F[\sigma]`, large :math:`T_{\rm score}`:
+      good average energy but large residual fluctuations.
 
-    In the limit :math:`|k|, |kappa|\rightarrow \infty`, :math:`|kappa|/|k|\leq \infty`,
-    :math:`T_{\rm score}\rightarrow V_{\rm score}=\frac{N Var}{|E_{mf}-E_{gs}|^2}`
+    In the zero-temperature limit :math:`\beta \to \infty` the T-score
+    reduces to the variance-to-gap ratio
+    :math:`V_{\rm score} = \mathrm{Var}_\sigma(\hat{F})\,/\,|E_{\rm mf} - E_{\rm gs}|^2`.
 
     Parameters
     ----------
-    kappa : Operator
-        The tryial generator.
-    k: Operator
-        The target generator.
-    _f_exact: Optional[float]
-        The value of :math:`-\ln({\rm Tr}e^{-k})`. If not given, its value
-        is computed.
+    sigma : GibbsProductDensityOperator or ProductDensityOperator
+        The trial (approximate) product state.  Its generator
+        :math:`\kappa = -\log\sigma` is extracted via ``sigma.logm()``.
+    k : Operator
+        The generator of the target state :math:`\rho = e^{-k}/Z`.
+        Should include the inverse temperature, i.e. ``k = beta * H``.
+    _f_exact : float, optional
+        The value :math:`-\log Z = -\log\mathrm{Tr}\,e^{-k}`, i.e. the
+        exact variational free energy in the units set by ``k``.  If not
+        provided it is computed by full diagonalization (only feasible for
+        small systems).
 
     Returns
     -------
     tscore : float
         The T-score.  Always :math:`\ge 0`.
     f_mf : float
-        :math:`\langle \hat{F} \rangle_\sigma -\ln {\rm Tr }e^{-\kappa} = {\rm Tr}[\sigma(K-\kappa)]-\ln {\rm Tr }e^{-\kappa}`.
-        Useful as a sanity check (should equal :math:`S_{\rm rel}` up to a
-        constant :math:`\log Z_\sigma`).
+        :math:`\langle \hat{F} \rangle_\sigma = \mathrm{Tr}[\sigma(k - \kappa)]`,
+        the mean log-likelihood ratio.  Equals :math:`F[\sigma] - F_{\rm exact}`
+        up to the normalization constant :math:`\log Z_\sigma`.
     var_f : float
-        :math:`\operatorname{Var}_\sigma(\hat{F})` (numerator of T-score).
+        :math:`\operatorname{Var}_\sigma(\hat{F})`, the numerator of the
+        T-score.
 
     See Also
     --------
-    compute_free_energy : Computes :math:`F[\sigma] = \operatorname{Tr}[\sigma(K + \log\sigma)]`.
+    compute_free_energy : Computes :math:`F[\sigma] = \mathrm{Tr}[\sigma(k + \log\sigma)]`.
     variational_quadratic_mfa : Main variational solver.
 
     Examples
@@ -103,32 +114,43 @@ def compute_t_score(
     >>> system = build_system("chain lattice", "spin", L=6)
     >>> ham = system.global_operator("Hamiltonian")
     >>> sz_total = system.global_operator("Sz")
-    >>> tscore, mean_F, var_F = compute_tscore(GibbsProductDensityOperator(sz_total), sz_total)
+    >>> sigma = GibbsProductDensityOperator(sz_total)
+    >>> tscore, mean_F, var_F = compute_t_score(sigma, sz_total)
     >>> tscore
     0.0
-    >>> tscore, mean_F, var_F = compute_tscore(sz_total, ham)
+    >>> sigma_ham = GibbsProductDensityOperator(ham)
+    >>> tscore, mean_F, var_F = compute_t_score(sigma_ham, ham)
     >>> tscore
     0.0
     """
     kappa = -sigma.logm()
     f_hat = (k - kappa).simplify()
     mean_f, mean_fsq = cast(np.ndarray, sigma.expect([f_hat, f_hat**2]))
-    size = len(f_hat.acts_over())
-    var_f = mean_fsq - mean_f**2
+    var_f = float(np.real(mean_fsq - mean_f**2))
     # if not given, compute
     if _f_exact is None:
-        _, _f_exact = safe_exp_and_normalize(k.to_qutip(tuple()))
+        # safe_exp_and_normalize(A) returns (exp(A)/Z, log Z).
+        # We need F_exact = -log Tr[exp(-k)], so we pass -k and negate:
+        #   log_prefactor = log Tr[exp(-k)] = log Z  =>  _f_exact = -log Z.
+        # This mirrors the convention in gibbs.py, where rho = exp(-k)/Z
+        # and safe_exp_and_normalize is always called with -k.
+        _, log_prefactor = safe_exp_and_normalize(-k.to_qutip(tuple()))
+        _f_exact = -log_prefactor
         k_acts_over = k.acts_over()
         _f_exact += sum(
             np.log(dim)
             for site, dim in k.system.dimensions.items()
             if site not in k_acts_over
         )
-    f_mf = mean_f
+    f_mf = float(np.real(mean_f))
     delta = f_mf - _f_exact
-    if delta < 1e-15:
+    if abs(delta) < 1e-15:
         return 0.0, f_mf, var_f
-    tscore = (size * mean_fsq) / (delta) ** 2
+    assert delta > 0, (
+        f"T-score: F_mf={f_mf:.6g} < F_exact={_f_exact:.6g} by {-delta:.2e}; "
+        "this should not happen — check units or numerical precision."
+    )
+    tscore = var_f / delta**2
     return tscore, f_mf, var_f
 
 
