@@ -19,9 +19,117 @@ from qalma.operators.quadratic import (
 from qalma.operators.states import ProductDensityOperator
 from qalma.operators.states.gibbs import GibbsProductDensityOperator
 from qalma.projections import n_body_projection
+from qalma.qutip_tools.tools import safe_exp_and_normalize
 from qalma.settings import DEFAULT_MAX_NUMBER_OF_FIELDS, QALMA_TOLERANCE
 
-__all__ = ["compute_free_energy", "variational_quadratic_mfa", "self_consistent_mf"]
+__all__ = [
+    "compute_free_energy",
+    "compute_t_score",
+    "variational_quadratic_mfa",
+    "self_consistent_mf",
+]
+
+
+def compute_t_score(
+    sigma: GibbsProductDensityOperator | ProductDensityOperator,
+    k: Operator,
+    _f_exact: Optional[float] = None,
+):
+    r"""Compute the T-score of a variational mean-field state.
+
+    Given a target state :math:`\rho=e^{-k}/Z` with :math:`Z={\rm Tr}e^{-k}`,
+    and a trial state :math:`\sigma = e^{-\kappa}/Z_{trial}`, with
+    :math:`Z_{trial}=e^{-\kappa}`, the T-score quantifies how much
+    the operator
+
+    .. math::
+
+       \hat{F} = \ln(\sigma)-\ln(rho)=k-\kappa + \ln(Z/Z_{trial})
+
+    fluctuates relative to its mean value relative to :math:`\rho`:
+
+    .. math::
+
+        T_{\rm score} = \frac{N \langle \hat{F}^2 \rangle_\sigma
+                              - \langle \hat{F} \rangle_\sigma^2}
+                             {\langle \hat{F} \rangle_\sigma^2}
+                       = \frac{\operatorname{Var}_\sigma(\hat{F})}
+                              {\langle \hat{F} \rangle_\sigma^2}
+
+    with :math:`N` the number of sites over which ``k`` acts.
+
+    The T-score is zero if and only if :math:`\hat{F}` is constant on the
+    support of :math:`\sigma`, which happens precisely when :math:`\sigma = \rho`.
+    It is therefore a *complementary* diagnostic to :math:`S_{\rm rel}`:
+
+    * Large :math:`S_{\rm rel}`, small :math:`T_{\rm score}`:
+      systematic energy offset, shape is well captured.
+    * Small :math:`S_{\rm rel}`, large :math:`T_{\rm score}`:
+      large residual fluctuations despite a good average energy.
+
+    In the limit :math:`|k|, |kappa|\rightarrow \infty`, :math:`|kappa|/|k|\leq \infty`,
+    :math:`T_{\rm score}\rightarrow V_{\rm score}=\frac{N Var}{|E_{mf}-E_{gs}|^2}`
+
+    Parameters
+    ----------
+    kappa : Operator
+        The tryial generator.
+    k: Operator
+        The target generator.
+    _f_exact: Optional[float]
+        The value of :math:`-\ln({\rm Tr}e^{-k})`. If not given, its value
+        is computed.
+
+    Returns
+    -------
+    tscore : float
+        The T-score.  Always :math:`\ge 0`.
+    f_mf : float
+        :math:`\langle \hat{F} \rangle_\sigma -\ln {\rm Tr }e^{-\kappa} = {\rm Tr}[\sigma(K-\kappa)]-\ln {\rm Tr }e^{-\kappa}`.
+        Useful as a sanity check (should equal :math:`S_{\rm rel}` up to a
+        constant :math:`\log Z_\sigma`).
+    var_f : float
+        :math:`\operatorname{Var}_\sigma(\hat{F})` (numerator of T-score).
+
+    See Also
+    --------
+    compute_free_energy : Computes :math:`F[\sigma] = \operatorname{Tr}[\sigma(K + \log\sigma)]`.
+    variational_quadratic_mfa : Main variational solver.
+
+    Examples
+    --------
+    >>> from qalma import build_system
+    >>> from qalma.operators.states import GibbsProductDensityOperator
+    >>> system = build_system("chain lattice", "spin", L=6)
+    >>> ham = system.global_operator("Hamiltonian")
+    >>> sz_total = system.global_operator("Sz")
+    >>> tscore, mean_F, var_F = compute_tscore(GibbsProductDensityOperator(sz_total), sz_total)
+    >>> tscore
+    0.0
+    >>> tscore, mean_F, var_F = compute_tscore(sz_total, ham)
+    >>> tscore
+    0.0
+    """
+    kappa = -sigma.logm()
+    f_hat = (k - kappa).simplify()
+    mean_f, mean_fsq = cast(np.ndarray, sigma.expect([f_hat, f_hat**2]))
+    size = len(f_hat.acts_over())
+    var_f = mean_fsq - mean_f**2
+    # if not given, compute
+    if _f_exact is None:
+        _, _f_exact = safe_exp_and_normalize(k.to_qutip(tuple()))
+        k_acts_over = k.acts_over()
+        _f_exact += sum(
+            np.log(dim)
+            for site, dim in k.system.dimensions.items()
+            if site not in k_acts_over
+        )
+    f_mf = mean_f
+    delta = f_mf - _f_exact
+    if delta < 1e-15:
+        return 0.0, f_mf, var_f
+    tscore = (size * mean_fsq) / (delta) ** 2
+    return tscore, f_mf, var_f
 
 
 def compute_free_energy(state: ProductDensityOperator, ham: Operator) -> float:

@@ -2,15 +2,15 @@
 
 Reads benchmark_results/variational_mf_paper_results.json and produces:
 
-  Figure 1 — S_rel vs beta for all models (Family 1 validation)
-             Panel a: S_rel(mixed), S_rel(SC), S_rel(var) vs beta at fixed L
-             Panel b: S_rel(var)/S_rel(mixed) vs L at fixed beta (quality ratio)
+  Figure 1 — F vs beta for all models (Family 1 validation)
+             Panel a: F(mixed), F(SC), F(var) vs beta at fixed L
+             Panel b: F(var)/F(mixed) vs L at fixed beta (quality ratio)
 
-  Figure 2 — S_rel vs numfields for the J1-J2 chain (Family 2)
+  Figure 2 — F vs numfields for the J1-J2 chain (Family 2)
              Panel a: curves for each J2/J1 at fixed L and beta
              Panel b: magnetization pattern <Sz_i> for selected numfields
 
-  Figure 3 — Phase diagram proxy: S_rel(nf=1) - S_rel(nf=10) vs J2/J1
+  Figure 3 — Phase diagram proxy: F(nf=1) - F(nf=10) vs J2/J1
              Shows where extra fields matter most (frustration detector)
 
 Usage:
@@ -116,14 +116,14 @@ def index_nf(data: list) -> dict:
 
 def plot_figure1(exact_data: list, out_dir: Path):
     """Two panels:
-    (a) S_rel vs beta for a representative model (XXX AFM) at L=8
-    (b) S_rel(var) / S_rel(mixed) vs L at beta=2 for all models.
+    (a) F vs beta for a representative model (XXX AFM) at L=8
+    (b) F(var) / F(mixed) vs L at beta=2 for all models.
     """
     idx = index_exact(exact_data)
 
     fig, axes = plt.subplots(1, 2, figsize=(COL2, COL2 * 0.42))
 
-    # ---- Panel (a): S_rel vs beta, L=8, Ising transverse -----------------
+    # ---- Panel (a): F vs beta, L=8, Ising transverse -----------------
     ax = axes[0]
     model_label = "Ising transverse (Gamma=0.5J)"
     L_fixed = 8
@@ -136,9 +136,9 @@ def plot_figure1(exact_data: list, out_dir: Path):
         if key not in idx:
             continue
         row = idx[key]
-        s_mixed_vals.append(row["s_rel_mixed"])
-        s_sc_vals.append(row["s_rel_sc"])
-        s_var_vals.append(row["s_rel_variational"])
+        s_mixed_vals.append(row["F_mixed"])
+        s_sc_vals.append(row["F_sc"])
+        s_var_vals.append(row["F_variational"])
         valid_betas.append(beta)
 
     if valid_betas:
@@ -189,10 +189,10 @@ def plot_figure1(exact_data: list, out_dir: Path):
         for row in exact_data:
             if row["label"] != label or row["beta"] != beta_fixed:
                 continue
-            if row["s_rel_mixed"] == 0:
+            if row["F_mixed"] == 0:
                 continue
             Ls.append(row["L"])
-            ratios.append(row["s_rel_variational"] / row["s_rel_mixed"])
+            ratios.append(row["F_variational"] / row["F_mixed"])
         if Ls:
             # sort by L
             pairs = sorted(zip(Ls, ratios))
@@ -220,8 +220,102 @@ def plot_figure1(exact_data: list, out_dir: Path):
     plt.close(fig)
 
 
+def plot_figure1_Tscore(exact_data: list, out_dir: Path):
+    """Two panels:
+    (a) F vs beta for a representative model (XXX AFM) at L=8
+    (b) F(var) / F(mixed) vs L at beta=2 for all models.
+    """
+    idx = index_exact(exact_data)
+
+    fig, axes = plt.subplots(1, 2, figsize=(COL2, COL2 * 0.42))
+
+    # ---- Panel (a): F vs beta, L=8, Ising transverse -----------------
+    ax = axes[0]
+    model_label = "Ising transverse (Gamma=0.5J)"
+    L_fixed = 8
+    betas = sorted({row["beta"] for row in exact_data if row["label"] == model_label})
+
+    s_mixed_vals, s_sc_vals, s_var_vals = [], [], []
+    valid_betas = []
+    for beta in betas:
+        key = (model_label, L_fixed, beta)
+        if key not in idx:
+            continue
+        row = idx[key]
+        s_mixed_vals.append(row["T_score_mixed"])
+        s_sc_vals.append(row["T_score_sc"])
+        s_var_vals.append(row["T_score_variational"])
+        valid_betas.append(beta)
+
+    if valid_betas:
+        ax.plot(
+            valid_betas,
+            s_mixed_vals,
+            color=COLORS["mixed"],
+            marker=MARKERS["mixed"],
+            label="Mixed state",
+            linestyle="--",
+        )
+        ax.plot(
+            valid_betas,
+            s_sc_vals,
+            color=COLORS["sc"],
+            marker=MARKERS["sc"],
+            label="Self-consistent MF",
+        )
+        ax.plot(
+            valid_betas,
+            s_var_vals,
+            color=COLORS["var"],
+            marker=MARKERS["var"],
+            label="Variational MF",
+        )
+
+    ax.set_xlabel(r"$\beta$")
+    ax.set_ylabel(r"$T_{\rm score}(\sigma \| e^{-\beta H})$")
+    ax.set_title(f"Ising transverse ($\\Gamma=0.5J$), $L={L_fixed}$")
+    ax.legend()
+    ax.text(-0.18, 1.02, "(a)", transform=ax.transAxes, fontweight="bold")
+
+    # ---- Panel (b): quality ratio vs L, beta=5 ----------------------------
+    ax = axes[1]
+    beta_fixed = 5.0
+    models_to_show = [
+        "XX chain",
+        "XXX Heisenberg AFM",
+        "XXX Heisenberg FM",
+        "Ising transverse (Gamma=0.5J)",
+        "XYZ anisotropic (Jz=1, Jxy=0.5)",
+    ]
+    ls_cycle = ["-", "--", "-.", ":", (0, (3, 1, 1, 1))]
+    marker_cycle = ["o", "s", "^", "D", "v"]
+
+    for i, label in enumerate(models_to_show):
+        Ls, ratios = [], []
+        for row in exact_data:
+            if row["label"] != label or row["beta"] != beta_fixed:
+                continue
+            if row["F_mixed"] == 0:
+                continue
+            Ls.append(row["L"])
+            # ratios.append(row["T_score_variational"] / row["T_score_mixed"])
+
+
+    ax.axhline(1.0, color="0.6", linewidth=0.8, linestyle="--")
+    ax.set_xlabel(r"$L$")
+    ax.set_ylabel(r"$S_{\rm rel}^{\rm var} / S_{\rm rel}^{\rm mixed}$")
+    ax.set_title(r"Quality ratio, $\beta=5$")
+    ax.legend(fontsize=7)
+    ax.text(-0.18, 1.02, "(b)", transform=ax.transAxes, fontweight="bold")
+
+    fig.tight_layout()
+    out = out_dir / "fig1_tscore_validation.pdf"
+    fig.savefig(out)
+    print(f"Saved {out}")
+    plt.close(fig)
+
 # ---------------------------------------------------------------------------
-# Figure 2 — S_rel vs numfields (J1-J2 chain)
+# Figure 2 — F vs numfields (J1-J2 chain)
 # ---------------------------------------------------------------------------
 
 
@@ -229,7 +323,7 @@ def plot_figure2(
     nf_data: list, out_dir: Path, L_plot: int = 12, beta_plot: float = 5.0
 ):
     """Two panels:
-    (a) S_rel vs numfields for each J2/J1 at fixed L and beta
+    (a) F vs numfields for each J2/J1 at fixed L and beta
     (b) Magnetization pattern <Sz_i> for max frustration (J2/J1=0.5)
         at nf=1 vs nf=10.
     """
@@ -243,14 +337,14 @@ def plot_figure2(
     ax_left = fig.add_subplot(gs[0])
     ax_right = fig.add_subplot(gs[1])
 
-    # ---- Panel (a): S_rel vs numfields ------------------------------------
+    # ---- Panel (a): F vs numfields ------------------------------------
     for i, j2r in enumerate(j2_ratios):
         nfs, srels = [], []
         for nf in nf_vals:
             key = (j2r, L_plot, beta_plot, nf)
             if key in idx:
                 nfs.append(nf)
-                srels.append(idx[key]["s_rel"])
+                srels.append(idx[key]["f"])
         if nfs:
             ax_left.plot(
                 nfs,
@@ -317,12 +411,12 @@ def plot_figure2(
 
 
 # ---------------------------------------------------------------------------
-# Figure 3 — Frustration detector: Delta S_rel vs J2/J1
+# Figure 3 — Frustration detector: Delta F vs J2/J1
 # ---------------------------------------------------------------------------
 
 
 def plot_figure3(nf_data: list, out_dir: Path):
-    """Delta S_rel = S_rel(nf=1) - S_rel(nf=nf_max) as a function of J2/J1.
+    """Delta F = F(nf=1) - F(nf=nf_max) as a function of J2/J1.
     Large Delta means many fields are needed → frustrated region.
     One curve per (L, beta) combination.
     """
@@ -349,7 +443,7 @@ def plot_figure3(nf_data: list, out_dir: Path):
                 k1 = (j2r, L, beta, nf_min)
                 kmax = (j2r, L, beta, nf_max)
                 if k1 in idx and kmax in idx:
-                    deltas.append(idx[k1]["s_rel"] - idx[kmax]["s_rel"])
+                    deltas.append(idx[k1]["f"] - idx[kmax]["f"])
                     valid_j2.append(j2r)
             if valid_j2:
                 i = idx_color % len(ls_cycle)
@@ -391,7 +485,7 @@ def plot_figure3(nf_data: list, out_dir: Path):
 
 def print_summary_table(exact_data: list, nf_data: list):
     """Print a LaTeX-ready summary table for the paper appendix."""
-    print("\n% --- Table: S_rel for exact validation cases ---")
+    print("\n% --- Table: F for exact validation cases ---")
     print(r"\begin{tabular}{llccccc}")
     print(r"\hline")
     print(
@@ -414,9 +508,9 @@ def print_summary_table(exact_data: list, nf_data: list):
                 if key not in idx:
                     continue
                 row = idx[key]
-                sm = row["s_rel_mixed"]
-                ssc = row["s_rel_sc"]
-                sv = row["s_rel_variational"]
+                sm = row["F_mixed"]
+                ssc = row["F_sc"]
+                sv = row["F_variational"]
                 imp = (sm - sv) / sm * 100 if sm > 0 else 0
                 short = label.split("(")[0].strip()
                 print(
@@ -427,16 +521,16 @@ def print_summary_table(exact_data: list, nf_data: list):
     print(r"\hline")
     print(r"\end{tabular}")
 
-    print("\n% --- Table: S_rel vs numfields for J1-J2 (L=12, beta=5) ---")
+    print("\n% --- Table: F vs numfields for J1-J2 (L=12, beta=5) ---")
     print(r"\begin{tabular}{lcccc}")
     print(r"\hline")
     print(r"$J_2/J_1$ & $m=1$ & $m=4$ & $m=10$ & " r"$\Delta S_{\rm rel}$ \\ \hline")
     j2_ratios = sorted({r["J2_over_J1"] for r in nf_data})
     idx_nf = index_nf(nf_data)
     for j2r in j2_ratios:
-        s1 = idx_nf.get((j2r, 12, 5.0, 1), {}).get("s_rel", float("nan"))
-        s4 = idx_nf.get((j2r, 12, 5.0, 4), {}).get("s_rel", float("nan"))
-        s10 = idx_nf.get((j2r, 12, 5.0, 10), {}).get("s_rel", float("nan"))
+        s1 = idx_nf.get((j2r, 12, 5.0, 1), {}).get("f", float("nan"))
+        s4 = idx_nf.get((j2r, 12, 5.0, 4), {}).get("f", float("nan"))
+        s10 = idx_nf.get((j2r, 12, 5.0, 10), {}).get("f", float("nan"))
         delta = s1 - s10 if not (np.isnan(s1) or np.isnan(s10)) else float("nan")
         print(f"{j2r:.2f} & {s1:.4f} & {s4:.4f} & {s10:.4f} & " f"{delta:.4f} \\\\")
     print(r"\hline")
@@ -471,6 +565,7 @@ if __name__ == "__main__":
 
     if exact_data:
         plot_figure1(exact_data, out_dir)
+        plot_figure1_Tscore(exact_data, out_dir)
 
     if nf_data:
         plot_figure2(nf_data, out_dir, L_plot=12, beta_plot=5.0)
