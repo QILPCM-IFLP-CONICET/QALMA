@@ -18,6 +18,7 @@ each; click the link to open the rendered notebook.
    ../examples/examples
    ../examples/example_heisenberg_evolution
    ../examples/example_maxent_evolution
+   ../examples/example_chiral_variational_mf
 
 Running the examples locally
 ----------------------------
