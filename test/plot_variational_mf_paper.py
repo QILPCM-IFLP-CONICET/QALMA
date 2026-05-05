@@ -396,7 +396,7 @@ def plot_figure3(
 
     ax_left.set_xlabel("Number of fields $m$")
     ax_left.set_ylabel(r"$F[\sigma_m]$")
-    ax_left.set_title(f"J1-J2 chain, $L={L_plot}$, $\\beta={beta_plot}$")
+    ax_left.set_title(rf"J1-J2 chain, $L={L_plot}$, $\beta={beta_plot}$")
     ax_left.legend(fontsize=7, ncol=2)
     ax_left.text(-0.18, 1.02, "(a)", transform=ax_left.transAxes, fontweight="bold")
 
@@ -510,7 +510,7 @@ def plot_figure4(
     ax.set_ylabel(
         r"$R_m = \mathrm{Var}[\sigma_m]\,/\,\mathrm{Var}[\sigma_{\mathrm{SC}}]$"
     )
-    ax.set_title(f"Variance ratio, $L={L_plot}$, $\beta={beta_plot}$")
+    ax.set_title(rf"Variance ratio, $L={L_plot}$, $\beta={beta_plot}$")
     ax.legend(fontsize=7, ncol=2)
     ax.text(-0.18, 1.02, "(a)", transform=ax.transAxes, fontweight="bold")
 
@@ -539,13 +539,13 @@ def plot_figure4(
 
     ax.set_xlabel("Number of fields $m$")
     ax.set_ylabel(r"$\mathrm{Var}_{\sigma_m}[\hat{F}]$")
-    ax.set_title(f"Absolute variance, $L={L_plot}$, $\beta={beta_plot}$")
+    ax.set_title(rf"Absolute variance, $L={L_plot}$, $\beta={beta_plot}$")
     ax.set_yscale("log")
     ax.legend(fontsize=7, ncol=2)
     ax.text(-0.18, 1.02, "(b)", transform=ax.transAxes, fontweight="bold")
 
     fig.tight_layout()
-    suffix = f"L{L_plot}_b{int(beta_plot)}"
+    suffix = rf"L{L_plot}_b{int(beta_plot)}"
     out = out_dir / f"fig4_variance_ratio_vs_numfields_{suffix}.pdf"
     fig.savefig(out)
     print(f"Saved {out}")

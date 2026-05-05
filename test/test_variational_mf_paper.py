@@ -1,4 +1,4 @@
-r"""Benchmarks for the variational mean-field approximation — paper figures.
+"""Benchmarks for the variational mean-field approximation — paper figures.
 
 Two families of tests:
 
@@ -103,11 +103,9 @@ def build_j1j2_chain(L: int, J1: float, J2: float) -> Tuple[SystemDescriptor, ob
 
 
 def exact_free_energy(ham, system, beta: float) -> float:
-    """Exact log-partition function -log Z for k = beta * H.
+    """Exact free energy: F= - beta**-1 * log Z
 
-    Returns the value expected by ``compute_t_score`` as ``_f_exact``:
-
-        -log Z = -log Tr[exp(-beta * H)]
+        log Z = log Tr[exp(-beta * H)]
 
     Uses a numerically stable shift by the ground-state energy to avoid
     overflow.  Only feasible for L <= 10 (Hilbert-space dim = 2^L).
@@ -117,8 +115,8 @@ def exact_free_energy(ham, system, beta: float) -> float:
     evals = ham_qutip.eigenenergies()
     e0 = evals.min()
     # log Z = log Tr[exp(-beta*(H - e0))] + beta*e0  (shift cancels in ratio)
-    log_Z = np.log(np.exp(-beta * (evals - e0)).sum()) + beta * e0
-    return -log_Z  # = -log Tr[exp(-beta*H)], in units of k = beta*H
+    f = -np.log(np.exp(-beta * (evals - e0)).sum()) / beta + e0
+    return f
 
 
 def mf_free_energy(sigma, ham, beta: float) -> float:
@@ -151,8 +149,8 @@ def t_score(sigma, ham, beta, f_exact: Optional[float]):
     """
     if f_exact is None:
         return None
-    log_z = -beta * f_exact  # log Tr[e^{-beta*H}]
-    return float(compute_t_score(sigma, ham * beta, log_z)[0])
+    betaf_exact = beta * f_exact  # log Tr[e^{-beta*H}]
+    return float(compute_t_score(sigma, ham * beta, betaf_exact)[0])
 
 
 # ---------------------------------------------------------------------------
@@ -166,6 +164,12 @@ LENGTHS_FOR_EXACT_TESTS = [4, 6, 8]
 BETAS = [0.5, 1.0, 2.0, 5.0]
 
 EXACT_CASES = [
+    (
+        "Pure transverse field (J=0, Gamma=1.)",
+        {"Jz": 0.0, "Jxy": 0.0, "Gamma": 1.0},
+        [4],
+        [0.01],
+    ),
     (
         "Ising transverse (Gamma=0.5J)",
         {"Jz": 1.0, "Jxy": 0.0, "Gamma": 0.5},
@@ -271,7 +275,8 @@ def _var_f(sigma, ham, beta: float) -> float:
     internally without needing the exact partition function.  The mean
     and variance are the second and third return values.
     """
-    _, _, var = compute_t_score(sigma, ham * beta)
+    print("   @@ var_f:")
+    _, _, var = compute_t_score(sigma, ham * beta, -1e9)
     return float(np.real(var))
 
 
@@ -428,7 +433,8 @@ if __name__ == "__main__":
                 # F_exact = -log Tr[exp(-beta*H)], same units as F_mixed/sc/var.
                 # This is what compute_t_score expects as _f_exact.
                 F_exact = exact_free_energy(ham, system, beta) if L <= 8 else None
-
+                print("   @@ build row values")
+                assert F_exact < 0
                 row = {
                     "label": label,
                     "params": parms,
