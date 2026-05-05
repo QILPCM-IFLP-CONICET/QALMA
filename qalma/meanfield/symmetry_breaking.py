@@ -29,7 +29,7 @@ def _random_hermitian(d: int, rng: np.random.Generator) -> np.ndarray:
     """Return a random Hermitian matrix of size d with unit spectral norm."""
     A = rng.standard_normal((d, d)) + 1j * rng.standard_normal((d, d))
     H = (A + A.conj().T) / 2
-    norm = np.linalg.norm(H, ord=2)   # spectral norm = largest singular value
+    norm = np.linalg.norm(H, ord=2)  # spectral norm = largest singular value
     return H / norm if norm > 1e-15 else H
 
 
@@ -129,9 +129,7 @@ def symmetry_breaking_mfa(
         k_eps = k + perturbation
 
         # --- Step 2: first round on perturbed generator -------------------
-        sigma_eps = variational_quadratic_mfa(
-            k_eps, numfields=numfields, **kwargs
-        )
+        sigma_eps = variational_quadratic_mfa(k_eps, numfields=numfields, **kwargs)
 
         # --- Step 3: second round on original generator -------------------
         sigma = variational_quadratic_mfa(
@@ -146,9 +144,11 @@ def symmetry_breaking_mfa(
 
         if n_attempts > 1:
             import logging
+
             logging.info(
                 f"symmetry_breaking_mfa attempt {attempt + 1}/{n_attempts}: "
                 f"site={site}  F={f:.6f}  best={best_f:.6f}"
             )
 
+    assert best_sigma is not None
     return best_sigma
