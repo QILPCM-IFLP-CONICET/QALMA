@@ -9,7 +9,9 @@ to build and simulate many-body quantum systems.
 
    systems
    models
+   loop_operators
    operators
    states
    evolution
+   meanfield_variational
    examples
