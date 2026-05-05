@@ -122,7 +122,7 @@ def exact_free_energy(ham, system, beta: float) -> float:
     e0 = evals.min()
     log_Z_shift = np.log(np.exp(-beta * (evals - e0)).sum())
     # log_Z_shift = log Z + beta*e0  =>  -log Z = -log_Z_shift + beta*e0
-    return -log_Z_shift + beta * e0
+    return -log_Z_shift / beta + e0
 
 
 def mf_free_energy(sigma, ham, beta: float) -> float:
@@ -131,7 +131,7 @@ def mf_free_energy(sigma, ham, beta: float) -> float:
     Equals S_rel(sigma || e^{-beta H}) up to the constant log Z,
     which is sufficient for comparing approximations at fixed (H, beta).
     """
-    return sigma.variational_free_energy(beta * ham)
+    return sigma.variational_free_energy(beta * ham) / beta
 
 
 def t_score(sigma, ham, beta, f_exact: Optional[float]):
@@ -225,7 +225,7 @@ def test_exact_free_energy_noninteracting(L, beta, Gamma):
     For non-interacting spins the partition function factorises:
 
         Z = (2 cosh(beta * Gamma))^L
-        => -log Z = -L * log(2 * cosh(beta * Gamma))
+        => -log Z = -L * log(2 * cosh(beta * Gamma/2))
 
     This case also serves as a sanity check that F_exact <= F_mixed,
     since the mixed state has F_mixed = -L * log(2) and
@@ -241,7 +241,7 @@ def test_exact_free_energy_noninteracting(L, beta, Gamma):
     system, ham = build_nn_chain(L, parms)
 
     # --- Analytic reference -----------------------------------------------
-    f_analytic = -L * np.log(2 * np.cosh(beta * Gamma))
+    f_analytic = -L * np.log(2 * np.cosh(beta * Gamma / 2.0)) / beta
 
     # --- exact_free_energy ------------------------------------------------
     f_computed = exact_free_energy(ham, system, beta)
@@ -251,7 +251,7 @@ def test_exact_free_energy_noninteracting(L, beta, Gamma):
     )
 
     # --- F_exact <= F_mixed -----------------------------------------------
-    f_mixed = -L * np.log(2)  # = mf_free_energy(sigma_mixed, ham, beta)
+    f_mixed = -L * np.log(2) / beta  # = mf_free_energy(sigma_mixed, ham, beta)
     assert f_computed <= f_mixed + 1e-10, (
         f"F_exact={f_computed:.6f} > F_mixed={f_mixed:.6f} "
         f"(L={L}, beta={beta}, Gamma={Gamma})"

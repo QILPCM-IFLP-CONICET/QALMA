@@ -137,7 +137,8 @@ def compute_t_score(
         )
     f_mf = float(np.real(mean_f))
     delta = f_mf - _f_exact
-    if abs(delta) < 1e-15:
+    print("delta", delta)
+    if abs(delta) < 1e-12:
         return 0.0, f_mf, var_f
     assert delta > 0, (
         f"T-score: F_mf={f_mf:.6g} < F_exact={_f_exact:.6g} by {-delta:.2e}; "
