@@ -14,7 +14,7 @@ contribution.  A second round without the perturbation then refines the
 solution using the symmetry-broken state as a warm start.
 """
 
-from typing import Optional, Tuple
+from typing import Optional
 
 import numpy as np
 
@@ -41,7 +41,7 @@ def symmetry_breaking_mfa(
     n_attempts: int = 1,
     seed: Optional[int] = None,
     **kwargs,
-) -> Tuple[ProductDensityOperator, float]:
+) -> ProductDensityOperator:
     r"""Variational mean-field with a symmetry-breaking perturbation.
 
     Applies a small random Hermitian perturbation on a single randomly
@@ -95,11 +95,10 @@ def symmetry_breaking_mfa(
 
     Returns
     -------
-    sigma : ProductDensityOperator
-        The best variational product state found across all attempts.
-    f : float
-        Variational free energy :math:`F[\sigma] = \mathrm{Tr}[\sigma(k
-        + \log\sigma)]` of the returned state.
+    ProductDensityOperator
+        The best variational product state found across all attempts,
+        i.e. the one with the lowest variational free energy
+        :math:`F[\sigma] = \mathrm{Tr}[\sigma(k + \log\sigma)]`.
 
     See Also
     --------
@@ -109,11 +108,11 @@ def symmetry_breaking_mfa(
     Examples
     --------
     >>> from qalma.meanfield import symmetry_breaking_mfa
-    >>> sigma, f = symmetry_breaking_mfa(
+    >>> sigma = symmetry_breaking_mfa(
     ...     beta * ham, system,
     ...     numfields=6, epsilon=1e-3, n_attempts=3, seed=42,
     ... )
-    >>> print(f"F = {f:.6f}")
+    >>> print(f"F = {compute_free_energy(sigma, beta * ham):.6f}")
     """
     rng = np.random.default_rng(seed)
     sites = list(system.sites.keys())
@@ -130,12 +129,12 @@ def symmetry_breaking_mfa(
         k_eps = k + perturbation
 
         # --- Step 2: first round on perturbed generator -------------------
-        sigma_eps, _ = variational_quadratic_mfa(
+        sigma_eps = variational_quadratic_mfa(
             k_eps, numfields=numfields, **kwargs
         )
 
         # --- Step 3: second round on original generator -------------------
-        sigma, _ = variational_quadratic_mfa(
+        sigma = variational_quadratic_mfa(
             k, numfields=numfields, sigma_ref=sigma_eps, **kwargs
         )
 
@@ -152,4 +151,4 @@ def symmetry_breaking_mfa(
                 f"site={site}  F={f:.6f}  best={best_f:.6f}"
             )
 
-    return best_sigma, best_f
+    return best_sigma
