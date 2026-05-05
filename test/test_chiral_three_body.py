@@ -392,15 +392,16 @@ def test_exact_lower_bound(label, J, chi, L, beta):
 def test_numfields_convergence(label, J, chi, L, beta):
     """F_mf must be non-increasing as numfields grows."""
     results = run_numfields_sweep(L, J, chi, beta)
-    fs = [r["f"] for r in results if r["numfields"] > 0]
-    for i in range(1, len(fs)):
-        nf_prev = results[i]["numfields"]
-        nf_curr = results[i + 1]["numfields"]
-        assert fs[i] <= fs[i - 1] + 1e-4, (
+    # Solo los resultados con nf > 0, en orden
+    nf_results = [r for r in results if r["numfields"] > 0]
+    for i in range(1, len(nf_results)):
+        prev = nf_results[i - 1]
+        curr = nf_results[i]
+        assert curr["f"] <= prev["f"] + 1e-4, (
             f"{label}  L={L}  beta={beta}: "
-            f"F increased nf={nf_prev}→{nf_curr} ({fs[i-1]:.5f}→{fs[i]:.5f})"
+            f"F increased nf={prev['numfields']}→{curr['numfields']} "
+            f"({prev['f']:.5f}→{curr['f']:.5f})"
         )
-
 
 # ---------------------------------------------------------------------------
 # Benchmark runner
