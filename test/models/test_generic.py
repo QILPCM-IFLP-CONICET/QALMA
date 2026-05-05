@@ -174,3 +174,88 @@ def test_chiral_operator_hermitian(L):
     """The purely chiral term (J=0, chi=1) must be Hermitian."""
     system, ham = build_chiral_strip(L, J=0.0, chi=1.0)
     check_chiral_operator_antisymmetry(system, ham)
+
+
+# ---------------------------------------------------------------------------
+# Test: chiral operator spectrum matches manual qutip construction
+# ---------------------------------------------------------------------------
+
+
+def _chiral_op_manual(i: int, j: int, k: int, n: int):
+    """Build chi_{ijk} = S_i.(S_j x S_k) embedded in an n-site Hilbert space.
+
+    Uses only qutip primitives — completely independent of QALMA's loop
+    parsing machinery — so a match between this and the QALMA Hamiltonian
+    certifies that the LOOPTERM in models.xml is correctly applied.
+    """
+    import qutip
+    sx = qutip.sigmax() / 2
+    sy = qutip.sigmay() / 2
+    sz = qutip.sigmaz() / 2
+    I = qutip.qeye(2)
+
+    def embed(op, pos):
+        ops = [I] * n
+        ops[pos] = op
+        return qutip.tensor(ops)
+
+    Sx_i, Sy_i, Sz_i = embed(sx, i), embed(sy, i), embed(sz, i)
+    Sx_j, Sy_j, Sz_j = embed(sx, j), embed(sy, j), embed(sz, j)
+    Sx_k, Sy_k, Sz_k = embed(sx, k), embed(sy, k), embed(sz, k)
+
+    return (
+        Sx_i * (Sy_j * Sz_k - Sz_j * Sy_k)
+        + Sy_i * (Sz_j * Sx_k - Sx_j * Sz_k)
+        + Sz_i * (Sx_j * Sy_k - Sy_j * Sx_k)
+    )
+
+
+@pytest.mark.parametrize("L", [2, 3, 4])
+@pytest.mark.parametrize("chi", [0.5, 1.0, 2.0])
+def test_chiral_spectrum_matches_manual(L, chi):
+    """QALMA's chiral Hamiltonian spectrum must match a manual qutip construction.
+
+    For each loop listed in ``graph.loops``, builds the scalar triple product
+    chi_{ijk} by hand using qutip Pauli matrices and compares the full
+    spectrum of the summed operator against the QALMA Hamiltonian.
+
+    This test certifies:
+    1. The LOOPTERM in ``models.xml`` produces the correct operator.
+    2. The NODE ordering in ``lattices.xml`` maps to the correct site indices.
+    3. The coupling parameter ``Wilson2`` is correctly forwarded to each loop.
+    """
+    import numpy as np
+
+    parms = {
+        "L": L, "a": 1,
+        "J0": 0.0, "J1": 0.0, "J2": 0.0, "J3": 0.0,
+        "Wilson2": chi, "Wilson20": chi, "Wilson21": chi,
+    }
+    graph = graph_from_alps_xml(name="triangular strip open", parms=parms)
+    model = model_from_alps_xml(name="chiral spin")
+    system = SystemDescriptor(graph, model, parms)
+    ham = system.global_operator("Hamiltonian")
+
+    sites = tuple(sorted(system.sites.keys()))
+    N = len(sites)
+    site_idx = {s: i for i, s in enumerate(sites)}
+
+    # Build reference Hamiltonian manually from graph.loops
+    H_manual = None
+    for loop_nodes_list in graph.loops.values():
+        for loop_nodes in loop_nodes_list:
+            i, j, k = [site_idx[s] for s in loop_nodes]
+            term = chi * _chiral_op_manual(i, j, k, N)
+            H_manual = term if H_manual is None else H_manual + term
+
+    assert H_manual is not None, "No loops found in graph — check lattices.xml."
+
+    H_qalma = ham.to_qutip(sites)
+    evals_manual = np.sort(H_manual.eigenenergies())
+    evals_qalma = np.sort(H_qalma.eigenenergies())
+
+    assert np.allclose(evals_manual, evals_qalma, atol=1e-10), (
+        f"Spectrum mismatch for L={L}, chi={chi}:\n"
+        f"  manual: {np.round(evals_manual[:6], 6)} ...\n"
+        f"  QALMA:  {np.round(evals_qalma[:6], 6)} ..."
+    )

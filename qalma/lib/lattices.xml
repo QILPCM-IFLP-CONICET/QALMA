@@ -848,4 +848,32 @@
  
 
 
+
+<!-- Single isolated triangle with a loop — for unit-testing the chiral
+     three-body operator against analytic eigenvalues ±√3/4.
+     The unit cell has 3 vertices, 3 bonds, and 1 loop.
+     Use L=1 with this lattice to get exactly 3 sites. -->
+<UNITCELL name="single triangle" dimension="1" vertices="3">
+  <VERTEX><COORDINATE>0    0</COORDINATE></VERTEX>
+  <VERTEX><COORDINATE>0.5  1</COORDINATE></VERTEX>
+  <VERTEX><COORDINATE>1    0</COORDINATE></VERTEX>
+  <EDGE type="0"><SOURCE vertex="1" offset="0"/><TARGET vertex="2" offset="0"/></EDGE>
+  <EDGE type="0"><SOURCE vertex="2" offset="0"/><TARGET vertex="3" offset="0"/></EDGE>
+  <EDGE type="0"><SOURCE vertex="3" offset="0"/><TARGET vertex="1" offset="0"/></EDGE>
+  <LOOP type="0">
+    <NODE vertex="1" offset="0"/>
+    <NODE vertex="2" offset="0"/>
+    <NODE vertex="3" offset="0"/>
+  </LOOP>
+</UNITCELL>
+
+<LATTICEGRAPH name="single triangle">
+  <FINITELATTICE>
+    <LATTICE ref="chain lattice"/>
+    <EXTENT dimension="1" size="1"/>
+    <BOUNDARY type="open"/>
+  </FINITELATTICE>
+  <UNITCELL ref="single triangle"/>
+</LATTICEGRAPH>
+
 </LATTICES>
