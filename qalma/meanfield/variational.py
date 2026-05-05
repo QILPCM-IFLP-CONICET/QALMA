@@ -154,50 +154,55 @@ def compute_variance(
 ) -> float:
     r"""Variance of the log-ratio operator :math:`\hat{F} = k - \kappa` under :math:`\sigma`.
 
-    Computes
+        Computes
 
-    .. math::
+        .. math::
 
-        \operatorname{Var}_\sigma(\hat{F})
-            = \langle \hat{F}^2 angle_\sigma - \langle \hat{F} angle_\sigma^2
+            \operatorname{Var}_\sigma(\hat{F})
+                = \langle \hat{F}^2
+    angle_\sigma - \langle \hat{F}
+    angle_\sigma^2
 
-    where :math:`\kappa = -\log\sigma` is the generator of the trial state
-    and :math:`k` is the generator of the target Gibbs state
-    :math:`ho = e^{-k}/Z`.
+        where :math:`\kappa = -\log\sigma` is the generator of the trial state
+        and :math:`k` is the generator of the target Gibbs state
+        :math:`
+    ho = e^{-k}/Z`.
 
-    This is the numerator of the T-score (see :func:`compute_t_score`) and
-    is available without knowing the exact partition function :math:`Z`.
-    It is an intensive quantity when normalised by the system size :math:`N`
-    and serves as a convergence diagnostic for large systems where full
-    diagonalisation is not feasible.
+        This is the numerator of the T-score (see :func:`compute_t_score`) and
+        is available without knowing the exact partition function :math:`Z`.
+        It is an intensive quantity when normalised by the system size :math:`N`
+        and serves as a convergence diagnostic for large systems where full
+        diagonalisation is not feasible.
 
-    Parameters
-    ----------
-    sigma : GibbsProductDensityOperator or ProductDensityOperator
-        The trial (approximate) product state.  Its generator
-        :math:`\kappa = -\log\sigma` is extracted via ``sigma.logm()``.
-    k : Operator
-        The generator of the target state :math:`ho = e^{-k}/Z`.
-        Should include the inverse temperature, i.e. ``k = beta * H``.
+        Parameters
+        ----------
+        sigma : GibbsProductDensityOperator or ProductDensityOperator
+            The trial (approximate) product state.  Its generator
+            :math:`\kappa = -\log\sigma` is extracted via ``sigma.logm()``.
+        k : Operator
+            The generator of the target state :math:`
+    ho = e^{-k}/Z`.
+            Should include the inverse temperature, i.e. ``k = beta * H``.
 
-    Returns
-    -------
-    float
-        :math:`\operatorname{Var}_\sigma(\hat{F}) \ge 0`.
+        Returns
+        -------
+        float
+            :math:`\operatorname{Var}_\sigma(\hat{F}) \ge 0`.
 
-    See Also
-    --------
-    compute_t_score : T-score, which normalises this variance by
-        :math:`N\,\langle\hat{F}angle_\sigma^2`.
-    compute_free_energy : Variational free energy
-        :math:`F[\sigma] = \mathrm{Tr}[\sigma(k + \log\sigma)]`.
+        See Also
+        --------
+        compute_t_score : T-score, which normalises this variance by
+            :math:`N\,\langle\hat{F}
+    angle_\sigma^2`.
+        compute_free_energy : Variational free energy
+            :math:`F[\sigma] = \mathrm{Tr}[\sigma(k + \log\sigma)]`.
 
-    Examples
-    --------
-    >>> from qalma.operators.states import GibbsProductDensityOperator
-    >>> sigma = GibbsProductDensityOperator(k)
-    >>> compute_variance(sigma, k)
-    0.0
+        Examples
+        --------
+        >>> from qalma.operators.states import GibbsProductDensityOperator
+        >>> sigma = GibbsProductDensityOperator(k)
+        >>> compute_variance(sigma, k)
+        0.0
     """
     kappa = -sigma.logm()
     f_hat = (k - kappa).simplify()

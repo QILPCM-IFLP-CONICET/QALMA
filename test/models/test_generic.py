@@ -189,13 +189,14 @@ def _chiral_op_manual(i: int, j: int, k: int, n: int):
     certifies that the LOOPTERM in models.xml is correctly applied.
     """
     import qutip
+
     sx = qutip.sigmax() / 2
     sy = qutip.sigmay() / 2
     sz = qutip.sigmaz() / 2
-    I = qutip.qeye(2)
+    identity = qutip.qeye(2)
 
     def embed(op, pos):
-        ops = [I] * n
+        ops = [identity] * n
         ops[pos] = op
         return qutip.tensor(ops)
 
@@ -227,9 +228,15 @@ def test_chiral_spectrum_matches_manual(L, chi):
     import numpy as np
 
     parms = {
-        "L": L, "a": 1,
-        "J0": 0.0, "J1": 0.0, "J2": 0.0, "J3": 0.0,
-        "Wilson2": chi, "Wilson20": chi, "Wilson21": chi,
+        "L": L,
+        "a": 1,
+        "J0": 0.0,
+        "J1": 0.0,
+        "J2": 0.0,
+        "J3": 0.0,
+        "Wilson2": chi,
+        "Wilson20": chi,
+        "Wilson21": chi,
     }
     graph = graph_from_alps_xml(name="triangular strip open", parms=parms)
     model = model_from_alps_xml(name="chiral spin")
