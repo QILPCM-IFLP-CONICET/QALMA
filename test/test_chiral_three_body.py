@@ -339,6 +339,9 @@ def test_variational_improves_over_mixed(label, J, chi, L, beta):
         abs(f_mixed - f_mixed_ref) < 1e-8
     ), f"Mixed free energy mismatch: got {f_mixed:.8f}, expected {f_mixed_ref:.8f}"
 
+    # Add a small perturbation in a single site to favor
+    # a symmetry breaking
+    ham = ham + system.site_operator("Sx", "1[0]") * 0.001
     sigma_var = variational_quadratic_mfa(
         beta * ham,
         numfields=4,
@@ -364,6 +367,9 @@ def test_exact_lower_bound(label, J, chi, L, beta):
     system, ham = build_chiral_strip(L, J=J, chi=chi)
 
     f_exact = exact_free_energy(ham, system, beta)
+    # Add a small perturbation in a single site to favor
+    # a symmetry breaking
+    ham = ham + system.site_operator("Sx", "1[0]") * 0.001
     sigma_var = variational_quadratic_mfa(
         beta * ham,
         numfields=4,
@@ -449,10 +455,15 @@ def run_numfields_sweep(
     """
     system, ham = build_chiral_strip(L, J=J, chi=chi, boundary=boundary)
     sites = list(system.sites.keys())
+    # Add a small perturbation in a single site to favor
+    # a symmetry breaking
     Sz_ops = [system.site_operator("Sz", s) for s in sites]
 
     # --- Self-consistent baseline (nf=0) ---
     t0 = time.perf_counter()
+    # Add a small perturbation in a single site to favor
+    # a symmetry breaking
+    ham = ham + system.site_operator("Sx", "1[0]") * 0.001
     sigma_sc = variational_quadratic_mfa(
         beta * ham,
         numfields=0,
@@ -488,6 +499,9 @@ def run_numfields_sweep(
 
     for nf in nf_list_positive:
         t0 = time.perf_counter()
+        # Add a small perturbation in a single site to favor
+        # a symmetry breaking
+        ham = ham + system.site_operator("Sx", "1[0]") * 0.001
         sigma = variational_quadratic_mfa(
             beta * ham,
             numfields=nf,
@@ -553,6 +567,7 @@ if __name__ == "__main__":
                 sigma_mixed = ProductDensityOperator({}, system=system)
 
                 t0 = time.perf_counter()
+                ham = ham + system.site_operator("Sx", "1[0]") * 0.001
                 sigma_var = variational_quadratic_mfa(
                     beta * ham, numfields=6, max_self_consistent_steps=30
                 )
