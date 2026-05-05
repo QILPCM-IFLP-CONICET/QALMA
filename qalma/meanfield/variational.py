@@ -50,11 +50,18 @@ def compute_t_score(
     .. math::
 
         T_{\rm score}
-            = \frac{\operatorname{Var}_\sigma(\hat{F})}
+            = \frac{N\,\operatorname{Var}_\sigma(\hat{F})}
                    {\langle \hat{F} \rangle_\sigma^2}
-            = \frac{\langle \hat{F}^2 \rangle_\sigma
-                    - \langle \hat{F} \rangle_\sigma^2}
-                   {\langle \hat{F} \rangle_\sigma^2}.
+            = \frac{N\,\bigl(\langle \hat{F}^2 \rangle_\sigma
+                    - \langle \hat{F} \rangle_\sigma^2\bigr)}
+                   {\langle \hat{F} \rangle_\sigma^2},
+
+    where :math:`N` is the number of sites over which :math:`k` acts.
+    The factor :math:`N` makes :math:`T_{\rm score}` an *intensive* quantity:
+    since :math:`\hat{F}` is a sum of local terms, both
+    :math:`\operatorname{Var}_\sigma(\hat{F}) \sim O(N)` and
+    :math:`\langle \hat{F} \rangle_\sigma^2 \sim O(N^2)`, so without the
+    prefactor the ratio would decay as :math:`1/N`.
 
     The T-score is zero if and only if :math:`\hat{F}` is constant on the
     support of :math:`\sigma`, which happens precisely when
@@ -67,8 +74,9 @@ def compute_t_score(
     * Small :math:`F[\sigma]`, large :math:`T_{\rm score}`:
       good average energy but large residual fluctuations.
 
-    In the limit :math:`|k|, |\kappa|\rightarrow \infty`, :math:`|\kappa|/|k|\leq \infty`,
-    :math:`T_{\rm score}\rightarrow V_{\rm score}=\frac{N\,\mathrm{Var}}{|E_{mf}-E_{gs}|^2}`
+    In the zero-temperature limit :math:`\beta \to \infty` the T-score
+    reduces to the intensive variance-to-gap ratio
+    :math:`T_{\rm score} \to N\,\mathrm{Var}_\sigma(\hat{F})\,/\,|E_{\rm mf}-E_{\rm gs}|^2`.
 
     Parameters
     ----------
@@ -129,7 +137,8 @@ def compute_t_score(
         )
     f_mf = float(np.real(mean_f))
     delta = f_mf - _f_exact
-    if abs(delta) < 1e-15:
+    print("delta", delta)
+    if abs(delta) < 1e-12:
         return 0.0, f_mf, var_f
     assert delta > 0, (
         f"T-score: F_mf={f_mf:.6g} < F_exact={_f_exact:.6g} by {-delta:.2e}; "

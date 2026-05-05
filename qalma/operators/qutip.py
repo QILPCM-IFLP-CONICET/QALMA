@@ -20,8 +20,8 @@ from qalma.operators.product import (
 from qalma.qutip_tools.tools import (
     decompose_qutip_operator,
     decompose_qutip_operator_hermitian,
-    empty_op,
     is_diagonal_op,
+    is_empty_op,
     scalar_value,
 )
 
@@ -218,7 +218,7 @@ class QutipOperator(Operator):
     @property
     def is_zero(self) -> bool:
         """Check if the matrix is zero."""
-        return not (self.prefactor) or empty_op(self.operator)
+        return not (self.prefactor) or is_empty_op(self.operator)
 
     def logm(self):
         """Compute the logarithm of the operator."""
@@ -382,7 +382,7 @@ class QutipOperator(Operator):
         assert len(names) > 0
 
         # If is an empty op, return a ScalarOperator
-        if empty_op(qt_operator):
+        if is_empty_op(qt_operator):
             return ScalarOperator(0.0, self.system)
 
         if len(names) > 1:

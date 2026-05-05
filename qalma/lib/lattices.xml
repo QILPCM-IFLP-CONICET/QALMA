@@ -757,4 +757,95 @@
   <UNITCELL ref="NaTS"/>
 </LATTICEGRAPH>
 
+
+
+
+<!--
+  Tira triangular (triangular strip), ancho 2.
+ 
+  La celda unitaria tiene dos vértices dispuestos en los dos "legs" de la tira:
+    vertex 1  →  leg inferior (fila 0)
+    vertex 2  →  leg superior (fila 1)
+ 
+  Geometría de los bordes (todos los enlaces NN de la tira triangular):
+    type 0  →  horizontal inferior:   1[i] – 1[i+1]
+    type 1  →  horizontal superior:   2[i] – 2[i+1]
+    type 2  →  vertical (rungs):      1[i] – 2[i]
+    type 3  →  diagonal "/":          1[i] – 2[i+1]   (o bien 2[i] – 1[i+1])
+ 
+  Los LOOP definen los triángulos que indexan el término quiral.
+  Con la orientación elegida (anti-horaria vista desde arriba):
+ 
+    LOOP type "0"  →  triángulo "up"   = { 1[i], 2[i], 1[i+1] }
+    LOOP type "1"  →  triángulo "down" = { 1[i], 2[i+1], 2[i] }
+                                         (i.e. el mismo triángulo recorrido
+                                          en sentido opuesto, útil para
+                                          verificar antisimetría)
+ 
+  Con condición de borde periódica a lo largo de la tira (dimensión 1),
+  se obtienen exactamente L triángulos "up" y L triángulos "down".
+  Con condición abierta se obtienen L-1 de cada tipo.
+-->
+ 
+<UNITCELL name="triangular strip" dimension="1">
+  <!-- Dos sitios por celda: leg 0 (abajo) y leg 1 (arriba) -->
+  <VERTEX><COORDINATE>0   0</COORDINATE></VERTEX>
+  <VERTEX><COORDINATE>0   1</COORDINATE></VERTEX>
+ 
+  <!-- NN bonds: horizontal inferior -->
+  <EDGE type="0"><SOURCE vertex="1" offset="0"/><TARGET vertex="1" offset="1"/></EDGE>
+  <!-- NN bonds: horizontal superior -->
+  <EDGE type="1"><SOURCE vertex="2" offset="0"/><TARGET vertex="2" offset="1"/></EDGE>
+  <!-- NN bonds: rungs verticales -->
+  <EDGE type="2"><SOURCE vertex="1" offset="0"/><TARGET vertex="2" offset="0"/></EDGE>
+  <!-- NN bonds: diagonales "/" -->
+  <EDGE type="3"><SOURCE vertex="1" offset="0"/><TARGET vertex="2" offset="1"/></EDGE>
+ 
+  <!--
+    Triángulos "up":  1[i] → 2[i] → 1[i+1]   (orientación anti-horaria)
+    En el LOOPTERM los índices se mapean en el orden en que aparecen los NODEs:
+      primer  NODE → índice i   del LOOPTERM
+      segundo NODE → índice j
+      tercer  NODE → índice k
+  -->
+  <LOOP type="0">
+    <NODE vertex="1" offset="0"/>
+    <NODE vertex="2" offset="0"/>
+    <NODE vertex="1" offset="1"/>
+  </LOOP>
+ 
+  <!--
+    Triángulos "down": 1[i] → 2[i+1] → 2[i]  (orientación anti-horaria)
+  -->
+  <LOOP type="1">
+    <NODE vertex="1" offset="0"/>
+    <NODE vertex="2" offset="1"/>
+    <NODE vertex="2" offset="0"/>
+  </LOOP>
+</UNITCELL>
+ 
+ 
+<!-- LatticeGraph periódico (condición de borde PBC a lo largo de la tira) -->
+<LATTICEGRAPH name="triangular strip periodic">
+  <FINITELATTICE>
+    <LATTICE ref="chain lattice"/>
+    <EXTENT dimension="1" size="L"/>
+    <BOUNDARY type="periodic"/>
+  </FINITELATTICE>
+  <UNITCELL ref="triangular strip"/>
+</LATTICEGRAPH>
+ 
+<!-- LatticeGraph con bordes abiertos -->
+<LATTICEGRAPH name="triangular strip open">
+  <FINITELATTICE>
+    <LATTICE ref="chain lattice"/>
+    <EXTENT dimension="1" size="L"/>
+    <BOUNDARY type="open"/>
+  </FINITELATTICE>
+  <UNITCELL ref="triangular strip"/>
+</LATTICEGRAPH>
+ 
+ 
+
+
 </LATTICES>

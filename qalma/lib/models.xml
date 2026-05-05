@@ -312,7 +312,9 @@
 
 <GLOBALOPERATOR name="loop_term">
   <LOOPTERM indices="i j k">
-    (Sx(i)*Sy(j)*Sz(k) - Sx(i)*Sz(j)*Sy(k) +Sz(i)*Sx(j)*Sy(k) - Sz(i)*Sx(j)*Sy(k) +Sy(i)*Sz(j)*Sx(k) - Sy(i)*Sx(j)*Sz(k) )
+    (Sx(i)*Sy(j)*Sz(k) - Sx(i)*Sz(j)*Sy(k)
+    +Sz(i)*Sx(j)*Sy(k) - Sz(i)*Sy(j)*Sx(k)
+    +Sy(i)*Sz(j)*Sx(k) - Sy(i)*Sx(j)*Sz(k) )
   </LOOPTERM>
 </GLOBALOPERATOR>
 
@@ -648,6 +650,82 @@
   <LOOPTERM indices="i j k">
     <PARAMETER name="Wilson#" default="Wilson"/>
     Wilson# *  (Sx(i)*Sy(j)*Sz(k) - Sx(i)*Sz(j)*Sy(k) +Sz(i)*Sx(j)*Sy(k) - Sz(i)*Sx(j)*Sy(k) +Sy(i)*Sz(j)*Sx(k) - Sy(i)*Sx(j)*Sz(k) )
+  </LOOPTERM>
+</HAMILTONIAN>
+
+
+
+
+<!--
+  Hamiltoniano quiral de tres cuerpos para la tira triangular.
+ 
+  H = J2 * sum_triangles  vec{s}_i . (vec{s}_j x vec{s}_k)
+    + J  * sum_bonds       vec{s}_i . vec{s}_j          (Heisenberg NN opcional)
+    + h  * sum_i           S^z_i                         (campo externo)
+ 
+  El término de tres cuerpos es el escalar triple (operador de Wilson/chiralidad):
+ 
+    chi_ijk = S^x_i (S^y_j S^z_k - S^z_j S^y_k)
+            + S^y_i (S^z_j S^x_k - S^x_j S^z_k)
+            + S^z_i (S^x_j S^y_k - S^y_j S^x_k)
+ 
+  que es exactamente el levi-civita  epsilon_{abc} S^a_i S^b_j S^c_k.
+ 
+  Notas sobre la implementación:
+  - El LOOPTERM usa los mismos índices simbólicos i,j,k que se mapearán
+    a los tres vértices de cada LOOP definido en la UNITCELL.
+  - Los LOOP de tipo "0" (triángulos "up") y tipo "1" (triángulos "down")
+    tienen orientaciones opuestas, por lo que contribuyen con signos opuestos
+    a chi. Aquí sumamos ambos con el mismo coeficiente Wilson2, lo que es
+    correcto si se quiere un Hamiltoniano que rompa la paridad de tiempo
+    (la quiralidad tiene signo definido por orientación).
+  - Para un Hamiltoniano que preserva la paridad de tiempo (e.g. solo la
+    parte cuadrada chi^2) puede usarse J2=0 y agregar un BONDTERM biquadrático.
+  - El campo Heisenberg NN se distribuye sobre los cuatro tipos de borde
+    usando los parámetros J0..J3 (por defecto todos iguales a J).
+ 
+  Parámetros:
+    J    : acoplamiento Heisenberg (default 0)
+    J0..J3: acoplamientos por tipo de borde (defaults = J)
+    J2   : acoplamiento del término quiral chi_ijk (default 0)
+    h    : campo magnético longitudinal (default 0)
+-->
+ 
+<HAMILTONIAN name="chiral spin">
+  <PARAMETER name="J"    default="0"/>
+  <PARAMETER name="J0"   default="J"/>
+  <PARAMETER name="J1"   default="J"/>
+  <PARAMETER name="J2"   default="J"/>
+  <PARAMETER name="J3"   default="J"/>
+  <PARAMETER name="h"    default="0"/>
+  <PARAMETER name="Wilson"  default="0"/>
+  <PARAMETER name="Wilson2" default="Wilson"/>
+  <BASIS ref="spin"/>
+ 
+  <SITETERM site="i">
+    <PARAMETER name="h#" default="h"/>
+    -h#*Sz(i)
+  </SITETERM>
+ 
+  <!-- Heisenberg NN por tipo de borde de la tira triangular -->
+  <BONDTERM source="i" target="j">
+    <PARAMETER name="J#" default="J"/>
+    J#*exchange(i,j)
+  </BONDTERM>
+
+  <!--
+    Término quiral de tres cuerpos: chi_{ijk} para todos los triángulos.
+    Los LOOP de tipo 0 (up) y tipo 1 (down) son recorridos con orientaciones
+    opuestas, de forma que contribuyen con chiralidades de signos contrarios.
+    Usar Wilson2 > 0 rompe la invariancia de reversión temporal.
+  -->
+  <LOOPTERM indices="i j k">
+    <PARAMETER name="Wilson2#" default="Wilson2"/>
+    Wilson2# * (
+      Sx(i)*(Sy(j)*Sz(k) - Sz(j)*Sy(k))
+    + Sy(i)*(Sz(j)*Sx(k) - Sx(j)*Sz(k))
+    + Sz(i)*(Sx(j)*Sy(k) - Sy(j)*Sx(k))
+    )
   </LOOPTERM>
 </HAMILTONIAN>
 

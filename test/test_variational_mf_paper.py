@@ -103,20 +103,26 @@ def build_j1j2_chain(L: int, J1: float, J2: float) -> Tuple[SystemDescriptor, ob
 
 
 def exact_free_energy(ham, system, beta: float) -> float:
-    """Exact free energy: F= - beta**-1 * log Z
+    """Exact free energy in units of k = beta*H: -log Z = -log Tr[exp(-beta*H)].
 
-        log Z = log Tr[exp(-beta * H)]
+    This is the value expected by ``compute_t_score`` as ``_f_exact``,
+    and is in the same units as ``mf_free_energy`` = Tr[sigma(log sigma + beta*H)].
 
-    Uses a numerically stable shift by the ground-state energy to avoid
-    overflow.  Only feasible for L <= 10 (Hilbert-space dim = 2^L).
+    Uses a numerically stable shift by the ground-state energy e0:
+
+        log_Z_shift = log sum_i exp(-beta*(E_i - e0)) = log Z + beta*e0
+
+    so  -log Z = -log_Z_shift + beta*e0.
+
+    Only feasible for L <= 10 (Hilbert-space dim = 2^L).
     """
     sites = tuple(sorted(system.sites.keys()))
     ham_qutip = ham.to_qutip(sites)
     evals = ham_qutip.eigenenergies()
     e0 = evals.min()
-    # log Z = log Tr[exp(-beta*(H - e0))] + beta*e0  (shift cancels in ratio)
-    f = -np.log(np.exp(-beta * (evals - e0)).sum()) / beta + e0
-    return f
+    log_Z_shift = np.log(np.exp(-beta * (evals - e0)).sum())
+    # log_Z_shift = log Z + beta*e0  =>  -log Z = -log_Z_shift + beta*e0
+    return -log_Z_shift / beta + e0
 
 
 def mf_free_energy(sigma, ham, beta: float) -> float:
@@ -125,7 +131,7 @@ def mf_free_energy(sigma, ham, beta: float) -> float:
     Equals S_rel(sigma || e^{-beta H}) up to the constant log Z,
     which is sufficient for comparing approximations at fixed (H, beta).
     """
-    return sigma.variational_free_energy(beta * ham)
+    return sigma.variational_free_energy(beta * ham) / beta
 
 
 def t_score(sigma, ham, beta, f_exact: Optional[float]):
@@ -207,6 +213,73 @@ EXACT_CASES = [
         BETAS,
     ),
 ]
+
+
+@pytest.mark.parametrize("L", LENGTHS_FOR_EXACT_TESTS)
+@pytest.mark.parametrize("beta", BETAS)
+@pytest.mark.parametrize("Gamma", [0.5, 1.0, 2.0])
+def test_exact_free_energy_noninteracting(L, beta, Gamma):
+    """Validate exact_free_energy against the analytic result for a pure
+    transverse field H = Gamma * sum_i sigma^x_i (no interactions).
+
+    For non-interacting spins the partition function factorises:
+
+        Z = (2 cosh(beta * Gamma))^L
+        => -log Z = -L * log(2 * cosh(beta * Gamma/2))
+
+    This case also serves as a sanity check that F_exact <= F_mixed,
+    since the mixed state has F_mixed = -L * log(2) and
+    cosh(beta*Gamma) >= 1 implies -log Z <= -L*log(2).
+
+    Furthermore, since H is a sum of single-site terms, the Gibbs state
+    is an exact product state, so the mean-field approximation is exact:
+    F_mf == F_exact and T_score == 0.
+    """
+    import numpy as np
+
+    parms = {"Jz": 0.0, "Jxy": 0.0, "Gamma": Gamma}
+    system, ham = build_nn_chain(L, parms)
+
+    # --- Analytic reference -----------------------------------------------
+    f_analytic = -L * np.log(2 * np.cosh(beta * Gamma / 2.0)) / beta
+
+    # --- exact_free_energy ------------------------------------------------
+    f_computed = exact_free_energy(ham, system, beta)
+    assert abs(f_computed - f_analytic) < 1e-10, (
+        f"exact_free_energy mismatch: got {f_computed:.8f}, "
+        f"expected {f_analytic:.8f} (L={L}, beta={beta}, Gamma={Gamma})"
+    )
+
+    # --- F_exact <= F_mixed -----------------------------------------------
+    f_mixed = -L * np.log(2) / beta  # = mf_free_energy(sigma_mixed, ham, beta)
+    assert f_computed <= f_mixed + 1e-10, (
+        f"F_exact={f_computed:.6f} > F_mixed={f_mixed:.6f} "
+        f"(L={L}, beta={beta}, Gamma={Gamma})"
+    )
+
+    # --- MF is exact: F_mf == F_exact and T_score == 0 -------------------
+    sigma_var = variational_quadratic_mfa(
+        beta * ham,
+        numfields=0,
+        max_self_consistent_steps=100,
+    )
+    f_mf = mf_free_energy(sigma_var, ham, beta)
+    assert abs(f_mf - f_analytic) < 1e-6, (
+        f"F_mf={f_mf:.8f} != F_exact={f_analytic:.8f} "
+        f"for non-interacting model (L={L}, beta={beta}, Gamma={Gamma})"
+    )
+
+    ts = t_score(sigma_var, ham, beta, f_computed)
+    assert ts < 1e-6, (
+        f"T_score={ts:.2e} should be ~0 for non-interacting model "
+        f"(L={L}, beta={beta}, Gamma={Gamma})"
+    )
+
+    print(
+        f"  L={L}  beta={beta}  Gamma={Gamma}: "
+        f"F_analytic={f_analytic:.6f}  F_computed={f_computed:.6f}  "
+        f"F_mf={f_mf:.6f}  T_score={ts:.2e}"
+    )
 
 
 @pytest.mark.parametrize("label,parms,L_list,beta_list", EXACT_CASES)

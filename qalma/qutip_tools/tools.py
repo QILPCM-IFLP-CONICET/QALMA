@@ -34,7 +34,7 @@ qutip_version = parse_version(qutip_version_string)
 __all__ = [
     "get_proper_spaces",
     "data_element_iterator",
-    "empty_op",
+    "is_empty_op",
     "decompose_qutip_operator_hermitian",
 ]
 
@@ -357,7 +357,7 @@ def data_is_scalar(data) -> bool:
     return scalar_value(data) is not None
 
 
-def empty_op(op) -> bool:
+def is_empty_op(op) -> bool:
     """Check if op is an sparse operator without non-zero elements."""
     if isinstance(op, complex):
         return op == 0
@@ -372,8 +372,8 @@ def empty_op(op) -> bool:
         return data_is_zero(op.data)
 
     if hasattr(op, "operator_qutip"):
-        return empty_op(op.operator_qutip)
-    if any(empty_op(factor) for factor in getattr(op, "site_factors", {}).values()):
+        return is_empty_op(op.operator_qutip)
+    if any(is_empty_op(factor) for factor in getattr(op, "site_factors", {}).values()):
         return True
     return False
 
@@ -406,7 +406,7 @@ def isnan_qutip(op: _Qobj) -> bool:
 
 def norm(
     op: _Qobj,
-    ord: Optional[int | str | float],
+    ord: Optional[int | str | float] = None,
     axis: Optional[int | Tuple[int, int]] = None,
     keepdims: bool = False,
     check_finite: bool = True,
@@ -467,6 +467,9 @@ def norm(
 
     """
     if isinstance(op, _Qobj):
+        if is_empty_op(op):
+            return 0.0
+
         data = op.data
         if op.isbra or op.isket:
             return _scipy_norm(data.to_array(), ord, axis, keepdims, check_finite)

@@ -14,7 +14,7 @@ import pytest
 import qutip
 
 from qalma.operators import ProductOperator
-from qalma.operators.basic import empty_op, is_diagonal_op, is_scalar_op
+from qalma.operators.basic import is_diagonal_op, is_empty_op, is_scalar_op
 
 SX_A = ProductOperator({LOCAL_SX_A.site: LOCAL_SX_A.operator}, 1.0, LOCAL_SX_A.system)
 SX_A2 = SX_A * SX_A
@@ -30,7 +30,7 @@ def test_empty_op(name, value):
         return
     value_qutip = value.to_qutip()
     print(name, "of type ", type(value), type(value_qutip))
-    assert empty_op(value_qutip) == empty_op(value)
+    assert is_empty_op(value_qutip) == is_empty_op(value)
 
 
 def test_is_scalar_or_diagonal_operator():
