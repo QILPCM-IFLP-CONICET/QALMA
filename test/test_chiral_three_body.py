@@ -582,7 +582,7 @@ if __name__ == "__main__":
                 f_exact = exact_free_energy(ham, system, beta)
 
                 # Vector chirality over rungs (bond type 2: vertex1[i] -- vertex2[i])
-                kz_rung = system.bond_operator("Sx(i)*Sy(j) - Sy(i)*Sx(j)", bond_type=2)
+                kz_rung = system.global_operator("chiral_z")
                 kappa_z = float(np.real(cast(float, sigma_var.expect(kz_rung))))
                 row = {
                     "label": label,

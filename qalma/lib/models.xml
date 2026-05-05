@@ -690,6 +690,11 @@
     J2   : acoplamiento del término quiral chi_ijk (default 0)
     h    : campo magnético longitudinal (default 0)
 -->
+<GLOBALOPERATOR name="chiral_z">
+  <BONDTERM type="0" source="i" target="j">
+    Sx(i)*Sy(j) - Sy(i)*Sx(j)
+  </BONDTERM>
+</GLOBALOPERATOR>
  
 <HAMILTONIAN name="chiral spin">
   <PARAMETER name="J"    default="0"/>
