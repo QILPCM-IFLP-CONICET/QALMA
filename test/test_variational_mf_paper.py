@@ -103,20 +103,26 @@ def build_j1j2_chain(L: int, J1: float, J2: float) -> Tuple[SystemDescriptor, ob
 
 
 def exact_free_energy(ham, system, beta: float) -> float:
-    """Exact free energy: F= - beta**-1 * log Z
+    """Exact free energy in units of k = beta*H: -log Z = -log Tr[exp(-beta*H)].
 
-        log Z = log Tr[exp(-beta * H)]
+    This is the value expected by ``compute_t_score`` as ``_f_exact``,
+    and is in the same units as ``mf_free_energy`` = Tr[sigma(log sigma + beta*H)].
 
-    Uses a numerically stable shift by the ground-state energy to avoid
-    overflow.  Only feasible for L <= 10 (Hilbert-space dim = 2^L).
+    Uses a numerically stable shift by the ground-state energy e0:
+
+        log_Z_shift = log sum_i exp(-beta*(E_i - e0)) = log Z + beta*e0
+
+    so  -log Z = -log_Z_shift + beta*e0.
+
+    Only feasible for L <= 10 (Hilbert-space dim = 2^L).
     """
     sites = tuple(sorted(system.sites.keys()))
     ham_qutip = ham.to_qutip(sites)
     evals = ham_qutip.eigenenergies()
     e0 = evals.min()
-    # log Z = log Tr[exp(-beta*(H - e0))] + beta*e0  (shift cancels in ratio)
-    f = -np.log(np.exp(-beta * (evals - e0)).sum()) / beta + e0
-    return f
+    log_Z_shift = np.log(np.exp(-beta * (evals - e0)).sum())
+    # log_Z_shift = log Z + beta*e0  =>  -log Z = -log_Z_shift + beta*e0
+    return -log_Z_shift + beta * e0
 
 
 def mf_free_energy(sigma, ham, beta: float) -> float:
