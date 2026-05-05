@@ -42,7 +42,7 @@ import json
 import os
 import time
 from pathlib import Path
-from typing import List, Optional, Tuple
+from typing import List, Optional, Tuple, cast
 
 import numpy as np
 import pytest
@@ -455,17 +455,17 @@ def run_numfields_sweep(
     """
     system, ham = build_chiral_strip(L, J=J, chi=chi, boundary=boundary)
     sites = list(system.sites.keys())
-    # Add a small perturbation in a single site to favor
-    # a symmetry breaking
     Sz_ops = [system.site_operator("Sz", s) for s in sites]
+
+    # Small symmetry-breaking perturbation applied once to ham_pert.
+    # Optimisation uses ham_pert; observables are recorded against the
+    # unperturbed ham so that free energies are unbiased.
+    ham_pert = ham + system.site_operator("Sx", "1[0]") * 0.001
 
     # --- Self-consistent baseline (nf=0) ---
     t0 = time.perf_counter()
-    # Add a small perturbation in a single site to favor
-    # a symmetry breaking
-    ham = ham + system.site_operator("Sx", "1[0]") * 0.001
     sigma_sc = variational_quadratic_mfa(
-        beta * ham,
+        beta * ham_pert,
         numfields=0,
         max_self_consistent_steps=100,
     )
@@ -581,6 +581,9 @@ if __name__ == "__main__":
 
                 f_exact = exact_free_energy(ham, system, beta)
 
+                # Vector chirality over rungs (bond type 2: vertex1[i] -- vertex2[i])
+                kz_rung = system.bond_operator("Sx(i)*Sy(j) - Sy(i)*Sx(j)", bond_type=2)
+                kappa_z = float(np.real(cast(float, sigma_var.expect(kz_rung))))
                 row = {
                     "label": label,
                     "J": J,
@@ -595,6 +598,7 @@ if __name__ == "__main__":
                     "T_score_mixed": t_score(sigma_mixed, ham, beta, f_exact),
                     "T_score_sc": t_score(sigma_sc, ham, beta, f_exact),
                     "T_score_variational": t_score(sigma_var, ham, beta, f_exact),
+                    "kz_rung": kappa_z,
                     "time_variational": t_var,
                     "time_sc": t_sc,
                 }
