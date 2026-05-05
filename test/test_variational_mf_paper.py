@@ -251,7 +251,7 @@ def test_exact_free_energy_noninteracting(L, beta, Gamma):
     )
 
     # --- F_exact <= F_mixed -----------------------------------------------
-    f_mixed = -L * np.log(2)   # = mf_free_energy(sigma_mixed, ham, beta)
+    f_mixed = -L * np.log(2)  # = mf_free_energy(sigma_mixed, ham, beta)
     assert f_computed <= f_mixed + 1e-10, (
         f"F_exact={f_computed:.6f} > F_mixed={f_mixed:.6f} "
         f"(L={L}, beta={beta}, Gamma={Gamma})"
