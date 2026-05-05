@@ -15,9 +15,9 @@ from scipy.linalg._matfuncs_inv_ssq import LogmExactlySingularWarning
 from qalma.model import SystemDescriptor
 from qalma.qutip_tools.tools import (
     _to_array,
-    empty_op,
     fast_tensor,
     is_diagonal_op,
+    is_empty_op,
     is_scalar_op,
     ishermitian,
     norm,
@@ -108,7 +108,7 @@ class ProductOperator(Operator):
 
         sites_operators = {key: _to_array(op) for key, op in sites_operators.items()}
         self.site_factors = sites_operators
-        if any(empty_op(op) for op in sites_operators.values()):
+        if any(is_empty_op(op) for op in sites_operators.values()):
             prefactor = 0
             self.site_factors = {}
         self.prefactor = prefactor

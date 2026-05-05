@@ -15,7 +15,7 @@ from qalma.operators.product import (
 )
 from qalma.operators.qutip import QutipOperator
 from qalma.qutip_tools.tools import (
-    empty_op,
+    is_empty_op,
 )
 
 __all__ = ["collect_nbody_terms", "group_terms_by_blocks", "simplify_qutip_sums"]
@@ -292,7 +292,7 @@ def simplify_qutip_sums(sum_operator: SumOperator) -> Operator:
             sum_qutip_op = sum(
                 term.to_qutip_operator().to_qutip(block_tuple) for term in p_terms
             )
-            if not empty_op(sum_qutip_op):
+            if not is_empty_op(sum_qutip_op):
                 qutip_terms.setdefault(block, []).append(
                     QutipOperator(
                         sum_qutip_op,
@@ -316,7 +316,7 @@ def simplify_qutip_sums(sum_operator: SumOperator) -> Operator:
         if isherm and not new_qterm.isherm:
             new_qterm = (new_qterm + new_qterm.dag()) * 0.5
 
-        if not empty_op(new_qterm):
+        if not is_empty_op(new_qterm):
             terms.append(
                 QutipOperator(
                     new_qterm,

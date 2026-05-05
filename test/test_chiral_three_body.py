@@ -47,6 +47,7 @@ from typing import List, Optional, Tuple
 import numpy as np
 import pytest
 import scipy
+from qutip import Qobj
 
 from qalma import graph_from_alps_xml, model_from_alps_xml
 from qalma.meanfield import (
@@ -55,6 +56,7 @@ from qalma.meanfield import (
 )
 from qalma.model import SystemDescriptor
 from qalma.operators.states import ProductDensityOperator
+from qalma.qutip_tools import is_empty_op
 
 # ---------------------------------------------------------------------------
 # Constants and test matrix
@@ -83,6 +85,19 @@ NUMFIELDS_LIST = [0, 1, 2, 3, 4, 6, 8]
 # ---------------------------------------------------------------------------
 # System builders
 # ---------------------------------------------------------------------------
+
+
+def qutip_norm(op: Qobj):
+    """
+    Compute the norm of qutip operators in a safe way.
+
+    In Qutip 5.0, the evaluatio of a norm of a stricly zero operator
+    raises an error.
+    """
+
+    if is_empty_op(op):
+        return 0.0
+    return op.norm()
 
 
 def build_chiral_strip(
@@ -213,11 +228,12 @@ def check_chiral_operator_antisymmetry(system, ham_chiral_only, tol=1e-10):
     sites = tuple(sorted(system.sites.keys()))
     H_qutip = ham_chiral_only.to_qutip(sites)
     # Hermitian check
-    diff = (H_qutip - H_qutip.dag()).norm()
+    diff = qutip_norm(H_qutip - H_qutip.dag())
+
     assert diff < tol, f"Chiral Hamiltonian is not Hermitian: ||H - H†|| = {diff:.2e}"
     # Non-trivial check (should not vanish for chi != 0 and L >= 2)
     assert (
-        H_qutip.norm() > tol
+        qutip_norm(H_qutip) > tol
     ), "Chiral Hamiltonian is the zero operator — check LOOP definitions."
 
 
@@ -262,7 +278,7 @@ def check_pure_heisenberg_limit(system, ham, J, chi, beta, tol=1e-6):
     H_chiral = ham.to_qutip(sites)
     H_heis = ham_heis.to_qutip(sites)
 
-    diff = (H_chiral - H_heis).norm()
+    diff = qutip_norm(H_chiral - H_heis)
     assert diff < tol, (
         f"chi=0 chiral Hamiltonian differs from pure Heisenberg by {diff:.2e} "
         f"(L={L}, J={J})"
@@ -280,9 +296,9 @@ def test_chi_zero_is_heisenberg(L):
     system, ham = build_chiral_strip(L, J=1.0, chi=0.0)
     sites = tuple(sorted(system.sites.keys()))
     H = ham.to_qutip(sites)
-    assert (H - H.dag()).norm() < 1e-10, "H not Hermitian for chi=0."
+    assert qutip_norm(H - H.dag()) < 1e-10, "H not Hermitian for chi=0."
     try:
-        assert H.norm() > 1e-10, "H is zero for chi=0, J=1 — something is wrong."
+        assert qutip_norm(H) > 1e-10, "H is zero for chi=0, J=1 — something is wrong."
     except scipy.sparse.linalg._eigen.arpack.arpack.ArpackError:
         pass
 

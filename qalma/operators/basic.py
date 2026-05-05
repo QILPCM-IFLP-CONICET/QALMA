@@ -11,9 +11,9 @@ from qutip import Qobj
 from qalma.model import SystemDescriptor
 from qalma.qutip_tools.tools import (
     _to_array,
-    empty_op,
     fast_tensor,
     is_diagonal_op,
+    is_empty_op,
     is_scalar_op,
     ishermitian,
     norm,
@@ -271,7 +271,7 @@ class Operator:  # pylint: disable=too-many-public-methods
     @property
     def is_zero(self) -> bool:
         """True if self is a null operator."""
-        return empty_op(self)
+        return is_empty_op(self)
 
     def eigenenergies(self):
         """List of eigenstates of the operator."""
