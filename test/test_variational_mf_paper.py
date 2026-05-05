@@ -36,6 +36,7 @@ import pytest
 from qalma import graph_from_alps_xml, model_from_alps_xml
 from qalma.meanfield import (
     compute_t_score,
+    compute_variance,
     variational_quadratic_mfa,
 )
 from qalma.model import SystemDescriptor
@@ -342,15 +343,11 @@ J1 = -1.0  # AFM nearest-neighbor
 
 
 def _var_f(sigma, ham, beta: float) -> float:
-    """Var_sigma[hat{F}] = <(k - kappa)^2>_sigma - <k - kappa>_sigma^2.
+    """Var_sigma[hat{F}] = <(beta*H - kappa)^2>_sigma - <beta*H - kappa>_sigma^2.
 
-    Uses compute_t_score with no _f_exact so the variance is computed
-    internally without needing the exact partition function.  The mean
-    and variance are the second and third return values.
+    Delegates to :func:`compute_variance`, which does not require F_exact.
     """
-    print("   @@ var_f:")
-    _, _, var = compute_t_score(sigma, ham * beta, -1e9)
-    return float(np.real(var))
+    return compute_variance(sigma, ham * beta)
 
 
 def run_numfields_sweep(

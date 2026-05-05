@@ -52,6 +52,7 @@ from qutip import Qobj
 from qalma import graph_from_alps_xml, model_from_alps_xml
 from qalma.meanfield import (
     compute_t_score,
+    compute_variance,
     variational_quadratic_mfa,
 )
 from qalma.model import SystemDescriptor
@@ -196,14 +197,11 @@ def t_score(sigma, ham, beta: float, f_exact: Optional[float]) -> Optional[float
 
 
 def _var_f(sigma, ham, beta: float) -> float:
-    """Var_{sigma}[hat{F}] without requiring F_exact.
+    """Var_{sigma}[hat{F}] = <(beta*H - kappa)^2>_sigma - <beta*H - kappa>_sigma^2.
 
-    Uses a sentinel value for _f_exact that is guaranteed to be lower
-    than the actual free energy so that compute_t_score does not raise,
-    but only the variance (third return value) is used.
+    Delegates to :func:`compute_variance`, which does not require F_exact.
     """
-    _, _, var = compute_t_score(sigma, ham * beta, -1e9)
-    return float(np.real(var))
+    return compute_variance(sigma, ham * beta)
 
 
 # ---------------------------------------------------------------------------
