@@ -406,7 +406,7 @@ def self_consistent_mf(
         A pair ``(sigma, rel_entropy)`` where ``sigma`` is the
         :class:`~qalma.operators.states.product.ProductDensityOperator`
         that approximates :math:`e^{-H}`, and ``rel_entropy`` is the
-        corresponding relative entropy.
+        corresponding free energy.
 
     """
     if sigma_ref is None:
@@ -500,7 +500,10 @@ def variational_quadratic_mfa(
     Returns
     -------
     ProductDensityOperator
-        A product operators that approximates exp(-ham).
+        The product state that minimises the variational free energy
+        :math:`F[\sigma] = \mathrm{Tr}[\sigma(H + \log\sigma)]`
+        within the family of quadratic mean-field states with
+        at most ``numfields`` auxiliary fields.
 
     """
     sigma_candidate: ProductDensityOperator
