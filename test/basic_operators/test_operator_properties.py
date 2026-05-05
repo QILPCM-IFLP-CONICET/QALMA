@@ -14,7 +14,7 @@ import pytest
 import qutip
 
 from qalma.operators import ProductOperator
-from qalma.operators.basic import is_empty_op, is_diagonal_op, is_scalar_op
+from qalma.operators.basic import is_diagonal_op, is_empty_op, is_scalar_op
 
 SX_A = ProductOperator({LOCAL_SX_A.site: LOCAL_SX_A.operator}, 1.0, LOCAL_SX_A.system)
 SX_A2 = SX_A * SX_A
