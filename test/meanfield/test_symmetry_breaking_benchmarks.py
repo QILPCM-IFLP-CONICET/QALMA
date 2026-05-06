@@ -35,8 +35,14 @@ def _spin_chain_nn(L, Jz=1.0, Jxy=1.0, Gamma=0.0):
 
 def _spin_chain_j1j2(L, J1=1.0, J2=0.5):
     params = {
-        "L": L, "a": 1, "Gamma": 0.0, "J": 1,
-        "Jz0": J1, "Jxy0": J1, "Jz1": J2, "Jxy1": J2,
+        "L": L,
+        "a": 1,
+        "Gamma": 0.0,
+        "J": 1,
+        "Jz0": J1,
+        "Jxy0": J1,
+        "Jz1": J2,
+        "Jxy1": J2,
     }
     return build_system("nnn open chain lattice", "spin", **params)
 
@@ -60,15 +66,19 @@ skipif_no_benchmarks = pytest.mark.skipif(
 # Requires many SC steps and multiple attempts to escape the mixed state.
 # ---------------------------------------------------------------------------
 
+
 @skipif_no_benchmarks
-@pytest.mark.parametrize("L,Jz,Jxy,beta,numfields,label", [
-    (8,  0.0, 1.0, 3.0, 4, "xx_L8_b3"),
-    (12, 0.0, 1.0, 3.0, 4, "xx_L12_b3"),
-    (8,  1.0, 1.0, 3.0, 4, "xxx_afm_L8_b3"),
-    (12, 1.0, 1.0, 3.0, 4, "xxx_afm_L12_b3"),
-    (8,  1.0, 1.0, 5.0, 6, "xxx_afm_L8_b5"),
-    (12, 1.0, 1.0, 5.0, 6, "xxx_afm_L12_b5"),
-])
+@pytest.mark.parametrize(
+    "L,Jz,Jxy,beta,numfields,label",
+    [
+        (8, 0.0, 1.0, 3.0, 4, "xx_L8_b3"),
+        (12, 0.0, 1.0, 3.0, 4, "xx_L12_b3"),
+        (8, 1.0, 1.0, 3.0, 4, "xxx_afm_L8_b3"),
+        (12, 1.0, 1.0, 3.0, 4, "xxx_afm_L12_b3"),
+        (8, 1.0, 1.0, 5.0, 6, "xxx_afm_L8_b5"),
+        (12, 1.0, 1.0, 5.0, 6, "xxx_afm_L12_b5"),
+    ],
+)
 def test_benchmark_continuous_symmetry(L, Jz, Jxy, beta, numfields, label):
     """symmetry_breaking_mfa must beat both mixed state and SC for XX/XXX chains.
 
@@ -87,9 +97,12 @@ def test_benchmark_continuous_symmetry(L, Jz, Jxy, beta, numfields, label):
     f_sc = _free_energy(sigma_sc, H, beta)
 
     sigma_sb = symmetry_breaking_mfa(
-        beta * H, system,
-        numfields=numfields, epsilon=_EPSILON,
-        n_attempts=5, seed=0,
+        beta * H,
+        system,
+        numfields=numfields,
+        epsilon=_EPSILON,
+        n_attempts=5,
+        seed=0,
         max_self_consistent_steps=100,
     )
     f_sb = _free_energy(sigma_sb, H, beta)
@@ -99,26 +112,30 @@ def test_benchmark_continuous_symmetry(L, Jz, Jxy, beta, numfields, label):
         f"  gain_vs_sc={f_sc - f_sb:.5f}"
     )
 
-    assert f_sb < f_mixed - 1e-4, (
-        f"[{label}] did not improve over mixed: F_sb={f_sb:.5f} F_mixed={f_mixed:.5f}"
-    )
-    assert f_sb <= f_sc + 1e-5, (
-        f"[{label}] worse than SC: F_sb={f_sb:.5f} F_sc={f_sc:.5f}"
-    )
+    assert (
+        f_sb < f_mixed - 1e-4
+    ), f"[{label}] did not improve over mixed: F_sb={f_sb:.5f} F_mixed={f_mixed:.5f}"
+    assert (
+        f_sb <= f_sc + 1e-5
+    ), f"[{label}] worse than SC: F_sb={f_sb:.5f} F_sc={f_sc:.5f}"
 
 
 # ---------------------------------------------------------------------------
 # Benchmark 2: frustrated J1-J2 chain at large system sizes and low T
 # ---------------------------------------------------------------------------
 
+
 @skipif_no_benchmarks
-@pytest.mark.parametrize("L,J2,beta,numfields,label", [
-    (12, 0.5, 5.0, 6,  "j1j2_L12_J2=0.5_b5"),
-    (16, 0.5, 5.0, 6,  "j1j2_L16_J2=0.5_b5"),
-    (12, 0.8, 5.0, 6,  "j1j2_L12_J2=0.8_b5"),
-    (16, 0.8, 5.0, 6,  "j1j2_L16_J2=0.8_b5"),
-    (16, 0.5, 10.0, 8, "j1j2_L16_J2=0.5_b10"),
-])
+@pytest.mark.parametrize(
+    "L,J2,beta,numfields,label",
+    [
+        (12, 0.5, 5.0, 6, "j1j2_L12_J2=0.5_b5"),
+        (16, 0.5, 5.0, 6, "j1j2_L16_J2=0.5_b5"),
+        (12, 0.8, 5.0, 6, "j1j2_L12_J2=0.8_b5"),
+        (16, 0.8, 5.0, 6, "j1j2_L16_J2=0.8_b5"),
+        (16, 0.5, 10.0, 8, "j1j2_L16_J2=0.5_b10"),
+    ],
+)
 def test_benchmark_j1j2_large(L, J2, beta, numfields, label):
     """symmetry_breaking_mfa on large frustrated chains at low temperature.
 
@@ -137,9 +154,12 @@ def test_benchmark_j1j2_large(L, J2, beta, numfields, label):
     f_sc = _free_energy(sigma_sc, H, beta)
 
     sigma_sb = symmetry_breaking_mfa(
-        beta * H, system,
-        numfields=numfields, epsilon=_EPSILON,
-        n_attempts=5, seed=0,
+        beta * H,
+        system,
+        numfields=numfields,
+        epsilon=_EPSILON,
+        n_attempts=5,
+        seed=0,
         max_self_consistent_steps=100,
     )
     f_sb = _free_energy(sigma_sb, H, beta)
@@ -149,9 +169,9 @@ def test_benchmark_j1j2_large(L, J2, beta, numfields, label):
         f"  gain_vs_sc={f_sc - f_sb:.5f}"
     )
 
-    assert f_sb <= f_sc + 1e-5, (
-        f"[{label}] worse than SC: F_sb={f_sb:.5f} F_sc={f_sc:.5f}"
-    )
+    assert (
+        f_sb <= f_sc + 1e-5
+    ), f"[{label}] worse than SC: F_sb={f_sb:.5f} F_sc={f_sc:.5f}"
 
 
 # ---------------------------------------------------------------------------
@@ -159,11 +179,15 @@ def test_benchmark_j1j2_large(L, J2, beta, numfields, label):
 # Documents how much the symmetry-breaking strategy gains as m grows.
 # ---------------------------------------------------------------------------
 
+
 @skipif_no_benchmarks
-@pytest.mark.parametrize("L,Jz,Jxy,beta,label", [
-    (8,  1.0, 1.0, 3.0, "xxx_afm_L8_b3"),
-    (12, 1.0, 1.0, 3.0, "xxx_afm_L12_b3"),
-])
+@pytest.mark.parametrize(
+    "L,Jz,Jxy,beta,label",
+    [
+        (8, 1.0, 1.0, 3.0, "xxx_afm_L8_b3"),
+        (12, 1.0, 1.0, 3.0, "xxx_afm_L12_b3"),
+    ],
+)
 def test_benchmark_numfields_sweep(L, Jz, Jxy, beta, label):
     """F[sigma_m] is non-increasing with numfields for symmetry_breaking_mfa.
 
@@ -187,9 +211,12 @@ def test_benchmark_numfields_sweep(L, Jz, Jxy, beta, label):
     f_prev = f_sc
     for nf in [1, 2, 4, 6, 8]:
         sigma = symmetry_breaking_mfa(
-            beta * H, system,
-            numfields=nf, epsilon=_EPSILON,
-            n_attempts=3, seed=0,
+            beta * H,
+            system,
+            numfields=nf,
+            epsilon=_EPSILON,
+            n_attempts=3,
+            seed=0,
             max_self_consistent_steps=100,
         )
         f = _free_energy(sigma, H, beta)

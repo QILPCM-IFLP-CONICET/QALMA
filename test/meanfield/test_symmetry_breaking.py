@@ -42,8 +42,14 @@ def _spin_chain_nn(L, Jz=1.0, Jxy=1.0, Gamma=0.0):
 
 def _spin_chain_j1j2(L, J1=1.0, J2=0.6):
     params = {
-        "L": L, "a": 1, "Gamma": 0.0, "J": 1,
-        "Jz0": J1, "Jxy0": J1, "Jz1": J2, "Jxy1": J2,
+        "L": L,
+        "a": 1,
+        "Gamma": 0.0,
+        "J": 1,
+        "Jz0": J1,
+        "Jxy0": J1,
+        "Jz1": J2,
+        "Jxy1": J2,
     }
     return build_system("nnn open chain lattice", "spin", **params)
 
@@ -61,10 +67,14 @@ def _free_energy_mixed(system, H):
 # Test 1: improvement over SC in symmetry-broken models
 # ---------------------------------------------------------------------------
 
-@pytest.mark.parametrize("L,Jz,Jxy,label", [
-    (6,  1.0, 1.0, "xxx_afm_L6"),
-    (6, -1.0, -1.0, "xxx_fm_L6"),
-])
+
+@pytest.mark.parametrize(
+    "L,Jz,Jxy,label",
+    [
+        (6, 1.0, 1.0, "xxx_afm_L6"),
+        (6, -1.0, -1.0, "xxx_fm_L6"),
+    ],
+)
 def test_symmetry_breaking_improves_over_sc(L, Jz, Jxy, label):
     """symmetry_breaking_mfa finds F <= F of the plain SC solution.
 
@@ -85,8 +95,12 @@ def test_symmetry_breaking_improves_over_sc(L, Jz, Jxy, label):
     f_sc = _free_energy(sigma_sc, H)
 
     sigma_sb = symmetry_breaking_mfa(
-        _BETA * H, system,
-        numfields=_NUMFIELDS, epsilon=_EPSILON, n_attempts=1, seed=0,
+        _BETA * H,
+        system,
+        numfields=_NUMFIELDS,
+        epsilon=_EPSILON,
+        n_attempts=1,
+        seed=0,
         **_KWARGS,
     )
     f_sb = _free_energy(sigma_sb, H)
@@ -97,10 +111,13 @@ def test_symmetry_breaking_improves_over_sc(L, Jz, Jxy, label):
     )
 
 
-@pytest.mark.parametrize("L,J2,label", [
-    (8, 0.6, "j1j2_L8_J2=0.6"),
-    (8, 0.8, "j1j2_L8_J2=0.8"),
-])
+@pytest.mark.parametrize(
+    "L,J2,label",
+    [
+        (8, 0.6, "j1j2_L8_J2=0.6"),
+        (8, 0.8, "j1j2_L8_J2=0.8"),
+    ],
+)
 def test_symmetry_breaking_improves_over_sc_j1j2(L, J2, label):
     """Same as above for the frustrated J1-J2 chain."""
     system = _spin_chain_j1j2(L, J2=J2)
@@ -112,8 +129,12 @@ def test_symmetry_breaking_improves_over_sc_j1j2(L, J2, label):
     f_sc = _free_energy(sigma_sc, H)
 
     sigma_sb = symmetry_breaking_mfa(
-        _BETA * H, system,
-        numfields=_NUMFIELDS, epsilon=_EPSILON, n_attempts=1, seed=0,
+        _BETA * H,
+        system,
+        numfields=_NUMFIELDS,
+        epsilon=_EPSILON,
+        n_attempts=1,
+        seed=0,
         **_KWARGS,
     )
     f_sb = _free_energy(sigma_sb, H)
@@ -128,11 +149,15 @@ def test_symmetry_breaking_improves_over_sc_j1j2(L, J2, label):
 # Test 2: improvement over the fully mixed state
 # ---------------------------------------------------------------------------
 
-@pytest.mark.parametrize("L,Jz,Jxy,Gamma,label", [
-    (4, 1.0, 0.0, 0.5, "ising_transverse_L4"),
-    (4, 1.0, 0.0, 1.0, "ising_critical_L4"),
-    (6, 1.0, 0.0, 0.5, "ising_transverse_L6"),
-])
+
+@pytest.mark.parametrize(
+    "L,Jz,Jxy,Gamma,label",
+    [
+        (4, 1.0, 0.0, 0.5, "ising_transverse_L4"),
+        (4, 1.0, 0.0, 1.0, "ising_critical_L4"),
+        (6, 1.0, 0.0, 0.5, "ising_transverse_L6"),
+    ],
+)
 def test_symmetry_breaking_improves_over_mixed(L, Jz, Jxy, Gamma, label):
     """symmetry_breaking_mfa must always beat the fully mixed state.
 
@@ -150,8 +175,11 @@ def test_symmetry_breaking_improves_over_mixed(L, Jz, Jxy, Gamma, label):
     f_mixed = _free_energy_mixed(system, H)
 
     sigma_sb = symmetry_breaking_mfa(
-        _BETA * H, system,
-        numfields=_NUMFIELDS, epsilon=_EPSILON, seed=42,
+        _BETA * H,
+        system,
+        numfields=_NUMFIELDS,
+        epsilon=_EPSILON,
+        seed=42,
         **_KWARGS,
     )
     f_sb = _free_energy(sigma_sb, H)
@@ -166,6 +194,7 @@ def test_symmetry_breaking_improves_over_mixed(L, Jz, Jxy, Gamma, label):
 # Test 3: n_attempts returns the best result
 # ---------------------------------------------------------------------------
 
+
 def test_n_attempts_returns_best():
     """With n_attempts > 1 the returned state has the lowest free energy.
 
@@ -178,8 +207,12 @@ def test_n_attempts_returns_best():
     k = _BETA * H
 
     sigma_best = symmetry_breaking_mfa(
-        k, system, numfields=_NUMFIELDS, epsilon=_EPSILON,
-        n_attempts=5, seed=7,
+        k,
+        system,
+        numfields=_NUMFIELDS,
+        epsilon=_EPSILON,
+        n_attempts=5,
+        seed=7,
     )
     f_best = _free_energy(sigma_best, H)
 
@@ -191,8 +224,12 @@ def test_n_attempts_returns_best():
         # with an independent seed.
         s = int(rng.integers(0, 2**31))
         sigma_single = symmetry_breaking_mfa(
-            k, system, numfields=_NUMFIELDS, epsilon=_EPSILON,
-            n_attempts=1, seed=s,
+            k,
+            system,
+            numfields=_NUMFIELDS,
+            epsilon=_EPSILON,
+            n_attempts=1,
+            seed=s,
         )
         f_single = _free_energy(sigma_single, H)
         assert f_best <= f_single + 1e-5, (
@@ -204,6 +241,7 @@ def test_n_attempts_returns_best():
 # ---------------------------------------------------------------------------
 # Test 4: reproducibility with seed
 # ---------------------------------------------------------------------------
+
 
 @pytest.mark.skip(
     reason="Reproducibility depends on scipy/numpy internals that may vary "
@@ -217,19 +255,27 @@ def test_reproducibility_with_seed():
     k = _BETA * H
 
     sigma_a = symmetry_breaking_mfa(
-        k, system, numfields=_NUMFIELDS, epsilon=_EPSILON,
-        n_attempts=1, seed=123,
+        k,
+        system,
+        numfields=_NUMFIELDS,
+        epsilon=_EPSILON,
+        n_attempts=1,
+        seed=123,
         **_KWARGS,
     )
     sigma_b = symmetry_breaking_mfa(
-        k, system, numfields=_NUMFIELDS, epsilon=_EPSILON,
-        n_attempts=1, seed=123,
+        k,
+        system,
+        numfields=_NUMFIELDS,
+        epsilon=_EPSILON,
+        n_attempts=1,
+        seed=123,
         **_KWARGS,
     )
 
     f_a = _free_energy(sigma_a, H)
     f_b = _free_energy(sigma_b, H)
 
-    assert abs(f_a - f_b) < 1e-12, (
-        f"Same seed produced different free energies: {f_a:.10f} vs {f_b:.10f}"
-    )
+    assert (
+        abs(f_a - f_b) < 1e-12
+    ), f"Same seed produced different free energies: {f_a:.10f} vs {f_b:.10f}"
