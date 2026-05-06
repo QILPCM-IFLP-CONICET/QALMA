@@ -652,7 +652,7 @@ def run_field_sweep(
     chi: float,
     beta: float,
     field_values: List[float] = FIELD_VALUES,
-    numfields: int = 4,
+    numfields: int = 6,
     boundary: str = "open",
 ) -> List[dict]:
     """Sweep the uniform Zeeman field B for a chiral strip.
@@ -749,7 +749,7 @@ def run_field_sweep(
         mag = [float(np.real(sigma.expect(sz))) for sz in Sz_ops]
         total_mag = float(np.sum(mag))
         kz_rung = system.global_operator("chiral_z")
-        kappa_z = float(np.real(cast(float, sigma_var.expect(kz_rung))))
+        kappa_z = float(np.real(cast(float, sigma.expect(kz_rung))))
 
         f_exact: Optional[float] = None
         if compute_exact:
