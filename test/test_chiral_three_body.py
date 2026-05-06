@@ -66,6 +66,34 @@ from qalma.model import SystemDescriptor
 from qalma.operators.states import ProductDensityOperator
 from qalma.qutip_tools import is_empty_op
 
+
+# ---------------------------------------------------------------------------
+# Incremental JSONL output
+# ---------------------------------------------------------------------------
+
+
+def _append_jsonl(path, records):
+    """Append *records* to a JSON Lines file, one record per line.
+
+    The file is created if it does not exist.  Each call flushes and syncs
+    to disk so that partial results survive a crash or keyboard interrupt.
+
+    Parameters
+    ----------
+    path : Path
+        Destination ``.jsonl`` file.
+    records : dict or list of dict
+        One record or a sequence of records to append.
+    """
+    if isinstance(records, dict):
+        records = [records]
+    with open(path, "a") as fh:
+        for rec in records:
+            fh.write(json.dumps(rec) + "\n")
+        fh.flush()
+        os.fsync(fh.fileno())
+
+
 # ---------------------------------------------------------------------------
 # Constants and test matrix
 # ---------------------------------------------------------------------------
@@ -851,6 +879,10 @@ if __name__ == "__main__":
     output_dir = Path("benchmark_results")
     output_dir.mkdir(exist_ok=True)
 
+    out_exact    = output_dir / "exact_validation.jsonl"
+    out_numfields = output_dir / "numfields_convergence.jsonl"
+    out_sweep    = output_dir / "field_sweep.jsonl"
+
     all_results: dict = {
         "exact_validation": [],
         "numfields_convergence": [],
@@ -906,6 +938,7 @@ if __name__ == "__main__":
                     "time_sc": t_sc,
                 }
                 all_results["exact_validation"].append(row)
+                _append_jsonl(out_exact, row)
 
                 print(
                     f"  F: mixed={row['F_mixed']:.4f}  "
@@ -927,6 +960,7 @@ if __name__ == "__main__":
                 try:
                     rows = run_numfields_sweep(L, J, chi, beta)
                     all_results["numfields_convergence"].extend(rows)
+                    _append_jsonl(out_numfields, rows)
                 except Exception as exc:
                     print(f"  FAILED: {exc}")
 
@@ -955,14 +989,16 @@ if __name__ == "__main__":
                         n_attempts=3,
                     )
                     all_results["field_sweep"].extend(rows)
+                    _append_jsonl(out_sweep, rows)
                 except Exception as exc:
                     print(f"  FAILED  L={L}  beta={beta}: {exc}")
 
-    # ---- Save results -----------------------------------------------------
-    out = output_dir / "chiral_three_body_results.json"
-    with open(out, "w") as fp:
-        json.dump(all_results, fp, indent=2)
-    print(f"\nResults saved → {out}")
+    # ---- Results summary -------------------------------------------------
+    # Incremental JSONL files were written after each block above.
+    print(f"\nResults saved incrementally:")
+    print(f"  {out_exact}")
+    print(f"  {out_numfields}")
+    print(f"  {out_sweep}")
 
     # ---- Summary table: numfields convergence ----------------------------
     print("\n--- Convergence summary (L=8 unit cells = 16 sites, beta=2.0) ---")
