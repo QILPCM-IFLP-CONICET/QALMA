@@ -790,7 +790,7 @@
 <UNITCELL name="triangular strip" dimension="1">
   <!-- Dos sitios por celda: leg 0 (abajo) y leg 1 (arriba) -->
   <VERTEX><COORDINATE>0   0</COORDINATE></VERTEX>
-  <VERTEX><COORDINATE>0   1</COORDINATE></VERTEX>
+  <VERTEX><COORDINATE>-.71   .71</COORDINATE></VERTEX>
  
   <!-- NN bonds: horizontal inferior -->
   <EDGE type="0"><SOURCE vertex="1" offset="0"/><TARGET vertex="1" offset="1"/></EDGE>
@@ -809,8 +809,8 @@
       tercer  NODE → índice k
   -->
   <LOOP type="0">
-    <NODE vertex="1" offset="0"/>
     <NODE vertex="2" offset="0"/>
+    <NODE vertex="1" offset="0"/>
     <NODE vertex="1" offset="1"/>
   </LOOP>
  
@@ -818,9 +818,9 @@
     Triángulos "down": 1[i] → 2[i+1] → 2[i]  (orientación anti-horaria)
   -->
   <LOOP type="1">
-    <NODE vertex="1" offset="0"/>
-    <NODE vertex="2" offset="1"/>
     <NODE vertex="2" offset="0"/>
+    <NODE vertex="1" offset="1"/>
+    <NODE vertex="2" offset="1"/>
   </LOOP>
 </UNITCELL>
  
