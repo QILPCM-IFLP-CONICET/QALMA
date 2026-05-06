@@ -468,14 +468,18 @@ def test_field_sweep_b0_matches_zero_field(label, J, chi, L, beta):
 
     # Reference: optimise at B=0 with the same method
     sigma_ref = symmetry_breaking_mfa(
-        beta * ham, system,
-        numfields=4, n_attempts=3,
+        beta * ham,
+        system,
+        numfields=4,
+        n_attempts=3,
         max_self_consistent_steps=30,
     )
     f_ref = mf_free_energy(sigma_ref, ham, beta)
 
     # Via field sweep at B=0
-    rows = run_field_sweep(L, J, chi, beta, field_values=[0.0], numfields=4, n_attempts=3)
+    rows = run_field_sweep(
+        L, J, chi, beta, field_values=[0.0], numfields=4, n_attempts=3
+    )
     f_b0 = rows[0]["f"]
 
     assert f_b0 <= f_ref + 1e-5, (
@@ -519,6 +523,46 @@ def test_field_sweep_f_decreases(label, J, chi, L, beta):
 # ---------------------------------------------------------------------------
 
 
+def worker_numfield_sweep(nf, system, ham, beta, var_f_sc):
+    """Worker that does single evaluation for numfield sweep"""
+    t0 = time.perf_counter()
+    Sz_ops = [system.site_operator("Sz", s) for s in system.sites]
+    ham_run = ham + system.site_operator("Sx", "1[0]") * 0.001
+    sigma_ref = None
+    sigma = variational_quadratic_mfa(
+        beta * ham_run,
+        numfields=nf,
+        sigma_ref=sigma_ref,
+        max_self_consistent_steps=30,
+    )
+    elapsed = time.perf_counter() - t0
+
+    f_mf = mf_free_energy(sigma, ham, beta)
+    var_f = _var_f(sigma, ham, beta)
+    var_f_ratio = var_f / var_f_sc if var_f_sc > 1e-15 else None
+    mag = [float(np.real(sigma.expect(sz))) for sz in Sz_ops]
+
+    ratio_str = f"{var_f_ratio:.4f}" if var_f_ratio is not None else "  n/a"
+    print(
+        f"  J={J}  chi={chi}  L={L}  beta={beta}  "
+        f"nf={nf:2d}:  F_mf={f_mf:.6f}  Var={var_f:.4g}  "
+        f"Var_ratio={ratio_str}  t={elapsed:.2f}s"
+    )
+
+    return {
+        "J": J,
+        "chi": chi,
+        "L": L,
+        "beta": beta,
+        "numfields": nf,
+        "f": f_mf,
+        "var_f": var_f,
+        "var_f_ratio": var_f_ratio,
+        "magnetization": mag,
+        "time": elapsed,
+    }
+
+
 def run_numfields_sweep(
     L: int,
     J: float,
@@ -557,10 +601,10 @@ def run_numfields_sweep(
     list of dict
         One dict per numfields value (including nf=0 as SC baseline).
     """
-    system, ham = build_chiral_strip(L, J=J, chi=chi, boundary=boundary)
-    sites = list(system.sites.keys())
-    Sz_ops = [system.site_operator("Sz", s) for s in sites]
+    import concurrent.futures
 
+    system, ham = build_chiral_strip(L, J=J, chi=chi, boundary=boundary)
+    Sz_ops = [system.site_operator("Sz", s) for s in system.sites]
     # Small symmetry-breaking perturbation applied once to ham_pert.
     # Optimisation uses ham_pert; observables are recorded against the
     # unperturbed ham so that free energies are unbiased.
@@ -598,47 +642,21 @@ def run_numfields_sweep(
         }
     ]
 
-    sigma_ref = sigma_sc
     nf_list_positive = [nf for nf in sorted(numfields_list) if nf > 0]
 
-    for nf in nf_list_positive:
-        t0 = time.perf_counter()
-        ham_run = ham + system.site_operator("Sx", "1[0]") * 0.001
-        sigma = variational_quadratic_mfa(
-            beta * ham_run,
-            numfields=nf,
-            sigma_ref=sigma_ref,
-            max_self_consistent_steps=30,
-        )
-        elapsed = time.perf_counter() - t0
+    with concurrent.futures.ThreadPoolExecutor() as executor:
+        future_to_nf = {
+            executor.submit(worker_numfield_sweep, nf, system, ham, beta, var_f_sc): nf
+            for nf in nf_list_positive
+        }
 
-        f_mf = mf_free_energy(sigma, ham, beta)
-        var_f = _var_f(sigma, ham, beta)
-        var_f_ratio = var_f / var_f_sc if var_f_sc > 1e-15 else None
-        mag = [float(np.real(sigma.expect(sz))) for sz in Sz_ops]
-
-        ratio_str = f"{var_f_ratio:.4f}" if var_f_ratio is not None else "  n/a"
-        print(
-            f"  J={J}  chi={chi}  L={L}  beta={beta}  "
-            f"nf={nf:2d}:  F_mf={f_mf:.6f}  Var={var_f:.4g}  "
-            f"Var_ratio={ratio_str}  t={elapsed:.2f}s"
-        )
-
-        results.append(
-            {
-                "J": J,
-                "chi": chi,
-                "L": L,
-                "beta": beta,
-                "numfields": nf,
-                "f": f_mf,
-                "var_f": var_f,
-                "var_f_ratio": var_f_ratio,
-                "magnetization": mag,
-                "time": elapsed,
-            }
-        )
-        sigma_ref = sigma  # warm start
+        for future in concurrent.futures.as_completed(future_to_nf):
+            nf_val = future_to_nf[future]
+            try:
+                result = future.result()
+                results.append(result)
+            except Exception as exc:
+                print(f"nf_val={nf_val} generated an exception: {exc}")
 
     return results
 
@@ -646,6 +664,68 @@ def run_numfields_sweep(
 # ---------------------------------------------------------------------------
 # Benchmark runner: magnetic field sweep
 # ---------------------------------------------------------------------------
+
+
+def compute_b_worker(
+    B,
+    system,
+    ham_0,
+    zeeman,
+    beta,
+    compute_exact,
+    n_attempts,
+    numfields,
+):
+    """
+    Compute the mean field and expectation values for a given value of B.
+    """
+    ham_B = ham_0 + zeeman * B
+
+    t0 = time.perf_counter()
+    sigma = symmetry_breaking_mfa(
+        beta * ham_B,
+        system,
+        numfields=numfields,
+        n_attempts=n_attempts,
+        sigma_ref=None,
+        max_self_consistent_steps=50,
+    )
+    elapsed = time.perf_counter() - t0
+    Sz_ops = [system.site_operator("Sz", s) for s in system.sites]
+    kz_op = system.global_operator("chiral_z")
+
+    # All observables are evaluated on the unperturbed H(B)
+    f_mf = mf_free_energy(sigma, ham_B, beta)
+    var_f = _var_f(sigma, ham_B, beta)
+    mag = [float(np.real(sigma.expect(sz))) for sz in Sz_ops]
+    total_mag = float(np.sum(mag))
+    kappa_z = float(np.real(sigma.expect(kz_op)))
+
+    f_exact: Optional[float] = None
+    if compute_exact:
+        f_exact = exact_free_energy(ham_B, system, beta)
+
+    exact_str = f"{f_exact:12.6f}" if f_exact is not None else "          --"
+    print(
+        f"  {B:6.3f}  {f_mf:12.6f}  {exact_str}  "
+        f"{total_mag:10.4f}  {var_f:10.4g}  {elapsed:6.2f}"
+    )
+    return {
+        "J": J,
+        "chi": chi,
+        "L": L,
+        "beta": beta,
+        "B": B,
+        "numfields": numfields,
+        "n_attempts": n_attempts,
+        "f": f_mf,
+        "f_exact": f_exact,
+        "kappa_z": kappa_z,
+        "magnetization": mag,
+        "total_mag": total_mag,
+        "var_f": var_f,
+        "time": elapsed,
+    }
 
 
 def run_field_sweep(
@@ -714,13 +794,13 @@ def run_field_sweep(
         Keys: J, chi, L, beta, B, numfields, n_attempts, f, f_exact,
               kappa_z, magnetization, total_mag, var_f, time.
     """
+    import concurrent.futures
+
     system, ham_0 = build_chiral_strip(L, J=J, chi=chi, boundary=boundary)
     sites = list(system.sites.keys())
     N = len(sites)
 
     zeeman = build_zeeman_term(system)
-    Sz_ops = [system.site_operator("Sz", s) for s in sites]
-    kz_op = system.global_operator("chiral_z")
 
     # Whether to compute exact free energies (only feasible for small L)
     compute_exact = L in LENGTHS_EXACT
@@ -735,58 +815,30 @@ def run_field_sweep(
     )
 
     results: List[dict] = []
-    sigma_ref = None  # warm-start accumulator
 
-    for B in field_values:
-        ham_B = ham_0 + zeeman * B
+    with concurrent.futures.ThreadPoolExecutor() as executor:
+        future_to_b = {
+            executor.submit(
+                compute_b_worker,
+                B,
+                system,
+                ham_0,
+                zeeman,
+                beta,
+                compute_exact,
+                n_attempts,
+                numfields,
+            ): B
+            for B in field_values
+        }
 
-        t0 = time.perf_counter()
-        sigma = symmetry_breaking_mfa(
-            beta * ham_B,
-            system,
-            numfields=numfields,
-            n_attempts=n_attempts,
-            sigma_ref=sigma_ref,
-            max_self_consistent_steps=50,
-        )
-        elapsed = time.perf_counter() - t0
-
-        # All observables are evaluated on the unperturbed H(B)
-        f_mf = mf_free_energy(sigma, ham_B, beta)
-        var_f = _var_f(sigma, ham_B, beta)
-        mag = [float(np.real(sigma.expect(sz))) for sz in Sz_ops]
-        total_mag = float(np.sum(mag))
-        kappa_z = float(np.real(sigma.expect(kz_op)))
-
-        f_exact: Optional[float] = None
-        if compute_exact:
-            f_exact = exact_free_energy(ham_B, system, beta)
-
-        exact_str = f"{f_exact:12.6f}" if f_exact is not None else "          --"
-        print(
-            f"  {B:6.3f}  {f_mf:12.6f}  {exact_str}  "
-            f"{total_mag:10.4f}  {var_f:10.4g}  {elapsed:6.2f}"
-        )
-
-        results.append(
-            {
-                "J": J,
-                "chi": chi,
-                "L": L,
-                "beta": beta,
-                "B": B,
-                "numfields": numfields,
-                "n_attempts": n_attempts,
-                "f": f_mf,
-                "f_exact": f_exact,
-                "kappa_z": kappa_z,
-                "magnetization": mag,
-                "total_mag": total_mag,
-                "var_f": var_f,
-                "time": elapsed,
-            }
-        )
-        sigma_ref = sigma  # warm start for next B value
+        for future in concurrent.futures.as_completed(future_to_b):
+            b_val = future_to_b[future]
+            try:
+                result = future.result()
+                results.append(result)
+            except Exception as exc:
+                print(f"B={b_val} generated an exception: {exc}")
 
     return results
 

@@ -167,9 +167,7 @@ def symmetry_breaking_mfa(
         )
         best_f = compute_free_energy(sigma_ws, k)
         best_sigma = sigma_ws
-        logging.debug(
-            f"symmetry_breaking_mfa warm-start candidate: F={best_f:.6f}"
-        )
+        logging.debug(f"symmetry_breaking_mfa warm-start candidate: F={best_f:.6f}")
 
     # --- Candidates 1..n_attempts: random perturbations -------------------
     for attempt in range(n_attempts):
