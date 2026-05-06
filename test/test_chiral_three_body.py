@@ -748,6 +748,8 @@ def run_field_sweep(
         var_f = _var_f(sigma, ham_B_unpert, beta)
         mag = [float(np.real(sigma.expect(sz))) for sz in Sz_ops]
         total_mag = float(np.sum(mag))
+        kz_rung = system.global_operator("chiral_z")
+        kappa_z = float(np.real(cast(float, sigma_var.expect(kz_rung))))
 
         f_exact: Optional[float] = None
         if compute_exact:
@@ -769,6 +771,7 @@ def run_field_sweep(
                 "numfields": numfields,
                 "f": f_mf,
                 "f_exact": f_exact,
+                "kappa_z": kappa_z,
                 "magnetization": mag,
                 "total_mag": total_mag,
                 "var_f": var_f,
@@ -888,7 +891,7 @@ if __name__ == "__main__":
                         chi,
                         beta,
                         field_values=FIELD_VALUES,
-                        numfields=4,
+                        numfields=6,
                     )
                     all_results["field_sweep"].extend(rows)
                 except Exception as exc:
