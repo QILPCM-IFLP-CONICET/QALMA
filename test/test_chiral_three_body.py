@@ -61,6 +61,7 @@ from qalma.meanfield import (
     compute_variance,
     variational_quadratic_mfa,
 )
+from qalma.meanfield.symmetry_breaking import symmetry_breaking_mfa
 from qalma.model import SystemDescriptor
 from qalma.operators.states import ProductDensityOperator
 from qalma.qutip_tools import is_empty_op
@@ -456,29 +457,30 @@ def test_numfields_convergence(label, J, chi, L, beta):
 @pytest.mark.parametrize("L", LENGTHS_EXACT)
 @pytest.mark.parametrize("beta", [1.0, 2.0])
 def test_field_sweep_b0_matches_zero_field(label, J, chi, L, beta):
-    """The B=0 point of the field sweep must match the zero-field variational result.
+    """The B=0 point of the field sweep must not be worse than the zero-field result.
 
     Ensures that ``build_zeeman_term`` + the field-augmented Hamiltonian do
-    not inadvertently alter the zero-field physics.
+    not inadvertently alter the zero-field physics.  We check F_mf(B=0) <=
+    F_ref + tol rather than equality, because ``run_field_sweep`` now uses
+    ``symmetry_breaking_mfa`` which may find a strictly better state.
     """
     system, ham = build_chiral_strip(L, J=J, chi=chi)
-    ham_pert = ham + system.site_operator("Sx", "1[0]") * 0.001
 
-    # Reference: optimise with B=0 directly (no Zeeman term constructed)
-    sigma_ref = variational_quadratic_mfa(
-        beta * ham_pert,
-        numfields=4,
+    # Reference: optimise at B=0 with the same method
+    sigma_ref = symmetry_breaking_mfa(
+        beta * ham, system,
+        numfields=4, n_attempts=3,
         max_self_consistent_steps=30,
     )
     f_ref = mf_free_energy(sigma_ref, ham, beta)
 
     # Via field sweep at B=0
-    rows = run_field_sweep(L, J, chi, beta, field_values=[0.0], numfields=4)
+    rows = run_field_sweep(L, J, chi, beta, field_values=[0.0], numfields=4, n_attempts=3)
     f_b0 = rows[0]["f"]
 
-    assert abs(f_b0 - f_ref) < 1e-5, (
+    assert f_b0 <= f_ref + 1e-5, (
         f"{label}  L={L}  beta={beta}: "
-        f"B=0 field-sweep F={f_b0:.6f} ≠ zero-field F={f_ref:.6f}"
+        f"B=0 field-sweep F={f_b0:.6f} worse than zero-field F={f_ref:.6f}"
     )
 
 
@@ -652,7 +654,8 @@ def run_field_sweep(
     chi: float,
     beta: float,
     field_values: List[float] = FIELD_VALUES,
-    numfields: int = 6,
+    numfields: int = 4,
+    n_attempts: int = 3,
     boundary: str = "open",
 ) -> List[dict]:
     """Sweep the uniform Zeeman field B for a chiral strip.
@@ -665,16 +668,20 @@ def run_field_sweep(
 
       * ``f``              F_mf(B) = Tr[sigma (log sigma + beta * H(B))]
       * ``f_exact``        -log Tr[exp(-beta * H(B))]  (only for L ≤ max(LENGTHS_EXACT))
+      * ``kappa_z``        expectation of the chiral_z operator
       * ``magnetization``  list of <S^z_i> on each site
       * ``total_mag``      total magnetisation  <sum_i S^z_i>
       * ``var_f``          Var_{sigma}[hat{F}]
 
-    The optimisation uses a warm start: the converged state at field B_k is
-    used as ``sigma_ref`` for B_{k+1}.  This makes the sweep significantly
-    cheaper and tends to follow the physical ground state continuously.
+    The optimisation uses :func:`symmetry_breaking_mfa` at each field point,
+    which combines two strategies in a model-agnostic way:
 
-    A small Sx perturbation on site "1[0]" is added throughout to break the
-    Z_2 symmetry and help convergence, consistent with the rest of the module.
+    * **Warm start** — the converged state at field B_k is passed as
+      ``sigma_ref`` to B_{k+1}, preserving adiabatic continuity.
+    * **Random restarts** — ``n_attempts`` independent random-perturbation
+      attempts are run in parallel and the one with the lowest free energy
+      wins.  This prevents the warm start from locking the optimiser into a
+      local minimum that does not evolve with the field.
 
     Parameters
     ----------
@@ -690,8 +697,13 @@ def run_field_sweep(
         Values of B to sweep (in units where S^z eigenvalues are ±1/2).
         Negative values are allowed (field reversal).
     numfields : int
-        Number of variational fields passed to ``variational_quadratic_mfa``.
-        Use 0 for pure self-consistent MF, larger values for better accuracy.
+        Number of variational fields.  Use 0 for pure self-consistent MF,
+        larger values for better accuracy.
+    n_attempts : int
+        Number of random-perturbation restarts tried at each field point in
+        addition to the warm-start candidate.  Higher values reduce the risk
+        of local-minimum trapping at the cost of more evaluations.
+        Default is 3.
     boundary : str
         "open" or "periodic".
 
@@ -699,8 +711,8 @@ def run_field_sweep(
     -------
     list of dict
         One dict per field value B, in the order given by ``field_values``.
-        Keys: J, chi, L, beta, B, numfields, f, f_exact, magnetization,
-              total_mag, var_f, time.
+        Keys: J, chi, L, beta, B, numfields, n_attempts, f, f_exact,
+              kappa_z, magnetization, total_mag, var_f, time.
     """
     system, ham_0 = build_chiral_strip(L, J=J, chi=chi, boundary=boundary)
     sites = list(system.sites.keys())
@@ -708,16 +720,14 @@ def run_field_sweep(
 
     zeeman = build_zeeman_term(system)
     Sz_ops = [system.site_operator("Sz", s) for s in sites]
-
-    # Perturbation to break Z_2 symmetry (same convention as rest of module)
-    sx_perturb = system.site_operator("Sx", "1[0]") * 0.001
+    kz_op = system.global_operator("chiral_z")
 
     # Whether to compute exact free energies (only feasible for small L)
     compute_exact = L in LENGTHS_EXACT
 
     print(
         f"\n  Field sweep:  J={J}  chi={chi}  L={L} ({N} sites)  "
-        f"beta={beta}  numfields={numfields}"
+        f"beta={beta}  numfields={numfields}  n_attempts={n_attempts}"
     )
     print(
         f"  {'B':>6}  {'F_mf':>12}  {'F_exact':>12}  "
@@ -728,32 +738,29 @@ def run_field_sweep(
     sigma_ref = None  # warm-start accumulator
 
     for B in field_values:
-        # H(B) = H_chiral + B * sum_i Sz_i + epsilon * Sx_1
-        ham_B = ham_0 + zeeman * B + sx_perturb
+        ham_B = ham_0 + zeeman * B
 
         t0 = time.perf_counter()
-        kwargs = dict(
+        sigma = symmetry_breaking_mfa(
+            beta * ham_B,
+            system,
             numfields=numfields,
+            n_attempts=n_attempts,
+            sigma_ref=sigma_ref,
             max_self_consistent_steps=50,
         )
-        if sigma_ref is not None:
-            kwargs["sigma_ref"] = sigma_ref
-
-        sigma = variational_quadratic_mfa(beta * ham_B, **kwargs)
         elapsed = time.perf_counter() - t0
 
-        # Observables evaluated on the *unperturbed* H(B) (no Sx term)
-        ham_B_unpert = ham_0 + zeeman * B
-        f_mf = mf_free_energy(sigma, ham_B_unpert, beta)
-        var_f = _var_f(sigma, ham_B_unpert, beta)
+        # All observables are evaluated on the unperturbed H(B)
+        f_mf = mf_free_energy(sigma, ham_B, beta)
+        var_f = _var_f(sigma, ham_B, beta)
         mag = [float(np.real(sigma.expect(sz))) for sz in Sz_ops]
         total_mag = float(np.sum(mag))
-        kz_rung = system.global_operator("chiral_z")
-        kappa_z = float(np.real(cast(float, sigma.expect(kz_rung))))
+        kappa_z = float(np.real(sigma.expect(kz_op)))
 
         f_exact: Optional[float] = None
         if compute_exact:
-            f_exact = exact_free_energy(ham_B_unpert, system, beta)
+            f_exact = exact_free_energy(ham_B, system, beta)
 
         exact_str = f"{f_exact:12.6f}" if f_exact is not None else "          --"
         print(
@@ -769,6 +776,7 @@ def run_field_sweep(
                 "beta": beta,
                 "B": B,
                 "numfields": numfields,
+                "n_attempts": n_attempts,
                 "f": f_mf,
                 "f_exact": f_exact,
                 "kappa_z": kappa_z,
@@ -892,6 +900,7 @@ if __name__ == "__main__":
                         beta,
                         field_values=FIELD_VALUES,
                         numfields=6,
+                        n_attempts=3,
                     )
                     all_results["field_sweep"].extend(rows)
                 except Exception as exc:
@@ -937,9 +946,12 @@ if __name__ == "__main__":
 
     # ---- Summary table: field sweep --------------------------------------
     print(
-        "\n--- Field sweep summary (L=4 unit cells = 8 sites, beta=2.0, numfields=4) ---"
+        "\n--- Field sweep summary (L=4 unit cells = 8 sites, beta=2.0, numfields=6) ---"
     )
-    print(f"{'Model':45s}  {'B':>6}  {'F_mf':>10}  {'F_exact':>10}  {'<Sz>':>8}")
+    print(
+        f"{'Model':45s}  {'B':>6}  {'F_mf':>10}  {'F_exact':>10}  "
+        f"{'<Sz>':>8}  {'kappa_z':>10}"
+    )
     for label, J, chi in CHIRAL_CASES:
         rows = [
             r
@@ -955,5 +967,5 @@ if __name__ == "__main__":
             )
             print(
                 f"  {'':43s}  {r['B']:6.3f}  {r['f']:10.4f}  {exact_str}  "
-                f"{r['total_mag']:8.4f}"
+                f"{r['total_mag']:8.4f}  {r.get('kappa_z', float('nan')):10.4g}"
             )
