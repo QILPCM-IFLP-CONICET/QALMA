@@ -12,6 +12,15 @@ first optimisation round.  This breaks all symmetries simultaneously at
 that site, giving the linearised many-body terms a non-trivial mean-field
 contribution.  A second round without the perturbation then refines the
 solution using the symmetry-broken state as a warm start.
+
+An optional ``sigma_ref`` warm start can be supplied (e.g. the converged
+state from a neighbouring point in a parameter sweep).  When provided it
+is refined on the unperturbed ``k`` and its free energy is compared against
+all random-perturbation attempts; the overall best is returned.  This makes
+the function suitable as a drop-in replacement for
+:func:`variational_quadratic_mfa` in sweeps, combining adiabatic continuity
+(warm start) with escape from local minima (random restarts) in a
+model-agnostic way.
 """
 
 from typing import Optional
@@ -39,6 +48,7 @@ def symmetry_breaking_mfa(
     numfields: int = 6,
     epsilon: float = 1e-3,
     n_attempts: int = 1,
+    sigma_ref: Optional[ProductDensityOperator] = None,
     seed: Optional[int] = None,
     **kwargs,
 ) -> ProductDensityOperator:
@@ -53,7 +63,13 @@ def symmetry_breaking_mfa(
     Hilbert-space dimension only, so it works for any on-site basis (spin,
     boson, fermion, etc.).
 
-    **Two-round strategy**
+    **Strategy**
+
+    *Warm-start candidate* (only when ``sigma_ref`` is provided):
+      Refine ``sigma_ref`` on the unperturbed ``k``.  This preserves
+      adiabatic continuity across a parameter sweep.
+
+    *Random-restart candidates* (``n_attempts`` times):
 
     1. Build :math:`k_\epsilon = k + \epsilon\,\delta h_i`, where
        :math:`\delta h_i` is a random Hermitian operator of unit spectral
@@ -63,9 +79,11 @@ def symmetry_breaking_mfa(
     3. Run :func:`variational_quadratic_mfa` on the original :math:`k`
        starting from :math:`\sigma_\epsilon`.
 
-    If ``n_attempts > 1``, steps 1–3 are repeated with different random
-    perturbations and the result with the lowest variational free energy
-    is returned.
+    The candidate with the lowest variational free energy across the warm
+    start (if any) and all random-restart attempts is returned.  Combining
+    both mechanisms in a single call makes this function suitable as a
+    drop-in replacement for :func:`variational_quadratic_mfa` in parameter
+    sweeps, without any model-specific logic.
 
     Parameters
     ----------
@@ -76,28 +94,35 @@ def symmetry_breaking_mfa(
         construct the local perturbation operator.
     numfields : int, optional
         Number of auxiliary variational fields.  Forwarded to
-        :func:`variational_quadratic_mfa` in both rounds.
+        :func:`variational_quadratic_mfa` in all rounds.
         Default is 6.
     epsilon : float, optional
         Spectral norm of the symmetry-breaking field.  Should be small
         enough not to bias the final result (default ``1e-3``).
     n_attempts : int, optional
-        Number of independent random perturbations to try.  The attempt
-        with the lowest variational free energy is returned.
+        Number of independent random-perturbation attempts.  The candidate
+        with the lowest variational free energy across all attempts (and the
+        warm-start candidate, if ``sigma_ref`` is given) is returned.
         Default is 1.
+    sigma_ref : ProductDensityOperator or None, optional
+        External warm-start state, e.g. the converged solution from a
+        neighbouring point in a parameter sweep.  When provided it is
+        refined on the unperturbed ``k`` and competes against the
+        random-restart candidates.  Default is ``None``.
     seed : int or None, optional
         Seed for the random number generator.  Passing an integer gives
-        reproducible results.  Default is ``None`` (non-reproducible).
+        reproducible results across the random-restart attempts.
+        Default is ``None`` (non-reproducible).
     **kwargs
         Additional keyword arguments forwarded to
-        :func:`variational_quadratic_mfa` in both rounds (e.g.
+        :func:`variational_quadratic_mfa` in all rounds (e.g.
         ``max_self_consistent_steps``, ``callback``).
 
     Returns
     -------
     ProductDensityOperator
-        The best variational product state found across all attempts,
-        i.e. the one with the lowest variational free energy
+        The best variational product state found, i.e. the one with the
+        lowest variational free energy
         :math:`F[\sigma] = \mathrm{Tr}[\sigma(k + \log\sigma)]`.
 
     See Also
@@ -107,21 +132,48 @@ def symmetry_breaking_mfa(
 
     Examples
     --------
+    Basic use (single random restart, no warm start):
+
     >>> from qalma.meanfield import symmetry_breaking_mfa
     >>> sigma = symmetry_breaking_mfa(
     ...     beta * ham, system,
     ...     numfields=6, epsilon=1e-3, n_attempts=3, seed=42,
     ... )
     >>> print(f"F = {compute_free_energy(sigma, beta * ham):.6f}")
+
+    Use in a parameter sweep (warm start + random restarts):
+
+    >>> sigma_prev = None
+    >>> for B in field_values:
+    ...     ham_B = ham_0 + zeeman * B
+    ...     sigma = symmetry_breaking_mfa(
+    ...         beta * ham_B, system,
+    ...         numfields=6, n_attempts=3, sigma_ref=sigma_prev,
+    ...     )
+    ...     sigma_prev = sigma
     """
+    import logging
+
     rng = np.random.default_rng(seed)
     sites = list(system.sites.keys())
 
     best_sigma: Optional[ProductDensityOperator] = None
     best_f: float = float("inf")
 
+    # --- Candidate 0: refine the external warm start (if provided) --------
+    if sigma_ref is not None:
+        sigma_ws = variational_quadratic_mfa(
+            k, numfields=numfields, sigma_ref=sigma_ref, **kwargs
+        )
+        best_f = compute_free_energy(sigma_ws, k)
+        best_sigma = sigma_ws
+        logging.debug(
+            f"symmetry_breaking_mfa warm-start candidate: F={best_f:.6f}"
+        )
+
+    # --- Candidates 1..n_attempts: random perturbations -------------------
     for attempt in range(n_attempts):
-        # --- Step 1: build perturbation on a random site ------------------
+        # Step 1: build perturbation on a random site
         site = sites[rng.integers(len(sites))]
         d = system.dimensions[site]
         delta_h = _random_hermitian(d, rng)
@@ -133,12 +185,12 @@ def symmetry_breaking_mfa(
         # reproducible across calls with the same seed.
         np.random.seed(int(rng.integers(2**31)))
 
-        # --- Step 2: first round on perturbed generator -------------------
+        # Step 2: first round on perturbed generator
         sigma_eps = variational_quadratic_mfa(k_eps, numfields=numfields, **kwargs)
 
         np.random.seed(int(rng.integers(2**31)))
 
-        # --- Step 3: second round on original generator -------------------
+        # Step 3: second round on original generator
         sigma = variational_quadratic_mfa(
             k, numfields=numfields, sigma_ref=sigma_eps, **kwargs
         )
@@ -149,13 +201,10 @@ def symmetry_breaking_mfa(
             best_f = f
             best_sigma = sigma
 
-        if n_attempts > 1:
-            import logging
-
-            logging.info(
-                f"symmetry_breaking_mfa attempt {attempt + 1}/{n_attempts}: "
-                f"site={site}  F={f:.6f}  best={best_f:.6f}"
-            )
+        logging.debug(
+            f"symmetry_breaking_mfa attempt {attempt + 1}/{n_attempts}: "
+            f"site={site}  F={f:.6f}  best={best_f:.6f}"
+        )
 
     assert best_sigma is not None
     return best_sigma

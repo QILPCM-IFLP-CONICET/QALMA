@@ -16,6 +16,7 @@ from .nbody import (
 from .symmetries import (
     project_conserved_quantity,
     project_parity_like,
+    project_time_reversal,
 )
 
 __all__ = [
@@ -27,4 +28,5 @@ __all__ = [
     "project_k_to_sep",
     "project_operator_to_n_body",
     "project_parity_like",
+    "project_time_reversal",
 ]
