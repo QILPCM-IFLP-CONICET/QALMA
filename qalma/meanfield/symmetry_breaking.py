@@ -128,8 +128,15 @@ def symmetry_breaking_mfa(
         perturbation = LocalOperator(site, epsilon * delta_h, system)
         k_eps = k + perturbation
 
+        # Seed numpy's global random state so that variational_quadratic_mfa
+        # (which uses numpy.random.random_sample internally) is also
+        # reproducible across calls with the same seed.
+        np.random.seed(int(rng.integers(2**31)))
+
         # --- Step 2: first round on perturbed generator -------------------
         sigma_eps = variational_quadratic_mfa(k_eps, numfields=numfields, **kwargs)
+
+        np.random.seed(int(rng.integers(2**31)))
 
         # --- Step 3: second round on original generator -------------------
         sigma = variational_quadratic_mfa(
