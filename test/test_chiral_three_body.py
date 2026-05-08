@@ -66,7 +66,6 @@ from qalma.model import SystemDescriptor
 from qalma.operators.states import ProductDensityOperator
 from qalma.qutip_tools import is_empty_op
 
-
 # ---------------------------------------------------------------------------
 # Incremental JSONL output
 # ---------------------------------------------------------------------------
@@ -879,9 +878,9 @@ if __name__ == "__main__":
     output_dir = Path("benchmark_results")
     output_dir.mkdir(exist_ok=True)
 
-    out_exact    = output_dir / "exact_validation.jsonl"
+    out_exact = output_dir / "exact_validation.jsonl"
     out_numfields = output_dir / "numfields_convergence.jsonl"
-    out_sweep    = output_dir / "field_sweep.jsonl"
+    out_sweep = output_dir / "field_sweep.jsonl"
 
     all_results: dict = {
         "exact_validation": [],
@@ -995,7 +994,7 @@ if __name__ == "__main__":
 
     # ---- Results summary -------------------------------------------------
     # Incremental JSONL files were written after each block above.
-    print(f"\nResults saved incrementally:")
+    print("\nResults saved incrementally:")
     print(f"  {out_exact}")
     print(f"  {out_numfields}")
     print(f"  {out_sweep}")
