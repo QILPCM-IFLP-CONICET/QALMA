@@ -5,7 +5,7 @@ The model Hamiltonian is
 
     H = J  * sum_{<ij>} vec{s}_i . vec{s}_j
       + chi * sum_{triangles} vec{s}_i . (vec{s}_j x vec{s}_k)
-      + B   * sum_i S^z_i                        [Zeeman term]
+      - B   * sum_i S^z_i                        [Zeeman term]
 
 where the scalar triple product
 
@@ -27,7 +27,7 @@ two-body operators), making it a meaningful stress-test for the variational
 mean-field approach: the n_body_projection step in
 `variational_quadratic_mfa` must correctly handle three-body interactions.
 
-The Zeeman term ``B * sum_i S^z_i`` is a uniform field applied to all sites.
+The Zeeman term ``-B * sum_i S^z_i`` is a uniform field applied to all sites.
 Sweeping B at fixed (J, chi, beta) maps out the competition between exchange,
 chirality, and Zeeman energy, and is the main subject of the ``run_field_sweep``
 benchmark.
@@ -189,7 +189,7 @@ def build_zeeman_term(system: SystemDescriptor) -> object:
 
     The caller multiplies by ``B`` and adds to the Hamiltonian:
 
-        ham_B = ham + B * zeeman
+        ham_B = ham - B * zeeman
 
     Parameters
     ----------
@@ -706,7 +706,7 @@ def compute_b_worker(
     """
     Compute the mean field and expectation values for a given value of B.
     """
-    ham_B = ham_0 + zeeman * B
+    ham_B = ham_0 - zeeman * B
 
     t0 = time.perf_counter()
     sigma = symmetry_breaking_mfa(
@@ -769,7 +769,7 @@ def run_field_sweep(
 
     The full Hamiltonian at each field point is
 
-        H(B) = H_chiral  +  B * sum_i S^z_i
+        H(B) = H_chiral  -  B * sum_i S^z_i
 
     For each value of B the variational state sigma is optimised and we record:
 
