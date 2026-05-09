@@ -1,4 +1,4 @@
-"""Utility functions to import and process ALPS specification files."""
+"""Utility functions for visualization."""
 
 import numpy as np
 from matplotlib.patches import Circle as _Circle, Ellipse as _Ellipse

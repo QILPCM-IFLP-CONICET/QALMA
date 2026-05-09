@@ -1,4 +1,4 @@
-"""Utility functions to import and process ALPS specification files."""
+"""Utility functions for export objects into different formats."""
 
 import numpy as np
 import qutip  # type: ignore[import-untyped]

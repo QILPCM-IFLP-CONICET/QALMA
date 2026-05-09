@@ -2,6 +2,7 @@
 Convex fit tools
 ----------------
 
+Tools to postprocess results of optimizations.
 """
 
 import logging

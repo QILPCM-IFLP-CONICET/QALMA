@@ -1,4 +1,10 @@
-"""Utility functions to import and process ALPS specification files."""
+"""
+Evaluation and access to xml libraries.
+---------------------------------------
+
+Utility functions to import and process ALPS specification files.
+
+"""
 
 import logging
 
