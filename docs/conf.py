@@ -24,6 +24,7 @@ extensions = [
     "sphinx.ext.mathjax",
     "nbsphinx",
     "myst_parser",
+    "sphinx.ext.imgconverter", # Automatically handles image format conversions
 ]
 
 templates_path = ["_templates"]
@@ -33,6 +34,10 @@ source_suffix = {
 }
 master_doc = "index"
 exclude_patterns = ["_build", "Thumbs.db", ".DS_Store", "**.ipynb_checkpoints"]
+
+# Options for LaTeX output ---------------------------
+
+latex_logo = "logo.pdf"
 
 # -- Options for HTML output -------------------------------------------------
 
