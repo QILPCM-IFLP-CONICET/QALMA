@@ -47,7 +47,9 @@ from pathlib import Path
 import matplotlib as mpl
 import matplotlib.pyplot as plt
 import numpy as np
+
 from qalma.utils import convex_fit_derivative
+
 # ---------------------------------------------------------------------------
 # Style
 # ---------------------------------------------------------------------------
@@ -133,11 +135,12 @@ def select(records, **kwargs):
 def sorted_by(records, key):
     return sorted(records, key=lambda r: r[key])
 
+
 def exact_mag(rows):
     """Numerical derivative dF_exact/dB ≈ ⟨Sz_tot⟩_exact."""
     rows = sorted_by(rows, "B")
-    data = [(row["B"],row["f_exact"]) for row in rows]
-    mags = convex_fit_derivative(data,convexity=-1)
+    data = [(row["B"], row["f_exact"]) for row in rows]
+    mags = convex_fit_derivative(data, convexity=-1)
     return rows, mags
 
 
