@@ -21,7 +21,7 @@ from qutip.core.data.dense import (
     Dense as _Qutip_Dense,
     fast_from_numpy as _fast_from_numpy,
 )
-from scipy.linalg import norm as _scipy_norm, svd as _svd
+from scipy.linalg import logm as _scipy_logm, norm as _scipy_norm, svd as _svd
 from scipy.sparse import csr_matrix as _sp_csr_matrix
 from scipy.sparse.linalg import (
     ArpackError as _ArpackError,
@@ -36,6 +36,7 @@ __all__ = [
     "data_element_iterator",
     "is_empty_op",
     "decompose_qutip_operator_hermitian",
+    "fast_logm",
 ]
 
 
@@ -702,6 +703,45 @@ def schmidt_dec_rest_last_qutip_operator_hermitian(
         opsh_2.append(op_2h)
 
     return opsh_1, opsh_2
+
+
+# Relative tolerances for the fast path of fast_logm.
+_FAST_LOGM_HERMITICITY_RTOL = 1e-12
+_FAST_LOGM_CONDITION_RTOL = 1e-8
+
+
+def fast_logm(matrix: np.ndarray) -> np.ndarray:
+    """Compute the matrix logarithm of a small matrix.
+
+    For Hermitian, positive definite and well conditioned matrices (like
+    the local factors of a product density operator) the logarithm is
+    computed from the eigendecomposition, which is about two orders of
+    magnitude faster than ``scipy.linalg.logm`` for the small blocks used
+    in QALMA. In any other case (non-Hermitian, singular or nearly singular
+    matrices, which ``scipy`` regularizes in its own way), it falls back
+    to ``scipy.linalg.logm``, so the results do not change.
+
+    Parameters
+    ----------
+    matrix : numpy.ndarray
+        A square matrix.
+
+    Returns
+    -------
+    numpy.ndarray
+        The matrix logarithm of ``matrix``.
+
+    """
+    arr = np.asarray(matrix)
+    if arr.ndim == 2 and arr.shape[0] == arr.shape[1] and arr.shape[0] > 0:
+        scale = np.max(np.abs(arr))
+        if scale > 0 and (
+            np.max(np.abs(arr - arr.conj().T)) <= _FAST_LOGM_HERMITICITY_RTOL * scale
+        ):
+            evals, evecs = _eigh(arr)
+            if evals[0] > 0 and evals[0] > _FAST_LOGM_CONDITION_RTOL * evals[-1]:
+                return (evecs * np.log(evals)) @ evecs.conj().T
+    return _scipy_logm(arr)
 
 
 def to_qobj(array: np.ndarray, atol: float = 1e-12) -> _Qobj:

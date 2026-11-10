@@ -54,6 +54,7 @@ class Operator:  # pylint: disable=too-many-public-methods
         """
 
         def register_func(func):
+            """Register the implementation of an arithmetic operation"""
             keys = key if isinstance(key[0], (list, tuple)) else (key,)
             for curr_key in keys:
                 if curr_key in dispatch_table:
@@ -464,7 +465,7 @@ class LocalOperator(Operator):
 
     def __repr__(self):
         """Return a string representation of this local operator."""
-        return f"Local Operator on site {self.site}:" f"\n {repr(self.operator_qutip)}"
+        return f"Local Operator on site {self.site}:\n {repr(self.operator_qutip)}"
 
     @cached_property
     def operator_qutip(self) -> Qobj:

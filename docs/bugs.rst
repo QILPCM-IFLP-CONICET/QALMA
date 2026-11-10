@@ -23,7 +23,8 @@ Therefore helpful to priorities the kinds of issues. Things that are helpful in 
 * Is this bug of feature blocking something important?
 * What is the impact of this bug on the entire community?
 
-# What to report
+What to report
+--------------
 
 The basic requirement is pretty simple:
 

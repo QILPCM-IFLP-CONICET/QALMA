@@ -150,7 +150,7 @@ def test_relative_entropy(key_rho, key_sigma):
         print(key_sigma, operator_to_wolfram(sigma.to_qutip()))
         assert (
             False
-        ), f" in S({key_rho}|{key_sigma}),  {rel_entr} (qalma) !=   {rel_entr_qutip} (qutip)  relative error: ({rel_error*100}%)"
+        ), f" in S({key_rho}|{key_sigma}),  {rel_entr} (qalma) !=   {rel_entr_qutip} (qutip)  relative error: ({rel_error * 100}%)"
 
 
 def test_eigenvalues():
@@ -256,7 +256,7 @@ def test_spectral_norm(name, operator):
     op_sn = spectral_norm(operator)
     assert abs(op_sn - qutip_sn) < tolerance, (
         f"||op_{name}|-|qutip_{name}||="
-        f"|{op_sn}-{qutip_sn}|={abs(op_sn-qutip_sn)}>{tolerance}."
+        f"|{op_sn}-{qutip_sn}|={abs(op_sn - qutip_sn)}>{tolerance}."
     )
 
 

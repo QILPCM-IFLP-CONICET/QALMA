@@ -174,10 +174,10 @@ def test_type_operator():
     assert isinstance((SX_A + SY_B), OneBodyOperator)
     assert isinstance(
         (SX_A + SY_B) * 3, OneBodyOperator
-    ), f"{type((SX_A + SY_B)*3.)} is not OneBodyOperator"
+    ), f"{type((SX_A + SY_B) * 3.0)} is not OneBodyOperator"
     assert isinstance(
         3.0 * (SX_A + SY_B), OneBodyOperator
-    ), f"{type(3.0*(SX_A + SY_B))} is not OneBodyOperator"
+    ), f"{type(3.0 * (SX_A + SY_B))} is not OneBodyOperator"
 
     assert isinstance((SX_A + SY_B) * 2.0, OneBodyOperator)
     assert isinstance(SY_B + SX_A, OneBodyOperator)

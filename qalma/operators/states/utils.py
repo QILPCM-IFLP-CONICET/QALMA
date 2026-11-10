@@ -160,7 +160,7 @@ def collect_local_states(
         parent_state = global_state
         for block, candidate in sorted(
             _local_states.items(),
-            key=lambda x: (len(x[0]) if x[0] is not None else 0),
+            key=lambda x: len(x[0]) if x[0] is not None else 0,
         ):
             if block is not None and obj_block.issubset(block):
                 parent_state = candidate

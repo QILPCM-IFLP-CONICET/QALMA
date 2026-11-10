@@ -105,6 +105,7 @@ if os.environ.get("BENCHMARKS", 0):
     print("done")
 
 
+@pytest.mark.benchmark(group="bench_projector")
 @pytest.mark.parametrize(
     [
         "name",
@@ -127,6 +128,7 @@ def test_one_body_product_projector(benchmark, name, state_name):
     benchmark.pedantic(impl, rounds=3, iterations=1)
 
 
+@pytest.mark.benchmark(group="bench_projector")
 @pytest.mark.parametrize(
     [
         "name",
@@ -149,6 +151,7 @@ def test_one_body_qutip_projector(benchmark, name, state_name):
     benchmark.pedantic(impl, rounds=3, iterations=1)
 
 
+@pytest.mark.benchmark(group="bench_projector")
 @pytest.mark.parametrize(
     [
         "name",
@@ -185,6 +188,7 @@ def test_product_projectors(benchmark, name, state_name, projector, nbody):
     benchmark.pedantic(impl, rounds=3, iterations=1)
 
 
+@pytest.mark.benchmark(group="bench_projector")
 @pytest.mark.parametrize(
     [
         "name",
@@ -221,6 +225,7 @@ def test_qutip_projectors(benchmark, name, state_name, projector, nbody):
     benchmark.pedantic(impl, rounds=3, iterations=1)
 
 
+@pytest.mark.benchmark(group="bench_projector")
 @pytest.mark.parametrize(
     [
         "op_name",

@@ -113,6 +113,7 @@ def qutip_me_solve(
     else:
         # If rho0 is a Qobj, just return the Qutip output without changes.
         def state_operator_class(x, **_kwargs):
+            """Return the class of the state operator."""
             return x
 
         rho0_qutip = rho0
@@ -129,6 +130,7 @@ def qutip_me_solve(
             e_ops_qutip = e_ops
 
             def e_ops_wrapper(t, rho):
+                """Wrapper of the expectation operators."""
                 return e_ops_qutip(t, state_operator_class(rho, system=system))
 
             e_ops = e_ops_wrapper

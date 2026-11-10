@@ -162,7 +162,7 @@ class SumOperator(Operator):
         terms = self.terms
         if len(terms) > 6:
             result = " + ".join(term._repr_latex_()[1:-1] for term in terms[:3])
-            result += f" + \\ldots ({len(terms)-6} terms) \\ldots + "
+            result += f" + \\ldots ({len(terms) - 6} terms) \\ldots + "
             result += " + ".join(term._repr_latex_()[1:-1] for term in terms[-3:])
         else:
             result = " + ".join(term._repr_latex_()[1:-1] for term in terms)
@@ -582,6 +582,7 @@ class OneBodyOperator(SumOperator):
         assert system is not None
 
         def collect_systems(terms, system):
+            """Collect the systems associated to each term."""
             for term in terms:
                 if not hasattr(term, "system"):
                     continue

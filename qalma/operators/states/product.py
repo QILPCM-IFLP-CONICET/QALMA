@@ -11,7 +11,6 @@ from qutip import (  # type: ignore[import-untyped]
     qeye as _qutip_qeye,
     tensor as _qutip_tensor,
 )
-from scipy.linalg import logm as _scp_logm
 from scipy.linalg._matfuncs_inv_ssq import LogmExactlySingularWarning
 
 from qalma.model import SystemDescriptor
@@ -26,6 +25,7 @@ from qalma.operators.product import (
 from qalma.operators.states.basic import DensityOperatorMixin, DensityOperatorProtocol
 from qalma.qutip_tools.tools import (
     _to_array,
+    fast_logm,
 )
 
 __all__ = ["ProductDensityOperator"]
@@ -252,12 +252,12 @@ class ProductDensityOperator(DensityOperatorMixin, ProductOperator):
         """
         system = self.system
         sites_op = self.site_factors
-        warnings.filterwarnings("ignore", category=LogmExactlySingularWarning)
-        terms = tuple(
-            LocalOperator(site, _scp_logm(loc_op), system)
-            for site, loc_op in sites_op.items()
-        )
-        warnings.resetwarnings()
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore", category=LogmExactlySingularWarning)
+            terms = tuple(
+                LocalOperator(site, fast_logm(loc_op), system)
+                for site, loc_op in sites_op.items()
+            )
         if system:
             norm = -sum(
                 np.log(dim)
