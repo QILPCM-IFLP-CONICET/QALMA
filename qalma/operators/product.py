@@ -9,11 +9,12 @@ from typing import Dict, Iterable, Optional, Tuple, Union
 
 import numpy as np
 from qutip import Qobj as _Qobj
-from scipy.linalg import expm as _scp_expm, logm as _scp_logm
+from scipy.linalg import expm as _scp_expm
 from scipy.linalg._matfuncs_inv_ssq import LogmExactlySingularWarning
 
 from qalma.model import SystemDescriptor
 from qalma.qutip_tools.tools import (
+    fast_logm,
     _to_array,
     fast_tensor,
     is_diagonal_op,
@@ -410,12 +411,12 @@ class ProductOperator(Operator):
         from qalma.operators.arithmetic import OneBodyOperator
 
         system = self.system
-        warnings.filterwarnings("ignore", category=LogmExactlySingularWarning)
-        terms = tuple(
-            LocalOperator(site, _scp_logm(loc_op), system)
-            for site, loc_op in self.site_factors.items()
-        )
-        warnings.resetwarnings()
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore", category=LogmExactlySingularWarning)
+            terms = tuple(
+                LocalOperator(site, fast_logm(loc_op), system)
+                for site, loc_op in self.site_factors.items()
+            )
         result = OneBodyOperator(terms, system, False)
         result = result + ScalarOperator(np.log(self.prefactor), system)
         return result
