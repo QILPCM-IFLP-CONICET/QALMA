@@ -178,9 +178,9 @@ def group_terms_by_blocks(operator: Operator, fn: Optional[Callable] = None):
         if block is None:
             new_terms.extend(terms)
         elif len(block) == 0:
-            assert all(
-                isinstance(term, ScalarOperator) for term in terms
-            ), "Should be a scalar term..."
+            assert all(isinstance(term, ScalarOperator) for term in terms), (
+                "Should be a scalar term..."
+            )
             scalar_terms.extend(terms)
         elif len(block) == 1:
             one_body_terms.extend(terms)

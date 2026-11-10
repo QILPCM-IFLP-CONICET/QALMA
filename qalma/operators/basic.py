@@ -465,7 +465,7 @@ class LocalOperator(Operator):
 
     def __repr__(self):
         """Return a string representation of this local operator."""
-        return f"Local Operator on site {self.site}:" f"\n {repr(self.operator_qutip)}"
+        return f"Local Operator on site {self.site}:\n {repr(self.operator_qutip)}"
 
     @cached_property
     def operator_qutip(self) -> Qobj:

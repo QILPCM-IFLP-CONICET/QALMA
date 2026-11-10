@@ -9,7 +9,6 @@ from qalma.operators import ProductOperator
 from qalma.operators.functions import commutator, fidelity
 
 
-
 @pytest.mark.skipif(
     not os.environ.get("BENCHMARKS", 0), reason="run only in benchmarks"
 )

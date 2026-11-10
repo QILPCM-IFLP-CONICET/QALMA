@@ -348,9 +348,9 @@ class GibbsDensityOperator(DensityOperatorMixin, Operator):
         if block is None:
             block = tuple(sorted(all_sites))
         elif len(block) < len(all_sites):
-            assert all(
-                site in all_sites for site in block
-            ), "sites must be in the (sub)system"
+            assert all(site in all_sites for site in block), (
+                "sites must be in the (sub)system"
+            )
             block = block + tuple(
                 sorted((site for site in all_sites if site not in block))
             )

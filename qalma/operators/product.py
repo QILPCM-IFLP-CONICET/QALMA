@@ -604,9 +604,9 @@ class ProductOperator(Operator):
         for site, op_factor in self.site_factors.items():
             if is_scalar_op(op_factor):
                 prefactor *= op_factor[0, 0]
-                assert isinstance(
-                    prefactor, (int, float, complex)
-                ), f"{type(prefactor)}:{prefactor}"
+                assert isinstance(prefactor, (int, float, complex)), (
+                    f"{type(prefactor)}:{prefactor}"
+                )
                 if not prefactor:
                     return ScalarOperator(0, self.system)
             else:

@@ -162,7 +162,7 @@ class SumOperator(Operator):
         terms = self.terms
         if len(terms) > 6:
             result = " + ".join(term._repr_latex_()[1:-1] for term in terms[:3])
-            result += f" + \\ldots ({len(terms)-6} terms) \\ldots + "
+            result += f" + \\ldots ({len(terms) - 6} terms) \\ldots + "
             result += " + ".join(term._repr_latex_()[1:-1] for term in terms[-3:])
         else:
             result = " + ".join(term._repr_latex_()[1:-1] for term in terms)
@@ -246,9 +246,9 @@ class SumOperator(Operator):
                 changed = True
             else:
                 new_term = term.flat()
-                assert isinstance(
-                    new_term, Operator
-                ), f"{type(term)} produces type({new_term})"
+                assert isinstance(new_term, Operator), (
+                    f"{type(term)} produces type({new_term})"
+                )
                 terms.append(new_term)
                 if term is not new_term:
                     changed = True
