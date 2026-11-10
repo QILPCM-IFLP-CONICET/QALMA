@@ -582,6 +582,7 @@ class OneBodyOperator(SumOperator):
         assert system is not None
 
         def collect_systems(terms, system):
+            """Collect the systems associated to each term."""
             for term in terms:
                 if not hasattr(term, "system"):
                     continue

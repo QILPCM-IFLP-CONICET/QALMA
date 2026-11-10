@@ -52,10 +52,12 @@ def convex_fit_derivative(
     n_coeffs = len(knots) - k - 1
 
     def get_spline_from_coeffs(coeffs, knots, k):
+        """Build a BSpline approximation."""
         return BSpline(knots, coeffs, k)
 
     # 3. Define the Objective Function (Mean Squared Error)
     def objective_function(coeffs, x_data, y_data, knots, k):
+        """the objective function to be optimized."""
         spline_func = get_spline_from_coeffs(coeffs, knots, k)
         y_pred = spline_func(x_data)
         return np.sum((y_pred - y_data) ** 2)

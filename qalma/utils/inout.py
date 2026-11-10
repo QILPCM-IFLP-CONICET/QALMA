@@ -18,6 +18,7 @@ def operator_to_wolfram(operator) -> str:
     from qalma.operators.product import ProductOperator
 
     def get_site_identity(site_name):
+        """The identity operator of the site."""
         site_spec = sites[site_name]
         if "operators" in site_spec:
             return site_spec["operators"]["identity"]
@@ -94,6 +95,7 @@ def matrix_to_wolfram(matr: np.ndarray):
     ), f"{type(matr)} is not ndarray or number"
 
     def process_number(num):
+        """evaluate a number."""
         assert isinstance(
             num, (float, complex)
         ), f"{type(num)} {num} is not float or complex."

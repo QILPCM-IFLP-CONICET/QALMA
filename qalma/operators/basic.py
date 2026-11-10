@@ -54,6 +54,7 @@ class Operator:  # pylint: disable=too-many-public-methods
         """
 
         def register_func(func):
+            """Register the implementation of an arithmetic operation"""
             keys = key if isinstance(key[0], (list, tuple)) else (key,)
             for curr_key in keys:
                 if curr_key in dispatch_table:

@@ -43,6 +43,7 @@ else:
     BENCHMARK_EXPECTATION_CASES = []
 
 
+@pytest.mark.benchmark(group="bench_expect")
 @pytest.mark.skipif(
     not os.environ.get("BENCHMARKS", 0), reason="run only in benchmarks"
 )
