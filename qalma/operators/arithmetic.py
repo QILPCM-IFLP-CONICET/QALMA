@@ -246,9 +246,9 @@ class SumOperator(Operator):
                 changed = True
             else:
                 new_term = term.flat()
-                assert isinstance(new_term, Operator), (
-                    f"{type(term)} produces type({new_term})"
-                )
+                assert isinstance(
+                    new_term, Operator
+                ), f"{type(term)} produces type({new_term})"
                 terms.append(new_term)
                 if term is not new_term:
                     changed = True

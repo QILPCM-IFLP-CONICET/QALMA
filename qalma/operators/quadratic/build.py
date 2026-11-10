@@ -525,9 +525,9 @@ def build_quadratic_form_from_operator(
     if isinstance(operator, ScalarOperator):
         if isherm and not operator.isherm:
             operator = ScalarOperator(operator.prefactor.real, system)
-        assert not isherm or isherm == operator.isherm, (
-            f"{operator} -> {isherm}!={operator.isherm}"
-        )
+        assert (
+            not isherm or isherm == operator.isherm
+        ), f"{operator} -> {isherm}!={operator.isherm}"
         return QuadraticFormOperator(tuple(), tuple(), system, operator, None)
 
     if (

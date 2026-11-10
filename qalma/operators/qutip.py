@@ -138,9 +138,9 @@ class QutipOperator(Operator):
             )
         )
         if isherm:
-            assert all(term.isherm for term in terms), (
-                f"{[(type(term), term.isherm) for term in terms]}"
-            )
+            assert all(
+                term.isherm for term in terms
+            ), f"{[(type(term), term.isherm) for term in terms]}"
         if len(terms) == 0:
             terms = tuple((ScalarOperator(0, self.system),))
         return SumOperator(terms, self.system, isherm=isherm)
@@ -481,9 +481,9 @@ class QutipOperator(Operator):
         # Add sites which are in site_names, but not in block
         block = block + tuple((site for site in site_names if site not in block))
         shuffle: List[int] = list(site_names_dict[site] for site in block)
-        assert len(shuffle) == len(operator_qutip.dims[0]), (
-            f"len({shuffle})!=len({operator_qutip.dims[0]})"
-        )
+        assert len(shuffle) == len(
+            operator_qutip.dims[0]
+        ), f"len({shuffle})!=len({operator_qutip.dims[0]})"
         if shuffle == sorted(shuffle):
             return operator_qutip
         return operator_qutip.permute(shuffle)

@@ -45,7 +45,6 @@ else:
     HIERARCHICAL_BASIS_CASES = {}
 
 
-
 @pytest.mark.skipif(
     not os.environ.get("BENCHMARKS", 0), reason="run only in benchmarks"
 )
@@ -65,7 +64,7 @@ def test_reference_benchmark(benchmark):
     result = benchmark(reference_task)
     assert result == sum(i**2 for i in range(30000))
 
-    
+
 @pytest.mark.parametrize(["case", "basis"], list(HIERARCHICAL_BASIS_CASES.items()))
 def test_gram_matrix_benchmark(benchmark, case, basis):
     """Benchmark scalar products."""

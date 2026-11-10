@@ -165,9 +165,7 @@ class QuadraticFormOperator(Operator):
         assert (
             isinstance(linear_term, (OneBodyOperator, LocalOperator, ScalarOperator))
             or linear_term is None
-        ), (
-            f"{type(linear_term)} should be a LocalOperator, OneBodyOperator, or ScalarOperator"
-        )
+        ), f"{type(linear_term)} should be a LocalOperator, OneBodyOperator, or ScalarOperator"
         if system is None:
             for term in basis:
                 if system is None:
@@ -518,9 +516,9 @@ class QuadraticFormOperator(Operator):
                 result = result + tpt
             else:
                 result = term.partial_trace(sites)
-                assert isinstance(result, Operator), (
-                    f"partial trace of {type(term)} returns {type(result)}"
-                )
+                assert isinstance(
+                    result, Operator
+                ), f"partial trace of {type(term)} returns {type(result)}"
 
         if len(self.basis) == 0 and result is None:
             return ScalarOperator(0, sites)

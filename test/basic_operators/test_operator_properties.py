@@ -133,6 +133,6 @@ def test_norm(key, operator):
         print("   checking for ord:", ord)
         qutip_value = q_op.norm(ord)
         value = operator.norm(ord)
-        assert abs(value - qutip_value) < 1e-9, (
-            f"     {value}!={qutip_value} factor ({value / qutip_value})."
-        )
+        assert (
+            abs(value - qutip_value) < 1e-9
+        ), f"     {value}!={qutip_value} factor ({value / qutip_value})."
