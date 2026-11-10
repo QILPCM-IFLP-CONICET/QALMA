@@ -14,8 +14,8 @@ from scipy.linalg._matfuncs_inv_ssq import LogmExactlySingularWarning
 
 from qalma.model import SystemDescriptor
 from qalma.qutip_tools.tools import (
-    fast_logm,
     _to_array,
+    fast_logm,
     fast_tensor,
     is_diagonal_op,
     is_empty_op,

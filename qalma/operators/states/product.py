@@ -24,8 +24,8 @@ from qalma.operators.product import (
 )
 from qalma.operators.states.basic import DensityOperatorMixin, DensityOperatorProtocol
 from qalma.qutip_tools.tools import (
-    fast_logm,
     _to_array,
+    fast_logm,
 )
 
 __all__ = ["ProductDensityOperator"]
