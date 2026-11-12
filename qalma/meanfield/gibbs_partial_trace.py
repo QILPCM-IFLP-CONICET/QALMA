@@ -138,9 +138,7 @@ def gibbs_meanfield_generator(
     generator = state.k.flat()
     system = state.k.system
     sigma_mf = state._meanfield  # pylint: disable=protected-access
-    environment = frozenset(
-        site for site in generator.acts_over() if site not in sites
-    )
+    environment = frozenset(site for site in generator.acts_over() if site not in sites)
 
     # Decompose generator in terms inside (subsystem), terms outside
     # (environment) and boundary (interaction)

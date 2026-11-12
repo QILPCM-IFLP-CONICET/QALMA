@@ -114,6 +114,7 @@ result should be regarded as qualitative. If the matrix of the bosonic
 Hamiltonian is not positive definite, the RPA is unstable and a
 ``ValueError`` is raised.
 """
+
 from dataclasses import dataclass, field
 from typing import Any, Callable, Dict, List, Optional, Tuple
 
@@ -721,9 +722,7 @@ def _dynamic_correction(
         for site in sites_a
         for e in local_basis[site]
     ]
-    d_k = dynamic_generator_correction(
-        k0_qobj.full(), d_ops, sigma_tau, nodes, weights
-    )
+    d_k = dynamic_generator_correction(k0_qobj.full(), d_ops, sigma_tau, nodes, weights)
     return QutipOperator(
         Qobj(d_k, dims=k0_qobj.dims),
         system,
@@ -912,9 +911,7 @@ def _inherit_gibbs_arithmetic(subclass: type) -> None:
         fallback = mul_table.get(fallback_key)
 
         def handler(x_op, y_op):
-            state, factor = (
-                (x_op, y_op) if isinstance(x_op, subclass) else (y_op, x_op)
-            )
+            state, factor = (x_op, y_op) if isinstance(x_op, subclass) else (y_op, x_op)
             if isinstance(factor, (int, float)) and factor > 0:
                 return state._with_prefactor(  # pylint: disable=protected-access
                     state.prefactor * factor

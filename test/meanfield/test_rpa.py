@@ -64,7 +64,9 @@ def _local_chi0_matsubara(sigma_loc, basis, n_values):
         den = delta + 2j * np.pi * n
         if n == 0:
             small = np.abs(delta) < 1e-12
-            w = np.where(small, p[:, None] * np.ones_like(delta), num / np.where(small, 1, den))
+            w = np.where(
+                small, p[:, None] * np.ones_like(delta), num / np.where(small, 1, den)
+            )
         else:
             w = num / den
         chi = np.einsum("mn,abmn->ab", w, prod).astype(complex)
@@ -178,7 +180,7 @@ def test_rpa_improves_second_neighbors():
     system = build_spin_chain(10, field=0.3)
     sites = list(system.sites)
     sites_a = frozenset([sites[4], sites[6]])
-    block = tuple(sorted(sites_a))
+    # block = tuple(sorted(sites_a))
     state, sigma_mf = _setup(system, 0.5)
     rho_exact = state.to_qutip_operator().partial_trace(sites_a).to_qutip()
 
@@ -198,7 +200,7 @@ def test_dynamic_equals_static_for_commuting_generator():
     system = build_system("chain lattice", "spin", L=10, J=1, Jz=1, Jxy=0, h=0.3)
     sites = list(system.sites)
     sites_a = frozenset([sites[4], sites[6]])
-    block = tuple(sorted(sites_a))
+    # block = tuple(sorted(sites_a))
     state, sigma_mf = _setup(system, 0.8)
     k_static = _reduced_generator(state, sites_a, rpa=True)
     k_dynamic = _reduced_generator(state, sites_a, rpa=True, dynamic=True)
@@ -210,7 +212,7 @@ def test_dynamic_corrects_adjacent_bond():
     system = build_spin_chain(10, field=0.3)
     sites = list(system.sites)
     sites_a = frozenset(sites[4:6])
-    block = tuple(sorted(sites_a))
+    # block = tuple(sorted(sites_a))
     state, sigma_mf = _setup(system, 0.5)
     k_exact = -state.to_qutip_operator().partial_trace(sites_a).to_qutip().logm()
     k_static = _reduced_generator(state, sites_a, rpa=True)
@@ -272,9 +274,9 @@ def test_rpa_state_partial_trace_uses_rpa_by_default():
     no_rpa = rpa_state.partial_trace(sites_a, rpa=False).to_qutip(block)
     assert (no_rpa - mean_field).norm("tr") < 1e-10
     dynamic = rpa_state.partial_trace(sites_a, dynamic=True).to_qutip(block)
-    expected_dyn = plain_state.partial_trace(
-        sites_a, rpa=True, dynamic=True
-    ).to_qutip(block)
+    expected_dyn = plain_state.partial_trace(sites_a, rpa=True, dynamic=True).to_qutip(
+        block
+    )
     assert (dynamic - expected_dyn).norm("tr") < 1e-10
 
 
