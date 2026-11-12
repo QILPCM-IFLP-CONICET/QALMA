@@ -70,6 +70,7 @@ def project_boundary_term(term, sigma: ProductDensityOperator, sites: frozenset)
         return ProductOperator(site_factors_qutip, prefactor, system)
     if isinstance(term, QutipOperator):
         block = tuple(sites) + tuple(environment)
+        # ``to_qutip`` already includes the prefactor of the term.
         qutip_op = term.to_qutip(block)
         qutip_op = qutip_op * qutip_tensor(
             [
@@ -77,7 +78,7 @@ def project_boundary_term(term, sigma: ProductDensityOperator, sites: frozenset)
                 for site in block
             ]
         )
-        qutip_op = qutip_op.ptrace(list(range(len(sites)))) * term.prefactor
+        qutip_op = qutip_op.ptrace(list(range(len(sites))))
         names = {site: pos for pos, site in enumerate(sites)}
         return QutipOperator(qutip_op, system, names)
     # QuadraticFormOperator
