@@ -37,3 +37,31 @@ qalma.meanfield.gibbs\_partial\_trace
    :members:
    :undoc-members:
    :show-inheritance:
+
+qalma.meanfield.rpa
+--------------------
+
+The RPA reduction adds to the mean-field generator of a reduced Gibbs state
+the contribution of the Gaussian fluctuations of the environment. It can be
+requested with the ``rpa`` (and ``dynamic``) options of
+:meth:`~qalma.operators.states.gibbs.GibbsDensityOperator.partial_trace`.
+
+The class :class:`~qalma.meanfield.rpa.RPAGibbsDensityOperator` is a Gibbs
+state whose partial traces (and therefore the expectation values computed
+from them) include the RPA correction by default, and which stores the data
+of the RPA that do not depend on the subsystem
+(:class:`~qalma.meanfield.rpa.RPAStructure`) to reuse them in successive
+reductions:
+
+.. code-block:: python
+
+    from qalma.meanfield.rpa import RPAGibbsDensityOperator
+
+    state = RPAGibbsDensityOperator(k, dynamic=True)
+    rho_a = state.partial_trace(sites)     # mean field + RPA
+    rho_b = state.partial_trace(other)     # reuses state.rpa_structure
+
+.. automodule:: qalma.meanfield.rpa
+   :members:
+   :undoc-members:
+   :show-inheritance:
