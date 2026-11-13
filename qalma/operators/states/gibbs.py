@@ -251,7 +251,13 @@ class GibbsDensityOperator(DensityOperatorMixin, Operator):
 
         return self
 
-    def partial_trace(self, sites: Union[frozenset, SystemDescriptor]):
+    def partial_trace(
+        self,
+        sites: Union[frozenset, SystemDescriptor],
+        rpa: bool = False,
+        dynamic: bool = False,
+        exact: bool = True,
+    ):
         """Compute the partial trace over the complement of ``sites``.
 
         Uses the mean-field Gibbs partial trace, which approximates the
@@ -261,6 +267,16 @@ class GibbsDensityOperator(DensityOperatorMixin, Operator):
         ----------
         sites : frozenset[str] or SystemDescriptor
             Sites to *keep*. All other sites are traced out.
+        rpa : bool, optional
+            If ``True``, add the RPA correction of the Gaussian fluctuations
+            of the environment to the mean-field generator of the reduced
+            state (see :mod:`qalma.meanfield.rpa`). The default is False.
+        dynamic : bool, optional
+            If ``True`` (and ``rpa``), use the dynamical RPA correction.
+            The default is False.
+        exact : bool, optional
+            If ``True`` (default), small systems are reduced exactly. If
+            ``False``, the mean-field branch is always used.
 
         Returns
         -------
@@ -276,9 +292,11 @@ class GibbsDensityOperator(DensityOperatorMixin, Operator):
 
         if isinstance(sites, SystemDescriptor):
             sites = frozenset(sites.sites)
-        return gibbs_meanfield_partial_trace(self, sites)
+        return gibbs_meanfield_partial_trace(
+            self, sites, rpa=rpa, dynamic=dynamic, exact=exact
+        )
 
-    def reduce(self, sites, state=None):
+    def reduce(self, sites, state=None, **kwargs):
         """Alias of :meth:`~qalma.operators.states.gibbs.GibbsDensityOperator.partial_trace`.
 
         Parameters
@@ -287,6 +305,10 @@ class GibbsDensityOperator(DensityOperatorMixin, Operator):
             Sites to *keep*.
         state : optional
             Ignored. Included for interface compatibility.
+        **kwargs
+            Options passed to
+            :meth:`~qalma.operators.states.gibbs.GibbsDensityOperator.partial_trace`
+            (``rpa``, ``dynamic``).
 
         Returns
         -------
@@ -295,7 +317,7 @@ class GibbsDensityOperator(DensityOperatorMixin, Operator):
             ``sites``.
 
         """
-        return self.partial_trace(sites)
+        return self.partial_trace(sites, **kwargs)
 
     def to_qutip_operator(self):
         r"""Return a :class:`~qalma.operators.states.qutip.QutipDensityOperator` representation.
