@@ -5,7 +5,7 @@ Gibbs state.
 """
 
 import logging
-from typing import List
+from typing import List, Optional
 
 from qutip import tensor as qutip_tensor
 
@@ -198,6 +198,8 @@ def gibbs_meanfield_partial_trace(
     dynamic: bool = False,
     n_tau: int = 32,
     exact: bool = True,
+    hybrid: bool = False,
+    hybrid_options: Optional[dict] = None,
 ) -> DensityOperatorProtocol:
     """Build a self-consistent Mean Field approximation to the local state.
 
@@ -221,6 +223,13 @@ def gibbs_meanfield_partial_trace(
         If ``True`` (default), reductions of small systems or of operators
         acting on a small block are computed exactly. If ``False``, the
         mean-field branch is always used.
+    hybrid : bool, optional
+        If ``True`` (and ``rpa``), the subsystem is kept exact and only the
+        environment is treated in the RPA, solving a non perturbative hybrid
+        problem (see :func:`qalma.meanfield.rpa.rpa_hybrid_state`), instead
+        of adding a correction to the generator. The default is False.
+    hybrid_options : dict, optional
+        Options of :func:`qalma.meanfield.rpa.rpa_hybrid_state`.
 
     Returns
     -------
@@ -284,11 +293,30 @@ def gibbs_meanfield_partial_trace(
         return GibbsDensityOperator(k_reduced, system=subsystem, prefactor=prefactor)
 
     k_in, has_boundary = gibbs_meanfield_generator(
-        state, sites, rpa=rpa, dynamic=dynamic, n_tau=n_tau
+        state, sites, rpa=rpa and not hybrid, dynamic=dynamic, n_tau=n_tau
     )
-    result = GibbsDensityOperator(
-        k_in, subsystem, prefactor=prefactor
-    ).to_qutip_operator()
+    if rpa and hybrid and has_boundary:
+        # pylint: disable=import-outside-toplevel
+        from qalma.meanfield.rpa import build_rpa_structure, rpa_hybrid_state
+        from qalma.operators.states import QutipDensityOperator
+
+        structure = getattr(state, "rpa_structure", None)
+        if structure is None:
+            structure = build_rpa_structure(
+                state.k, state._meanfield  # pylint: disable=protected-access
+            )
+        rho = rpa_hybrid_state(structure, sites, k_in, **(hybrid_options or {}))
+        block = tuple(sorted(sites))
+        result = QutipDensityOperator(
+            rho,
+            names={name: pos for pos, name in enumerate(block)},
+            system=subsystem,
+            prefactor=prefactor,
+        )
+    else:
+        result = GibbsDensityOperator(
+            k_in, subsystem, prefactor=prefactor
+        ).to_qutip_operator()
 
     # If there were non-trivial terms in the boundary,
     # restore symmetries:

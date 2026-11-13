@@ -99,6 +99,28 @@ matrix exponential (Kubo-Mori) at first order in :math:`Y`:
 eigenbasis of :math:`K_{A,MF}`. In the limit where :math:`\delta e_\mu`
 commutes with :math:`K_{A,MF}` the static expression is recovered.
 
+**Hybrid reduction (subsystem exact, RPA on the environment).** Instead of
+correcting the generator at first order, the environment is bosonized with
+the subsystem removed, its normal modes are compressed to a few effective
+bosons (block Lanczos, a Gauss quadrature of the spectral density), the
+modes with large thermal occupation are taken as static classical Gaussian
+fields, and the resulting hybrid Hamiltonian (subsystem exact, truncated
+bosons) is diagonalized exactly (:func:`rpa_hybrid_state`). It is non
+perturbative in the coupling between the subsystem and the environment, so
+it includes the back-reaction of the subsystem, and it is valid at low
+temperatures, where the generator corrections fail. The symmetry
+restoration is the one of the Gibbs state (``symmetry_projections``), which
+for the parity is the mixture of the two broken-symmetry branches.
+
+**Full bosonization.** If the subsystem is also bosonized, the whole system
+is a quadratic bosonic Hamiltonian whose thermal state is Gaussian. The
+reduced covariance matrix of any subset of sites gives the entropy and the
+negativity of the bosonic RPA state (see :func:`rpa_entanglement_entropy`
+and :func:`rpa_negativity`), as in the RPA of Matera, Rossignoli and Canosa
+(Phys. Rev. A 82, 052332). The populations of the local mean-field states
+are obtained from the local mean-field generators, so that the zero
+temperature limit can be reached.
+
 Limitations
 -----------
 The environment is described by the Gaussian (linear) truncation of the
@@ -119,12 +141,18 @@ from dataclasses import dataclass, field
 from typing import Any, Callable, Dict, List, Optional, Tuple
 
 import numpy as np
+import scipy.linalg
+import scipy.sparse as sparse
 from qutip import Qobj
 
-from qalma.meanfield.gibbs_partial_trace import gibbs_meanfield_partial_trace
+from qalma.meanfield.gibbs_partial_trace import (
+    gibbs_meanfield_partial_trace,
+    project_boundary_term,
+)
 from qalma.meanfield.variational import variational_quadratic_mfa
 from qalma.model import SystemDescriptor
 from qalma.operators import Operator, QutipOperator
+from qalma.operators.arithmetic import SumOperator, iterable_to_operator
 from qalma.operators.basic import LocalOperator
 from qalma.operators.quadratic import QuadraticFormOperator
 from qalma.operators.quadratic.build import (
@@ -136,9 +164,16 @@ from qalma.operators.quadratic.build import (
 from qalma.operators.states.gibbs import GibbsDensityOperator
 
 __all__ = [
+    "BosonSystem",
     "RPAGibbsDensityOperator",
     "RPAStructure",
+    "build_boson_system",
     "build_rpa_structure",
+    "effective_bath_modes",
+    "environment_modes",
+    "rpa_hybrid_state",
+    "rpa_entanglement_entropy",
+    "rpa_negativity",
     "kubo_mori_susceptibility",
     "local_boson_modes",
     "rpa_coupling_kernel",
@@ -153,15 +188,31 @@ _STATIC_GAP = 1e-6
 # ### Local (single-site) quantities ###
 
 
-def _spectral_data(sigma_loc: np.ndarray, basis: List[np.ndarray]):
-    """Return populations, ``-log`` populations and the basis in the eigenbasis."""
-    p, vecs = np.linalg.eigh(sigma_loc)
+def _spectral_data(
+    sigma_loc: np.ndarray,
+    basis: List[np.ndarray],
+    spectrum: Optional[Tuple[np.ndarray, np.ndarray]] = None,
+):
+    """Return populations, ``-log`` populations and the basis in the eigenbasis.
+
+    If ``spectrum = (populations, eigenvectors)`` is given, it is used
+    instead of diagonalizing ``sigma_loc``. This allows to keep the accuracy
+    of very small populations, which are lost in a density matrix.
+    """
+    if spectrum is None:
+        p, vecs = np.linalg.eigh(sigma_loc)
+    else:
+        p, vecs = spectrum
     p = np.clip(p, 1e-300, None)
     ops = np.array([vecs.conj().T @ np.asarray(e) @ vecs for e in basis])
     return p, -np.log(p), ops
 
 
-def kubo_mori_susceptibility(sigma_loc: np.ndarray, basis: List[np.ndarray]):
+def kubo_mori_susceptibility(
+    sigma_loc: np.ndarray,
+    basis: List[np.ndarray],
+    spectrum: Optional[Tuple[np.ndarray, np.ndarray]] = None,
+):
     r"""Connected Kubo-Mori susceptibility of a local state.
 
     .. math::
@@ -177,13 +228,15 @@ def kubo_mori_susceptibility(sigma_loc: np.ndarray, basis: List[np.ndarray]):
         Local density matrix.
     basis : list of numpy.ndarray
         Hermitian local operators :math:`e_\mu`.
+    spectrum : tuple of numpy.ndarray, optional
+        Populations and eigenvectors of ``sigma_loc``, if known accurately.
 
     Returns
     -------
     numpy.ndarray
         Real symmetric matrix :math:`\chi^0_{\mu\nu}`.
     """
-    p, eps, ops = _spectral_data(sigma_loc, basis)
+    p, eps, ops = _spectral_data(sigma_loc, basis, spectrum)
     delta = eps[:, None] - eps[None, :]
     small = np.abs(delta) < _DEGENERACY_TOL
     w = np.where(
@@ -200,6 +253,7 @@ def local_boson_modes(
     sigma_loc: np.ndarray,
     basis: List[np.ndarray],
     static_gap: float = _STATIC_GAP,
+    spectrum: Optional[Tuple[np.ndarray, np.ndarray]] = None,
 ) -> Tuple[np.ndarray, np.ndarray]:
     r"""Bosonize the fluctuation operators of a single site.
 
@@ -226,6 +280,10 @@ def local_boson_modes(
         Hermitian local operators :math:`e_\mu` (centred or not).
     static_gap : float, optional
         Frequency assigned to the static modes. The default is 1e-6.
+    spectrum : tuple of numpy.ndarray, optional
+        Populations and eigenvectors of ``sigma_loc``, if known accurately
+        (for instance, from the local generator). Needed when some
+        populations are below the numerical precision of a density matrix.
 
     Returns
     -------
@@ -234,7 +292,10 @@ def local_boson_modes(
     couplings : numpy.ndarray
         Complex couplings :math:`g_{\mu k}`, shape ``(len(basis), K)``.
     """
-    p, vecs = np.linalg.eigh(sigma_loc)
+    if spectrum is None:
+        p, vecs = np.linalg.eigh(sigma_loc)
+    else:
+        p, vecs = spectrum
     order = np.argsort(-p)
     p = np.clip(p[order], 1e-300, None)
     vecs = vecs[:, order]
@@ -307,6 +368,10 @@ class RPAStructure:
     _modes: Dict[str, Tuple[np.ndarray, np.ndarray]] = field(
         default_factory=dict, repr=False
     )
+    _boson_system: Optional["BosonSystem"] = field(default=None, repr=False)
+    _spectra: Optional[Dict[str, Tuple[np.ndarray, np.ndarray]]] = field(
+        default=None, repr=False
+    )
 
     @property
     def system(self) -> SystemDescriptor:
@@ -321,19 +386,67 @@ class RPAStructure:
             self._local_data[site] = (sigma_loc, basis)
         return self._local_data[site]
 
+    def local_spectrum(self, site: str) -> Tuple[np.ndarray, np.ndarray]:
+        """Return the populations and eigenvectors of the local mean-field state.
+
+        They are obtained from the local mean-field generator of the site
+        (the terms of ``K`` over the site plus the boundary terms projected
+        with the mean-field state), so very small populations keep their
+        accuracy even if they cannot be resolved in a density matrix.
+        """
+        if self._spectra is None:
+            self._spectra = _local_spectra(self.generator, self.sigma_mf)
+        return self._spectra[site]
+
     def static_chi0(self, site: str) -> np.ndarray:
         """Return the static susceptibility :math:`\\chi^0` of ``site``."""
         if site not in self._chi0:
-            self._chi0[site] = kubo_mori_susceptibility(*self.local_data(site))
+            self._chi0[site] = kubo_mori_susceptibility(
+                *self.local_data(site), spectrum=self.local_spectrum(site)
+            )
         return self._chi0[site]
 
     def boson_modes(self, site: str) -> Tuple[np.ndarray, np.ndarray]:
         """Return the bosonic modes of ``site`` (see :func:`local_boson_modes`)."""
         if site not in self._modes:
             self._modes[site] = local_boson_modes(
-                *self.local_data(site), self.static_gap
+                *self.local_data(site),
+                self.static_gap,
+                spectrum=self.local_spectrum(site),
             )
         return self._modes[site]
+
+    def boson_system(self) -> "BosonSystem":
+        """Return the bosonic system of the whole state (computed on demand)."""
+        if self._boson_system is None:
+            self._boson_system = build_boson_system(self)
+        return self._boson_system
+
+
+def _local_spectra(
+    generator: Operator, sigma_mf
+) -> Dict[str, Tuple[np.ndarray, np.ndarray]]:
+    """Populations and eigenvectors of the local mean-field generators."""
+    system = generator.system
+    terms = generator.terms if isinstance(generator, SumOperator) else [generator]
+    contributions: Dict[str, List[Operator]] = {}
+    for term in terms:
+        acts_over = term.acts_over()
+        for site in acts_over:
+            if len(acts_over) == 1:
+                projected = term
+            else:
+                projected = project_boundary_term(term, sigma_mf, frozenset([site]))
+            if projected:
+                contributions.setdefault(site, []).append(projected)
+    spectra = {}
+    for site, local_terms in contributions.items():
+        k_loc = iterable_to_operator(local_terms, system, isherm=True)
+        k_mat = k_loc.to_qutip((site,)).full()
+        eps, vecs = np.linalg.eigh(0.5 * (k_mat + k_mat.conj().T))
+        weights = np.exp(-(eps - eps.min()))
+        spectra[site] = (weights / weights.sum(), vecs)
+    return spectra
 
 
 def build_rpa_structure(
@@ -484,6 +597,65 @@ def _bogoliubov(h_mat: np.ndarray) -> Tuple[np.ndarray, np.ndarray]:
     return lam, t_mat
 
 
+@dataclass
+class _EnvironmentBogoliubov:
+    """Normal modes of the environment (the subsystem removed).
+
+    ``B_mu = sum_m c_mat[mu, m] Psi_m`` for the normal-mode operators
+    ``Psi_m`` of signed frequency ``lam[m]``.
+    """
+
+    sites_a: List[str]
+    local_basis: Dict[str, List[Qobj]]
+    c_mat: np.ndarray
+    lam: np.ndarray
+
+
+def _environment_bogoliubov(
+    structure: RPAStructure, sites: frozenset
+) -> Optional[_EnvironmentBogoliubov]:
+    """Bosonize the environment of ``sites`` and diagonalize it.
+
+    Returns ``None`` if the subsystem is not coupled to the environment.
+    """
+    local_basis = structure.local_basis
+    m_full = structure.m_full
+    idx_a, idx_e, sites_a, sites_e = _split_sites(structure, sites)
+    if not idx_a or not idx_e:
+        return None
+    freqs_list = []
+    row = 0
+    blocks = []
+    for site in sites_e:
+        size = len(local_basis[site])
+        freqs, coup = structure.boson_modes(site)
+        freqs_list.append(freqs)
+        blocks.append((row, size, coup))
+        row += size
+    freqs_all = np.concatenate(freqs_list)
+    n_modes = len(freqs_all)
+    if n_modes == 0:
+        return None
+    g_mat = np.zeros((row, n_modes), dtype=complex)
+    col = 0
+    for r_0, size, coup in blocks:
+        g_mat[r_0 : r_0 + size, col : col + coup.shape[1]] = coup
+        col += coup.shape[1]
+
+    # Quadratic bosonic Hamiltonian of the environment and its modes.
+    m_ae = m_full[np.ix_(idx_a, idx_e)]
+    m_ee = m_full[np.ix_(idx_e, idx_e)]
+    a_mat = np.diag(freqs_all) + g_mat.conj().T @ m_ee @ g_mat
+    b_mat = g_mat.conj().T @ m_ee @ g_mat.conj()
+    a_mat = 0.5 * (a_mat + a_mat.conj().T)
+    b_mat = 0.5 * (b_mat + b_mat.T)
+    h_mat = np.block([[a_mat, b_mat], [b_mat.conj(), a_mat.conj()]])
+    lam, t_mat = _bogoliubov(h_mat)
+    g_b = m_ae @ g_mat
+    c_mat = np.hstack([g_b, g_b.conj()]) @ t_mat
+    return _EnvironmentBogoliubov(sites_a, local_basis, c_mat, lam)
+
+
 def rpa_dynamic_kernel(
     structure: RPAStructure,
     sites: frozenset,
@@ -526,47 +698,15 @@ def rpa_dynamic_kernel(
     """
     nodes, weights = np.polynomial.legendre.leggauss(n_tau)
     nodes, weights = 0.5 * (nodes + 1.0), 0.5 * weights
-    local_basis = structure.local_basis
-    m_full = structure.m_full
-    idx_a, idx_e, sites_a, sites_e = _split_sites(structure, sites)
-    n_a = len(idx_a)
-    empty = np.zeros((n_tau, n_a, n_a), dtype=complex)
-    if not idx_a or not idx_e:
-        return empty, nodes, weights, local_basis, sites_a
-
-    # Bosonize every site of the environment.
-    freqs_list = []
-    row = 0
-    blocks = []
-    for site in sites_e:
-        size = len(local_basis[site])
-        freqs, coup = structure.boson_modes(site)
-        freqs_list.append(freqs)
-        blocks.append((row, size, coup))
-        row += size
-    freqs_all = np.concatenate(freqs_list)
-    n_modes = len(freqs_all)
-    if n_modes == 0:
-        return empty, nodes, weights, local_basis, sites_a
-    g_mat = np.zeros((row, n_modes), dtype=complex)
-    col = 0
-    for r_0, size, coup in blocks:
-        g_mat[r_0 : r_0 + size, col : col + coup.shape[1]] = coup
-        col += coup.shape[1]
-
-    # Quadratic bosonic Hamiltonian of the environment and its modes.
-    m_ae = m_full[np.ix_(idx_a, idx_e)]
-    m_ee = m_full[np.ix_(idx_e, idx_e)]
-    a_mat = np.diag(freqs_all) + g_mat.conj().T @ m_ee @ g_mat
-    b_mat = g_mat.conj().T @ m_ee @ g_mat.conj()
-    a_mat = 0.5 * (a_mat + a_mat.conj().T)
-    b_mat = 0.5 * (b_mat + b_mat.T)
-    h_mat = np.block([[a_mat, b_mat], [b_mat.conj(), a_mat.conj()]])
-    lam, t_mat = _bogoliubov(h_mat)
+    environment = _environment_bogoliubov(structure, sites)
+    if environment is None:
+        _, _, sites_a, _ = _split_sites(structure, sites)
+        n_a = sum(len(structure.local_basis[site]) for site in sites_a)
+        empty = np.zeros((n_tau, n_a, n_a), dtype=complex)
+        return empty, nodes, weights, structure.local_basis, sites_a
 
     # B_mu = sum_m c_{mu m} Psi_m, Sigma(tau) = sum_m c c^* f_m exp(-lam_m tau)
-    g_b = m_ae @ g_mat
-    c_mat = np.hstack([g_b, g_b.conj()]) @ t_mat
+    c_mat, lam = environment.c_mat, environment.lam
     omega = np.abs(lam)
     expo = np.where(
         lam[None, :] > 0,
@@ -575,7 +715,7 @@ def rpa_dynamic_kernel(
     )
     occupation = np.exp(expo) / (-np.expm1(-omega))[None, :]
     sigma_tau = np.einsum("im,tm,jm->tij", c_mat, occupation, c_mat.conj())
-    return sigma_tau, nodes, weights, local_basis, sites_a
+    return sigma_tau, nodes, weights, environment.local_basis, environment.sites_a
 
 
 # ### Dynamical correction of the generator ###
@@ -627,6 +767,295 @@ def dynamic_generator_correction(
     d_k = -y_mat / km_weight(1.0)
     d_k = 0.5 * (d_k + d_k.conj().T)
     return vecs @ d_k @ vecs.conj().T
+
+
+# ### Hybrid reduction: the subsystem exact, RPA on the environment ###
+
+
+def environment_modes(
+    structure: RPAStructure, sites: frozenset
+) -> Optional[Tuple[np.ndarray, np.ndarray, List[str], Dict[str, List[Qobj]]]]:
+    r"""Normal modes of the bosonized environment, coupled to ``sites``.
+
+    With the subsystem removed, the bosonized environment is a set of
+    independent normal modes of frequencies :math:`\omega_m>0` (in the
+    units of the generator), and the boundary operators of the subsystem are
+    :math:`B_\mu = \sum_m (C_{\mu m} b_m + C^*_{\mu m} b_m^\dagger)`.
+
+    Parameters
+    ----------
+    structure : RPAStructure
+        Subsystem-independent data of the RPA.
+    sites : frozenset
+        Sites of the subsystem ``A``.
+
+    Returns
+    -------
+    omega : numpy.ndarray
+        Frequencies :math:`\omega_m` of the normal modes.
+    coupling : numpy.ndarray
+        Complex matrix :math:`C_{\mu m}` of shape ``(nA, n_modes)``.
+    sites_a : list of str
+        Sites of ``A`` in the order used to index ``mu``.
+    local_basis : dict
+        Centred local basis of each site.
+
+    ``None`` is returned if ``A`` is not coupled to the environment.
+
+    Raises
+    ------
+    ValueError
+        If the RPA is unstable.
+    """
+    environment = _environment_bogoliubov(structure, sites)
+    if environment is None:
+        return None
+    positive = environment.lam > 0
+    return (
+        environment.lam[positive],
+        environment.c_mat[:, positive],
+        environment.sites_a,
+        environment.local_basis,
+    )
+
+
+def effective_bath_modes(
+    omega: np.ndarray,
+    coupling: np.ndarray,
+    n_blocks: int = 1,
+    tol: float = 1e-10,
+) -> Tuple[np.ndarray, np.ndarray]:
+    r"""Compress a bosonic bath to a few effective modes (block Lanczos).
+
+    The bath is :math:`\sum_m \omega_m b_m^\dagger b_m` and it couples to the
+    subsystem through :math:`B_\mu = \sum_m (C_{\mu m} b_m + h.c.)`. Only the
+    Krylov subspace generated by the coupling vectors is relevant: the
+    effective modes are the eigenmodes of the Hamiltonian projected on that
+    subspace. This is a Gauss quadrature of the spectral density
+    :math:`J_{\mu\nu}(\omega)=\sum_m C_{\mu m}C^*_{\nu m}\delta(\omega-\omega_m)`
+    that reproduces its first :math:`2 n_{blocks}` moments, and is exact if the
+    subspace is the whole space of modes.
+
+    Parameters
+    ----------
+    omega : numpy.ndarray
+        Frequencies of the bath modes.
+    coupling : numpy.ndarray
+        Complex matrix :math:`C_{\mu m}` of shape ``(nA, n_modes)``.
+    n_blocks : int, optional
+        Number of Lanczos blocks. Each block adds as many effective modes as
+        the rank of the coupling. The default is 1.
+    tol : float, optional
+        Relative tolerance to discard linearly dependent directions.
+
+    Returns
+    -------
+    omega_eff : numpy.ndarray
+        Frequencies of the effective modes.
+    coupling_eff : numpy.ndarray
+        Couplings of the effective modes, shape ``(nA, n_effective)``.
+    """
+    n_modes = len(omega)
+    if n_modes == 0:
+        return omega, coupling
+
+    def orthonormal_columns(vectors: np.ndarray) -> np.ndarray:
+        u_mat, sing, _ = np.linalg.svd(vectors, full_matrices=False)
+        if sing.size == 0 or sing[0] <= 1e-300:
+            return u_mat[:, :0]
+        return u_mat[:, sing > tol * sing[0]]
+
+    basis = orthonormal_columns(np.conj(coupling).T)
+    if basis.shape[1] == 0:
+        return omega[:0], coupling[:, :0]
+    last = basis
+    for _ in range(n_blocks - 1):
+        if basis.shape[1] >= n_modes:
+            break
+        vectors = omega[:, None] * last
+        for _ in range(2):  # full reorthogonalization
+            vectors = vectors - basis @ (basis.conj().T @ vectors)
+        last = orthonormal_columns(vectors)
+        if last.shape[1] == 0:
+            break
+        basis = np.hstack([basis, last])
+    projected = basis.conj().T @ (omega[:, None] * basis)
+    omega_eff, eigenvectors = np.linalg.eigh(0.5 * (projected + projected.conj().T))
+    return omega_eff, coupling @ (basis @ eigenvectors)
+
+
+def _bath_operators(n_modes: int, n_fock: int) -> List[sparse.csr_matrix]:
+    """Annihilation operators of ``n_modes`` bosons truncated at ``n_fock`` quanta."""
+    dim = n_fock + 1
+    boson = sparse.diags(np.sqrt(np.arange(1, dim)), 1, format="csr")
+    operators = []
+    for j in range(n_modes):
+        factors = [sparse.identity(dim, format="csr")] * n_modes
+        factors[j] = boson
+        full = factors[0]
+        for factor in factors[1:]:
+            full = sparse.kron(full, factor, format="csr")
+        operators.append(full)
+    return operators
+
+
+def rpa_hybrid_state(
+    structure: RPAStructure,
+    sites: frozenset,
+    k_mf: Operator,
+    n_blocks: int = 1,
+    n_fock: int = 6,
+    n_cut: float = 3.0,
+    n_gauss: int = 6,
+    max_dim: int = 6000,
+    max_nodes: int = 20000,
+) -> Qobj:
+    r"""Reduced state of the subsystem, exact in ``A`` and RPA in the environment.
+
+    The environment is bosonized (RPA) and the subsystem is kept exact. The
+    reduced state is the partial trace over the bosons of the Gibbs state of
+
+    .. math::
+
+        K = K_{A,MF} + \sum_j \omega_j b_j^\dagger b_j
+            + \sum_\mu \delta e_\mu \otimes (B_\mu^{q} + x_\mu),
+
+    where the quantum modes :math:`B^q_\mu` are the normal modes of the
+    environment with thermal occupation not larger than ``n_cut``, compressed
+    to a few effective modes with :func:`effective_bath_modes` and truncated
+    in Fock space, and the modes with larger occupations are classical static
+    Gaussian fields :math:`x_\mu` averaged with a Gauss-Hermite quadrature.
+    Unlike the generator corrections of
+    :func:`rpa_generator_correction`, it is non perturbative in the coupling
+    between the subsystem and the environment. The back-reaction of the
+    subsystem on the environment is therefore included.
+
+    Parameters
+    ----------
+    structure : RPAStructure
+        Subsystem-independent data of the RPA.
+    sites : frozenset
+        Sites of the subsystem ``A``.
+    k_mf : Operator
+        Mean-field reduced generator :math:`K_{A,MF}` of the subsystem.
+    n_blocks : int, optional
+        Lanczos blocks of the effective bath. The default is 1.
+    n_fock : int, optional
+        Maximum number of quanta of each effective boson. The default is 6.
+    n_cut : float, optional
+        Modes with thermal occupation larger than ``n_cut`` are treated as
+        classical. The default is 3.
+    n_gauss : int, optional
+        Gauss-Hermite nodes per classical direction. The default is 6.
+    max_dim : int, optional
+        Maximum dimension of the Hilbert space of the hybrid Hamiltonian.
+    max_nodes : int, optional
+        Maximum number of quadrature nodes of the classical fields.
+
+    Returns
+    -------
+    qutip.Qobj
+        The normalized reduced density matrix, in the tensor-product order of
+        ``tuple(sorted(sites))``.
+
+    Raises
+    ------
+    ValueError
+        If the RPA is unstable, or if the hybrid problem is too large.
+    """
+    block = tuple(sorted(sites))
+    system = structure.system
+    k0_qobj: Qobj = k_mf.to_qutip(block)
+    k0 = k0_qobj.full()
+    k0 = 0.5 * (k0 + k0.conj().T)
+    dim_a = k0.shape[0]
+
+    def finish(rho: np.ndarray) -> Qobj:
+        rho = 0.5 * (rho + rho.conj().T)
+        return Qobj(rho / np.real(np.trace(rho)), dims=k0_qobj.dims)
+
+    environment = environment_modes(structure, sites)
+    if environment is None:
+        eps, vecs = np.linalg.eigh(k0)
+        return finish((vecs * np.exp(-(eps - eps.min()))) @ vecs.conj().T)
+    omega, coupling, sites_a, local_basis = environment
+    d_ops = [
+        LocalOperator(site, e, system).to_qutip(block).full()
+        for site in sites_a
+        for e in local_basis[site]
+    ]
+
+    # Classical (static) and quantum modes
+    occupation = 1.0 / np.expm1(omega)
+    classical = occupation > n_cut
+    n_a = len(d_ops)
+    covariance = np.zeros((n_a, n_a))
+    if np.any(classical):
+        c_cl = coupling[:, classical]
+        covariance = np.real(
+            (c_cl * (2.0 * occupation[classical] + 1.0)[None, :]) @ c_cl.conj().T
+        )
+        covariance = 0.5 * (covariance + covariance.T)
+    cov_vals, cov_vecs = np.linalg.eigh(covariance)
+    keep = cov_vals > 1e-12 * max(1.0, cov_vals.max())
+    fields = [
+        np.sqrt(cov_vals[a]) * sum(cov_vecs[mu, a] * d_ops[mu] for mu in range(n_a))
+        for a in np.nonzero(keep)[0]
+    ]
+    omega_eff, coupling_eff = effective_bath_modes(
+        omega[~classical], coupling[:, ~classical], n_blocks
+    )
+    n_eff = len(omega_eff)
+    bath_dim = (n_fock + 1) ** n_eff
+    if dim_a * bath_dim > max_dim:
+        raise ValueError(
+            f"The hybrid problem has dimension {dim_a * bath_dim} > {max_dim}: "
+            "reduce n_fock or n_blocks, or increase max_dim."
+        )
+    nodes_1d, weights_1d = np.polynomial.hermite_e.hermegauss(n_gauss)
+    weights_1d = weights_1d / np.sqrt(2.0 * np.pi)
+    n_nodes = n_gauss ** len(fields)
+    if n_nodes > max_nodes:
+        raise ValueError(
+            f"{len(fields)} classical directions need {n_nodes} > {max_nodes} "
+            "quadrature nodes: reduce n_gauss or increase max_nodes."
+        )
+
+    # Hamiltonian of the bath and coupling to the subsystem
+    bosons = _bath_operators(n_eff, n_fock)
+    identity_bath = sparse.identity(bath_dim, format="csr")
+    identity_a = sparse.identity(dim_a, format="csr")
+    bath_h = sparse.csr_matrix((bath_dim, bath_dim), dtype=complex)
+    for w_j, boson in zip(omega_eff, bosons):
+        bath_h = bath_h + w_j * (boson.T @ boson)
+    h_fixed = sparse.kron(identity_a, bath_h, format="csr")
+    for mu, d_op in enumerate(d_ops):
+        b_mu = sparse.csr_matrix((bath_dim, bath_dim), dtype=complex)
+        for j, boson in enumerate(bosons):
+            b_mu = (
+                b_mu
+                + coupling_eff[mu, j] * boson
+                + np.conj(coupling_eff[mu, j]) * boson.T
+            )
+        h_fixed = h_fixed + sparse.kron(sparse.csr_matrix(d_op), b_mu, format="csr")
+
+    energies, states = [], []
+    for index in np.ndindex(*([n_gauss] * len(fields))):
+        xi = [nodes_1d[i] for i in index]
+        weight = float(np.prod([weights_1d[i] for i in index]))
+        k_a = k0 + sum(x * f for x, f in zip(xi, fields)) if fields else k0
+        h_total = (
+            h_fixed + sparse.kron(sparse.csr_matrix(k_a), identity_bath)
+        ).toarray()
+        eps, vecs = scipy.linalg.eigh(0.5 * (h_total + h_total.conj().T))
+        energies.append((weight, eps[0]))
+        boltz = np.exp(-(eps - eps[0]))
+        psi = vecs.reshape(dim_a, bath_dim, -1)
+        rho = np.einsum("anr,r,bnr->ab", psi, boltz, psi.conj())
+        states.append(rho)
+    e_min = min(e for _, e in energies)
+    total = sum(w * np.exp(-(e - e_min)) * rho for (w, e), rho in zip(energies, states))
+    return finish(total)
 
 
 def rpa_generator_correction(
@@ -730,6 +1159,213 @@ def _dynamic_correction(
     )
 
 
+# ### Full bosonization: Gaussian state of the whole system ###
+
+
+@dataclass
+class BosonSystem:
+    r"""Bosonized RPA of the whole system, and its Gaussian (thermal) state.
+
+    The local algebra of every site is bosonized (see
+    :func:`local_boson_modes`) and the quadratic bosonic Hamiltonian of the
+    whole system is diagonalized with a Bogoliubov transformation. The
+    thermal state of the quasi-particles is a Gaussian state, determined by
+    the matrix of contractions
+    :math:`\mathcal{G} = \langle\Phi\Phi^\dagger\rangle`, with
+    :math:`\Phi = (b_1,\dots,b_n,b_1^\dagger,\dots,b_n^\dagger)^T`.
+
+    Only the bosons with a non-vanishing frequency are included: the static
+    (zero-frequency) modes are classical fluctuations, and do not contribute
+    to the entanglement.
+
+    Attributes
+    ----------
+    sites : list of str
+        Sites of the system.
+    mode_site : list of str
+        Site to which each boson belongs.
+    freqs : numpy.ndarray
+        Local frequencies :math:`\Delta_k` of the bosons.
+    couplings : numpy.ndarray
+        Couplings :math:`g_{\mu k}` of the local operators to the bosons.
+    lam : numpy.ndarray
+        Signed frequencies of the normal modes.
+    t_mat : numpy.ndarray
+        Bogoliubov transformation.
+    contractions : numpy.ndarray
+        Matrix :math:`\langle\Phi\Phi^\dagger\rangle` of the thermal state.
+    """
+
+    sites: List[str]
+    mode_site: List[str]
+    freqs: np.ndarray
+    couplings: np.ndarray
+    lam: np.ndarray
+    t_mat: np.ndarray
+    contractions: np.ndarray
+
+    @property
+    def n_modes(self) -> int:
+        """Number of bosons."""
+        return len(self.freqs)
+
+    def modes_of(self, sites: frozenset) -> List[int]:
+        """Indices of the bosons of the given sites."""
+        return [k for k, site in enumerate(self.mode_site) if site in sites]
+
+
+def build_boson_system(structure: RPAStructure) -> BosonSystem:
+    """Build the bosonized RPA of the whole system.
+
+    Parameters
+    ----------
+    structure : RPAStructure
+        Subsystem-independent data of the RPA.
+
+    Returns
+    -------
+    BosonSystem
+        The bosonic system, with the contractions of its thermal state.
+
+    Raises
+    ------
+    ValueError
+        If the RPA is unstable.
+    """
+    sites = list(structure.positions)
+    freqs_list, mode_site, blocks = [], [], []
+    row = 0
+    for site in sites:
+        size = len(structure.local_basis[site])
+        freqs, coup = structure.boson_modes(site)
+        dynamic = freqs > structure.static_gap * (1.0 + 1e-6)
+        freqs_list.append(freqs[dynamic])
+        mode_site.extend([site] * int(np.sum(dynamic)))
+        blocks.append((row, size, coup[:, dynamic]))
+        row += size
+    freqs_all = np.concatenate(freqs_list) if freqs_list else np.zeros(0)
+    n_modes = len(freqs_all)
+    g_mat = np.zeros((row, n_modes), dtype=complex)
+    col = 0
+    for r_0, size, coup in blocks:
+        g_mat[r_0 : r_0 + size, col : col + coup.shape[1]] = coup
+        col += coup.shape[1]
+    m_full = structure.m_full
+    a_mat = np.diag(freqs_all) + g_mat.conj().T @ m_full @ g_mat
+    b_mat = g_mat.conj().T @ m_full @ g_mat.conj()
+    a_mat = 0.5 * (a_mat + a_mat.conj().T)
+    b_mat = 0.5 * (b_mat + b_mat.T)
+    h_mat = np.block([[a_mat, b_mat], [b_mat.conj(), a_mat.conj()]])
+    lam, t_mat = _bogoliubov(h_mat)
+    omega = np.abs(lam)
+    expo = np.where(lam > 0, 0.0, -omega)  # equal-time occupations
+    occupation = np.exp(expo) / (-np.expm1(-omega))
+    contractions = (t_mat * occupation[None, :]) @ t_mat.conj().T
+    return BosonSystem(
+        sites=sites,
+        mode_site=mode_site,
+        freqs=freqs_all,
+        couplings=g_mat,
+        lam=lam,
+        t_mat=t_mat,
+        contractions=contractions,
+    )
+
+
+def _covariance_matrix(bosons: BosonSystem, modes: List[int]) -> np.ndarray:
+    r"""Covariance matrix of the quadratures of a subset of bosons.
+
+    The quadratures are ordered as :math:`(x_1,\dots,x_n,p_1,\dots,p_n)` with
+    :math:`x=(b+b^\dagger)/\sqrt2`, :math:`p=(b-b^\dagger)/(i\sqrt2)`, so that
+    the vacuum has covariance :math:`1/2`.
+    """
+    n_all, n_sub = bosons.n_modes, len(modes)
+    idx = np.array(list(modes) + [n_all + k for k in modes], dtype=int)
+    g_sub = bosons.contractions[np.ix_(idx, idx)]
+    eye = np.eye(n_sub)
+    u_mat = np.block([[eye, eye], [-1j * eye, 1j * eye]]) / np.sqrt(2.0)
+    return np.real(u_mat @ g_sub @ u_mat.conj().T)
+
+
+def _symplectic_spectrum(sigma: np.ndarray) -> np.ndarray:
+    """Symplectic eigenvalues :math:`\\nu_\\alpha` of a covariance matrix."""
+    n_sub = sigma.shape[0] // 2
+    if n_sub == 0:
+        return np.zeros(0)
+    eye, zero = np.eye(n_sub), np.zeros((n_sub, n_sub))
+    omega = np.block([[zero, eye], [-eye, zero]])
+    values = np.sort(np.abs(np.linalg.eigvals(1j * omega @ sigma)))
+    return values[::2]
+
+
+def rpa_entanglement_entropy(structure: RPAStructure, sites: frozenset) -> float:
+    r"""Bosonic RPA entropy of a subsystem, in bits.
+
+    It is the von Neumann entropy of the reduced Gaussian state of the
+    bosons of ``sites``, :math:`S=\sum_\alpha[(1+f_\alpha)\log_2(1+f_\alpha)
+    - f_\alpha\log_2 f_\alpha]` with :math:`f_\alpha=\nu_\alpha-1/2`.
+    For a pure state (zero temperature) it is the entanglement entropy of
+    the bipartition (``sites``, complement); otherwise it also includes the
+    thermal entropy.
+
+    Parameters
+    ----------
+    structure : RPAStructure
+        Subsystem-independent data of the RPA.
+    sites : frozenset
+        Sites of the subsystem.
+
+    Returns
+    -------
+    float
+        The entropy in bits.
+    """
+    bosons = structure.boson_system()
+    modes = bosons.modes_of(sites)
+    nu = _symplectic_spectrum(_covariance_matrix(bosons, modes))
+    f = np.clip(nu - 0.5, 0.0, None)
+    f = f[f > 1e-15]
+    return float(np.sum((1 + f) * np.log2(1 + f) - f * np.log2(f)))
+
+
+def rpa_negativity(
+    structure: RPAStructure, sites_b: frozenset, sites_c: Optional[frozenset] = None
+) -> float:
+    r"""Bosonic RPA negativity between two subsystems.
+
+    The negativity is computed from the symplectic spectrum of the partial
+    transpose of the reduced Gaussian state of ``sites_b`` and ``sites_c``
+    (:math:`\mathcal{N} = \frac12[\prod_{\tilde\nu<1/2}(2\tilde\nu)^{-1}-1]`).
+
+    Parameters
+    ----------
+    structure : RPAStructure
+        Subsystem-independent data of the RPA.
+    sites_b, sites_c : frozenset
+        Sites of the two subsystems. If ``sites_c`` is ``None``, the
+        complement of ``sites_b`` is used.
+
+    Returns
+    -------
+    float
+        The negativity.
+    """
+    bosons = structure.boson_system()
+    if sites_c is None:
+        sites_c = frozenset(bosons.sites) - sites_b
+    modes_b = bosons.modes_of(sites_b)
+    modes_c = bosons.modes_of(sites_c)
+    modes = modes_b + modes_c
+    sigma = _covariance_matrix(bosons, modes)
+    n_sub = len(modes)
+    flip = np.ones(2 * n_sub)
+    flip[n_sub + len(modes_b) :] = -1.0  # time reversal of the momenta of C
+    sigma_pt = flip[:, None] * sigma * flip[None, :]
+    nu = _symplectic_spectrum(sigma_pt)
+    nu = nu[nu < 0.5 - 1e-12]
+    return float(0.5 * (np.prod(1.0 / (2.0 * nu)) - 1.0))
+
+
 # ### The RPA Gibbs state ###
 
 
@@ -773,6 +1409,12 @@ class RPAGibbsDensityOperator(GibbsDensityOperator):
         correction. The default is 32.
     static_gap : float, optional
         Frequency of the static bosons. The default is 1e-6.
+    hybrid : bool, optional
+        Use by default the non perturbative hybrid reduction, with the
+        subsystem exact and the RPA only on the environment (see
+        :func:`rpa_hybrid_state`). The default is False.
+    hybrid_options : dict, optional
+        Options of :func:`rpa_hybrid_state`.
     """
 
     def __init__(
@@ -786,6 +1428,8 @@ class RPAGibbsDensityOperator(GibbsDensityOperator):
         dynamic: bool = False,
         n_tau: int = 32,
         static_gap: float = _STATIC_GAP,
+        hybrid: bool = False,
+        hybrid_options: Optional[dict] = None,
     ):
         super().__init__(
             k,
@@ -798,6 +1442,8 @@ class RPAGibbsDensityOperator(GibbsDensityOperator):
         self.dynamic = dynamic
         self.n_tau = n_tau
         self.static_gap = static_gap
+        self.hybrid = hybrid
+        self.hybrid_options = hybrid_options
         self._rpa_structure: Optional[RPAStructure] = None
 
     @property
@@ -822,6 +1468,8 @@ class RPAGibbsDensityOperator(GibbsDensityOperator):
         rpa: bool = True,
         dynamic: Optional[bool] = None,
         exact: bool = True,
+        hybrid: Optional[bool] = None,
+        hybrid_options: Optional[dict] = None,
     ):
         """Compute the partial trace over the complement of ``sites``.
 
@@ -839,6 +1487,12 @@ class RPAGibbsDensityOperator(GibbsDensityOperator):
             If ``True`` (default), small systems are reduced exactly, as in
             :class:`~qalma.operators.states.gibbs.GibbsDensityOperator`.
             If ``False``, the mean-field plus RPA reduction is always used.
+        hybrid : bool, optional
+            Use the non perturbative hybrid reduction. If ``None``
+            (default), use the value given when the state was built.
+        hybrid_options : dict, optional
+            Options of :func:`rpa_hybrid_state`. If ``None``, use the ones
+            given when the state was built.
 
         Returns
         -------
@@ -854,11 +1508,35 @@ class RPAGibbsDensityOperator(GibbsDensityOperator):
             dynamic=self.dynamic if dynamic is None else dynamic,
             n_tau=self.n_tau,
             exact=exact,
+            hybrid=self.hybrid if hybrid is None else hybrid,
+            hybrid_options=(
+                self.hybrid_options if hybrid_options is None else hybrid_options
+            ),
         )
 
     def reduce(self, sites, state=None, **kwargs):
         """Alias of :meth:`partial_trace`. ``state`` is ignored."""
         return self.partial_trace(sites, **kwargs)
+
+    def rpa_entropy(self, sites: frozenset) -> float:
+        """Bosonic RPA entropy of the subsystem ``sites``, in bits.
+
+        See :func:`rpa_entanglement_entropy`.
+        """
+        return rpa_entanglement_entropy(self.rpa_structure, frozenset(sites))
+
+    def rpa_negativity(
+        self, sites_b: frozenset, sites_c: Optional[frozenset] = None
+    ) -> float:
+        """Bosonic RPA negativity between ``sites_b`` and ``sites_c``.
+
+        See :func:`rpa_negativity`.
+        """
+        return rpa_negativity(
+            self.rpa_structure,
+            frozenset(sites_b),
+            None if sites_c is None else frozenset(sites_c),
+        )
 
     def _with_prefactor(self, prefactor: complex) -> "RPAGibbsDensityOperator":
         """Copy of the state with a different prefactor, sharing the structure."""
@@ -872,6 +1550,8 @@ class RPAGibbsDensityOperator(GibbsDensityOperator):
             dynamic=self.dynamic,
             n_tau=self.n_tau,
             static_gap=self.static_gap,
+            hybrid=self.hybrid,
+            hybrid_options=self.hybrid_options,
         )
         new_state._rpa_structure = self._rpa_structure
         return new_state
