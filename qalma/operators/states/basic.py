@@ -2,7 +2,9 @@
 
 import logging
 import pickle
-from typing import Dict, Iterable, Optional, Protocol, Tuple, Union, cast
+
+from abc import abstractmethod
+from typing import Dict, Iterable, List, Optional, Protocol, Tuple, Union, cast, overload
 
 import numpy as np
 from numpy.typing import NDArray
@@ -120,12 +122,29 @@ class DensityOperatorMixin:
             return super().eigenstates()  # type: ignore[misc]
         raise NotImplementedError
 
-    def expect(
-        self,
-        obs_objs: Union[Operator, Iterable],
-        _local_states: Optional[Dict[frozenset, "DensityOperatorProtocol"]] = None,
-    ) -> Union[NDArray, dict, complex]:
-        """Compute the expectation value of an observable."""
+    @overload
+    def expect(self, obs_objs: Operator) -> complex: ...
+
+    @overload
+    def expect(self, obs_objs: Dict[str, Operator]) -> Dict[str, complex]: ...
+
+    @overload
+    def expect(self, obs_objs: List[Operator]) -> NDArray: ...
+
+    @overload
+    def expect(self, obs_objs: Tuple[Operator, ...]) -> NDArray: ...
+
+    def expect(self, obs_objs, _local_states=None):
+        """Compute the expectation value of an observable.
+
+        Parameters
+        ----------
+        obs_objs : Operator or Dict[str, Operator] or List[Operator] or Tuple[Operator, ...]
+            The observable(s) to evaluate.  The return type matches the
+            input type: a single ``Operator`` returns a ``complex``; a
+            ``dict`` returns a ``dict``; a ``list`` or ``tuple`` returns
+            an ``NDArray``.
+        """
         # TODO: explode that expectation values of operators just requires the
         # state where the operators acts.
         from qalma.operators.states.utils import (
@@ -188,6 +207,9 @@ class DensityOperatorMixin:
     def isherm(self):
         """Evaluate the isherm property."""
         return True
+
+    @abstractmethod
+    def logm(self) -> "Operator": ...
 
     def simplify(self):
         """Build an operator in a simplified representation."""
