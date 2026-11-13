@@ -9,6 +9,7 @@ from qalma.meanfield.rpa import (
     RPAGibbsDensityOperator,
     _split_sites,
     build_rpa_structure,
+    effective_bath_modes,
     kubo_mori_susceptibility,
     local_boson_modes,
     rpa_coupling_kernel,
@@ -103,7 +104,13 @@ def _matsubara_kernel(generator, sites, sigma_mf, nodes, n_max=200):
     structure = build_rpa_structure(generator, sigma_mf)
     m_full = structure.m_full
     idx_a, idx_e, _, sites_e = _split_sites(structure, sites)
-    ops = {s: structure.local_data(s) for s in sites_e}
+    ops = {}
+    for site in sites_e:
+        populations, vectors = structure.local_spectrum(site)
+        ops[site] = (
+            (vectors * populations) @ vectors.conj().T,
+            structure.local_data(site)[1],
+        )
     m_ae = m_full[np.ix_(idx_a, idx_e)]
     m_ee = m_full[np.ix_(idx_e, idx_e)]
     chi0_tau = _block_diag([_local_chi0_tau(*ops[s], nodes) for s in sites_e])
@@ -359,3 +366,228 @@ def test_rpa_state_exact_option():
     mean_field = plain_state.partial_trace(sites_a, exact=False).to_qutip(block)
     assert (approx - exact).norm("tr") > 1e-6
     assert (approx - mean_field).norm("tr") > 1e-6
+
+
+# ### Full bosonization: Gaussian state of the whole system ###
+
+
+def _pair_state(spin, field, beta, jx=1.0, jy=0.5):
+    """Pair of spins ``spin`` of the XY model of Matera et al., PRA 82, 052332."""
+    system = build_system("chain lattice", "spin", L=2, J=1, local_S=spin)
+    site_a, site_b = list(system.sites)
+
+    def op(name, site):
+        return system.site_operator(f"{name}@{site}")
+
+    hamiltonian = field * (op("Sz", site_a) + op("Sz", site_b))
+    for name, coupling in (("Sx", jx), ("Sy", jy)):
+        if coupling:
+            hamiltonian = hamiltonian - (1.0 / spin) * coupling * (
+                op(name, site_a) * op(name, site_b)
+            )
+    k_op = (beta * hamiltonian).simplify()
+    sigma_mf = variational_quadratic_mfa(k_op.flat())
+    state = RPAGibbsDensityOperator(k_op, system, meanfield=sigma_mf)
+    return state, site_a, site_b
+
+
+def _paper_occupation(field, jx=1.0, jy=0.5):
+    """Average occupation ``f`` of the RPA of the pair, Eqs. (46), (51) and (62)."""
+    critical = jx
+    if field > critical:
+        lam, jx_eff = field, jx
+    else:
+        lam, jx_eff = jx, jx * (field / critical) ** 2
+    w_0 = np.sqrt((lam - jx_eff) * (lam - jy))
+    w_1 = np.sqrt((lam + jx_eff) * (lam + jy))
+    omega = 0.5 * (w_0 + w_1)
+    return 0.5 * (np.sqrt(1 + (lam**2 - omega**2) / (w_0 * w_1)) - 1)
+
+
+def test_local_spectrum_keeps_tiny_populations():
+    """The local populations are not limited by the precision of a density matrix."""
+    state, site_a, _ = _pair_state(0.5, 1.2, 60.0)
+    populations, _ = state.rpa_structure.local_spectrum(site_a)
+    ratio = populations.min() / populations.max()
+    assert abs(np.log(ratio) + 60.0 * 1.2) < 1e-6
+
+
+def test_gaussian_rpa_pair_matches_paper():
+    """Entropy and negativity of the pair coincide with Eqs. (61)-(63) of the paper."""
+    for spin in (0.5, 2.0):
+        for field in (0.6, 1.2, 1.5):
+            state, site_a, site_b = _pair_state(spin, field, 60.0)
+            f = _paper_occupation(field)
+            entropy = (1 + f) * np.log2(1 + f) - f * np.log2(f)
+            negativity = f + np.sqrt(f * (f + 1))
+            assert abs(state.rpa_entropy(frozenset([site_a])) - entropy) < 1e-4
+            assert (
+                abs(
+                    state.rpa_negativity(frozenset([site_a]), frozenset([site_b]))
+                    - negativity
+                )
+                < 1e-4
+            )
+
+
+def test_gaussian_rpa_uncoupled_spins_are_not_entangled():
+    """Without coupling, the bosonic vacuum is a product state."""
+    state, site_a, site_b = _pair_state(0.5, 1.2, 40.0, jx=0.0, jy=0.0)
+    assert abs(state.rpa_entropy(frozenset([site_a]))) < 1e-8
+    assert abs(state.rpa_negativity(frozenset([site_a]), frozenset([site_b]))) < 1e-8
+
+
+# ### Hybrid reduction: the subsystem exact, RPA on the environment ###
+
+
+def test_effective_bath_modes_reproduce_spectral_moments():
+    """The Lanczos modes reproduce the first moments of the spectral density."""
+    rng = np.random.default_rng(1234)
+    omega = rng.uniform(0.5, 3.0, 25)
+    coupling = rng.normal(size=(2, 25)) + 1j * rng.normal(size=(2, 25))
+
+    def moment(w, c, k):
+        return (c * w[None, :] ** k) @ c.conj().T
+
+    for n_blocks in (1, 2, 3):
+        w_eff, c_eff = effective_bath_modes(omega, coupling, n_blocks)
+        assert len(w_eff) == 2 * n_blocks
+        for k in range(2 * n_blocks):
+            assert np.allclose(
+                moment(w_eff, c_eff, k), moment(omega, coupling, k), atol=1e-9
+            ), (n_blocks, k)
+    # if the Krylov space is the whole bath, the compression is exact
+    w_eff, c_eff = effective_bath_modes(omega, coupling, 30)
+    for k in range(6):
+        assert np.allclose(moment(w_eff, c_eff, k), moment(omega, coupling, k))
+
+
+def _exact_pair_entropy(spin, field, beta, jx=1.0, jy=0.5):
+    """Entropy of the reduced state of the Gibbs state of the pair."""
+    system = build_system("chain lattice", "spin", L=2, J=1, local_S=spin)
+    site_a, site_b = list(system.sites)
+
+    def op(name, site):
+        return system.site_operator(f"{name}@{site}")
+
+    hamiltonian = field * (op("Sz", site_a) + op("Sz", site_b))
+    for name, coupling in (("Sx", jx), ("Sy", jy)):
+        hamiltonian = hamiltonian - (1.0 / spin) * coupling * (
+            op(name, site_a) * op(name, site_b)
+        )
+    rho = (-beta * hamiltonian.to_qutip((site_a, site_b))).expm()
+    rho = (rho / rho.tr()).ptrace(0)
+    return _entropy_bits(rho.full())
+
+
+def _entropy_bits(rho):
+    p = np.clip(np.linalg.eigvalsh(rho), 0, None)
+    p = p[p > 1e-14]
+    return float(-np.sum(p * np.log2(p)))
+
+
+def test_hybrid_pair_in_normal_phase():
+    """In the normal phase the hybrid reduction captures the entanglement."""
+    for spin in (0.5, 2.0):
+        state, site_a, _ = _pair_state(spin, 1.5, 60.0)
+        exact = _exact_pair_entropy(spin, 1.5, 60.0)
+        options = {"n_fock": 8}
+        rho = state.partial_trace(
+            frozenset([site_a]), exact=False, hybrid=True, hybrid_options=options
+        ).to_qutip((site_a,))
+        rho_mf = state.partial_trace(
+            frozenset([site_a]), exact=False, rpa=False
+        ).to_qutip((site_a,))
+        entropy = _entropy_bits((rho / rho.tr()).full())
+        assert _entropy_bits((rho_mf / rho_mf.tr()).full()) < 1e-6
+        assert abs(entropy - exact) < 0.3 * exact
+        # the result converges with the Fock truncation
+        rho_big = state.partial_trace(
+            frozenset([site_a]),
+            exact=False,
+            hybrid=True,
+            hybrid_options={"n_fock": 12},
+        ).to_qutip((site_a,))
+        assert (rho / rho.tr() - rho_big / rho_big.tr()).norm("tr") < 1e-6
+
+
+def test_hybrid_uncoupled_spins_give_mean_field():
+    """Without coupling, the hybrid reduction is the mean-field state."""
+    state, site_a, _ = _pair_state(0.5, 1.2, 10.0, jx=0.0, jy=0.0)
+    hybrid = state.partial_trace(
+        frozenset([site_a]), exact=False, hybrid=True
+    ).to_qutip((site_a,))
+    mean_field = state.partial_trace(
+        frozenset([site_a]), exact=False, rpa=False
+    ).to_qutip((site_a,))
+    assert (hybrid / hybrid.tr() - mean_field / mean_field.tr()).norm("tr") < 1e-8
+
+
+def test_hybrid_chain_with_classical_modes():
+    """At moderate temperature the classical static fields are included."""
+    system = build_system(
+        "chain lattice", "spin", L=6, J=1, Jz0=1, Jxy0=1, h=0.3, local_S=0.5
+    )
+    sites = list(system.sites)
+    sites_a = frozenset([sites[2]])
+    block = tuple(sites_a)
+    hamiltonian = system.global_operator("Hamiltonian")
+    k_op = (0.6 * hamiltonian).simplify()
+    sigma_mf = variational_quadratic_mfa(k_op.flat())
+    plain = GibbsDensityOperator(k_op, meanfield=sigma_mf)
+    state = RPAGibbsDensityOperator(k_op, meanfield=sigma_mf)
+    exact = plain.to_qutip_operator().partial_trace(sites_a).to_qutip(block)
+    exact = exact / exact.tr()
+
+    def distance(rho):
+        return 0.5 * (rho / rho.tr() - exact).norm("tr")
+
+    mean_field = distance(plain.partial_trace(sites_a, exact=False).to_qutip(block))
+    hybrid = distance(
+        state.partial_trace(
+            sites_a,
+            exact=False,
+            hybrid=True,
+            hybrid_options={"n_fock": 4, "n_gauss": 5},
+        ).to_qutip(block)
+    )
+    assert hybrid < 0.2 * mean_field
+
+
+def test_hybrid_dimension_guard():
+    """Too large hybrid problems are rejected."""
+    state, site_a, _ = _pair_state(0.5, 1.5, 60.0)
+    try:
+        state.partial_trace(
+            frozenset([site_a]),
+            exact=False,
+            hybrid=True,
+            hybrid_options={"n_fock": 100, "max_dim": 50},
+        )
+    except ValueError as error:
+        assert "dimension" in str(error)
+    else:
+        raise AssertionError("A ValueError was expected")
+
+
+def test_rpa_state_hybrid_by_default():
+    """The ``hybrid`` option given at construction is the default."""
+    system = build_spin_chain(10, field=0.3)
+    sites = list(system.sites)
+    sites_a = frozenset([sites[4]])
+    block = tuple(sites_a)
+    hamiltonian = system.global_operator("Hamiltonian")
+    k_op = (0.5 * hamiltonian).simplify()
+    sigma_mf = variational_quadratic_mfa(k_op.flat())
+    options = {"n_fock": 4, "n_gauss": 5}
+    state = RPAGibbsDensityOperator(
+        k_op, meanfield=sigma_mf, hybrid=True, hybrid_options=options
+    )
+    plain = GibbsDensityOperator(k_op, meanfield=sigma_mf)
+    reduced = state.partial_trace(sites_a).to_qutip(block)
+    expected = plain.partial_trace(
+        sites_a, rpa=True, hybrid=True, hybrid_options=options
+    ).to_qutip(block)
+    assert (reduced - expected).norm("tr") < 1e-10
+    mean_field = plain.partial_trace(sites_a).to_qutip(block)
+    assert (reduced - mean_field).norm("tr") > 1e-6

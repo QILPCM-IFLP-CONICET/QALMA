@@ -61,6 +61,14 @@ reductions:
     rho_a = state.partial_trace(sites)     # mean field + RPA
     rho_b = state.partial_trace(other)     # reuses state.rpa_structure
 
+Besides the correction of the generator (``dynamic=False`` or ``True``), the
+option ``hybrid=True`` keeps the subsystem exact and treats only the
+environment in the RPA, solving a non perturbative problem in the coupling
+(:func:`~qalma.meanfield.rpa.rpa_hybrid_state`); the full bosonization of the
+system gives the entropies and negativities of the bosonic RPA state
+(:meth:`~qalma.meanfield.rpa.RPAGibbsDensityOperator.rpa_entropy`,
+:meth:`~qalma.meanfield.rpa.RPAGibbsDensityOperator.rpa_negativity`).
+
 .. automodule:: qalma.meanfield.rpa
    :members:
    :undoc-members:

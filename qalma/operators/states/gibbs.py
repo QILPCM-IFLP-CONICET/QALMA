@@ -257,6 +257,8 @@ class GibbsDensityOperator(DensityOperatorMixin, Operator):
         rpa: bool = False,
         dynamic: bool = False,
         exact: bool = True,
+        hybrid: bool = False,
+        hybrid_options: Optional[dict] = None,
     ):
         """Compute the partial trace over the complement of ``sites``.
 
@@ -277,6 +279,12 @@ class GibbsDensityOperator(DensityOperatorMixin, Operator):
         exact : bool, optional
             If ``True`` (default), small systems are reduced exactly. If
             ``False``, the mean-field branch is always used.
+        hybrid : bool, optional
+            If ``True`` (and ``rpa``), keep the subsystem exact and treat
+            only the environment in the RPA (non perturbative). See
+            :func:`qalma.meanfield.rpa.rpa_hybrid_state`.
+        hybrid_options : dict, optional
+            Options of :func:`qalma.meanfield.rpa.rpa_hybrid_state`.
 
         Returns
         -------
@@ -293,7 +301,13 @@ class GibbsDensityOperator(DensityOperatorMixin, Operator):
         if isinstance(sites, SystemDescriptor):
             sites = frozenset(sites.sites)
         return gibbs_meanfield_partial_trace(
-            self, sites, rpa=rpa, dynamic=dynamic, exact=exact
+            self,
+            sites,
+            rpa=rpa,
+            dynamic=dynamic,
+            exact=exact,
+            hybrid=hybrid,
+            hybrid_options=hybrid_options,
         )
 
     def reduce(self, sites, state=None, **kwargs):
