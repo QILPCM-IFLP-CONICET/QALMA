@@ -131,4 +131,4 @@ benchmark-show:
 
 
 mypy:
-	mypy --install-types --ignore-missing-imports --non-interactive qalma
+	mypy --install-types --non-interactive qalma

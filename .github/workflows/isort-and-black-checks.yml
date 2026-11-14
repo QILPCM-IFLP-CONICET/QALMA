@@ -1,7 +1,7 @@
 # Checks that the code follows the formatting conventions of the project
 # (`make conventions` applies them locally).
 
-name: isort, black and ruff checks
+name: isort, black, ruff and mypy checks
 on: [pull_request]
 
 concurrency:
@@ -18,8 +18,8 @@ jobs:
         with:
           python-version: '3.12'
       # Keep the pins in sync with the `dev` extra in pyproject.toml.
-      - name: Install black, isort and ruff
-        run: pip install 'black==24.10.0' 'isort==6.0.1' ruff
+      - name: Install black, isort, ruff and mypy
+        run: pip install 'black==24.10.0' 'isort==6.0.1' ruff mypy
       - name: Run isort --check .
         run: isort --check .
       - name: Run check Black
@@ -28,3 +28,7 @@ jobs:
         run: black --check .
       - name: Run ruff check
         run: ruff check qalma test tools
+      - name: Run mypy
+        run: |
+          pip install -e .
+          mypy --install-types --non-interactive qalma
