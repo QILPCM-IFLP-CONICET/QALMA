@@ -429,7 +429,7 @@ def hdf5_state_iterator(group: h5py.Group, system: Optional[SystemDescriptor] = 
         for i, t in enumerate(group.get("time span", []))
     }
     if "states" not in group:
-        logger.info(" no states defined in", group)
+        logger.info("no states defined in %s", group)
         return
     assert system is not None
 
@@ -449,7 +449,7 @@ def state_from_hdf5(
     try:
         state_bytes = group["states"][key][0]
     except KeyError:
-        logger.info("key error:", key, "not in ", group)
+        logger.info("key %s not in %s", key, group)
         return None
 
     assert system is not None

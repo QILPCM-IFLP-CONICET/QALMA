@@ -64,53 +64,215 @@ def _to_array(op) -> np.ndarray:
     )
 
 
-if qutip_version < parse_version("5.0.0"):
+def data_element_iterator(data) -> Iterator:
+    """Walk over data elements."""
 
-    def data_element_iterator(data) -> Iterator:
-        """Retrieve a generator for the nontrivial elements."""
-        i_idx, j_idx = data.nonzero()
-        yield from zip(i_idx, j_idx, data.data)
+    def do_dense():
+        arr = data.as_ndarray() if hasattr(data, "as_ndarray") else data.to_array()
+        dim_i, dim_j = arr.shape
+        for i in range(dim_i):
+            for j in range(dim_j):
+                v = arr[i, j]
+                if v != 0:
+                    yield (i, j, v)
 
-    def data_get_coeff(data, i_idx, j_idx):
-        """Access to a matrix entry."""
-        return data[i_idx, j_idx]
+    # Backward compatibility v5.0 and v5.1
+    def do_dia_5_0(data_dia):
+        data = data_dia.as_scipy()
+        dim_i, dim_j = data.shape
+        for offset, diag_data in zip(data.offsets, data.data):
+            if offset < 0:
+                for j_pos, value in enumerate(diag_data):
+                    i_pos = j_pos - offset
+                    if i_pos >= dim_i:
+                        break
+                    yield (
+                        i_pos,
+                        j_pos,
+                        value,
+                    )
+            else:
+                for i_pos, value in enumerate(diag_data):
+                    j_pos = i_pos + offset
+                    if j_pos >= dim_j:
+                        break
+                    yield (
+                        i_pos,
+                        j_pos,
+                        value,
+                    )
 
-    def data_get_type(data) -> type:
-        """Get the type of the elements in data."""
-        return data.dtype
+    def do_dia_5_2(data_dia):
+        data = data_dia.as_scipy()
+        dim_i, _ = data.shape
+        for offset, diag_data in zip(data.offsets, data.data):
+            if offset < 0:
+                for j_pos, value in enumerate(diag_data):
+                    i_pos = j_pos - offset
+                    if i_pos >= dim_i:
+                        break
+                    yield (
+                        i_pos,
+                        j_pos,
+                        value,
+                    )
+            else:
+                for indx, value in enumerate(diag_data[offset:]):
+                    i_pos = indx
+                    j_pos = i_pos + offset
+                    yield (
+                        i_pos,
+                        j_pos,
+                        value,
+                    )
 
-    def data_is_diagonal(data) -> bool:
-        """Check if data is diagonal."""
-        if data.nnz == 0 or all(a == b for a, b in zip(*data.nonzero())):
+    # Diagonal format
+    if hasattr(data, "num_diag"):
+        if qutip_version < parse_version("5.2.0"):
+            yield from do_dia_5_0(data)
+        # For 5.2
+        else:
+            yield from do_dia_5_2(data)
+    elif hasattr(data, "as_scipy"):
+        data = data.as_scipy()
+        if hasattr(data, "tocoo"):
+            coo = data.tocoo()
+            for i, j, v in zip(coo.row, coo.col, coo.data):
+                yield (i, j, v)
+        else:
+            # Fallback: try nonzero and data.data
+            try:
+                i_ind, j_ind = data.nonzero()
+                for idx, i_val in enumerate(i_ind):
+                    yield (i_val, j_ind[idx], data.data[idx])
+            except Exception:
+                # Last resort: try dense
+                yield from do_dense()
+    else:
+        yield from do_dense()
+
+
+def data_get_coeff(data, i_idx, j_idx):
+    """Access to a matrix entry."""
+    if hasattr(data, "num_diag"):
+        data_sp = data.as_scipy()
+        offset = j_idx - i_idx
+        offsets = data_sp.offsets
+        if offset not in offsets:
+            return 0
+        return data_sp.diagonal(offset)[j_idx]
+    if hasattr(data, "as_scipy"):
+        return data.as_scipy()[i_idx, j_idx]
+    return data.as_ndarray()[i_idx, j_idx]
+
+
+def data_get_type(data) -> type:
+    """Get the type of the elements in data."""
+    if hasattr(data, "as_scipy"):
+        return data.as_scipy().dtype
+    return data.as_ndarray().dtype
+
+
+def data_is_diagonal(data) -> bool:
+    """Check if data is diagonal."""
+    if hasattr(data, "num_diag"):
+        if data.num_diag == 0:
             return True
-        return all(val == 0 for val, a, b in zip(data.data, *data.nonzero()) if a != b)
-
-    def data_is_zero(data) -> bool:
-        """Check if the matrix is empty."""
+        if data.num_diag > 1:
+            return False
+        offsets = data.as_scipy().offsets
+        return bool(offsets[0] == 0)
+    if hasattr(data, "as_scipy"):
+        data = data.as_scipy()
         if data.nnz == 0:
             return True
-        return not any(data.data)
+        return all(a == b for a, b in zip(*data.nonzero()))
+    if hasattr(data, "as_ndarray"):
+        data = data.as_ndarray()
+    dim_i, dim_j = data.shape
+    return not any(
+        data[i_idx, j_idx]
+        for i_idx in range(dim_i)
+        for j_idx in range(dim_j)
+        if i_idx != j_idx
+    )
 
-    def scalar_value(data):
-        """If data is a scalar matrix, return any of its diagonal elements.
 
-        Otherwise, return `None`
-        """
+def data_is_zero(data) -> bool:
+    """Check if the matrix is empty."""
+    if hasattr(data, "num_diag"):
+        return data.num_diag == 0
+    if hasattr(data, "as_scipy"):
+        return data.as_scipy().nnz == 0
+    return np.count_nonzero(data.as_ndarray()) == 0
+
+
+def scalar_value(data):
+    """If data is a scalar matrix, return any of its diagonal elements.
+
+    Otherwise, return `None`
+    """
+    dim1, _ = data.shape
+    if hasattr(data, "num_diag"):
+        if data.num_diag == 0:
+            return 0.0
+        if data.num_diag > 1:
+            return None
+        data = data.as_scipy()
+        offsets = data.offsets
+        if bool(offsets[0] != 0):
+            return None
+        diagonal = data.diagonal(0)
+        scalar = diagonal[0]
+        return (
+            scalar
+            if len(diagonal) == dim1 and all(elem == scalar for elem in diagonal)
+            else None
+        )
+
+    if hasattr(data, "as_scipy"):
+        data = data.as_scipy()
         if data.nnz == 0:
             return 0.0
-        if all(a == b for a, b in zip(*data.nonzero())):
-            dim1, _ = data.shape
-            elems = data.data
-            if len(elems) < dim1:
+        try:
+            if not all(a == b for a, b in zip(*data.nonzero())):
                 return None
-            val = elems[0]
-            return val if all(val == elem for elem in elems) else None
+            dim = data.shape[0]
+            data = data.data
+            scalar = data[0]
+            return (
+                scalar
+                if len(data) == dim and all(value == scalar for value in data)
+                else None
+            )
+        except ValueError:
+            a00 = data[0, 0]
+            for i in range(dim1):
+                for j in range(dim1):
+                    if i == j:
+                        if data[i, i] != a00:
+                            return None
+                    else:
+                        if data[i, i]:
+                            return None
+            return a00
 
-        if any(val for val, a, b in zip(data.data, *data.nonzero()) if a != b):
-            return None
-        vals = [val for val, a, b in zip(data.data, *data.nonzero()) if a == b]
-        elem = vals[0]
-        return elem if all(elem == val for val in vals) else None
+    # Must be dense...
+    if hasattr(data, "as_ndarray"):
+        data = data.as_ndarray()
+    dim_i, dim_j = data.shape
+    if any(
+        data[i_idx, j_idx]
+        for i_idx in range(dim_i)
+        for j_idx in range(dim_j)
+        if i_idx != j_idx
+    ):
+        return None
+    scalar = data[0, 0]
+    return scalar if all(scalar == data[i, i] for i in range(data.shape[0])) else None
+
+
+if qutip_version < parse_version("5.2.0"):
 
     def fast_tensor(*factors):
         """
@@ -123,228 +285,11 @@ if qutip_version < parse_version("5.0.0"):
 
 else:
 
-    def data_element_iterator(data) -> Iterator:
-        """Walk over data elements."""
-
-        def do_dense():
-            arr = data.as_ndarray() if hasattr(data, "as_ndarray") else data.to_array()
-            dim_i, dim_j = arr.shape
-            for i in range(dim_i):
-                for j in range(dim_j):
-                    v = arr[i, j]
-                    if v != 0:
-                        yield (i, j, v)
-
-        # Backward compatibility v5.0 and v5.1
-        def do_dia_5_0(data_dia):
-            data = data_dia.as_scipy()
-            dim_i, dim_j = data.shape
-            for offset, diag_data in zip(data.offsets, data.data):
-                if offset < 0:
-                    for j_pos, value in enumerate(diag_data):
-                        i_pos = j_pos - offset
-                        if i_pos >= dim_i:
-                            break
-                        yield (
-                            i_pos,
-                            j_pos,
-                            value,
-                        )
-                else:
-                    for i_pos, value in enumerate(diag_data):
-                        j_pos = i_pos + offset
-                        if j_pos >= dim_j:
-                            break
-                        yield (
-                            i_pos,
-                            j_pos,
-                            value,
-                        )
-
-        def do_dia_5_2(data_dia):
-            data = data_dia.as_scipy()
-            dim_i, _ = data.shape
-            for offset, diag_data in zip(data.offsets, data.data):
-                if offset < 0:
-                    for j_pos, value in enumerate(diag_data):
-                        i_pos = j_pos - offset
-                        if i_pos >= dim_i:
-                            break
-                        yield (
-                            i_pos,
-                            j_pos,
-                            value,
-                        )
-                else:
-                    for indx, value in enumerate(diag_data[offset:]):
-                        i_pos = indx
-                        j_pos = i_pos + offset
-                        yield (
-                            i_pos,
-                            j_pos,
-                            value,
-                        )
-
-        # Diagonal format
-        if hasattr(data, "num_diag"):
-            if qutip_version < parse_version("5.2.0"):
-                yield from do_dia_5_0(data)
-            # For 5.2
-            else:
-                yield from do_dia_5_2(data)
-        elif hasattr(data, "as_scipy"):
-            data = data.as_scipy()
-            if hasattr(data, "tocoo"):
-                coo = data.tocoo()
-                for i, j, v in zip(coo.row, coo.col, coo.data):
-                    yield (i, j, v)
-            else:
-                # Fallback: try nonzero and data.data
-                try:
-                    i_ind, j_ind = data.nonzero()
-                    for idx, i_val in enumerate(i_ind):
-                        yield (i_val, j_ind[idx], data.data[idx])
-                except Exception:
-                    # Last resort: try dense
-                    yield from do_dense()
-        else:
-            yield from do_dense()
-
-    def data_get_coeff(data, i_idx, j_idx):
-        """Access to a matrix entry."""
-        if hasattr(data, "num_diag"):
-            data_sp = data.as_scipy()
-            offset = j_idx - i_idx
-            offsets = data_sp.offsets
-            if offset not in offsets:
-                return 0
-            return data_sp.diagonal(offset)[j_idx]
-        if hasattr(data, "as_scipy"):
-            return data.as_scipy()[i_idx, j_idx]
-        return data.as_ndarray()[i_idx, j_idx]
-
-    def data_get_type(data) -> type:
-        """Get the type of the elements in data."""
-        if hasattr(data, "as_scipy"):
-            return data.as_scipy().dtype
-        return data.as_ndarray().dtype
-
-    def data_is_diagonal(data) -> bool:
-        """Check if data is diagonal."""
-        if hasattr(data, "num_diag"):
-            if data.num_diag == 0:
-                return True
-            if data.num_diag > 1:
-                return False
-            offsets = data.as_scipy().offsets
-            return bool(offsets[0] == 0)
-        if hasattr(data, "as_scipy"):
-            data = data.as_scipy()
-            if data.nnz == 0:
-                return True
-            return all(a == b for a, b in zip(*data.nonzero()))
-        if hasattr(data, "as_ndarray"):
-            data = data.as_ndarray()
-        dim_i, dim_j = data.shape
-        return not any(
-            data[i_idx, j_idx]
-            for i_idx in range(dim_i)
-            for j_idx in range(dim_j)
-            if i_idx != j_idx
-        )
-
-    def data_is_zero(data) -> bool:
-        """Check if the matrix is empty."""
-        if hasattr(data, "num_diag"):
-            return data.num_diag == 0
-        if hasattr(data, "as_scipy"):
-            return data.as_scipy().nnz == 0
-        return np.count_nonzero(data.as_ndarray()) == 0
-
-    def scalar_value(data):
-        """If data is a scalar matrix, return any of its diagonal elements.
-
-        Otherwise, return `None`
-        """
-        dim1, _ = data.shape
-        if hasattr(data, "num_diag"):
-            if data.num_diag == 0:
-                return 0.0
-            if data.num_diag > 1:
-                return None
-            data = data.as_scipy()
-            offsets = data.offsets
-            if bool(offsets[0] != 0):
-                return None
-            diagonal = data.diagonal(0)
-            scalar = diagonal[0]
-            return (
-                scalar
-                if len(diagonal) == dim1 and all(elem == scalar for elem in diagonal)
-                else None
-            )
-
-        if hasattr(data, "as_scipy"):
-            data = data.as_scipy()
-            if data.nnz == 0:
-                return 0.0
-            try:
-                if not all(a == b for a, b in zip(*data.nonzero())):
-                    return None
-                dim = data.shape[0]
-                data = data.data
-                scalar = data[0]
-                return (
-                    scalar
-                    if len(data) == dim and all(value == scalar for value in data)
-                    else None
-                )
-            except ValueError:
-                a00 = data[0, 0]
-                for i in range(dim1):
-                    for j in range(dim1):
-                        if i == j:
-                            if data[i, i] != a00:
-                                return None
-                        else:
-                            if data[i, i]:
-                                return None
-                return a00
-
-        # Must be dense...
-        if hasattr(data, "as_ndarray"):
-            data = data.as_ndarray()
-        dim_i, dim_j = data.shape
-        if any(
-            data[i_idx, j_idx]
-            for i_idx in range(dim_i)
-            for j_idx in range(dim_j)
-            if i_idx != j_idx
-        ):
-            return None
-        scalar = data[0, 0]
-        return (
-            scalar if all(scalar == data[i, i] for i in range(data.shape[0])) else None
-        )
-
-    if qutip_version < parse_version("5.2.0"):
-
-        def fast_tensor(*factors):
-            """
-            Compute a fast tensor product using a CSR representation.
-
-            If some of the factors are not in Dense representation, convert
-            everthing to CSR to speedup the computation.
-            """
+    def fast_tensor(*factors):
+        """Compute a fast tensor product using a CSR representation."""
+        if all(isinstance(factor.data, _Qutip_Dense) for factor in factors):
             return _qutip_tensor(*factors)
-
-    else:
-
-        def fast_tensor(*factors):
-            """Compute a fast tensor product using a CSR representation."""
-            if all(isinstance(factor.data, _Qutip_Dense) for factor in factors):
-                return _qutip_tensor(*factors)
-            return _qutip_tensor((factor.to(_Qutip_CSR) for factor in factors))
+        return _qutip_tensor((factor.to(_Qutip_CSR) for factor in factors))
 
 
 def data_has_nan(data) -> bool:
