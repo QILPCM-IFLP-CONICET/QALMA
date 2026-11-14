@@ -112,6 +112,22 @@ temperatures, where the generator corrections fail. The symmetry
 restoration is the one of the Gibbs state (``symmetry_projections``), which
 for the parity is the mixture of the two broken-symmetry branches.
 
+**Zero modes.** If the mean-field state breaks a continuous symmetry, the
+bosonic Hamiltonian has zero modes (Goldstone modes): the Hamiltonian does
+not depend on a collective coordinate :math:`Q` (the orientation of the
+order parameter), and the conjugate charge :math:`P` is conserved. They are
+detected and removed (see :func:`_bogoliubov_reduced`): the orientation is
+fixed, and the symmetry has to be restored averaging over its orbit, with the
+``symmetry_projections`` of the state (for instance,
+``project_conserved_quantity`` for a U(1) symmetry). The thermal fluctuations
+of the charge :math:`P` are included in the hybrid reduction as a static
+Gaussian field that couples to the subsystem and drives the bath. The
+entropies and negativities of the full bosonization are not defined with zero
+modes, since the covariance of a subsystem is not finite. A mean-field state
+that breaks the symmetry in the subsystem pins the orientation of the
+environment, so that in many cases the environment has only a soft mode.
+:func:`rpa_zero_modes` counts the zero modes.
+
 **Full bosonization.** If the subsystem is also bosonized, the whole system
 is a quadratic bosonic Hamiltonian whose thermal state is Gaussian. The
 reduced covariance matrix of any subset of sites gives the entropy and the
@@ -137,6 +153,7 @@ Hamiltonian is not positive definite, the RPA is unstable and a
 ``ValueError`` is raised.
 """
 
+import logging
 from dataclasses import dataclass, field
 from typing import Any, Callable, Dict, List, Optional, Tuple
 
@@ -163,6 +180,8 @@ from qalma.operators.quadratic.build import (
 )
 from qalma.operators.states.gibbs import GibbsDensityOperator
 
+LOGGER = logging.getLogger(__name__)
+
 __all__ = [
     "BosonSystem",
     "RPAGibbsDensityOperator",
@@ -172,6 +191,7 @@ __all__ = [
     "effective_bath_modes",
     "environment_modes",
     "rpa_hybrid_state",
+    "rpa_zero_modes",
     "rpa_entanglement_entropy",
     "rpa_negativity",
     "kubo_mori_susceptibility",
@@ -183,6 +203,11 @@ __all__ = [
 
 _DEGENERACY_TOL = 1e-12
 _STATIC_GAP = 1e-6
+# The mean-field state is only self-consistent up to the tolerance of its
+# solver, so the zero modes of the RPA have eigenvalues of the order 1e-9-1e-7
+# (relative to the norm), with random sign. The first non-zero eigenvalues are
+# orders of magnitude larger.
+_ZERO_MODE_RTOL = 1e-5
 
 
 # ### Local (single-site) quantities ###
@@ -353,6 +378,9 @@ class RPAStructure:
         site.
     positions : dict
         Index of the first element of each site in ``m_full``.
+    zero_rtol : float
+        Relative tolerance to identify the zero modes of the bosonic RPA
+        problems (see :func:`_bogoliubov_reduced`).
     """
 
     generator: Operator
@@ -361,6 +389,7 @@ class RPAStructure:
     m_full: np.ndarray
     local_basis: Dict[str, List[Qobj]]
     positions: Dict[str, int]
+    zero_rtol: float = _ZERO_MODE_RTOL
     _local_data: Dict[str, Tuple[np.ndarray, List[np.ndarray]]] = field(
         default_factory=dict, repr=False
     )
@@ -450,7 +479,10 @@ def _local_spectra(
 
 
 def build_rpa_structure(
-    generator: Operator, sigma_mf, static_gap: float = _STATIC_GAP
+    generator: Operator,
+    sigma_mf,
+    static_gap: float = _STATIC_GAP,
+    zero_rtol: float = _ZERO_MODE_RTOL,
 ) -> RPAStructure:
     """Build the subsystem-independent data of the RPA of a Gibbs state.
 
@@ -462,6 +494,9 @@ def build_rpa_structure(
         Mean-field reference state.
     static_gap : float, optional
         Frequency assigned to the static bosons.
+    zero_rtol : float, optional
+        Relative tolerance to identify the zero modes of the bosonic
+        problems. The default is 1e-5.
 
     Returns
     -------
@@ -480,6 +515,7 @@ def build_rpa_structure(
         m_full=m_full,
         local_basis=local_basis,
         positions=positions,
+        zero_rtol=zero_rtol,
     )
 
 
@@ -597,6 +633,237 @@ def _bogoliubov(h_mat: np.ndarray) -> Tuple[np.ndarray, np.ndarray]:
     return lam, t_mat
 
 
+def _quadrature_map(n_modes: int) -> np.ndarray:
+    """Matrix ``W`` such that ``(b, b^dag) = W (x, p)``, with unit commutator."""
+    eye = np.eye(n_modes)
+    return np.block([[eye, 1j * eye], [eye, -1j * eye]]) / np.sqrt(2.0)
+
+
+@dataclass
+class _ZeroModeData:
+    """Conserved charges conjugate to the zero modes of the bosonic problem.
+
+    In real quadratures, ``H = 1/2 R^T M R``. Each zero mode ``Q`` (null
+    direction of ``M``) has a conjugate conserved charge ``P`` along the
+    direction ``s0p``. Writing ``R = Z R_r + N Q + s0p P`` (``Z`` the basis of
+    the symplectic quotient), the Hamiltonian is
+    ``H = H_r(R_r) + P (drive . R_r) + 1/2 P^T kappa P``.
+
+    Attributes
+    ----------
+    s0p : numpy.ndarray
+        Real ``(2 n, m)`` matrix with the directions of the charges.
+    kappa : numpy.ndarray
+        ``(m, m)`` matrix ``s0p^T M s0p``.
+    kappa_eff : numpy.ndarray
+        ``kappa`` minus the response of the rest of the modes to the drive:
+        the inverse covariance of the charges.
+    drive_rows : numpy.ndarray
+        ``(m, 2 n)`` real rows ``(M s0p)^T``: the drive of the charges on the
+        quadratures ``R`` (the zero modes do not contribute).
+    """
+
+    s0p: np.ndarray
+    kappa: np.ndarray
+    kappa_eff: np.ndarray
+    drive_rows: np.ndarray
+
+
+def _bogoliubov_reduced(
+    h_mat: np.ndarray,
+    zero_rtol: float = _ZERO_MODE_RTOL,
+    static: Optional[np.ndarray] = None,
+) -> Tuple[np.ndarray, np.ndarray, int, Optional[_ZeroModeData]]:
+    r"""Diagonalize a bosonic quadratic Hamiltonian, removing its zero modes.
+
+    If :math:`\mathcal{H}` is positive definite this is :func:`_bogoliubov`.
+    If it is positive semidefinite, its null vectors are zero modes: the
+    Hamiltonian does not depend on a collective coordinate :math:`Q` (a
+    broken continuous symmetry, as the Goldstone mode of an ordered state),
+    whose conjugate momentum :math:`P` is conserved. In the basis of real
+    quadratures :math:`R=(x,p)`, with :math:`H=\frac12 R^T M R`, the zero
+    modes span an isotropic subspace :math:`N=\ker M`. The reduced problem
+    lives in the symplectic quotient :math:`N^\Omega/N`, where :math:`M` is
+    positive definite and Colpa's algorithm applies: the orientation
+    :math:`Q` is fixed and the sector :math:`P=0` is taken. The symmetry
+    must be restored afterwards, averaging over the orbit of the broken
+    symmetry (for instance with the ``symmetry_projections`` of the state).
+
+    Parameters
+    ----------
+    h_mat : numpy.ndarray
+        Hermitian positive semidefinite matrix :math:`\mathcal{H}`.
+    zero_rtol : float, optional
+        Eigenvalues of :math:`\\mathcal{H}` with absolute value below
+        ``zero_rtol`` times its norm are considered zero. Since the
+        mean-field state is self-consistent only up to the precision of its
+        solver, a soft mode below this threshold cannot be distinguished
+        from a zero mode. The default is 1e-5.
+    static : numpy.ndarray, optional
+        Boolean array with the bosons that are static (classical) modes.
+        Their frequencies are tiny by construction, so the eigenvectors of
+        ``h_mat`` that live mostly on them are not zero modes.
+
+    Returns
+    -------
+    lam : numpy.ndarray
+        Signed frequencies of the normal modes of the reduced problem
+        (``2 (n - m)`` values for ``m`` zero modes).
+    t_mat : numpy.ndarray
+        Matrix of shape ``(2 n, 2 (n - m))`` with
+        :math:`\Phi \simeq T\tilde\Psi`: the contribution of the zero modes
+        is dropped.
+    n_zero : int
+        Number of zero modes removed.
+    zero_data : _ZeroModeData or None
+        Data of the conserved charges conjugate to the zero modes.
+
+    Raises
+    ------
+    ValueError
+        If ``h_mat`` has negative eigenvalues (unstable RPA), or if the zero
+        modes do not form an isotropic subspace.
+    """
+    n_modes = h_mat.shape[0] // 2
+    if n_modes == 0:
+        lam, t_mat = _bogoliubov(h_mat)
+        return lam, t_mat, 0, None
+    scale = max(float(np.linalg.norm(h_mat, 2)), 1e-300)
+    tol = zero_rtol * scale
+    eigenvalues, eigenvectors = np.linalg.eigh(h_mat)
+    if eigenvalues[0] < -tol:
+        raise ValueError(
+            "Unstable RPA: the bosonic Hamiltonian of the environment is not "
+            "positive semidefinite (the environment is beyond its critical "
+            "point)."
+        )
+    static_both = (
+        np.zeros(2 * n_modes, dtype=bool)
+        if static is None
+        else np.concatenate([static, static])
+    )
+    candidates = eigenvalues <= tol
+    static_weight = np.sum(
+        np.abs(eigenvectors[static_both][:, candidates]) ** 2, axis=0
+    )
+    n_zero = int(np.sum(static_weight < 0.5))
+    if n_zero == 0:
+        lam, t_mat = _bogoliubov(h_mat)
+        return lam, t_mat, 0, None
+
+    w_map = _quadrature_map(n_modes)
+    m_complex = w_map.conj().T @ h_mat @ w_map
+    if np.max(np.abs(m_complex.imag)) > 1e-8 * scale:
+        raise ValueError(
+            "The bosonic Hamiltonian has not the structure of a quadratic form."
+        )
+    m_real = m_complex.real
+    m_real = 0.5 * (m_real + m_real.T)
+    values, vectors = np.linalg.eigh(m_real)
+    static_quadrature = (
+        np.zeros(2 * n_modes, dtype=bool)
+        if static is None
+        else np.concatenate([static, static])
+    )
+    weight = np.sum(vectors[static_quadrature] ** 2, axis=0)
+    null = vectors[:, (np.abs(values) <= tol) & (weight < 0.5)]
+    if null.shape[1] != n_zero:
+        raise ValueError("Inconsistent number of zero modes of the RPA.")
+    eye, zero = np.eye(n_modes), np.zeros((n_modes, n_modes))
+    omega = np.block([[zero, eye], [-eye, zero]])
+    if np.max(np.abs(null.T @ omega @ null)) > 1e-7:
+        raise ValueError(
+            "The zero modes of the RPA do not form an isotropic subspace "
+            "(they are not associated with a broken continuous symmetry)."
+        )
+    # Complement of the zero modes in their symplectic-orthogonal subspace
+    complement = scipy.linalg.null_space(np.vstack([null.T @ omega, null.T]))
+    n_reduced = n_modes - null.shape[1]
+    if complement.shape[1] != 2 * n_reduced:
+        raise ValueError("Unable to reduce the RPA to the symplectic quotient.")
+    # Symplectic (canonical) basis of the complement
+    omega_c = complement.T @ omega @ complement
+    schur_t, schur_q = scipy.linalg.schur(omega_c, output="real")
+    x_cols, p_cols = [], []
+    for block in range(n_reduced):
+        a_val = schur_t[2 * block, 2 * block + 1]
+        q_x, q_p = schur_q[:, 2 * block], schur_q[:, 2 * block + 1]
+        scale_q = 1.0 / np.sqrt(abs(a_val))
+        if a_val > 0:
+            x_cols.append(scale_q * q_x)
+            p_cols.append(scale_q * q_p)
+        else:
+            x_cols.append(scale_q * q_p)
+            p_cols.append(scale_q * q_x)
+    z_mat = complement @ np.column_stack(x_cols + p_cols)
+    eye_r, zero_r = np.eye(n_reduced), np.zeros((n_reduced, n_reduced))
+    omega_r = np.block([[zero_r, eye_r], [-eye_r, zero_r]])
+    if np.max(np.abs(z_mat.T @ omega @ z_mat - omega_r)) > 1e-7:
+        raise ValueError(
+            "Unable to build a canonical basis of the symplectic quotient."
+        )
+    m_reduced = z_mat.T @ m_real @ z_mat
+    m_reduced = 0.5 * (m_reduced + m_reduced.T)
+    if np.linalg.eigvalsh(m_reduced)[0] <= 0.0:
+        raise ValueError(
+            "Unstable RPA: besides the zero modes, the bosonic Hamiltonian is "
+            "not positive definite."
+        )
+    w_reduced = _quadrature_map(n_reduced)
+    lam, t_reduced = _bogoliubov(w_reduced @ m_reduced @ w_reduced.conj().T)
+    t_mat = w_map @ z_mat @ w_reduced.conj().T @ t_reduced
+
+    # Conserved charges conjugate to the zero modes, symplectically orthogonal
+    # to the quotient basis: P = N^T Omega R.
+    s0 = -omega @ null
+    s0p = s0 + z_mat @ (omega_r @ (z_mat.T @ omega @ s0))
+    if (
+        np.max(np.abs(z_mat.T @ omega @ s0p)) > 1e-7
+        or np.max(np.abs(null.T @ omega @ s0p - np.eye(n_zero))) > 1e-7
+        or np.max(np.abs(s0p.T @ omega @ s0p)) > 1e-7
+    ):
+        raise ValueError("Unable to build the charges conjugate to the zero modes.")
+    kappa = s0p.T @ m_real @ s0p
+    drive = z_mat.T @ m_real @ s0p
+    kappa_eff = kappa - drive.T @ np.linalg.solve(m_reduced, drive)
+    zero_data = _ZeroModeData(
+        s0p=s0p,
+        kappa=0.5 * (kappa + kappa.T),
+        kappa_eff=0.5 * (kappa_eff + kappa_eff.T),
+        drive_rows=(m_real @ s0p).T,
+    )
+    LOGGER.warning(
+        "RPA: %d zero mode(s) of the bosonic Hamiltonian were removed; "
+        "the associated broken symmetry must be restored.",
+        n_zero,
+    )
+    return lam, t_mat, n_zero, zero_data
+
+
+@dataclass
+class _ZeroModes:
+    """Charges conjugate to the zero modes of the environment.
+
+    Attributes
+    ----------
+    e_coupling : numpy.ndarray
+        ``(nA, m)``: coupling ``B_mu = ... + e_coupling[mu, a] P_a`` of the
+        boundary operators to the charges.
+    c_drive : numpy.ndarray
+        ``(m, 2 n_reduced)``: coefficients of the drive of the charges on the
+        normal modes, as ``c_mat`` for the boundary operators.
+    kappa_eff : numpy.ndarray
+        Inverse covariance of the charges.
+    kappa : numpy.ndarray
+        Bare inverse covariance of the charges.
+    """
+
+    e_coupling: np.ndarray
+    c_drive: np.ndarray
+    kappa_eff: np.ndarray
+    kappa: np.ndarray
+
+
 @dataclass
 class _EnvironmentBogoliubov:
     """Normal modes of the environment (the subsystem removed).
@@ -609,6 +876,8 @@ class _EnvironmentBogoliubov:
     local_basis: Dict[str, List[Qobj]]
     c_mat: np.ndarray
     lam: np.ndarray
+    n_zero: int = 0
+    zero: Optional["_ZeroModes"] = None
 
 
 def _environment_bogoliubov(
@@ -650,10 +919,26 @@ def _environment_bogoliubov(
     a_mat = 0.5 * (a_mat + a_mat.conj().T)
     b_mat = 0.5 * (b_mat + b_mat.T)
     h_mat = np.block([[a_mat, b_mat], [b_mat.conj(), a_mat.conj()]])
-    lam, t_mat = _bogoliubov(h_mat)
+    static_modes = np.concatenate(
+        [freqs <= structure.static_gap * (1.0 + 1e-6) for freqs in freqs_list]
+    )
+    lam, t_mat, n_zero, zero_data = _bogoliubov_reduced(
+        h_mat, structure.zero_rtol, static_modes
+    )
     g_b = m_ae @ g_mat
-    c_mat = np.hstack([g_b, g_b.conj()]) @ t_mat
-    return _EnvironmentBogoliubov(sites_a, local_basis, c_mat, lam)
+    s_phi = np.hstack([g_b, g_b.conj()])
+    c_mat = s_phi @ t_mat
+    zero = None
+    if zero_data is not None:
+        w_map = _quadrature_map(n_modes)
+        s_hat = s_phi @ w_map  # real rows of the operators in the quadratures
+        zero = _ZeroModes(
+            e_coupling=s_hat.real @ zero_data.s0p,
+            c_drive=(zero_data.drive_rows @ w_map.conj().T) @ t_mat,
+            kappa_eff=zero_data.kappa_eff,
+            kappa=zero_data.kappa,
+        )
+    return _EnvironmentBogoliubov(sites_a, local_basis, c_mat, lam, n_zero, zero)
 
 
 def rpa_dynamic_kernel(
@@ -909,6 +1194,7 @@ def rpa_hybrid_state(
     n_gauss: int = 6,
     max_dim: int = 6000,
     max_nodes: int = 20000,
+    charge_fluctuations: bool = True,
 ) -> Qobj:
     r"""Reduced state of the subsystem, exact in ``A`` and RPA in the environment.
 
@@ -950,7 +1236,17 @@ def rpa_hybrid_state(
     max_dim : int, optional
         Maximum dimension of the Hilbert space of the hybrid Hamiltonian.
     max_nodes : int, optional
-        Maximum number of quadrature nodes of the classical fields.
+        Maximum number of quadrature nodes of the static fields.
+    charge_fluctuations : bool, optional
+        If the environment has zero modes (a broken continuous symmetry that
+        is not pinned by the subsystem), they are removed from the bosonic
+        problem: the orientation is fixed, and the symmetry must be restored
+        with the ``symmetry_projections`` of the state. The conserved charge
+        conjugate to each zero mode is a static Gaussian variable that
+        couples to the subsystem and drives the bath; its thermal
+        fluctuations are included if this option is ``True`` (default), and
+        neglected otherwise. They are not supported together with classical
+        thermal modes.
 
     Returns
     -------
@@ -974,21 +1270,30 @@ def rpa_hybrid_state(
         rho = 0.5 * (rho + rho.conj().T)
         return Qobj(rho / np.real(np.trace(rho)), dims=k0_qobj.dims)
 
-    environment = environment_modes(structure, sites)
+    environment = _environment_bogoliubov(structure, sites)
     if environment is None:
         eps, vecs = np.linalg.eigh(k0)
         return finish((vecs * np.exp(-(eps - eps.min()))) @ vecs.conj().T)
-    omega, coupling, sites_a, local_basis = environment
+    positive = environment.lam > 0
+    omega = environment.lam[positive]
+    coupling = environment.c_mat[:, positive]
+    sites_a, local_basis = environment.sites_a, environment.local_basis
     d_ops = [
         LocalOperator(site, e, system).to_qutip(block).full()
         for site in sites_a
         for e in local_basis[site]
     ]
+    n_a = len(d_ops)
 
     # Classical (static) and quantum modes
     occupation = 1.0 / np.expm1(omega)
     classical = occupation > n_cut
-    n_a = len(d_ops)
+    zero = environment.zero if charge_fluctuations else None
+    if zero is not None and np.any(classical):
+        raise ValueError(
+            "Zero modes together with classical thermal modes are not "
+            "supported: use a lower temperature or charge_fluctuations=False."
+        )
     covariance = np.zeros((n_a, n_a))
     if np.any(classical):
         c_cl = coupling[:, classical]
@@ -1002,8 +1307,24 @@ def rpa_hybrid_state(
         np.sqrt(cov_vals[a]) * sum(cov_vecs[mu, a] * d_ops[mu] for mu in range(n_a))
         for a in np.nonzero(keep)[0]
     ]
+
+    # Conserved charges conjugate to the zero modes: static Gaussian
+    # variables, coupled to the subsystem and driving the bath.
+    n_charges = 0
+    if zero is not None:
+        n_charges = zero.kappa_eff.shape[0]
+        k_vals, k_vecs = np.linalg.eigh(zero.kappa_eff)
+        if k_vals[0] <= 1e-12 * max(1.0, k_vals[-1]):
+            raise ValueError(
+                "The charges conjugate to the zero modes are not confined "
+                "(their inverse covariance is not positive definite)."
+            )
+        charge_dirs = k_vecs / np.sqrt(k_vals)[None, :]  # p = charge_dirs @ xi
+        start = np.vstack([coupling, zero.c_drive[:, positive]])
+    else:
+        start = coupling
     omega_eff, coupling_eff = effective_bath_modes(
-        omega[~classical], coupling[:, ~classical], n_blocks
+        omega[~classical], start[:, ~classical], n_blocks
     )
     n_eff = len(omega_eff)
     bath_dim = (n_fock + 1) ** n_eff
@@ -1012,12 +1333,13 @@ def rpa_hybrid_state(
             f"The hybrid problem has dimension {dim_a * bath_dim} > {max_dim}: "
             "reduce n_fock or n_blocks, or increase max_dim."
         )
+    n_static = len(fields) + n_charges
     nodes_1d, weights_1d = np.polynomial.hermite_e.hermegauss(n_gauss)
     weights_1d = weights_1d / np.sqrt(2.0 * np.pi)
-    n_nodes = n_gauss ** len(fields)
+    n_nodes = n_gauss**n_static
     if n_nodes > max_nodes:
         raise ValueError(
-            f"{len(fields)} classical directions need {n_nodes} > {max_nodes} "
+            f"{n_static} static directions need {n_nodes} > {max_nodes} "
             "quadrature nodes: reduce n_gauss or increase max_nodes."
         )
 
@@ -1025,36 +1347,70 @@ def rpa_hybrid_state(
     bosons = _bath_operators(n_eff, n_fock)
     identity_bath = sparse.identity(bath_dim, format="csr")
     identity_a = sparse.identity(dim_a, format="csr")
+
+    def bath_operator(row: np.ndarray) -> sparse.csr_matrix:
+        """Linear operator ``sum_j (row_j b_j + h.c.)`` of the effective bath."""
+        result = sparse.csr_matrix((bath_dim, bath_dim), dtype=complex)
+        for coef, boson in zip(row, bosons):
+            result = result + coef * boson + np.conj(coef) * boson.T
+        return result
+
     bath_h = sparse.csr_matrix((bath_dim, bath_dim), dtype=complex)
     for w_j, boson in zip(omega_eff, bosons):
         bath_h = bath_h + w_j * (boson.T @ boson)
     h_fixed = sparse.kron(identity_a, bath_h, format="csr")
     for mu, d_op in enumerate(d_ops):
-        b_mu = sparse.csr_matrix((bath_dim, bath_dim), dtype=complex)
-        for j, boson in enumerate(bosons):
-            b_mu = (
-                b_mu
-                + coupling_eff[mu, j] * boson
-                + np.conj(coupling_eff[mu, j]) * boson.T
+        h_fixed = h_fixed + sparse.kron(
+            sparse.csr_matrix(d_op), bath_operator(coupling_eff[mu]), format="csr"
+        )
+    # operators of the charges: coupling to the subsystem and drive of the bath
+    charge_sub, charge_bath = [], []
+    if zero is not None:
+        for direction in range(n_charges):
+            weights_dir = charge_dirs[:, direction]
+            e_op = sum(
+                weights_dir[a] * zero.e_coupling[mu, a] * d_ops[mu]
+                for a in range(n_charges)
+                for mu in range(n_a)
             )
-        h_fixed = h_fixed + sparse.kron(sparse.csr_matrix(d_op), b_mu, format="csr")
+            charge_sub.append(sparse.csr_matrix(e_op))
+            drive_row = sum(
+                weights_dir[a] * coupling_eff[n_a + a] for a in range(n_charges)
+            )
+            charge_bath.append(
+                sparse.kron(identity_a, bath_operator(drive_row), format="csr")
+            )
 
-    energies, states = [], []
-    for index in np.ndindex(*([n_gauss] * len(fields))):
-        xi = [nodes_1d[i] for i in index]
-        weight = float(np.prod([weights_1d[i] for i in index]))
-        k_a = k0 + sum(x * f for x, f in zip(xi, fields)) if fields else k0
-        h_total = (
-            h_fixed + sparse.kron(sparse.csr_matrix(k_a), identity_bath)
-        ).toarray()
-        eps, vecs = scipy.linalg.eigh(0.5 * (h_total + h_total.conj().T))
-        energies.append((weight, eps[0]))
+    log_weights, energies, states = [], [], []
+    for index in np.ndindex(*([n_gauss] * n_static)):
+        xi = np.array([nodes_1d[i] for i in index])
+        log_weight = float(np.sum(np.log([weights_1d[i] for i in index])))
+        k_a = k0 + sum((x * f for x, f in zip(xi[: len(fields)], fields)), 0 * k0)
+        h_total = h_fixed + sparse.kron(
+            sparse.csr_matrix(k_a), identity_bath, format="csr"
+        )
+        if n_charges and zero is not None:
+            xi_p = xi[len(fields) :]
+            # importance sampling: Gaussian weight of the charges over the
+            # normalized measure of the nodes
+            charges = charge_dirs @ xi_p
+            log_weight += float(
+                -0.5 * charges @ zero.kappa @ charges
+                + 0.5 * np.sum(xi_p**2)
+                + 0.5 * n_charges * np.log(2.0 * np.pi)
+            )
+            for x_p, e_op, drive in zip(xi_p, charge_sub, charge_bath):
+                h_total = h_total + x_p * (sparse.kron(e_op, identity_bath) + drive)
+        h_dense = h_total.toarray()
+        eps, vecs = scipy.linalg.eigh(0.5 * (h_dense + h_dense.conj().T))
+        log_weights.append(log_weight)
+        energies.append(eps[0])
         boltz = np.exp(-(eps - eps[0]))
         psi = vecs.reshape(dim_a, bath_dim, -1)
-        rho = np.einsum("anr,r,bnr->ab", psi, boltz, psi.conj())
-        states.append(rho)
-    e_min = min(e for _, e in energies)
-    total = sum(w * np.exp(-(e - e_min)) * rho for (w, e), rho in zip(energies, states))
+        states.append(np.einsum("anr,r,bnr->ab", psi, boltz, psi.conj()))
+    log_total = np.array(log_weights) - np.array(energies)
+    scale = np.exp(log_total - log_total.max())
+    total = sum(w * rho for w, rho in zip(scale, states))
     return finish(total)
 
 
@@ -1203,6 +1559,7 @@ class BosonSystem:
     lam: np.ndarray
     t_mat: np.ndarray
     contractions: np.ndarray
+    n_zero_modes: int = 0
 
     @property
     def n_modes(self) -> int:
@@ -1256,7 +1613,7 @@ def build_boson_system(structure: RPAStructure) -> BosonSystem:
     a_mat = 0.5 * (a_mat + a_mat.conj().T)
     b_mat = 0.5 * (b_mat + b_mat.T)
     h_mat = np.block([[a_mat, b_mat], [b_mat.conj(), a_mat.conj()]])
-    lam, t_mat = _bogoliubov(h_mat)
+    lam, t_mat, n_zero, _ = _bogoliubov_reduced(h_mat, structure.zero_rtol)
     omega = np.abs(lam)
     expo = np.where(lam > 0, 0.0, -omega)  # equal-time occupations
     occupation = np.exp(expo) / (-np.expm1(-omega))
@@ -1269,6 +1626,7 @@ def build_boson_system(structure: RPAStructure) -> BosonSystem:
         lam=lam,
         t_mat=t_mat,
         contractions=contractions,
+        n_zero_modes=n_zero,
     )
 
 
@@ -1298,6 +1656,29 @@ def _symplectic_spectrum(sigma: np.ndarray) -> np.ndarray:
     return values[::2]
 
 
+def rpa_zero_modes(structure: RPAStructure, sites: Optional[frozenset] = None) -> int:
+    """Number of zero modes removed from the bosonic RPA problem.
+
+    Parameters
+    ----------
+    structure : RPAStructure
+        Subsystem-independent data of the RPA.
+    sites : frozenset, optional
+        If given, count the zero modes of the environment of ``sites`` (the
+        problem used by the reductions of a subsystem). Otherwise, count
+        those of the whole system (the problem of the full bosonization).
+
+    Returns
+    -------
+    int
+        The number of zero modes.
+    """
+    if sites is None:
+        return structure.boson_system().n_zero_modes
+    environment = _environment_bogoliubov(structure, frozenset(sites))
+    return 0 if environment is None else environment.n_zero
+
+
 def rpa_entanglement_entropy(structure: RPAStructure, sites: frozenset) -> float:
     r"""Bosonic RPA entropy of a subsystem, in bits.
 
@@ -1321,6 +1702,13 @@ def rpa_entanglement_entropy(structure: RPAStructure, sites: frozenset) -> float
         The entropy in bits.
     """
     bosons = structure.boson_system()
+    if bosons.n_zero_modes:
+        raise ValueError(
+            f"The bosonic RPA of the whole system has {bosons.n_zero_modes} zero "
+            "mode(s) (a broken continuous symmetry): the covariance matrix of a "
+            "subsystem is not defined without restoring the symmetry. Use the "
+            "hybrid reduction instead."
+        )
     modes = bosons.modes_of(sites)
     nu = _symplectic_spectrum(_covariance_matrix(bosons, modes))
     f = np.clip(nu - 0.5, 0.0, None)
@@ -1351,6 +1739,13 @@ def rpa_negativity(
         The negativity.
     """
     bosons = structure.boson_system()
+    if bosons.n_zero_modes:
+        raise ValueError(
+            f"The bosonic RPA of the whole system has {bosons.n_zero_modes} zero "
+            "mode(s) (a broken continuous symmetry): the covariance matrix of a "
+            "subsystem is not defined without restoring the symmetry. Use the "
+            "hybrid reduction instead."
+        )
     if sites_c is None:
         sites_c = frozenset(bosons.sites) - sites_b
     modes_b = bosons.modes_of(sites_b)
@@ -1415,6 +1810,11 @@ class RPAGibbsDensityOperator(GibbsDensityOperator):
         :func:`rpa_hybrid_state`). The default is False.
     hybrid_options : dict, optional
         Options of :func:`rpa_hybrid_state`.
+    zero_rtol : float, optional
+        Relative tolerance to identify the zero modes of the bosonic RPA
+        problems, which are removed (see :func:`_bogoliubov_reduced`). The
+        broken symmetry associated with them must be restored with the
+        ``symmetry_projections`` of the state. The default is 1e-5.
     """
 
     def __init__(
@@ -1430,6 +1830,7 @@ class RPAGibbsDensityOperator(GibbsDensityOperator):
         static_gap: float = _STATIC_GAP,
         hybrid: bool = False,
         hybrid_options: Optional[dict] = None,
+        zero_rtol: float = _ZERO_MODE_RTOL,
     ):
         super().__init__(
             k,
@@ -1444,6 +1845,7 @@ class RPAGibbsDensityOperator(GibbsDensityOperator):
         self.static_gap = static_gap
         self.hybrid = hybrid
         self.hybrid_options = hybrid_options
+        self.zero_rtol = zero_rtol
         self._rpa_structure: Optional[RPAStructure] = None
 
     @property
@@ -1458,7 +1860,7 @@ class RPAGibbsDensityOperator(GibbsDensityOperator):
         """The subsystem-independent data of the RPA (computed on demand)."""
         if self._rpa_structure is None:
             self._rpa_structure = build_rpa_structure(
-                self.k, self.meanfield, self.static_gap
+                self.k, self.meanfield, self.static_gap, self.zero_rtol
             )
         return self._rpa_structure
 
@@ -1518,6 +1920,15 @@ class RPAGibbsDensityOperator(GibbsDensityOperator):
         """Alias of :meth:`partial_trace`. ``state`` is ignored."""
         return self.partial_trace(sites, **kwargs)
 
+    def rpa_zero_modes(self, sites: Optional[frozenset] = None) -> int:
+        """Number of zero modes removed from the bosonic RPA problem.
+
+        See :func:`rpa_zero_modes`.
+        """
+        return rpa_zero_modes(
+            self.rpa_structure, None if sites is None else frozenset(sites)
+        )
+
     def rpa_entropy(self, sites: frozenset) -> float:
         """Bosonic RPA entropy of the subsystem ``sites``, in bits.
 
@@ -1540,6 +1951,7 @@ class RPAGibbsDensityOperator(GibbsDensityOperator):
 
     def _with_prefactor(self, prefactor: complex) -> "RPAGibbsDensityOperator":
         """Copy of the state with a different prefactor, sharing the structure."""
+        assert isinstance(prefactor, float), "prefactor must be a float."
         new_state = type(self)(
             self.k,
             system=self.system,
@@ -1552,6 +1964,7 @@ class RPAGibbsDensityOperator(GibbsDensityOperator):
             static_gap=self.static_gap,
             hybrid=self.hybrid,
             hybrid_options=self.hybrid_options,
+            zero_rtol=self.zero_rtol,
         )
         new_state._rpa_structure = self._rpa_structure
         return new_state
