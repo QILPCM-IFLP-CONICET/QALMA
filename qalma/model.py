@@ -17,6 +17,7 @@ corresponding dimensions as values.
 import logging
 import pickle
 import re
+import warnings
 from typing import Dict, Optional, Tuple
 
 from qalma.alpsmodels import ModelDescriptor, qutip_model_from_dims
@@ -25,6 +26,17 @@ from qalma.settings import LATTICE_LIB_FILE, MODEL_LIB_FILE
 from qalma.utils import eval_expr, replace_variable_type
 
 logger = logging.getLogger(__name__)
+
+
+class FermionicSignWarning(UserWarning):
+    """Warn that a model with fermionic operators is treated as bosonic.
+
+    Operators acting on different sites are always assumed to commute:
+    the signs coming from the anticommutation of fermionic operators are
+    not implemented. Results for fermionic models are only correct when
+    those signs cancel out (e.g. nearest-neighbour hopping of a single
+    species on an open chain).
+    """
 
 
 class SystemDescriptor:
@@ -84,6 +96,19 @@ class SystemDescriptor:
         }
         self._subsystems_cache = {}
         if _load_operators:
+            if any(
+                getattr(op, "fermionic", False)
+                for site in self.sites.values()
+                for op in site.get("operators", {}).values()
+            ):
+                warnings.warn(
+                    f"The model <<{model.name}>> has fermionic operators, but "
+                    "fermionic signs are not implemented: operators on different "
+                    "sites are assumed to commute, so in general the results "
+                    "correspond to hard-core particles, not to fermions.",
+                    FermionicSignWarning,
+                    stacklevel=2,
+                )
             self._load_site_operators()
             self._load_global_ops()
 
