@@ -121,13 +121,13 @@ benchmark-projections:
 
 
 benchmark-set-reference:
-	python test/set_benchmark_reference.py
+	$(PYTHON) tools/set_benchmark_reference.py
 
 benchmark-clean:
 	rm -R .benchmarks
 
 benchmark-show:
-	python test/compare_benchmarks.py
+	$(PYTHON) tools/compare_benchmarks.py
 
 
 mypy:
