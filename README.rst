@@ -96,7 +96,7 @@ Documentation
 The documentation sources (user guide, API reference, examples) live in the
 ``docs/`` directory. To build them locally::
 
-    pip install qalma[docs]
+    pip install -e ".[docs]"
     cd docs
     make html
 
@@ -106,4 +106,6 @@ License
 
 QALMA is released under the `GNU General Public License Version 3 (GPL3) <LICENSE.txt>`_.
 
-
+The model and lattice libraries in ``qalma/lib/*.xml`` come from the
+`ALPS project <https://alpscore.org>`_ and are distributed under the
+`Boost Software License 1.0 <qalma/lib/LICENSE_1_0.txt>`_.

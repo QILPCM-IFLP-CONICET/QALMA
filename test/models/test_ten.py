@@ -45,7 +45,7 @@ def build_ten_sites_lattice_file():
     <EDGE type="4"><SOURCE vertex="10" offset="0"/><TARGET vertex="4" offset="1"/></EDGE>
     <EDGE type="5"><SOURCE vertex="7" offset="0"/><TARGET vertex="1" offset="1"/></EDGE>
     </UNITCELL>
-    
+
     <LATTICEGRAPH name = "kagome-stripe-double">
     <FINITELATTICE>
     <LATTICE ref="chain lattice"/>
