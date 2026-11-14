@@ -27,7 +27,7 @@ Features
 --------
 
 - **ALPS integration** — load models and lattice geometries directly from ALPS
-  XML libraries (spin models, Hubbard, Heisenberg, custom models, chain /
+  XML libraries (spin models, Bose-Hubbard, Heisenberg, custom models, chain /
   square / triangular lattices, and more).
 - **Algebraic operator representation** — operators are stored as sums of
   local and few-body terms, not as full matrices. Memory and computation scale
@@ -45,10 +45,14 @@ Features
 Installation
 ------------
 
-Using pip directly from the GitHub repository::
+QALMA needs Python 3.11 or newer. Install the latest release from PyPI with::
 
-    pip install git+https://github.com/QILPCM-IFLP-CONICET/QALMA/
+    pip install qalma
 
+The plotting helpers need `matplotlib`, which is installed with the ``plot``
+extra (``pip install "qalma[plot]"``).
+
+To get the development version, install directly from the GitHub repository.
 For a clean setup it is recommended to use a virtual environment::
 
     python -m venv qalma_env

@@ -22,5 +22,5 @@ python:
 # Build documentation in the docs/ directory with Sphinx
 sphinx:
   configuration: docs/conf.py
-  fail_on_warning: false   # cambiar a true cuando la doc esté limpia
+  fail_on_warning: true
 
