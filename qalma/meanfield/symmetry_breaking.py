@@ -23,6 +23,7 @@ the function suitable as a drop-in replacement for
 model-agnostic way.
 """
 
+import logging
 from typing import Optional
 
 import numpy as np
@@ -32,6 +33,8 @@ from qalma.operators import LocalOperator, Operator
 from qalma.operators.states import ProductDensityOperator
 
 from .variational import compute_free_energy, variational_quadratic_mfa
+
+logger = logging.getLogger(__name__)
 
 
 def _random_hermitian(d: int, rng: np.random.Generator) -> np.ndarray:
@@ -152,7 +155,6 @@ def symmetry_breaking_mfa(
     ...     )
     ...     sigma_prev = sigma
     """
-    import logging
 
     rng = np.random.default_rng(seed)
     sites = list(system.sites.keys())
@@ -167,7 +169,7 @@ def symmetry_breaking_mfa(
         )
         best_f = compute_free_energy(sigma_ws, k)
         best_sigma = sigma_ws
-        logging.debug(f"symmetry_breaking_mfa warm-start candidate: F={best_f:.6f}")
+        logger.debug(f"symmetry_breaking_mfa warm-start candidate: F={best_f:.6f}")
 
     # --- Candidates 1..n_attempts: random perturbations -------------------
     for attempt in range(n_attempts):
@@ -199,7 +201,7 @@ def symmetry_breaking_mfa(
             best_f = f
             best_sigma = sigma
 
-        logging.debug(
+        logger.debug(
             f"symmetry_breaking_mfa attempt {attempt + 1}/{n_attempts}: "
             f"site={site}  F={f:.6f}  best={best_f:.6f}"
         )

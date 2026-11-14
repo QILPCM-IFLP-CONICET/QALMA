@@ -32,6 +32,8 @@ import numpy as np
 from qalma.model import SystemDescriptor
 from qalma.operators.basic import Operator
 
+logger = logging.getLogger(__name__)
+
 __all__ = ["Simulation", "SimulationHDF5"]
 
 
@@ -161,7 +163,7 @@ def load_hdf5_dict(group: h5py.Group) -> Dict[str, Any]:
                 loaded_dict[key_str] = pickle.loads(dataset[0].tobytes())
                 continue
             except (pickle.UnpicklingError, EOFError, ValueError):
-                logging.warning(
+                logger.warning(
                     " key %s was marked as containing a pickled object, but cannot be loaded.",
                     key_str,
                 )
@@ -201,7 +203,7 @@ class Simulation:
                         key = "rho_" + f"{i}".rjust(6, "0")
                         store_state(key, rho, states_group, system)
         except (PermissionError,) as exc:
-            logging.warning(
+            logger.warning(
                 "The object could not be stored in %s. (%s)", filename, str(exc)
             )
             return
@@ -271,7 +273,7 @@ class Simulation:
             OSError,
             PermissionError,
         ) as exc:
-            logging.warning(
+            logger.warning(
                 "File %s not found. Simulation object could not be loaded (%s).",
                 filename,
                 str(exc),
@@ -411,7 +413,7 @@ class SimulationHDF5(Simulation):
                 time_span = self.time_span
                 f["time span"][:] = np.array(time_span)
         except (PermissionError,) as exc:
-            logging.warning(
+            logger.warning(
                 "The object could not be stored in %s. (%s)", filename, str(exc)
             )
             return
@@ -427,7 +429,7 @@ def hdf5_state_iterator(group: h5py.Group, system: Optional[SystemDescriptor] = 
         for i, t in enumerate(group.get("time span", []))
     }
     if "states" not in group:
-        logging.info(" no states defined in", group)
+        logger.info(" no states defined in", group)
         return
     assert system is not None
 
@@ -447,7 +449,7 @@ def state_from_hdf5(
     try:
         state_bytes = group["states"][key][0]
     except KeyError:
-        logging.info("key error:", key, "not in ", group)
+        logger.info("key error:", key, "not in ", group)
         return None
 
     assert system is not None

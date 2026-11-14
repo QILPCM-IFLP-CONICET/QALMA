@@ -19,6 +19,8 @@ from qalma.operators.states.basic import (
     DensityOperatorProtocol,
 )
 
+logger = logging.getLogger(__name__)
+
 __all__ = ["QutipDensityOperator"]
 
 
@@ -57,7 +59,7 @@ class QutipDensityOperator(DensityOperatorMixin, QutipOperator):
 
     def __neg__(self):
         """Multiply by -1."""
-        logging.warning("Negate a DensityOperator leads to a regular operator.")
+        logger.warning("Negate a DensityOperator leads to a regular operator.")
         self.normalize()
         return QutipOperator(self.operator, self.system, self.site_names, -1)
 

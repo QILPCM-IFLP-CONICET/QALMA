@@ -16,6 +16,8 @@ from qalma.scalarprod.gram import gram_matrix, merge_gram_matrices
 from qalma.scalarprod.utils import find_linearly_independent_rows
 from qalma.settings import QALMA_TOLERANCE
 
+logger = logging.getLogger(__name__)
+
 __all__ = ["OperatorBasis", "HierarchicalOperatorBasis"]
 
 
@@ -158,7 +160,7 @@ class OperatorBasis:
                 pass
 
             li_indx = find_linearly_independent_rows(gram, tol=threshold)
-            logging.warning(
+            logger.warning(
                 (
                     "using a non-independent set of operators. "
                     "Reduce it to a linearly independent set %s..."
@@ -415,7 +417,7 @@ class HierarchicalOperatorBasis(OperatorBasis):
             if np.abs(comm_norm) < tol_sq:
                 closed = True
                 deep = dimension = i + 1
-                logging.warning(
+                logger.warning(
                     """A commutator got (almost) zero norm.
 
                     deep->%d
@@ -471,7 +473,7 @@ class HierarchicalOperatorBasis(OperatorBasis):
 
         """
         if generator is not None or sp is not None:
-            logging.warning("A HierarchicalBasis cannot regenerate its elements.")
+            logger.warning("A HierarchicalBasis cannot regenerate its elements.")
 
         # Loop to ensure that all the elements
         # in the basis are linearly independent.
@@ -487,7 +489,7 @@ class HierarchicalOperatorBasis(OperatorBasis):
                 l_gram = cholesky(gram)
                 break
             except LinAlgError:
-                logging.warning(
+                logger.warning(
                     (
                         "using a non-independent set of operators. "
                         "Reduce it to a linearly independent set..."
@@ -591,7 +593,7 @@ def append_basis(basis_1: OperatorBasis, basis_2: OperatorBasis | Iterable[Opera
             g11, g11_inv, g22, g12
         )
     except ValueError:
-        logging.warning(
+        logger.warning(
             (
                 "basis_1 looks singular when combined with basis_2. "
                 "Trying with full reconstruction"

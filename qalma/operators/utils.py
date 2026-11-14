@@ -7,6 +7,8 @@ from qalma.settings import (
     QALMA_INFER_ARITHMETICS,
 )
 
+logger = logging.getLogger(__name__)
+
 __all__ = ["find_arithmetic_implementation"]
 
 
@@ -33,7 +35,7 @@ def find_arithmetic_implementation(
                 if QALMA_INFER_ARITHMETICS:
                     dispatch_table[(type_op1, type_op2)] = func
                     return func
-                logging.warning("try with %s", func.__code__)
+                logger.warning("try with %s", func.__code__)
                 return None
 
     # Last resource: try if the operands are instances of one of the keys
@@ -46,6 +48,6 @@ def find_arithmetic_implementation(
             if QALMA_INFER_ARITHMETICS:
                 dispatch_table[(type_op1, type_op2)] = func
                 return func
-            logging.warning("try with %s", func.__code__)
+            logger.warning("try with %s", func.__code__)
             return None
     return None

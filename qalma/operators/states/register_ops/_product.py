@@ -129,7 +129,6 @@ def _(y_op: ProductDensityOperator, x_op: float):
             system=y_op.system,
             normalized=True,
         )
-    print("using as product op")
     return _as_product_op(y_op, x_op)
 
 

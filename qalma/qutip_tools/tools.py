@@ -28,6 +28,8 @@ from scipy.sparse.linalg import (
     ArpackNoConvergence as _ArpackNoConvergence,
 )
 
+logger = logging.getLogger(__name__)
+
 qutip_version = parse_version(qutip_version_string)
 
 
@@ -904,10 +906,10 @@ def safe_exp_and_normalize(operator: _Qobj) -> Tuple[_Qobj, float]:
             )
         )
     except np.linalg.LinAlgError as err_la:
-        logging.warning(err_la)
+        logger.warning(err_la)
         k_0 = 0
     except _ArpackNoConvergence as err_arpack:
-        logging.warning(
+        logger.warning(
             "Convergence failed. try with "
             f"{type(err_arpack.eigenvalues)}-> {err_arpack.eigenvalues}"
         )

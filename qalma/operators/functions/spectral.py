@@ -17,6 +17,8 @@ from qalma.operators.product import (
     ScalarOperator,
 )
 
+logger = logging.getLogger(__name__)
+
 # from qalma.operators.simplify import simplify_sum_operator
 
 __all__ = ["eigenvalues", "spectral_norm", "log_op", "relative_entropy"]
@@ -81,5 +83,5 @@ def relative_entropy(rho: Operator, sigma: Operator) -> float:
     else:
         result = real((rho * delta_log).tr())
     if result < 0:
-        logging.warning("S(rho|sigma)=%.4f<0", result)
+        logger.warning("S(rho|sigma)=%.4f<0", result)
     return max(0, result)

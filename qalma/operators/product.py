@@ -30,6 +30,8 @@ from qalma.settings import (
 
 from .basic import LocalOperator, Operator
 
+logger = logging.getLogger(__name__)
+
 # from scipy.linalg import ishermitian
 
 
@@ -656,7 +658,7 @@ class ProductOperator(Operator):
                 block = tuple(sorted(self.acts_over()))
 
             if len(block) > 8:
-                logging.warning(
+                logger.warning(
                     "Asking for a qutip representation of an operator over the full system"
                 )
 

@@ -14,6 +14,8 @@ import qalma.settings as qalma_settings
 from qalma.operators import Operator
 from qalma.scalarprod.utils import find_linearly_independent_rows
 
+logger = logging.getLogger(__name__)
+
 # from datetime import datetime
 
 __all__ = [
@@ -32,14 +34,14 @@ if qalma_settings.USE_PARALLEL:
         from concurrent.futures import ProcessPoolExecutor, ThreadPoolExecutor
         from functools import partial
 
-        logging.info("using parallel routines to build Gram's matrices.")
+        logger.info("using parallel routines to build Gram's matrices.")
     except ModuleNotFoundError:
         qalma_settings.USE_PARALLEL = False
-        logging.warning(
+        logger.warning(
             "ProcessPoolExecutor/ThreadPoolExecutor cannot be loaded. Using serial routines."
         )
 else:
-    logging.info("using serial routines to build Gram's matrices.")
+    logger.info("using serial routines to build Gram's matrices.")
 
 
 # ### Generic functions depending on the SP ###
@@ -70,7 +72,7 @@ def _sp_worker(pair, basis, sp):
         val = float(np.real(sp(basis[i], basis[j])))
         return (i, j, val)
     except Exception as exc_val:
-        logging.error("Error computing Gram's matrix entry (%d, %d):%s", i, j, exc_val)
+        logger.error("Error computing Gram's matrix entry (%d, %d):%s", i, j, exc_val)
         return (i, j, np.nan)
 
 

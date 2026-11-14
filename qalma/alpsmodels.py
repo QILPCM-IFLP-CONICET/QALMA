@@ -17,6 +17,8 @@ import qutip  # type: ignore[import-untyped]
 from qalma.settings import MODEL_LIB_FILE
 from qalma.utils import eval_expr, find_ref
 
+logger = logging.getLogger(__name__)
+
 
 def list_models_in_alps_xml(filename=MODEL_LIB_FILE):
     """Return the names of models available in an ALPS XML library.
@@ -114,7 +116,7 @@ def build_local_basis_from_qn_descriptors(
         local_basis = new_basis
 
     if len(local_basis) == 1 and len(local_basis[0]) == 0:
-        logging.warning("empty basis!")
+        logger.warning("empty basis!")
         return {"qns": {}, "basis": []}
     qn_indx = {qn: i for i, qn in enumerate(local_basis[0].keys())}
     basis_vectors = [tuple(state[qn] for qn in qn_indx) for state in local_basis]
@@ -502,7 +504,7 @@ def model_from_alps_xml(filename=MODEL_LIB_FILE, name="spin", parms=None):
                     terms.append((dst, src, coeff, fermionic))
 
             if any(t[-1] for t in terms) and not all(t[-1] for t in terms):
-                logging.warning("Wrong fermionic parity %s: %s.", name, terms)
+                logger.warning("Wrong fermionic parity %s: %s.", name, terms)
                 continue
             operators[name] = sum(
                 coeff * qutip.projection(dim, src, dst)

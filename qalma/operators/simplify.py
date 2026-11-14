@@ -18,6 +18,8 @@ from qalma.qutip_tools.tools import (
     is_empty_op,
 )
 
+logger = logging.getLogger(__name__)
+
 __all__ = ["collect_nbody_terms", "group_terms_by_blocks", "simplify_qutip_sums"]
 
 
@@ -171,7 +173,7 @@ def group_terms_by_blocks(operator: Operator, fn: Optional[Callable] = None):
                 return op_in
             return fn(op_in)
         except Exception as exc:
-            logging.warning(exc)
+            logger.warning(exc)
             return op_in
 
     for block, terms in terms_dict.items():

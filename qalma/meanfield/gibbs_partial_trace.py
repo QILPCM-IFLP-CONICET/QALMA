@@ -30,6 +30,8 @@ from qalma.operators.states.product import (
 )
 from qalma.settings import MAXIMUM_GIBBS_EXACT_PARTIAL_TRACE
 
+logger = logging.getLogger(__name__)
+
 __all__ = ["gibbs_meanfield_generator", "gibbs_meanfield_partial_trace"]
 
 
@@ -85,7 +87,7 @@ def project_boundary_term(term, sigma: ProductDensityOperator, sites: frozenset)
     if hasattr(term, "as_sum_of_products"):
         term = term.as_sum_of_products()
         return project_boundary_term(term, sigma, sites)
-    logging.warning(
+    logger.warning(
         "boundary term is not Product or Qutip (%s). Converting to QutipOperator",
         type(term),
     )
