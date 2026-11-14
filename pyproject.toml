@@ -12,11 +12,14 @@ authors = [
 description = "Quantum Algebras for Lattice Models and Applications."
 readme = "README.rst"
 requires-python = ">=3.10"
-# QALMA itself is GPL-3.0; the ALPS model/lattice libraries shipped in
+# QALMA itself is LGPL-3.0; the ALPS model/lattice libraries shipped in
 # qalma/lib/*.xml are distributed under the Boost Software License 1.0.
-license = "GPL-3.0-only AND BSL-1.0"
+# The LGPL-3.0 is a set of additional permissions on top of the GPL-3.0,
+# so both texts (COPYING.LESSER and COPYING) have to be distributed.
+license = "LGPL-3.0-only AND BSL-1.0"
 license-files = [
-    "LICENSE.txt",
+    "COPYING",
+    "COPYING.LESSER",
     "qalma/lib/LICENSE_1_0.txt",
 ]
 # Lower bounds are the oldest versions the test suite has been run against.

@@ -104,7 +104,12 @@ The documentation sources (user guide, API reference, examples) live in the
 License
 -------
 
-QALMA is released under the `GNU General Public License Version 3 (GPL3) <LICENSE.txt>`_.
+QALMA is free software: you can redistribute it and/or modify it under the
+terms of the `GNU Lesser General Public License, version 3 (LGPL-3.0)
+<COPYING.LESSER>`_, which supplements the `GNU General Public License,
+version 3 <COPYING>`_. In short: you can use QALMA from code under any
+license, but distributed modifications of QALMA itself must remain under the
+LGPL.
 
 The model and lattice libraries in ``qalma/lib/*.xml`` come from the
 `ALPS project <https://alpscore.org>`_ and are distributed under the
