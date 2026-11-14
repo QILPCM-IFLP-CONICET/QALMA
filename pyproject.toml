@@ -28,7 +28,6 @@ dependencies = [
     "scipy>=1.11",
     "qutip>=5.1",
     "h5py>=3.10",
-    "matplotlib>=3.8",
     "packaging",
 ]
 classifiers = [
@@ -40,18 +39,24 @@ classifiers = [
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
     "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
     "Topic :: Scientific/Engineering",
     "Topic :: Scientific/Engineering :: Mathematics",
     "Topic :: Scientific/Engineering :: Physics",
 ]
 
 [project.urls]
-Homepage = "http://www.fisica.unlp.edu.ar/Members/matera/english-version/mauricio-materas-personal-home-page"
-Repository = "https://github.com/QILPCM-IFLP-CONICET/QALMA"
+Homepage = "https://github.com/QILPCM-IFLP-CONICET/QALMA"
+Changelog = "https://github.com/QILPCM-IFLP-CONICET/QALMA/blob/master/CHANGES.rst"
 Issues = "https://github.com/QILPCM-IFLP-CONICET/QALMA/issues"
 
 [project.optional-dependencies]
+# Plotting helpers (GraphDescriptor.draw, qalma.utils.draw_operator).
+plot = [
+    "matplotlib>=3.8",
+]
 dev = [
+    "matplotlib>=3.8",
     "pytest",
     "pytest-cov",
     "interrogate",
@@ -76,6 +81,7 @@ docs = [
     "myst-parser",       # si se usan archivos .md además de .rst
     "ipython",
     "ipykernel",
+    "matplotlib>=3.8",
 ]
 
 # ── Empaquetado ──────────────────────────────────────────────────────────────
@@ -101,6 +107,9 @@ markers = [
 ]
 
 # ── Formato ──────────────────────────────────────────────────────────────────
+[tool.mypy]
+ignore_missing_imports = true
+
 [tool.isort]
 profile = "black"
 multi_line_output = 3
