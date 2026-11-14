@@ -5,6 +5,8 @@
 @author: mauricio
 """
 
+import logging as _logging
+
 from . import (
     evolution,
     geometry,
@@ -19,8 +21,16 @@ from . import (
 from .alpsmodels import list_models_in_alps_xml, model_from_alps_xml
 from .geometry import graph_from_alps_xml, list_geometries_in_alps_xml
 from .model import build_system
+from .version import __version__
+
+# Library logging: QALMA never configures handlers or levels. Messages go to
+# the "qalma" logger hierarchy and are silent below WARNING unless the
+# application configures logging (e.g. ``logging.basicConfig(level="INFO")``
+# or ``logging.getLogger("qalma").setLevel("DEBUG")``).
+_logging.getLogger(__name__).addHandler(_logging.NullHandler())
 
 __all__ = [
+    "__version__",
     # Top-level factories
     "build_system",
     # Geometry / model

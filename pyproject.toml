@@ -5,13 +5,13 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "qalma"
-version = "1.0.0"
+dynamic = ["version"]
 authors = [
     { name="Juan Mauricio Matera", email="matera@fisica.unlp.edu.ar" }
 ]
 description = "Quantum Algebras for Lattice Models and Applications."
 readme = "README.rst"
-requires-python = ">=3.10"
+requires-python = ">=3.11"
 # QALMA itself is LGPL-3.0; the ALPS model/lattice libraries shipped in
 # qalma/lib/*.xml are distributed under the Boost Software License 1.0.
 # The LGPL-3.0 is a set of additional permissions on top of the GPL-3.0,
@@ -37,7 +37,6 @@ classifiers = [
     "Operating System :: OS Independent",
     "Programming Language :: Python",
     "Programming Language :: Python :: 3 :: Only",
-    "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
     "Programming Language :: Python :: 3.13",
@@ -85,6 +84,9 @@ docs = [
 [tool.setuptools.packages.find]
 include = ["qalma*"]
 
+[tool.setuptools.dynamic]
+version = { attr = "qalma.version.__version__" }
+
 [tool.setuptools.package-data]
 "qalma" = [
     "lib/*.xml",
@@ -112,7 +114,7 @@ combine_as_imports = true
 
 [tool.ruff]
 line-length = 88
-target-version = "py310"
+target-version = "py311"
 extend-exclude = ["examples", "docs"]
 
 [tool.ruff.lint]
