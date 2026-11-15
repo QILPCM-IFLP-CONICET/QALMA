@@ -85,7 +85,7 @@ docs = [
 ]
 
 # ── Empaquetado ──────────────────────────────────────────────────────────────
-# Sólo se instala el paquete `qalma`: `test`, `tools`, `docs` y `examples`
+# Sólo se instala el paquete `qalma`: `test`, `tools` y `docs`
 # quedan fuera del wheel.
 [tool.setuptools.packages.find]
 include = ["qalma*"]
@@ -124,7 +124,7 @@ combine_as_imports = true
 [tool.ruff]
 line-length = 88
 target-version = "py311"
-extend-exclude = ["examples", "docs"]
+extend-exclude = ["docs"]
 
 [tool.ruff.lint]
 # Conjunto explícito de reglas, para que el resultado no dependa de los

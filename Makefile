@@ -54,11 +54,9 @@ conventions:
 	ruff check --fix qalma
 	ruff check --fix test
 	ruff check --fix tools
-	isort examples
 	isort qalma
 	isort test
 	isort tools
-	black examples
 	black qalma
 	black test
 	black tools
