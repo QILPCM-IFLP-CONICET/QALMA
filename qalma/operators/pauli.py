@@ -251,8 +251,15 @@ class PauliStringOperator(ProductOperator):
             code = 0
         self.code = code
         self.prefactor = prefactor
-        self.system = system
         self._to_qutip_cache = {}
+        self._set_system_attrs(system)
+
+    def _set_system_attrs(self, system: Optional[SystemDescriptor]):
+        """Set ``system`` and the attributes that ``ProductOperator`` derives from it."""
+        self.system = system  # type: ignore[assignment]
+        if system is not None:
+            self.size = len(system.sites)
+            self.dimensions = system.dimensions
 
     @classmethod
     def _new(
@@ -333,16 +340,6 @@ class PauliStringOperator(ProductOperator):
     def site_factors(self) -> Dict[str, np.ndarray]:  # type: ignore[override]
         """Dense local factors, for compatibility with :class:`ProductOperator`."""
         return {site: PAULI_MATRICES[c].copy() for site, c in self.paulis.items()}
-
-    @property
-    def size(self) -> int:
-        """Number of sites of the system."""
-        return len(self.system.sites)
-
-    @property
-    def dimensions(self) -> Dict[str, int]:
-        """Dimensions of the sites of the system."""
-        return self.system.dimensions
 
     def __repr__(self):
         """Return e.g. ``(0.5+0j) * X@1[0] Z@1[2]``."""
@@ -511,28 +508,14 @@ class PauliStringOperator(ProductOperator):
 
     def __getstate__(self):
         """Pickle the code, the prefactor and the system, not the caches."""
-        return {
-            "code": self.code,
-            "prefactor": self.prefactor,
-            "system": self.system,
-            "_to_qutip_cache": {},
-        }
+        return {"code": self.code, "prefactor": self.prefactor, "system": self.system}
 
-    def save_hdf5(self, parent, name: str):
-        """Store the string as the group ``parent[name]`` (see :mod:`qalma.operators.hdf5`)."""
-        from .hdf5 import save_operator
-
-        return save_operator(parent, name, self)
-
-    @classmethod
-    def load_hdf5(cls, group, system: Optional[SystemDescriptor] = None):
-        """Load a string stored with :meth:`save_hdf5`."""
-        from .hdf5 import load_operator
-
-        result = load_operator(group, system)
-        if not isinstance(result, cls):
-            raise TypeError(f"{group.name} does not hold a Pauli string.")
-        return result
+    def __setstate__(self, state):
+        """Rebuild the attributes derived from the system."""
+        self.code = state["code"]
+        self.prefactor = state["prefactor"]
+        self._to_qutip_cache = {}
+        self._set_system_attrs(state["system"])
 
     def _set_system_(self, system=None):
         """Change the system, keeping the meaning of the string."""
@@ -540,7 +523,8 @@ class PauliStringOperator(ProductOperator):
             self.code = _remap_code(self.code, self.system, system)
         self.__dict__.pop("paulis", None)
         self.__dict__.pop("site_factors", None)
-        self.system = system
+        self.__dict__.pop("site_factors_qutip", None)
+        self._set_system_attrs(system)
         return self
 
 

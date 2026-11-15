@@ -19,7 +19,7 @@ import logging
 import pickle
 import re
 import warnings
-from typing import Dict, Optional, Tuple
+from typing import Dict, Optional, Set, Tuple
 
 import numpy as np
 import qutip  # type: ignore[import-untyped]
@@ -63,7 +63,7 @@ def _binary_quantum_numbers(site_basis: dict) -> Optional[list]:
     if not qns or qn_index is None or not states:
         return None
     binary: list = []
-    distinct = {()}
+    distinct: Set[Tuple[int, ...]] = {()}
     for qn_name, position in sorted(qn_index.items(), key=lambda item: item[1]):
         values = sorted({state[position] for state in states})
         if len(values) != 2 or abs(values[1] - values[0] - 1) > 1e-10:
@@ -125,8 +125,14 @@ def _qubit_layout(physical_sites: dict, qubit_split: Optional[bool]) -> Optional
     return layout
 
 
-def _qubit_site_basis(node, qn_name, lower, fermionic, parent_basis) -> dict:
-    """Local basis descriptor of one qubit of a split site."""
+def _qubit_site_basis(qn_name, lower, fermionic, parent_basis) -> dict:
+    """Local basis descriptor of the qubit of ``qn_name`` in sites of ``parent_basis``.
+
+    The same descriptor is shared by the qubits of all the sites with the
+    same local basis, as the local bases of the model are shared by the
+    sites of the same type. It has no reference to the node it belongs to:
+    that is ``SystemDescriptor.qubit_parent``.
+    """
     identity = qutip.qeye(2)
     return {
         "name": f"{parent_basis.get('name', '')}:{qn_name}",
@@ -137,7 +143,8 @@ def _qubit_site_basis(node, qn_name, lower, fermionic, parent_basis) -> dict:
         "operators": {"identity": identity},
         "parms": parent_basis.get("parms", {}),
         "localstates": [(lower,), (lower + 1,)],
-        "parent": node,
+        # marks the descriptor as the one of a qubit of a split site
+        "qubit_of": qn_name,
         "fermionic": fermionic,
         # parity of the first basis state, (-1)**lower, for fermionic qubits
         "parity0": (-1.0) ** (int(round(lower)) % 2) if fermionic else 1.0,
@@ -153,6 +160,8 @@ class SystemDescriptor:
     """
 
     _subsystems_cache: dict
+    # Jordan-Wigner string of each qubit, as (code, sign); built on demand.
+    _jw_strings: Optional[Dict[str, Tuple[int, float]]]
     dimensions: dict
     name: str
     sites: dict
@@ -208,7 +217,7 @@ class SystemDescriptor:
                     )
                 ) from ex
             physical_sites = {}
-        given_qubits = bool(sites) and all("parent" in s for s in sites.values())
+        given_qubits = bool(sites) and all("qubit_of" in s for s in sites.values())
         if sites and not given_qubits:
             physical_sites = sites
         self.qubit_split = qubit_split
@@ -223,13 +232,17 @@ class SystemDescriptor:
             self.sites = sites if sites else physical_sites
             self.site_qubits = {node: (node,) for node in self.sites}
         else:
-            qubit_sites = {
-                name: _qubit_site_basis(
-                    node, qn_name, lower, fermionic, physical_sites[node]
-                )
-                for node, entries in layout.items()
-                for name, qn_name, _, lower, fermionic in entries
-            }
+            shared: Dict[Tuple[int, str], dict] = {}
+            qubit_sites = {}
+            for node, entries in layout.items():
+                parent_basis = physical_sites[node]
+                for name, qn_name, _, lower, fermionic in entries:
+                    key = (id(parent_basis), qn_name)
+                    if key not in shared:
+                        shared[key] = _qubit_site_basis(
+                            qn_name, lower, fermionic, parent_basis
+                        )
+                    qubit_sites[name] = shared[key]
             self.sites = sites if given_qubits else qubit_sites
             site_qubits = {
                 node: tuple(entry[0] for entry in entries if entry[0] in self.sites)
