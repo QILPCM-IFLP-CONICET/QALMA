@@ -1,4 +1,9 @@
-r"""RPA reduction of a Gibbs state."""
+r"""RPA structure
+
+RPAStructure contains the information to generate an RPA-like approximation
+of any subsystem.
+
+"""
 
 import logging
 from dataclasses import dataclass, field
@@ -32,9 +37,43 @@ from .zeromodes import _bogoliubov_reduced
 LOGGER = logging.getLogger(__name__)
 
 
+def _check_stability(chi0_static: np.ndarray, m_ee: np.ndarray) -> None:
+    """Raise if ``1 + chi0 M_EE`` is not positive definite."""
+    stab = np.eye(chi0_static.shape[0]) + chi0_static @ m_ee
+    if np.min(np.linalg.eigvals(stab).real) <= 1e-10:
+        raise ValueError(
+            "Unstable RPA: 1 + chi0 M_EE is not positive definite "
+            "(the environment is at or beyond its critical point)."
+        )
+
+
+def _local_spectra(
+    generator: Operator, sigma_mf
+) -> Dict[str, Tuple[np.ndarray, np.ndarray]]:
+    """Populations and eigenvectors of the local mean-field generators."""
+    system = generator.system
+    terms = generator.terms if isinstance(generator, SumOperator) else [generator]
+    contributions: Dict[str, List[Operator]] = {}
+    for term in terms:
+        acts_over = term.acts_over()
+        for site in acts_over:
+            if len(acts_over) == 1:
+                projected = term
+            else:
+                projected = project_boundary_term(term, sigma_mf, frozenset([site]))
+            if projected:
+                contributions.setdefault(site, []).append(projected)
+    spectra = {}
+    for site, local_terms in contributions.items():
+        k_loc = iterable_to_operator(local_terms, system, isherm=True)
+        k_mat = k_loc.to_qutip((site,)).full()
+        eps, vecs = np.linalg.eigh(0.5 * (k_mat + k_mat.conj().T))
+        weights = np.exp(-(eps - eps.min()))
+        spectra[site] = (weights / weights.sum(), vecs)
+    return spectra
+
+
 # ### Coupling matrices ###
-
-
 @dataclass
 class RPAStructure:
     r"""Data of the RPA of a Gibbs state that do not depend on the subsystem.
@@ -134,143 +173,6 @@ class RPAStructure:
         return self._boson_system
 
 
-def _local_spectra(
-    generator: Operator, sigma_mf
-) -> Dict[str, Tuple[np.ndarray, np.ndarray]]:
-    """Populations and eigenvectors of the local mean-field generators."""
-    system = generator.system
-    terms = generator.terms if isinstance(generator, SumOperator) else [generator]
-    contributions: Dict[str, List[Operator]] = {}
-    for term in terms:
-        acts_over = term.acts_over()
-        for site in acts_over:
-            if len(acts_over) == 1:
-                projected = term
-            else:
-                projected = project_boundary_term(term, sigma_mf, frozenset([site]))
-            if projected:
-                contributions.setdefault(site, []).append(projected)
-    spectra = {}
-    for site, local_terms in contributions.items():
-        k_loc = iterable_to_operator(local_terms, system, isherm=True)
-        k_mat = k_loc.to_qutip((site,)).full()
-        eps, vecs = np.linalg.eigh(0.5 * (k_mat + k_mat.conj().T))
-        weights = np.exp(-(eps - eps.min()))
-        spectra[site] = (weights / weights.sum(), vecs)
-    return spectra
-
-
-def build_rpa_structure(
-    generator: Operator,
-    sigma_mf,
-    static_gap: float = _STATIC_GAP,
-    zero_rtol: float = _ZERO_MODE_RTOL,
-) -> RPAStructure:
-    """Build the subsystem-independent data of the RPA of a Gibbs state.
-
-    Parameters
-    ----------
-    generator : Operator
-        Generator ``K`` of the Gibbs state.
-    sigma_mf : ProductDensityOperator
-        Mean-field reference state.
-    static_gap : float, optional
-        Frequency assigned to the static bosons.
-    zero_rtol : float, optional
-        Relative tolerance to identify the zero modes of the bosonic
-        problems. The default is 1e-5.
-
-    Returns
-    -------
-    RPAStructure
-        The structure.
-    """
-    generator = generator.flat().simplify()
-    blocks, _, _ = classify_terms(generator, sigma_mf)
-    local_basis = build_local_basis(blocks)
-    m_full, positions = build_quadratic_form_matrix(blocks, local_basis)
-    local_basis = zero_expectation_value_basis(local_basis, sigma_mf)
-    return RPAStructure(
-        generator=generator,
-        sigma_mf=sigma_mf,
-        static_gap=static_gap,
-        m_full=m_full,
-        local_basis=local_basis,
-        positions=positions,
-        zero_rtol=zero_rtol,
-    )
-
-
-def _split_sites(
-    structure: RPAStructure, sites: frozenset
-) -> Tuple[List[int], List[int], List[str], List[str]]:
-    """Split the indices of the coupling matrix into subsystem and environment."""
-    idx_a: List[int] = []
-    idx_e: List[int] = []
-    sites_a: List[str] = []
-    sites_e: List[str] = []
-    for site, start in structure.positions.items():
-        indices = range(start, start + len(structure.local_basis[site]))
-        if site in sites:
-            idx_a.extend(indices)
-            sites_a.append(site)
-        else:
-            idx_e.extend(indices)
-            sites_e.append(site)
-    return idx_a, idx_e, sites_a, sites_e
-
-
-def _check_stability(chi0_static: np.ndarray, m_ee: np.ndarray) -> None:
-    """Raise if ``1 + chi0 M_EE`` is not positive definite."""
-    stab = np.eye(chi0_static.shape[0]) + chi0_static @ m_ee
-    if np.min(np.linalg.eigvals(stab).real) <= 1e-10:
-        raise ValueError(
-            "Unstable RPA: 1 + chi0 M_EE is not positive definite "
-            "(the environment is at or beyond its critical point)."
-        )
-
-
-def rpa_coupling_kernel(
-    structure: RPAStructure, sites: frozenset
-) -> Tuple[np.ndarray, Dict[str, List], List[str]]:
-    r"""Compute the static kernel :math:`\Sigma` restricted to ``sites``.
-
-    Parameters
-    ----------
-    structure : RPAStructure
-        Subsystem-independent data of the RPA.
-    sites : frozenset
-        Sites of the subsystem ``A``.
-
-    Returns
-    -------
-    sigma : numpy.ndarray
-        Real symmetric matrix indexed by the local basis elements of the
-        sites in ``A``.
-    local_basis : dict
-        Centred local basis of each site.
-    sites_a : list of str
-        Sites of ``A`` in the order used to index ``sigma``.
-    """
-    local_basis = structure.local_basis
-    idx_a, idx_e, sites_a, sites_e = _split_sites(structure, sites)
-    if not idx_a or not idx_e:
-        return np.zeros((len(idx_a), len(idx_a))), local_basis, sites_a
-    chi0 = np.zeros((len(idx_e), len(idx_e)))
-    pos = 0
-    for site in sites_e:
-        size = len(local_basis[site])
-        chi0[pos : pos + size, pos : pos + size] = structure.static_chi0(site)
-        pos += size
-    m_ae = structure.m_full[np.ix_(idx_a, idx_e)]
-    m_ee = structure.m_full[np.ix_(idx_e, idx_e)]
-    _check_stability(chi0, m_ee)
-    chi_e = np.linalg.solve(np.eye(len(idx_e)) + chi0 @ m_ee, chi0)
-    chi_e = 0.5 * (chi_e + chi_e.T)
-    sigma = m_ae @ chi_e @ m_ae.T
-    return 0.5 * (sigma + sigma.T), local_basis, sites_a
-
-
 def build_boson_system(structure: RPAStructure) -> BosonicGaussianSystem:
     """Build the bosonized RPA of the whole system.
 
@@ -328,3 +230,104 @@ def build_boson_system(structure: RPAStructure) -> BosonicGaussianSystem:
         contractions=contractions,
         n_zero_modes=n_zero,
     )
+
+
+def build_rpa_structure(
+    generator: Operator,
+    sigma_mf,
+    static_gap: float = _STATIC_GAP,
+    zero_rtol: float = _ZERO_MODE_RTOL,
+) -> RPAStructure:
+    """Build the subsystem-independent data of the RPA of a Gibbs state.
+
+    Parameters
+    ----------
+    generator : Operator
+        Generator ``K`` of the Gibbs state.
+    sigma_mf : ProductDensityOperator
+        Mean-field reference state.
+    static_gap : float, optional
+        Frequency assigned to the static bosons.
+    zero_rtol : float, optional
+        Relative tolerance to identify the zero modes of the bosonic
+        problems. The default is 1e-5.
+
+    Returns
+    -------
+    RPAStructure
+        The structure.
+    """
+    generator = generator.flat().simplify()
+    blocks, _, _ = classify_terms(generator, sigma_mf)
+    local_basis = build_local_basis(blocks)
+    m_full, positions = build_quadratic_form_matrix(blocks, local_basis)
+    local_basis = zero_expectation_value_basis(local_basis, sigma_mf)
+    return RPAStructure(
+        generator=generator,
+        sigma_mf=sigma_mf,
+        static_gap=static_gap,
+        m_full=m_full,
+        local_basis=local_basis,
+        positions=positions,
+        zero_rtol=zero_rtol,
+    )
+
+
+def rpa_coupling_kernel(
+    structure: RPAStructure, sites: frozenset
+) -> Tuple[np.ndarray, Dict[str, List], List[str]]:
+    r"""Compute the static kernel :math:`\Sigma` restricted to ``sites``.
+
+    Parameters
+    ----------
+    structure : RPAStructure
+        Subsystem-independent data of the RPA.
+    sites : frozenset
+        Sites of the subsystem ``A``.
+
+    Returns
+    -------
+    sigma : numpy.ndarray
+        Real symmetric matrix indexed by the local basis elements of the
+        sites in ``A``.
+    local_basis : dict
+        Centred local basis of each site.
+    sites_a : list of str
+        Sites of ``A`` in the order used to index ``sigma``.
+    """
+    local_basis = structure.local_basis
+    idx_a, idx_e, sites_a, sites_e = _split_sites(structure, sites)
+    if not idx_a or not idx_e:
+        return np.zeros((len(idx_a), len(idx_a))), local_basis, sites_a
+    chi0 = np.zeros((len(idx_e), len(idx_e)))
+    pos = 0
+    for site in sites_e:
+        size = len(local_basis[site])
+        chi0[pos : pos + size, pos : pos + size] = structure.static_chi0(site)
+        pos += size
+    m_ae = structure.m_full[np.ix_(idx_a, idx_e)]
+    m_ee = structure.m_full[np.ix_(idx_e, idx_e)]
+    _check_stability(chi0, m_ee)
+    chi_e = np.linalg.solve(np.eye(len(idx_e)) + chi0 @ m_ee, chi0)
+    chi_e = 0.5 * (chi_e + chi_e.T)
+    sigma = m_ae @ chi_e @ m_ae.T
+    return 0.5 * (sigma + sigma.T), local_basis, sites_a
+
+
+def _split_sites(
+    structure: RPAStructure, sites: frozenset
+) -> Tuple[List[int], List[int], List[str], List[str]]:
+    """Split the indices of the coupling matrix into subsystem and environment."""
+    idx_a: List[int] = []
+    idx_e: List[int] = []
+    sites_a: List[str] = []
+    sites_e: List[str] = []
+    for site, start in structure.positions.items():
+        indices = range(start, start + len(structure.local_basis[site]))
+        if site in sites:
+            idx_a.extend(indices)
+            sites_a.append(site)
+        else:
+            idx_e.extend(indices)
+            sites_e.append(site)
+    return idx_a, idx_e, sites_a, sites_e

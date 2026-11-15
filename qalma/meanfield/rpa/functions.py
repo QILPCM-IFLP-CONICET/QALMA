@@ -6,7 +6,6 @@ from typing import Optional
 
 import numpy as np
 
-from .boson import _covariance_matrix
 from .rpa_structure import RPAStructure
 from .utils import _symplectic_spectrum
 
@@ -42,7 +41,7 @@ def rpa_entanglement_entropy(structure: RPAStructure, sites: frozenset) -> float
             "hybrid reduction instead."
         )
     modes = bosons.modes_of(sites)
-    nu = _symplectic_spectrum(_covariance_matrix(bosons, modes))
+    nu = _symplectic_spectrum(bosons.covariance_matrix(modes))
     f = np.clip(nu - 0.5, 0.0, None)
     f = f[f > 1e-15]
     return float(np.sum((1 + f) * np.log2(1 + f) - f * np.log2(f)))
@@ -83,7 +82,7 @@ def rpa_negativity(
     modes_b = bosons.modes_of(sites_b)
     modes_c = bosons.modes_of(sites_c)
     modes = modes_b + modes_c
-    sigma = _covariance_matrix(bosons, modes)
+    sigma = bosons.covariance_matrix(modes)
     n_sub = len(modes)
     flip = np.ones(2 * n_sub)
     flip[n_sub + len(modes_b) :] = -1.0  # time reversal of the momenta of C

@@ -70,17 +70,16 @@ class BosonicGaussianSystem:
         """Indices of the bosons of the given sites."""
         return [k for k, site in enumerate(self.mode_site) if site in sites]
 
+    def covariance_matrix(self, modes: List[int]) -> np.ndarray:
+        r"""Covariance matrix of the quadratures of a subset of modes.
 
-def _covariance_matrix(bosons: BosonicGaussianSystem, modes: List[int]) -> np.ndarray:
-    r"""Covariance matrix of the quadratures of a subset of bosons.
-
-    The quadratures are ordered as :math:`(x_1,\dots,x_n,p_1,\dots,p_n)` with
-    :math:`x=(b+b^\dagger)/\sqrt2`, :math:`p=(b-b^\dagger)/(i\sqrt2)`, so that
-    the vacuum has covariance :math:`1/2`.
-    """
-    n_all, n_sub = bosons.n_modes, len(modes)
-    idx = np.array(list(modes) + [n_all + k for k in modes], dtype=int)
-    g_sub = bosons.contractions[np.ix_(idx, idx)]
-    eye = np.eye(n_sub)
-    u_mat = np.block([[eye, eye], [-1j * eye, 1j * eye]]) / np.sqrt(2.0)
-    return np.real(u_mat @ g_sub @ u_mat.conj().T)
+        The quadratures are ordered as :math:`(x_1,\dots,x_n,p_1,\dots,p_n)` with
+        :math:`x=(b+b^\dagger)/\sqrt2`, :math:`p=(b-b^\dagger)/(i\sqrt2)`, so that
+        the vacuum has covariance :math:`1/2`.
+        """
+        n_all, n_sub = self.n_modes, len(modes)
+        idx = np.array(list(modes) + [n_all + k for k in modes], dtype=int)
+        g_sub = self.contractions[np.ix_(idx, idx)]
+        eye = np.eye(n_sub)
+        u_mat = np.block([[eye, eye], [-1j * eye, 1j * eye]]) / np.sqrt(2.0)
+        return np.real(u_mat @ g_sub @ u_mat.conj().T)

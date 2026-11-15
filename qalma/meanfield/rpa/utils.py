@@ -1,4 +1,10 @@
-""" """
+"""
+Utils for RPA-based approximations.
+
+Functions used to build Bogoliubov's decompositions, find quadratures
+and determine the RPA-efective local modes.
+
+"""
 
 import logging
 from typing import List, Optional, Tuple
