@@ -7,9 +7,6 @@ from qalma.meanfield import variational_quadratic_mfa
 from qalma.meanfield.gibbs_partial_trace import gibbs_meanfield_generator
 from qalma.meanfield.rpa import (
     RPAGibbsDensityOperator,
-    _bogoliubov_reduced,
-    _quadrature_map,
-    _split_sites,
     build_rpa_structure,
     effective_bath_modes,
     kubo_mori_susceptibility,
@@ -17,6 +14,9 @@ from qalma.meanfield.rpa import (
     rpa_coupling_kernel,
     rpa_dynamic_kernel,
 )
+from qalma.meanfield.rpa.rpa_structure import _split_sites
+from qalma.meanfield.rpa.utils import _quadrature_map
+from qalma.meanfield.rpa.zeromodes import _bogoliubov_reduced
 from qalma.model import build_spin_chain, build_system
 from qalma.operators.states.gibbs import GibbsDensityOperator
 
