@@ -12,6 +12,8 @@ import numpy as np
 from scipy.interpolate import BSpline
 from scipy.optimize import minimize
 
+logger = logging.getLogger(__name__)
+
 
 def convex_fit_derivative(
     data: List[Tuple[float, float]], convexity: float = -1.0
@@ -32,7 +34,6 @@ def convex_fit_derivative(
         fitted convex spline evaluated at the x-coordinates from the input data.
     """
     # 1. Parse and sort data
-    print(data)
     x_data_raw, y_data_raw = [np.array(lst) for lst in zip(*data)]
 
     sort_idx = np.argsort(x_data_raw)
@@ -96,7 +97,7 @@ def convex_fit_derivative(
     )
 
     if not result.success:
-        logging.warning(f"Optimization did not converge successfully: {result.message}")
+        logger.warning(f"Optimization did not converge successfully: {result.message}")
 
     optimized_coeffs = result.x
     convex_spline_func = get_spline_from_coeffs(optimized_coeffs, knots, k)

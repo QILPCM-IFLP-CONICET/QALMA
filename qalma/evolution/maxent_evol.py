@@ -32,6 +32,8 @@ from qalma.scalarprod import (
 
 from .simulation import Simulation
 
+logger = logging.getLogger(__name__)
+
 # function used to safely and robustly map K-states to states
 
 
@@ -536,7 +538,7 @@ def adaptive_projected_evolution(
     local_evol_parms["sigma_ref"] = GibbsProductDensityOperator({}, k0.system)
     local_evol_parms["max_error_speed"] = tol / (t_max - t_0)
     tlist.append(local_evol_parms["t_ref"])
-    logging.info(f"max_error_speed:{local_evol_parms['max_error_speed']}")
+    logger.info(f"max_error_speed:{local_evol_parms['max_error_speed']}")
 
     # Create the first base
     call_update_basis(local_evol_parms)
@@ -561,7 +563,7 @@ def adaptive_projected_evolution(
         last_error = error
         # If K_t is too far from K_ref, update the basis:
         if always_update or (not never_update and away > tol):
-            logging.info("updating K_ref")
+            logger.info("updating K_ref")
             local_evol_parms["k_ref"] = None
             call_update_basis(local_evol_parms)
             local_evol_parms["cummulated error"] += last_error
@@ -580,7 +582,7 @@ def adaptive_projected_evolution(
         # If the error is growing faster that the acceptable rate,
         # try to enlarge the n-body sector:
         while error > local_evol_parms["max_error_speed"] * delta_t:
-            logging.info("Error max speed saturated. Enlarge the basis.")
+            logger.info("Error max speed saturated. Enlarge the basis.")
             local_evol_parms["error"] = error
             call_update_basis(local_evol_parms)
             delta_t = t - local_evol_parms["t_ref"]
@@ -599,14 +601,14 @@ def adaptive_projected_evolution(
                 break
             if n_body > local_evol_parms["curr_n_body"]:
                 local_evol_parms["curr_n_body"] += 1
-                logging.warning(
+                logger.warning(
                     f"tolerance goal cannot be reached within this subspace. Try in {local_evol_parms['curr_n_body']} sector."
                 )
                 continue
 
             if local_evol_parms["cummulated error"] > tol:
                 saturated_tolerance = True
-                logging.warning(
+                logger.warning(
                     f"tolerance goal cannot be reached within {n_body} sector."
                 )
                 break
@@ -615,7 +617,7 @@ def adaptive_projected_evolution(
             )
 
         if saturated_tolerance:
-            logging.warning("tolerance goal cannot be reached within this subspace.")
+            logger.warning("tolerance goal cannot be reached within this subspace.")
             break
 
         tlist.append(t)
@@ -741,12 +743,10 @@ def trim_and_project_function(sigma, n_body, tol=1e-6):
             the input was Hermitian.
 
         """
-        print(
-            "   trim and project ",
+        logger.debug(
+            "trim and project %s terms in the %s sector up to tol=%s",
             op_b.num_terms(),
-            "in the ",
             op_b.n_body_sector(),
-            " sector upto tol=",
             tol,
         )
         isherm = op_b.isherm
@@ -756,7 +756,7 @@ def trim_and_project_function(sigma, n_body, tol=1e-6):
         if isherm:
             op_b = op_b.hermitian_part()
         else:
-            print("basis element of type ", type(op_b), "is not hermitian")
+            logger.debug("basis element of type %s is not hermitian", type(op_b))
         return op_b
 
     return trim_and_project

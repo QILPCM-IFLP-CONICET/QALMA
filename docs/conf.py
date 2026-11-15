@@ -9,7 +9,10 @@ sys.path.insert(0, os.path.abspath(".."))
 project = "QALMA"
 copyright = "2025, QILPCM-IFLP-CONICET"
 author = "QILPCM-IFLP-CONICET"
-release = "0.1.0"
+# The version is read from the package (qalma/version.py).
+from qalma.version import __version__ as release  # noqa: E402
+
+version = ".".join(release.split(".")[:2])
 
 # -- General configuration ---------------------------------------------------
 

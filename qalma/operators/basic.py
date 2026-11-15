@@ -25,6 +25,8 @@ from qalma.settings import (
 
 from .utils import find_arithmetic_implementation
 
+logger = logging.getLogger(__name__)
+
 __all__ = ["Operator", "LocalOperator"]
 
 
@@ -699,7 +701,7 @@ class LocalOperator(Operator):
         if block is None:
             block = tuple(sorted(sites))
             if len(block) > 8:
-                logging.warning(
+                logger.warning(
                     "Asking for a qutip representation of an operator over the full system"
                 )
         elif site not in block:

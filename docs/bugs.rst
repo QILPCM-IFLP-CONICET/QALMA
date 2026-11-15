@@ -1,54 +1,46 @@
 .. index:: bugs
 .. _bugs:
 
-.. toctree::
-   :maxdepth: 2
+Known limitations and reporting bugs
+====================================
 
-Reporting Bugs and Problems
-===========================
+Known limitations
+-----------------
 
-Reporting bugs in a thoughtful way is helpful.
+* **Fermionic models.** The signs coming from the anticommutation of
+  fermionic operators on different sites are not implemented: operators on
+  different sites always commute. Building a system from a model with
+  fermionic operators (``fermion Hubbard``, ``spinless fermions``, ``t-J``,
+  ``Kondo lattice``, ...) emits a :class:`qalma.FermionicSignWarning`. The
+  results are those of the corresponding hard-core particles, and agree
+  with the fermionic ones only when the signs cancel out, e.g. for
+  nearest-neighbour hopping of a single species on an open chain.
 
+* **Exact methods scale exponentially.** Operations that need the full
+  matrix representation of an operator (``to_qutip``, exact
+  exponentials and spectra) are limited to small systems.
 
+* **Simulation files.** HDF5 files written by
+  :class:`qalma.evolution.simulation.Simulation` store the system and the
+  states as Python pickles inside the file. As with any pickle, only open
+  files that you trust, and note that files may not be readable by other
+  versions of QALMA.
 
-
-Issues and Issue Fixers, Priorities
------------------------------------
-
-Right now, there are more issues in the queue to keep issue fixers busy indefinitely. And everyone fixing bugs is essentially doing this on a voluntary basis.
-
-Therefore helpful to priorities the kinds of issues. Things that are helpful in determining priorities:
-
-* Is this a bug or feature that has no workaround?
-* Is this bug of feature blocking something important?
-* What is the impact of this bug on the entire community?
-
-What to report
+Reporting bugs
 --------------
 
-The basic requirement is pretty simple:
+Bugs and feature requests are tracked in the
+`issue tracker <https://github.com/QILPCM-IFLP-CONICET/QALMA/issues>`_.
+A useful report includes:
 
-* What you entered
-* What you got back
-* What you expected to get back
-* Have you tried anything to work solve or around the problem?
+* a short, self-contained script that reproduces the problem;
+* what you got (the full traceback or output) and what you expected;
+* the versions involved, which you can get with
 
-Most of the time people will report an error message or a Python traceback without any context. Remember to give what was _entered_ the entire output of what you got back.
-But you may think, _all_ of the input and _all_ of the output is rather long, and I know that isn't useful.
+  .. code-block:: python
 
-A couple things here, if you know what the problem is then, consider putting in a `Github Pull Request <https://www.digitalocean.com/community/tutorials/how-to-create-a-pull-request-on-github>`_) to fix the problem.
+     import qalma, qutip, numpy, scipy
+     print(qalma.__version__, qutip.__version__, numpy.__version__, scipy.__version__)
 
-Also if the input and output is large to narrow the problem into the smallest case that exhibits the problem. See below.
-
-
-Karma
------
-
-We realize that following the instructions given herein puts a bit of burden on the bug reporter. This is justified since it attempts to balance the burden and effort needed to fix the bug with the amount of effort to report the problem. And it attempts to balance number of would-be bug reporters with the number of bug fixers. Better bug reporters are more likely to move in the category of bug fixers.
-
-We  may take into consideration is the bug reporter's karma.
-
-* Have you demonstrably contributed to open source? I may look at your github profile to see what contributions you have made, how popular those contributions are, or how popular you are.
-* How appreciative are you? Have you starred this project that you are seeking help from? Have you starred _any_ github project? And the above two kind of feed into ...
-* Attitude. Some people feel that they are doing the world a great favor by just pointing out that there is a problem whose solution would greatly benefit them. (This might account partially
-  for the fact that those that have this attitude often don't read or follow instructions such as those given here.)
+If you already know how to fix the problem, pull requests are welcome: see
+``CONTRIBUTING.rst`` in the repository.

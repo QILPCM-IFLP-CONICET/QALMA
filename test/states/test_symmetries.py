@@ -85,7 +85,7 @@ def test_parity_projection():
         projected_averages = projected_state.expect(observables)
 
 
-@pytest.mark.parametrize(["name"], ((name,) for name in TEST_CASES_STATES))
+@pytest.mark.parametrize("name", list(TEST_CASES_STATES))
 def test_symmetry_compatibility(name):
     state = TEST_CASES_STATES[name]
     symmetries = getattr(state, "symmetry_projections", None)

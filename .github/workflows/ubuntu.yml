@@ -1,32 +1,130 @@
-name: QALMA (ubuntu)
+name: QALMA (tests)
 
 on:
   push:
-    branches: [ main ]
+    branches: [ master ]
   pull_request:
     branches: '**'
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
-  build:
-    runs-on: ubuntu-22.04
+  test:
+    name: Tests · Python ${{ matrix.python-version }}
+    runs-on: ubuntu-latest
     strategy:
+      fail-fast: false
       matrix:
-        python-version: ['3.13', '3.12', '3.10']
+        python-version: ['3.11', '3.12', '3.13', '3.14']
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
     - name: Set up Python ${{ matrix.python-version }}
-      uses: actions/setup-python@v3
+      uses: actions/setup-python@v5
       with:
         python-version: ${{ matrix.python-version }}
-    - name: Install OS dependencies
-      run: |
-        sudo apt-get update -qq && sudo apt-get install -qq gfortran
-    - name: Install QALMA with full dependencies
+        cache: pip
+    - name: Install QALMA with its dependencies
       run: |
         python -m pip install --upgrade pip
-        pip install pytest
-        pip install -e .
+        pip install -e ".[plot]" pytest pytest-cov
     - name: Test QALMA
       run: |
-        echo 'import qalma; print(qalma.__file__)' | python -
+        python -c 'import qalma; print(qalma.__version__, qalma.__file__)'
+        QALMA_ALLTESTS=1 python -m pytest test ${{ matrix.python-version == '3.12' && '--cov=qalma --cov-report=term --cov-report=xml' || '' }}
+    - name: Upload the coverage report
+      if: matrix.python-version == '3.12'
+      uses: actions/upload-artifact@v4
+      with:
+        name: coverage
+        path: coverage.xml
+        retention-days: 14
+
+  other-platforms:
+    # macOS and Windows are not required to pass yet: promote them by
+    # removing `continue-on-error` once they are green.
+    name: Tests · ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    continue-on-error: true
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [macos-latest, windows-latest]
+    steps:
+    - uses: actions/checkout@v4
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.12'
+        cache: pip
+    - name: Install QALMA with its dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -e ".[plot]" pytest
+    - name: Test QALMA
+      run: python -m pytest test
+
+  minimal-versions:
+    # Runs the suite against the lower bounds declared in pyproject.toml.
+    # Keep the pins below in sync with [project.dependencies].
+    name: Tests · oldest supported dependencies
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+    - name: Set up Python 3.11
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.11'
+        cache: pip
+    - name: Install QALMA with the oldest supported dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install numpy==1.26.4 scipy==1.11.4 qutip==5.1.0 h5py==3.10.0 matplotlib==3.8.0
+        pip install -e ".[plot]" pytest
+        pip list
+    - name: Test QALMA
+      run: |
         QALMA_ALLTESTS=1 python -m pytest test
+
+  build:
+    # Builds the sdist and the wheel, and checks that the installed wheel
+    # works outside the source tree.
+    name: Build and check the distributions
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.12'
+        cache: pip
+    - name: Build
+      run: |
+        python -m pip install --upgrade pip build twine
+        python -m build
+        twine check --strict dist/*
+    - name: Smoke test of the installed wheel
+      run: |
+        pip install dist/*.whl
+        cd "$RUNNER_TEMP"
+        python - <<'PY'
+        import importlib.util
+        import os
+
+        import qalma
+
+        assert "site-packages" in qalma.__file__, qalma.__file__
+        lib = os.path.join(os.path.dirname(qalma.__file__), "lib")
+        assert {"lattices.xml", "models.xml"} <= set(os.listdir(lib))
+        assert importlib.util.find_spec("test") is None or "site-packages" not in (
+            importlib.util.find_spec("test").origin or ""
+        )
+        system = qalma.build_system()
+        print(qalma.__version__, system.global_operator("Hamiltonian").eigenenergies())
+        PY
+    - uses: actions/upload-artifact@v4
+      with:
+        name: dist
+        path: dist/
+        retention-days: 7

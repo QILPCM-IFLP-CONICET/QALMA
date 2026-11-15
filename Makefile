@@ -54,11 +54,9 @@ conventions:
 	ruff check --fix qalma
 	ruff check --fix test
 	ruff check --fix tools
-	isort examples
 	isort qalma
 	isort test
 	isort tools
-	black examples
 	black qalma
 	black test
 	black tools
@@ -121,14 +119,14 @@ benchmark-projections:
 
 
 benchmark-set-reference:
-	python test/set_benchmark_reference.py
+	$(PYTHON) tools/set_benchmark_reference.py
 
 benchmark-clean:
 	rm -R .benchmarks
 
 benchmark-show:
-	python test/compare_benchmarks.py
+	$(PYTHON) tools/compare_benchmarks.py
 
 
 mypy:
-	mypy --install-types --ignore-missing-imports --non-interactive qalma
+	mypy --install-types --non-interactive qalma

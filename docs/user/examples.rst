@@ -1,7 +1,7 @@
 Examples
 ========
 
-The ``examples/`` directory in the repository contains Jupyter notebooks
+The ``docs/examples/`` directory in the repository contains Jupyter notebooks
 that demonstrate QALMA's main features. Below is a short description of
 each; click the link to open the rendered notebook.
 
@@ -25,8 +25,8 @@ Running the examples locally
 
 .. code-block:: bash
 
-   pip install qalma[dev]
-   cd examples
+   pip install "qalma[plot]" notebook
+   cd docs/examples
    jupyter notebook
 
 .. seealso::

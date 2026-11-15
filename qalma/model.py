@@ -17,12 +17,26 @@ corresponding dimensions as values.
 import logging
 import pickle
 import re
+import warnings
 from typing import Dict, Optional, Tuple
 
 from qalma.alpsmodels import ModelDescriptor, qutip_model_from_dims
 from qalma.geometry import GraphDescriptor
 from qalma.settings import LATTICE_LIB_FILE, MODEL_LIB_FILE
 from qalma.utils import eval_expr, replace_variable_type
+
+logger = logging.getLogger(__name__)
+
+
+class FermionicSignWarning(UserWarning):
+    """Warn that a model with fermionic operators is treated as bosonic.
+
+    Operators acting on different sites are always assumed to commute:
+    the signs coming from the anticommutation of fermionic operators are
+    not implemented. Results for fermionic models are only correct when
+    those signs cancel out (e.g. nearest-neighbour hopping of a single
+    species on an open chain).
+    """
 
 
 class SystemDescriptor:
@@ -82,6 +96,19 @@ class SystemDescriptor:
         }
         self._subsystems_cache = {}
         if _load_operators:
+            if any(
+                getattr(op, "fermionic", False)
+                for site in self.sites.values()
+                for op in site.get("operators", {}).values()
+            ):
+                warnings.warn(
+                    f"The model <<{model.name}>> has fermionic operators, but "
+                    "fermionic signs are not implemented: operators on different "
+                    "sites are assumed to commute, so in general the results "
+                    "correspond to hard-core particles, not to fermions.",
+                    FermionicSignWarning,
+                    stacklevel=2,
+                )
             self._load_site_operators()
             self._load_global_ops()
 
@@ -230,7 +257,7 @@ class SystemDescriptor:
                 self._subsystems_cache[block] = system
                 return True
 
-        logging.info("check model and graph")
+        logger.info("check model and graph")
         if (
             self.spec["model"] == system.spec["model"]
             and self.spec["graph"].contains(system.spec["graph"])
@@ -239,9 +266,13 @@ class SystemDescriptor:
             self._subsystems_cache[block] = system
             return True
         if not self.spec["model"] == system.spec["model"]:
-            print(self.spec["model"], " \n vs\n", system.spec["model"])
+            logger.debug(
+                "models differ: %s vs %s", self.spec["model"], system.spec["model"]
+            )
         if not self.spec["graph"].contains(system.spec["graph"]):
-            print(self.spec["graph"], " \n vs\n", system.spec["graph"])
+            logger.debug(
+                "graph %s does not contain %s", self.spec["graph"], system.spec["graph"]
+            )
         return False
 
     def union(self, system):
@@ -653,12 +684,12 @@ class SystemDescriptor:
 
         result = self.operators["global_operators"].get(name, None)
         if result is not None:
-            logging.info("%s already defined. Return from cache.", name)
+            logger.info("%s already defined. Return from cache.", name)
             return result
         # Build the global_operator from the descriptor
         op_descr = self.spec["model"].global_ops.get(name, None)
         if op_descr is None:
-            logging.warning(
+            logger.warning(
                 "%s not defined in %s.", name, str(self.spec["model"].global_ops.keys())
             )
             return None
@@ -675,7 +706,7 @@ class SystemDescriptor:
             )
             site_terms = tuple(term for term in site_terms if term)
         except ValueError as exc:
-            logging.debug("%s aborting evaluation of %s.", exc.args, name)
+            logger.debug("%s aborting evaluation of %s.", exc.args, name)
             model.global_ops.pop(name)
             return None
 
@@ -688,7 +719,7 @@ class SystemDescriptor:
             bond_terms = tuple(term for term in bond_terms if term)
 
         except ValueError as exc:
-            logging.debug("%s aborting evaluation of %s.", exc.args, name)
+            logger.debug("%s aborting evaluation of %s.", exc.args, name)
             model.global_ops.pop(name)
             return None
 
@@ -701,7 +732,7 @@ class SystemDescriptor:
             loop_terms = tuple(term for term in loop_terms if term)
 
         except ValueError as exc:
-            logging.debug("%s Aborting evaluation of %s.", exc.args, name)
+            logger.debug("%s Aborting evaluation of %s.", exc.args, name)
             model.global_ops.pop(name)
             return None
 
@@ -712,7 +743,7 @@ class SystemDescriptor:
             result = OneBodyOperator(site_terms, self, True)
         result = result.simplify()
         self.operators["global_operators"][name] = result
-        logging.debug("  return operator of type %s.", str(type(result)))
+        logger.debug("  return operator of type %s.", str(type(result)))
         return result
 
 
@@ -741,7 +772,7 @@ def build_system(
     # pylint: disable=import-outside-toplevel
     from qalma.geometry import graph_from_alps_xml
 
-    logging.info("loading model %s over graph %s.", model_name, geometry_name)
+    logger.info("loading model %s over graph %s.", model_name, geometry_name)
 
     parms = {"L": 4, "J": 1, "a": 1}
     parms.update(kwargs)

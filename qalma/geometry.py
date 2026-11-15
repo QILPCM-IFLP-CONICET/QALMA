@@ -24,6 +24,8 @@ from numpy.random import rand
 from qalma.settings import LATTICE_LIB_FILE
 from qalma.utils import eval_expr, find_ref, next_name
 
+logger = logging.getLogger(__name__)
+
 
 def list_geometries_in_alps_xml(filename=LATTICE_LIB_FILE) -> Tuple[str, ...]:
     """List all the graph names in a lattice.xml ALPS file."""
@@ -115,7 +117,7 @@ def graph_from_alps_xml(
             try:
                 return [eval_expr(c.strip(), parms) for c in coords_expr]
             except SyntaxError:
-                logging.error(coords_expr, "are not valid coordinates.")
+                logger.error(coords_expr, "are not valid coordinates.")
                 raise
         return None
 
@@ -723,7 +725,7 @@ class GraphDescriptor:
             self.subgraphs[node_set] = other
             return True
 
-        logging.warning(
+        logger.warning(
             "nodes not coincide %s",
             [
                 (self_nodes.get(node, None), other_nodes[node])

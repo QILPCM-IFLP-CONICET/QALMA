@@ -1,0 +1,26 @@
+# Metadata used by GitHub ("Cite this repository") and by Zenodo.
+# Before each release: set `version` and `date-released`, and add the DOI
+# of the release once Zenodo has minted it.
+cff-version: 1.2.0
+message: "If you use QALMA in your research, please cite it using these metadata."
+type: software
+title: "QALMA: Quantum Algebras for Lattice Models and Applications"
+abstract: >-
+  QALMA is a Python library that connects ALPS model and lattice definitions
+  with QuTiP quantum objects. It provides an algebraic representation of
+  many-body operators and states, mean-field approximations, and Max-Ent
+  projected evolution for lattice systems.
+authors:
+  - family-names: Matera
+    given-names: Juan Mauricio
+    email: matera@fisica.unlp.edu.ar
+repository-code: "https://github.com/QILPCM-IFLP-CONICET/QALMA"
+url: "https://github.com/QILPCM-IFLP-CONICET/QALMA"
+license: LGPL-3.0-only
+keywords:
+  - quantum many-body systems
+  - lattice models
+  - mean-field approximation
+  - maximum entropy
+  - QuTiP
+  - ALPS

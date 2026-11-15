@@ -14,4 +14,5 @@ to build and simulate many-body quantum systems.
    states
    evolution
    meanfield_variational
+   configuration
    examples

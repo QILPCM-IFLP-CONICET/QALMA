@@ -25,6 +25,8 @@ from qalma.qutip_tools.tools import (
     scalar_value,
 )
 
+logger = logging.getLogger(__name__)
+
 __all__ = ["QutipOperator"]
 
 
@@ -449,7 +451,7 @@ class QutipOperator(Operator):
         operator_qutip: _Qobj = self.operator * self.prefactor
         if block is None:
             if len(sites) > 8:
-                logging.warning(
+                logger.warning(
                     (
                         "to_qutip does not received a block. "
                         "Return an operator over the full system"

@@ -23,6 +23,8 @@ from qalma.operators.states.basic import (
     DensityOperatorProtocol,
 )
 
+logger = logging.getLogger(__name__)
+
 __all__ = ["MixtureDensityOperator"]
 
 
@@ -49,7 +51,7 @@ class MixtureDensityOperator(DensityOperatorMixin, SumOperator):
 
     def __neg__(self):
         """Multiply the operator by -1."""
-        logging.warning("Negate a DensityOperator leads to a regular operator.")
+        logger.warning("Negate a DensityOperator leads to a regular operator.")
         new_terms = tuple(((-t) * (t.prefactor) for t in self.terms))
         return SumOperator(new_terms, self.system, isherm=True)
 
