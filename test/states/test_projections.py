@@ -544,7 +544,7 @@ def test_one_body_from_qutip_operator_2():
 
 @pytest.mark.parametrize(
     ["operator_case", "operator", "name_ref", "gen"],
-    (
+    [
         (
             operator_case,
             operator,
@@ -553,7 +553,7 @@ def test_one_body_from_qutip_operator_2():
         )
         for operator_case, operator in OPERATOR_TYPE_CASES.items()
         for name_ref, gen in PRODUCT_GIBBS_GENERATOR_TESTS.items()
-    ),
+    ],
 )
 def test_one_body_from_qutip_operator_with_reference_state(
     operator_case, operator, name_ref, gen
