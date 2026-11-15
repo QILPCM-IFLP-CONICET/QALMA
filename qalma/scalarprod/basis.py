@@ -770,7 +770,7 @@ def prepend_basis(
     return append_basis(basis_1, basis_2)
 
 
-def do_compute_cross_gram_matrix(sp, ops1, ops2, dtype=np.float128):
+def do_compute_cross_gram_matrix(sp, ops1, ops2, dtype=np.longdouble):
     """
     Compute cross Gram's matrix.
 
