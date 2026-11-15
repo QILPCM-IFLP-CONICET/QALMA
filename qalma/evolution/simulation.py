@@ -294,14 +294,6 @@ class SimulationHDF5(Simulation):
     allow_pickle : bool, optional
         Allow to load the Python pickles in the file (see
         :meth:`Simulation.load_hdf5`).
-
-    Attributes
-    ----------
-    format_version : int
-        Version of the format of the file; 0 for the files written before
-        the format 1, which are read-only.
-    system : SystemDescriptor or None
-        The system of the simulation, shared by all the states.
     """
 
     class StateList:
@@ -424,9 +416,12 @@ class SimulationHDF5(Simulation):
         # pylint: disable=super-init-not-called
         self.filename = os.fspath(filename)
         self.allow_pickle = allow_pickle
+        #: The system of the simulation, shared by all the states.
         self.system: Optional[SystemDescriptor] = None
         with h5py.File(self.filename, "r") as h5file:
-            self.format_version = read_format_version(h5file, FORMAT_SIMULATION)
+            #: Version of the format of the file; 0 for the files written
+            #: before the format 1, which are read-only.
+            self.format_version: int = read_format_version(h5file, FORMAT_SIMULATION)
             if self.format_version == 0:
                 legacy.check_pickle_allowed(h5file, allow_pickle)
                 self.system = legacy.load_system(h5file)
