@@ -1,8 +1,27 @@
-"""Utility functions for visualization."""
+"""Utility functions for visualization.
+
+These functions need `matplotlib`, which is an optional dependency
+(``pip install qalma[plot]``). It is imported only when they are called.
+"""
+
+from typing import TYPE_CHECKING
 
 import numpy as np
-from matplotlib.patches import Circle as _Circle, Ellipse as _Ellipse
-from matplotlib.pyplot import Axes as _PLTAxes
+
+if TYPE_CHECKING:
+    from matplotlib.axes import Axes as _PLTAxes
+
+
+def _import_patches():
+    """Import `matplotlib.patches`, with a helpful error if it is missing."""
+    try:
+        from matplotlib import patches
+    except ImportError as exc:  # pragma: no cover
+        raise ImportError(
+            "matplotlib is required for the visualization functions. "
+            "Install it with `pip install qalma[plot]`."
+        ) from exc
+    return patches
 
 
 def draw_ellipse_around_points(p1, p2, ax, b_ratio=0.15):
@@ -25,7 +44,7 @@ def draw_ellipse_around_points(p1, p2, ax, b_ratio=0.15):
     b = a * b_ratio
 
     # Plotting
-    ellipse = _Ellipse(
+    ellipse = _import_patches().Ellipse(
         (xc, yc),
         width=3 * a,
         height=2.1 * b,
@@ -38,7 +57,7 @@ def draw_ellipse_around_points(p1, p2, ax, b_ratio=0.15):
     ax.add_patch(ellipse)
 
 
-def draw_operator(op, axis: _PLTAxes) -> _PLTAxes:
+def draw_operator(op, axis: "_PLTAxes") -> "_PLTAxes":
     """Draw the operator op over the axis.
 
     Parameters
@@ -72,7 +91,7 @@ def draw_operator(op, axis: _PLTAxes) -> _PLTAxes:
         coords = [g.nodes[site]["coords"] for site in acts_over]
         coords = [(x[0], 0) if len(x) == 1 else x for x in coords]
         if len(coords) == 1:
-            axis.add_artist(_Circle(coords[0], 0.1))
+            axis.add_artist(_import_patches().Circle(coords[0], 0.1))
         if len(coords) == 2:
             draw_ellipse_around_points(coords[0], coords[1], axis)
         else:

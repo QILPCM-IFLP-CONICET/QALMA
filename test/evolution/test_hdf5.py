@@ -7,7 +7,7 @@ from qalma.model import build_system
 from qalma.operators.states import GibbsDensityOperator
 
 
-def test_store_and_recover_dicts():
+def test_store_and_recover_dicts(tmp_path):
     """Test stored dict routines."""
     from h5py import File
     from numpy import array as np_array, ndarray
@@ -43,10 +43,10 @@ def test_store_and_recover_dicts():
         "2d np array": np_array([[1.0, 2.0], [3.0, 4.0]]),
         "sub dict": {"a": 1, "b": 2.0},
     }
-    with File("/tmp/test_dict.h5", "w") as f5:
+    with File(tmp_path / "test_dict.h5", "w") as f5:
         group = f5.create_group("test_dict")
         store_hdf5_dict(group, test_dict)
-    with File("/tmp/test_dict.h5", "r") as f5:
+    with File(tmp_path / "test_dict.h5", "r") as f5:
         stored_dict = load_hdf5_dict(f5["test_dict"])
 
     def check_dict_equality(d1, d2):
@@ -72,12 +72,12 @@ def test_store_and_recover_dicts():
     check_dict_equality(stored_dict, test_dict)
 
 
-def test_empty():
+def test_empty(tmp_path):
     sim_empty = Simulation(
         parameters={}, stats={}, time_span=[], expect_ops={}, states=[]
     )
-    sim_empty.save_hdf5("/tmp/sol.h5", mode="w")
-    sim = Simulation.load_hdf5("/tmp/sol.h5")
+    sim_empty.save_hdf5(str(tmp_path / "sol.h5"), mode="w")
+    sim = Simulation.load_hdf5(str(tmp_path / "sol.h5"))
     compare_sim_objects(sim_empty, sim)
     assert len(sim.parameters) == 0
     assert len(sim.stats) == 0
@@ -86,7 +86,7 @@ def test_empty():
     assert len(sim.states) == 0
 
 
-def test_qutip_me_solve_states():
+def test_qutip_me_solve_states(tmp_path):
     system = build_system(
         parms={
             "L": 2,
@@ -100,12 +100,12 @@ def test_qutip_me_solve_states():
     rho0 = GibbsDensityOperator(system.site_operator("Sz", "1[0]"))
     solution = qutip_me_solve(hamiltonian, rho0, t_list)
 
-    solution.save_hdf5("/tmp/sol.h5", mode="w")
-    stored = Simulation.load_hdf5("/tmp/sol.h5")
+    solution.save_hdf5(str(tmp_path / "sol.h5"), mode="w")
+    stored = Simulation.load_hdf5(str(tmp_path / "sol.h5"))
     compare_sim_objects(solution, stored)
 
 
-def test_qutip_me_solve_expect():
+def test_qutip_me_solve_expect(tmp_path):
     system = build_system(
         parms={
             "L": 2,
@@ -126,11 +126,11 @@ def test_qutip_me_solve_expect():
             "Sz_2": system.site_operator("Sz", "1[1]"),
         },
     )
-    solution.save_hdf5("/tmp/sol.h5", mode="w")
+    solution.save_hdf5(str(tmp_path / "sol.h5"), mode="w")
     assert len(solution.states) == 0 or (
         solution.states[0].system is system
     ), "Check that the system was not modified after serialization."
-    stored = Simulation.load_hdf5("/tmp/sol.h5")
+    stored = Simulation.load_hdf5(str(tmp_path / "sol.h5"))
     compare_sim_objects(solution, stored)
 
 

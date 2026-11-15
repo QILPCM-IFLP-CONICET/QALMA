@@ -35,6 +35,7 @@ def test_eval_expr():
 
 
 @pytest.mark.skipif(not os.environ.get("QALMA_ALLTESTS"), reason="shorter tests")
+@pytest.mark.filterwarnings("ignore::qalma.FermionicSignWarning")
 def test_load_all_models_and_lattices():
     """Try to load each model and lattice."""
     models = list_models_in_alps_xml()

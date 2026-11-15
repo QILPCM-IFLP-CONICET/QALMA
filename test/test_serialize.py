@@ -17,8 +17,11 @@ from .helper import (
 )
 
 # Use forkserver for safety, but we will solve the speed issue
-# by reusing the processes.
-MP_CONTEXT_TYPE = "forkserver"
+# by reusing the processes. On platforms without forkserver (Windows),
+# fall back to spawn.
+MP_CONTEXT_TYPE = (
+    "forkserver" if "forkserver" in mp.get_all_start_methods() else "spawn"
+)
 
 
 @pytest.fixture(scope="module")

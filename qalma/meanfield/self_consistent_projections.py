@@ -13,6 +13,8 @@ from qalma.projections import (
     n_body_projection,
 )
 
+logger = logging.getLogger(__name__)
+
 __all__ = ["self_consistent_project_meanfield"]
 
 
@@ -85,13 +87,13 @@ def self_consistent_project_meanfield(
         # k_one_body = project_operator_to_m_body(k_op, 1, sigma)
         k_one_body = n_body_projection(k_op, 1, sigma_curr).simplify()
         if not k_one_body.isherm:
-            logging.debug("hermiticity lost at iteration", it)
+            logger.debug("hermiticity lost at iteration", it)
             k_one_body = k_one_body.hermitian_part()
 
         sigma_new = GibbsProductDensityOperator(k_one_body)
         rel_s_new = np.real(cast(complex, sigma_curr.expect(k_op + sigma_new.logm())))
         rel_entropy_txt = f"     S(curr||target)={rel_s_new}"
-        logging.debug(rel_entropy_txt)
+        logger.debug(rel_entropy_txt)
         # print(it, "->", rel_entropy_txt)
         if it > 20:
             if (rel_s_new - rel_s) < tol:
@@ -106,11 +108,11 @@ def self_consistent_project_meanfield(
         sigma_curr = sigma_new
 
     if converged:
-        logging.debug(
+        logger.debug(
             "  convergence achieved after %d iterations with SR = %.6f.", it, rel_s
         )
     else:
-        logging.debug(
+        logger.debug(
             "  rel_s_new %.6f is much worst than the optimal %.6f. Give up.",
             rel_s_new,
             rel_s,

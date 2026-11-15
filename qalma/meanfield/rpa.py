@@ -1538,7 +1538,7 @@ class RPAGibbsDensityOperator(GibbsDensityOperator):
             None if sites_c is None else frozenset(sites_c),
         )
 
-    def _with_prefactor(self, prefactor: complex) -> "RPAGibbsDensityOperator":
+    def _with_prefactor(self, prefactor: float) -> "RPAGibbsDensityOperator":
         """Copy of the state with a different prefactor, sharing the structure."""
         new_state = type(self)(
             self.k,

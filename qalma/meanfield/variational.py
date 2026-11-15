@@ -21,6 +21,8 @@ from qalma.projections import n_body_projection
 from qalma.qutip_tools.tools import safe_exp_and_normalize
 from qalma.settings import DEFAULT_MAX_NUMBER_OF_FIELDS, QALMA_TOLERANCE
 
+logger = logging.getLogger(__name__)
+
 __all__ = [
     "compute_free_energy",
     "compute_t_score",
@@ -138,7 +140,6 @@ def compute_t_score(
         )
     f_mf = float(np.real(mean_f))
     delta = f_mf - _f_exact
-    print("delta", delta)
     if abs(delta) < 1e-12:
         return 0.0, f_mf, var_f
     assert delta > 0, (
@@ -304,9 +305,9 @@ def mf_quadratic_form_exponential(
         k0 = k0.tidyup() or None
 
     generators = qf_op.basis
-    logging.info("using %s generators", len(generators))
+    logger.info("using %s generators", len(generators))
     if len(generators) == 0:
-        logging.info(
+        logger.info(
             ("No 2-body terms found. Using the linear term as reference state.")
         )
         if k0:
@@ -325,7 +326,7 @@ def mf_quadratic_form_exponential(
         )
         phis = result.x
     except ValueError as val_exc:
-        logging.info("Optimization failed with exception %s", val_exc)
+        logger.info("Optimization failed with exception %s", val_exc)
 
     sigma_ref = build_test_state(phis)
     return sigma_ref
@@ -435,7 +436,7 @@ def self_consistent_mf(
             f"{curr_step} iterations. "
             f"Last Delta S_rel= {np.real(new_rel_entropy - rel_entropy)}."
         )
-        logging.warning(msg)
+        logger.warning(msg)
     return cast(ProductDensityOperator, sigma_ref), rel_entropy
 
 
@@ -573,7 +574,7 @@ def variational_quadratic_mfa(
         )
         if rel_s < current_rel_entropy:
             changed = True
-            logging.info("  self consistent attempt-> S_rel=%.6f.", current_rel_entropy)
+            logger.info("  self consistent attempt-> S_rel=%.6f.", current_rel_entropy)
             sigma_ref = sigma_candidate
             current_rel_entropy = rel_s
 

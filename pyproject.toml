@@ -1,61 +1,137 @@
 [build-system]
-requires = ["setuptools>=61.0"]
+# setuptools>=77 is needed for SPDX license expressions (PEP 639).
+requires = ["setuptools>=77"]
 build-backend = "setuptools.build_meta"
 
 [project]
 name = "qalma"
-version = "1.0.0"
+dynamic = ["version"]
 authors = [
     { name="Juan Mauricio Matera", email="matera@fisica.unlp.edu.ar" }
 ]
 description = "Quantum Algebras for Lattice Models and Applications."
 readme = "README.rst"
-requires-python = ">=3.7"
-license = { file = "LICENSE.txt" }
+requires-python = ">=3.11"
+# QALMA itself is LGPL-3.0; the ALPS model/lattice libraries shipped in
+# qalma/lib/*.xml are distributed under the Boost Software License 1.0.
+# The LGPL-3.0 is a set of additional permissions on top of the GPL-3.0,
+# so both texts (COPYING.LESSER and COPYING) have to be distributed.
+license = "LGPL-3.0-only AND BSL-1.0"
+license-files = [
+    "COPYING",
+    "COPYING.LESSER",
+    "qalma/lib/LICENSE_1_0.txt",
+]
+# Lower bounds are the oldest versions the test suite has been run against.
 dependencies = [
-    "matplotlib",
-    "qutip",
-    "h5py",
+    "numpy>=1.26",
+    "scipy>=1.11",
+    "qutip>=5.1",
+    "h5py>=3.10",
+    "packaging",
 ]
 classifiers = [
     "Intended Audience :: Developers",
     "Intended Audience :: Science/Research",
+    "Operating System :: OS Independent",
     "Programming Language :: Python",
+    "Programming Language :: Python :: 3 :: Only",
+    "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
     "Programming Language :: Python :: 3.13",
-    "Programming Language :: Python :: Implementation :: PyPy",
+    "Programming Language :: Python :: 3.14",
     "Topic :: Scientific/Engineering",
     "Topic :: Scientific/Engineering :: Mathematics",
     "Topic :: Scientific/Engineering :: Physics",
 ]
 
-[tool.setuptools.package-data]
-"qalma" = [
-    "lib/*.xml",
-]
-
 [project.urls]
-Homepage = "http://www.fisica.unlp.edu.ar/Members/matera/english-version/mauricio-materas-personal-home-page"
+Homepage = "https://github.com/QILPCM-IFLP-CONICET/QALMA"
+Changelog = "https://github.com/QILPCM-IFLP-CONICET/QALMA/blob/master/CHANGES.rst"
+Issues = "https://github.com/QILPCM-IFLP-CONICET/QALMA/issues"
 
-
-# Dependencias opcionales (si no existen ya, crear la tabla [project.optional-dependencies])
 [project.optional-dependencies]
+# Plotting helpers (GraphDescriptor.draw, qalma.utils.draw_operator).
+plot = [
+    "matplotlib>=3.8",
+]
 dev = [
+    "matplotlib>=3.8",
     "pytest",
     "pytest-cov",
     "interrogate",
     "pydocstyle",
+    # Formatters are pinned to the versions used by the CI checks.
+    "black==24.10.0",
+    "isort==6.0.1",
+    "ruff",
+    "mypy",
+    "codespell",
+]
+# Needed by the `make benchmark-*` targets.
+bench = [
+    "pytest-benchmark",
+    "pytest-profiling",
 ]
 docs = [
     "sphinx>=7",
-    "sphinx-rtd-theme",
+    "sphinx-rtd-theme>=2",
     "sphinx-autodoc-typehints",
     "nbsphinx",          # para ejecutar notebooks como páginas
     "myst-parser",       # si se usan archivos .md además de .rst
-    "sphinx-rtd-theme",
     "ipython",
+    "ipykernel",
+    "matplotlib>=3.8",
 ]
- 
+
+# ── Empaquetado ──────────────────────────────────────────────────────────────
+# Sólo se instala el paquete `qalma`: `test`, `tools`, `docs` y `examples`
+# quedan fuera del wheel.
+[tool.setuptools.packages.find]
+include = ["qalma*"]
+
+[tool.setuptools.dynamic]
+version = { attr = "qalma.version.__version__" }
+
+[tool.setuptools.package-data]
+"qalma" = [
+    "lib/*.xml",
+    "lib/LICENSE_1_0.txt",
+]
+
+# ── Tests ────────────────────────────────────────────────────────────────────
+[tool.pytest.ini_options]
+testpaths = ["test"]
+markers = [
+    "benchmark: performance benchmarks (need the `bench` extra and BENCHMARKS=1)",
+]
+
+# ── Formato ──────────────────────────────────────────────────────────────────
+[tool.mypy]
+ignore_missing_imports = true
+
+[tool.isort]
+profile = "black"
+multi_line_output = 3
+include_trailing_comma = true
+force_grid_wrap = 0
+use_parentheses = true
+line_length = 88
+sections = ["FUTURE", "STDLIB", "THIRDPARTY", "FIRSTPARTY", "LOCALFOLDER"]
+default_section = "THIRDPARTY"
+combine_as_imports = true
+
+[tool.ruff]
+line-length = 88
+target-version = "py311"
+extend-exclude = ["examples", "docs"]
+
+[tool.ruff.lint]
+# Conjunto explícito de reglas, para que el resultado no dependa de los
+# valores por defecto de cada versión de ruff. Ampliar gradualmente.
+select = ["E", "F", "W"]
+ignore = ["E501"]  # el largo de línea lo maneja black
+
 # ── Configuración de interrogate ─────────────────────────────────────────────
 [tool.interrogate]
 ignore-init-method = true

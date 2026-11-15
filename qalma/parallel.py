@@ -15,6 +15,8 @@ from qalma.operators.states.product import (
     ProductDensityOperator,
 )
 
+logger = logging.getLogger(__name__)
+
 __all__ = ["commutator_qalma_parallel"]
 
 USE_PARALLEL = qalma_settings.USE_PARALLEL
@@ -29,16 +31,16 @@ if qalma_settings.USE_PARALLEL:
     try:
         from concurrent.futures import ProcessPoolExecutor, ThreadPoolExecutor
 
-        logging.info("Using parallel routines for large objects.")
+        logger.info("Using parallel routines for large objects.")
     except ModuleNotFoundError:
         USE_PARALLEL = False
-        logging.warning(
+        logger.warning(
             "ProcessPoolExecutor/ThreadPoolExecutor cannot be loaded. Using serial routines."
         )
         MAX_WORKERS = 1
         USE_THREADS = False
 else:
-    logging.info("Using serial routines for large objects.")
+    logger.info("Using serial routines for large objects.")
     MAX_WORKERS = 1
     USE_THREADS = False
 

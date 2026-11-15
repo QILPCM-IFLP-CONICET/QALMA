@@ -402,3 +402,20 @@ Larger quantum systems can be defined and manipulated in the same way, provided 
    \left(\begin{array}{cccc}0 & -0.250 & 0.250 & 0\\0.250 & 0 & 0 & -0.250\\-0.250 & 0 & 0 & 0.250\\0 & 0.250 & -0.250 & 0\end{array}\right)_{1[0],1[1]}
    + \left(\begin{array}{cccc}0 & -0.250 & 0.250 & 0\\0.250 & 0 & 0 & -0.250\\-0.250 & 0 & 0 & 0.250\\0 & 0.250 & -0.250 & 0\end{array}\right)_{1[0],1[99]}
    + \left(\begin{array}{cc}0 & -0.500\\0.500 & 0\end{array}\right)_{1[0]}
+
+
+Logging
+-------
+
+QALMA reports progress and diagnostics through the standard :mod:`logging`
+module, using loggers under the ``"qalma"`` name. The library does not
+configure logging itself, so by default only warnings and errors are shown.
+To see more detail, configure logging in your script or notebook:
+
+.. code-block:: python
+
+    import logging
+
+    logging.basicConfig(level=logging.WARNING)
+    logging.getLogger("qalma").setLevel(logging.INFO)             # everything
+    logging.getLogger("qalma.meanfield").setLevel(logging.DEBUG)  # one subpackage

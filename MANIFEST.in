@@ -1,0 +1,4 @@
+# Ship the test suite in the sdist (it is not installed by the wheel).
+include CHANGES.rst CITATION.cff CONTRIBUTING.rst
+graft test
+global-exclude *.py[cod] __pycache__

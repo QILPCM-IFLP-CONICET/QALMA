@@ -1,5 +1,6 @@
 """Module that implements a meanfield approximation of a Gibbsian state."""
 
+import logging
 from functools import reduce
 from itertools import combinations
 from typing import Callable, Dict, List, Optional, Tuple, Union, cast
@@ -39,6 +40,8 @@ from qalma.parallel import (
 )
 from qalma.qutip_tools.tools import schmidt_dec_rest_last_qutip_operator
 from qalma.settings import QALMA_TOLERANCE
+
+logger = logging.getLogger(__name__)
 
 # Alias: the type of the functions that project operators to a n-body sector, relative to a
 # given reference state.
@@ -920,7 +923,6 @@ def project_k_to_sep(K: _Qobj, maxit: int = 200) -> list:
     list of Qobj
         List of local density operators representing the separable approximation.
     """
-    import logging
 
     from qutip import fidelity as _fidelity, jmat as _jmat
 
@@ -941,7 +943,7 @@ def project_k_to_sep(K: _Qobj, maxit: int = 200) -> list:
             _fidelity(old, new) for old, new in zip(local_sigmas, new_local_sigmas)
         )
         if min_fid > 0.995:
-            logging.info("project_k_to_sep converged after %d iterations.", it)
+            logger.info("project_k_to_sep converged after %d iterations.", it)
             break
         local_sigmas = new_local_sigmas
     return local_sigmas

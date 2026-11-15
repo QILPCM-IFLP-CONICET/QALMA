@@ -10,6 +10,8 @@ import logging
 
 import numpy as np
 
+logger = logging.getLogger(__name__)
+
 default_parms = {
     "pi": 3.1415926,
     "e": 2.71828183,
@@ -73,7 +75,7 @@ def eval_expr(expr: str, parms: dict):
                 if val != result:
                     changed = True
             except RecursionError:
-                logging.warning("A recursion error happens evaluating `%s`.", val)
+                logger.warning("A recursion error happens evaluating `%s`.", val)
                 raise
         if not changed:
             break
@@ -84,10 +86,10 @@ def eval_expr(expr: str, parms: dict):
     except NameError:
         pass
     except TypeError as exc:
-        logging.warning("Type Error. Undefined variables in [%s] in %s.", exc, expr)
+        logger.warning("Type Error. Undefined variables in [%s] in %s.", exc, expr)
         return None
     except SyntaxError:
-        logging.error(
+        logger.error(
             (
                 "expression " f"<<{expr}>>",
                 f"\n   with parameters\n{parms}\n" "raised a SyntaxError",

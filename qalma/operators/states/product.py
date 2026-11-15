@@ -28,6 +28,8 @@ from qalma.qutip_tools.tools import (
     fast_logm,
 )
 
+logger = logging.getLogger(__name__)
+
 __all__ = ["ProductDensityOperator"]
 
 
@@ -115,7 +117,7 @@ class ProductDensityOperator(DensityOperatorMixin, ProductOperator):
                 return ProductDensityOperator(
                     self.site_factors, self.prefactor * a, self.system, False
                 )
-            logging.warning(
+            logger.warning(
                 (
                     "Multiplication of a non positive number by a "
                     "density operator returns a regular operator."
@@ -126,7 +128,7 @@ class ProductDensityOperator(DensityOperatorMixin, ProductOperator):
 
     def __neg__(self):
         """Multiply by -1."""
-        logging.warning("Negate a DensityOperator leads to a regular operator.")
+        logger.warning("Negate a DensityOperator leads to a regular operator.")
         return ProductOperator(self.site_factors, -1, self.system)
 
     def __rmul__(self, a):
@@ -136,7 +138,7 @@ class ProductDensityOperator(DensityOperatorMixin, ProductOperator):
                 return ProductDensityOperator(
                     self.site_factors, self.prefactor * a, self.system, False
                 )
-            logging.warning(
+            logger.warning(
                 (
                     "Multiplication of a non positive number by "
                     "a density operator returns a regular operator."

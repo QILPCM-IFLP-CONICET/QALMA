@@ -14,6 +14,8 @@ from qalma.operators.basic import (
 )
 from qalma.operators.quadratic import QuadraticFormOperator
 
+logger = logging.getLogger(__name__)
+
 __all__ = ["DensityOperatorMixin", "DensityOperatorProtocol"]
 
 
@@ -94,7 +96,7 @@ class DensityOperatorMixin:
 
     def __neg__(self):
         """Multiply the operator by -1."""
-        logging.warning("Negate a DensityOperator leads to a regular operator.")
+        logger.warning("Negate a DensityOperator leads to a regular operator.")
         return -self.to_qutip_operator()
 
     def __getstate__(self):
