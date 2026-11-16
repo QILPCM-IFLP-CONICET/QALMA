@@ -15,6 +15,7 @@ Import order:
   6. qutip_op  — QutipOperator (QuTiP-backed fallback)
   7. quadratic — QuadraticFormOperator (highest-level composite)
   8. pauli     — PauliStringOperator (symbolic Pauli algebra)
+  9. tensor_product — Pauli strings times local operators
 """
 
 from . import local  # noqa: F401
@@ -25,3 +26,4 @@ from . import quadratic  # noqa: F401
 from . import qutip_op  # noqa: F401
 from . import scalar  # noqa: F401
 from . import sum  # noqa: F401
+from . import tensor_product  # noqa: F401

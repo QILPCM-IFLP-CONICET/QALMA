@@ -114,10 +114,10 @@ The matrix of a local operator is ``pool_d{dimension}[matrix]``: each
 ``/system/pool_d{d}`` dataset has the shape ``(n, d, d)``. ``storage`` is
 the data layer of QuTiP used for the matrix in memory.
 
-In a system whose sites are split into qubits (fermionic models through the
+In a system whose sites are split (fermionic models through the
 Jordan-Wigner transformation, see :doc:`systems`), the table of sites lists
-the qubits, like ``1[0]:Nup``, and their local bases are the entries of
-``extra_site_basis``. The nodes of the graph are the physical sites. If the
+the subsites, like ``1[0]:Nup`` or ``1[0]:Sz``, and their local bases are
+the entries of ``extra_site_basis``. The nodes of the graph are the physical sites. If the
 split was forced or disabled when the system was built, ``spec`` has the key
 ``qubit_split`` (``true`` or ``false``); otherwise QALMA decides it again
 from the model when the system is loaded.
@@ -175,6 +175,10 @@ the positions of the sites of the subsystem.
    * - ``pauli_sum``
      - ``PauliSumOperator``
      - datasets ``codes (m, W)`` and ``coeffs (m,)``
+   * - ``tensor_product``
+     - ``TensorProductOperator``
+     - attr ``prefactor``; dataset ``code (W,)``; local factors as in
+       ``product``
    * - ``quadratic``
      - ``QuadraticFormOperator``
      - dataset ``weights``; groups ``basis/NNNNNN``, ``linear_term`` and ``offset`` (optional)
@@ -248,7 +252,9 @@ site ``k`` (``00`` identity, ``01`` :math:`\sigma^x`, ``10``
 significant first. A ``pauli_sum`` is
 :math:`\sum_t \mathtt{coeffs}[t]\, P(\mathtt{codes}[t])`, with the rows
 of ``codes`` sorted and without repetitions. The codes always refer to the
-table of sites of the file, also for operators on a subsystem.
+table of sites of the file, also for operators on a subsystem. A ``tensor_product`` is
+the Pauli string ``code`` times the local factors, which act on sites where
+the string is the identity.
 
 **States.** ``prefactor`` is the weight of the state in a mixture. A
 ``gibbs`` state is :math:`e^{-K}/\mathrm{Tr}\,e^{-K}`, with :math:`K` in

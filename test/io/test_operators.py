@@ -32,6 +32,7 @@ from qalma.operators import (
     QutipOperator,
     ScalarOperator,
     SumOperator,
+    TensorProductOperator,
     to_pauli_sum,
 )
 from qalma.operators.states import (
@@ -89,6 +90,9 @@ CASES["pauli sum"] = to_pauli_sum(HAMILTONIAN)
 CASES["gibbs, pauli generator"] = GibbsDensityOperator(
     to_pauli_sum(HAMILTONIAN), SYSTEM
 )
+CASES["tensor product"] = TensorProductOperator(
+    0b11, {SITES[1]: np.array([[0.5, 1.0], [1.0, -0.5]])}, 0.25, SYSTEM
+)
 
 ALL_CLASSES = {
     GibbsDensityOperator,
@@ -106,6 +110,7 @@ ALL_CLASSES = {
     RPAGibbsDensityOperator,
     ScalarOperator,
     SumOperator,
+    TensorProductOperator,
 }
 
 
@@ -247,6 +252,7 @@ def test_file_has_no_pickle_and_fixed_labels(tmp_path):
         "rpa_gibbs",
         "scalar",
         "sum",
+        "tensor_product",
     }
 
 
