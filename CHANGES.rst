@@ -39,6 +39,11 @@ Operators
   anticommutators between them are computed symbolically on the bit
   strings, and ``to_pauli_sum`` expands operators on two-level sites.
   The three classes have native HDF5 formats.
+* ``SumOperator.simplify`` keeps sums with Pauli strings or tensor
+  products symbolic: the strings are collected in a single
+  ``PauliSumOperator``, tensor products with the same string and local
+  site are added, and products that differ on a single site are merged,
+  instead of converting the terms into dense blocks.
 
 Mean-field and RPA
 ++++++++++++++++++
