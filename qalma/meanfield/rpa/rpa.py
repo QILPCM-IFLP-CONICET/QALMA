@@ -154,7 +154,7 @@ class RPAGibbsDensityOperator(GibbsDensityOperator):
         Options of :func:`rpa_hybrid_state`.
     zero_rtol : float, optional
         Relative tolerance to identify the zero modes of the bosonic RPA
-        problems, which are removed (see :func:`_bogoliubov_reduced`). The
+        problems, which are removed (see ``_bogoliubov_reduced``). The
         broken symmetry associated with them must be restored with the
         ``symmetry_projections`` of the state. The default is 1e-5.
     """
@@ -265,7 +265,7 @@ class RPAGibbsDensityOperator(GibbsDensityOperator):
     def rpa_zero_modes(self, sites: Optional[frozenset] = None) -> int:
         """Number of zero modes removed from the bosonic RPA problem.
 
-        See :func:`rpa_zero_modes`.
+        See :func:`~qalma.meanfield.rpa.environment.rpa_zero_modes`.
         """
         return rpa_zero_modes(
             self.rpa_structure, None if sites is None else frozenset(sites)
@@ -274,7 +274,7 @@ class RPAGibbsDensityOperator(GibbsDensityOperator):
     def rpa_entropy(self, sites: frozenset) -> float:
         """Bosonic RPA entropy of the subsystem ``sites``, in bits.
 
-        See :func:`rpa_entanglement_entropy`.
+        See :func:`~qalma.meanfield.rpa.functions.rpa_entanglement_entropy`.
         """
         return rpa_entanglement_entropy(self.rpa_structure, frozenset(sites))
 
@@ -283,7 +283,7 @@ class RPAGibbsDensityOperator(GibbsDensityOperator):
     ) -> float:
         """Bosonic RPA negativity between ``sites_b`` and ``sites_c``.
 
-        See :func:`rpa_negativity`.
+        See :func:`~qalma.meanfield.rpa.functions.rpa_negativity`.
         """
         return rpa_negativity(
             self.rpa_structure,

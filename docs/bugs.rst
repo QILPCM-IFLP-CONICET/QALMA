@@ -20,6 +20,11 @@ Known limitations
   matrix representation of an operator (``to_qutip``, exact
   exponentials and spectra) are limited to small systems.
 
+* **RPA reductions.** Only the Gaussian truncation of the bosonization is
+  implemented. At intermediate temperatures, and for strong couplings, the
+  results are qualitative, and the generator corrections are not reliable
+  at low temperatures (see :doc:`user/rpa`).
+
 * **Simulation files.** HDF5 files written by QALMA 1.0 or newer do not
   contain Python pickles (see :doc:`user/hdf5_format`). Files written by
   older versions do: they are only loaded with ``allow_pickle=True``, may

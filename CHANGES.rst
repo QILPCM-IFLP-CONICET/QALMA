@@ -29,6 +29,25 @@ Packaging
 * ``qalma.__version__`` is available and is the single source of the
   version number.
 
+Mean-field and RPA
+++++++++++++++++++
+
+* New module ``qalma.meanfield.rpa``: RPA reduction of Gibbs states. The
+  reduced generator is the mean-field one plus the contribution of the
+  Gaussian fluctuations of the environment, with a static or a dynamical
+  (bosonization) correction. It is requested with the ``rpa`` and
+  ``dynamic`` options of ``GibbsDensityOperator.partial_trace``.
+* ``partial_trace(..., rpa=True, hybrid=True)`` keeps the subsystem exact and
+  treats only the environment in the RPA (non perturbative in the coupling;
+  see ``hybrid_options``).
+* ``RPAGibbsDensityOperator`` is a Gibbs state whose reductions include the
+  RPA and which stores the subsystem-independent data of the RPA
+  (``rpa_structure``). It also gives the entropies and negativities of the
+  bosonic RPA state (``rpa_entropy``, ``rpa_negativity``) and handles zero
+  modes (``rpa_zero_modes``).
+* Only the Gaussian truncation is implemented; see :ref:`rpa` for its
+  limitations.
+
 HDF5 files
 ++++++++++
 

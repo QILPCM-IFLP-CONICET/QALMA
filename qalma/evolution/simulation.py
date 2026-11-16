@@ -477,7 +477,9 @@ class SimulationHDF5(Simulation):
         if filename is not None and not (
             os.path.exists(filename) and os.path.samefile(filename, self.filename)
         ):
-            if mode in (None, "r+", "a"):
+            if mode is None:
+                mode = "w-"
+            elif mode in ("r+", "a"):
                 mode = "w-"
             super().save_hdf5(filename, mode, allow_pickle=allow_pickle)
             return
