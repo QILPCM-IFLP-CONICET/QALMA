@@ -32,6 +32,7 @@ from qalma.operators import (
     QutipOperator,
     ScalarOperator,
     SumOperator,
+    TensorProductOperator,
 )
 from qalma.operators.pauli import _site_index
 from qalma.operators.pauli_sum import permute_codes, words_for
@@ -813,6 +814,42 @@ def _read_pauli_sum(group, system, context) -> PauliSumOperator:
     )
 
 
+def _write_tensor_product(group, operator: TensorProductOperator, context) -> None:
+    group.attrs["prefactor"] = complex(operator.prefactor)
+    words = words_for(len(operator.system.sites))
+    code = np.array(
+        [[(operator.code >> (64 * w)) & 0xFFFF_FFFF_FFFF_FFFF for w in range(words)]],
+        dtype=np.uint64,
+    )
+    group.create_dataset(
+        "code", data=_codes_to_table(code, operator.system, context)[0]
+    )
+    factors = _FactorWriter(context)
+    for site, matrix in operator.local_factors.items():
+        factors.add(site, matrix)
+    factors.write(group)
+
+
+def _read_tensor_product(group, system, context) -> TensorProductOperator:
+    stored = group["code"][()]
+    if stored.ndim != 1:
+        raise HDF5FormatError(f"{group.name}/code must be a 1D array.")
+    (row,) = _codes_from_table(group, stored.reshape(1, -1), system, context)
+    code = 0
+    for w, word in enumerate(row):
+        code |= int(word) << (64 * w)
+    factors = _FactorReader(group, system, context)
+    try:
+        return TensorProductOperator(
+            code,
+            factors.factors(0, len(factors)),
+            as_number(group.attrs["prefactor"]),
+            system,
+        )
+    except ValueError as exc:
+        raise HDF5FormatError(f"{group.name}: {exc}") from exc
+
+
 # ---------------------------------------------------------------------------
 #  Qutip operators
 # ---------------------------------------------------------------------------
@@ -1043,6 +1080,9 @@ _register("one_body", OneBodyOperator, _write_sum, _read_one_body)
 _register("qutip", QutipOperator, _write_qutip, _read_qutip)
 _register("pauli_string", PauliStringOperator, _write_pauli_string, _read_pauli_string)
 _register("pauli_sum", PauliSumOperator, _write_pauli_sum, _read_pauli_sum)
+_register(
+    "tensor_product", TensorProductOperator, _write_tensor_product, _read_tensor_product
+)
 _register("quadratic", QuadraticFormOperator, _write_quadratic, _read_quadratic)
 _register("gibbs", GibbsDensityOperator, _write_gibbs, _read_gibbs)
 _register(

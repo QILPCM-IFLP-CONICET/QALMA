@@ -56,10 +56,12 @@ def _dense_fermions(size):
     return result
 
 
-def test_t_j_model_warns():
-    """Local spaces that cannot be split into qubits keep the warning."""
+def test_disabled_split_warns():
+    """Without the split, fermionic signs are not implemented: warning."""
     with pytest.warns(FermionicSignWarning):
-        system = build_system(geometry_name="chain lattice", model_name="t-J", L=3)
+        system = build_system(
+            geometry_name="chain lattice", model_name="t-J", L=3, qubit_split=False
+        )
     assert not system.qubit_representation
 
 
@@ -200,9 +202,15 @@ def test_hubbard_canonical_anticommutation_relations():
         assert not anticommutator(c_ops[i], c_ops[j])
 
 
-def test_local_operators_follow_the_alps_convention():
-    """Splus = c^+_up c_down and double occupancy = n_up n_down on each site."""
-    system = _hubbard(L=2)
+@pytest.mark.parametrize(
+    "model",
+    ["fermion Hubbard", "alternative fermion Hubbard", "t-J", "alternative t-J"],
+)
+def test_local_operators_follow_the_alps_convention(model):
+    """Splus = c^+_up c_down, Sminus = c^+_down c_up, n = n_up + n_down."""
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore")
+        system = build_system(geometry_name="chain lattice", model_name=model, L=2)
     node = tuple(system.physical_sites)[1]
 
     def dense(op):
@@ -215,8 +223,17 @@ def test_local_operators_follow_the_alps_convention():
         dense(site_op("Splus")), dense(site_op("cdag_up") * site_op("c_down"))
     )
     assert np.allclose(
-        dense(site_op("double_occupancy")), dense(site_op("n_up") * site_op("n_down"))
+        dense(site_op("Sminus")), dense(site_op("cdag_down") * site_op("c_up"))
     )
+    number = site_op("cdag_up") * site_op("c_up") + site_op("cdag_down") * site_op(
+        "c_down"
+    )
+    assert np.allclose(dense(site_op("n")), dense(number))
+    if "double_occupancy" in system.physical_sites[node]["operators"]:
+        assert np.allclose(
+            dense(site_op("double_occupancy")),
+            dense(site_op("n_up") * site_op("n_down")),
+        )
 
 
 def _dense_hubbard(system, parms):
@@ -340,3 +357,178 @@ def test_gibbs_state_with_unsorted_site_names():
         ("1[1]:Nup", "1[0]:Nup")
     )
     assert np.allclose(reduced.full(), full.ptrace([2, 0]).full())
+
+
+# ---------------------------------------------------------------------------
+# Constrained sites: t-J
+# ---------------------------------------------------------------------------
+
+
+def _t_j(model="t-J", geometry="chain lattice", **parms):
+    full_parms = {"t": 1.0, "J": 0.6, "mu": 0.2, "V": 0.3}
+    full_parms.update(parms)
+    return build_system(geometry_name=geometry, model_name=model, **full_parms)
+
+
+def _reference_t_j(system, parms):
+    """t-J from projected electrons in the Fock space of Hubbard.
+
+    Uses another Jordan-Wigner order (all the down modes, then all the up
+    modes) and keeps the states without doubly occupied sites.
+    """
+    position = {node: k for k, node in enumerate(system.physical_sites)}
+    size = len(position)
+    c_ops = _dense_fermions(2 * size)
+    c_down, c_up = c_ops[:size], c_ops[size:]
+    identity = np.eye(4**size)
+    n_up = [c.T @ c for c in c_up]
+    n_down = [c.T @ c for c in c_down]
+    # projected electrons
+    p_up = [c_up[i] @ (identity - n_down[i]) for i in range(size)]
+    p_down = [c_down[i] @ (identity - n_up[i]) for i in range(size)]
+    number = [n_up[i] + n_down[i] for i in range(size)]
+    s_z = [(n_up[i] - n_down[i]) / 2 for i in range(size)]
+    s_plus = [c_up[i].T @ c_down[i] for i in range(size)]
+    ham = sum(-parms["mu"] * number[i] for i in range(size))
+    for edges in system.spec["graph"].edges.values():
+        for src, dst in edges:
+            i, j = position[src], position[dst]
+            for p_spin in (p_up, p_down):
+                ham = ham - parms["t"] * (
+                    p_spin[i].T @ p_spin[j] + p_spin[j].T @ p_spin[i]
+                )
+            exchange = s_z[i] @ s_z[j] + 0.5 * (
+                s_plus[i] @ s_plus[j].T + s_plus[i].T @ s_plus[j]
+            )
+            ham = ham + parms["J"] * exchange
+            ham = ham + (parms["V"] - parms["J"] / 4) * number[i] @ number[j]
+    double = sum(n_up[i] @ n_down[i] for i in range(size))
+    physical = np.where(np.isclose(np.diag(double), 0))[0]
+    return np.linalg.eigvalsh(ham[np.ix_(physical, physical)])
+
+
+def _physical_spectrum(system):
+    """Spectrum of the Hamiltonian in the sector without unphysical sites."""
+    block = tuple(system.sites)
+    ham = system.global_operator("Hamiltonian").to_qutip(block).full()
+    unphysical = system.operators["global_operators"]["unphysical_sites"]
+    q_matrix = unphysical.to_qutip(block).full()
+    q_values = np.real(np.diag(q_matrix))
+    assert np.allclose(q_matrix, np.diag(q_values))
+    physical = np.isclose(q_values, 0)
+    # The Hamiltonian does not mix the physical states with the others.
+    assert np.allclose(ham[np.ix_(physical, ~physical)], 0)
+    return np.sort(np.linalg.eigvalsh(ham[np.ix_(physical, physical)]))
+
+
+def test_t_j_sites_are_split():
+    with warnings.catch_warnings():
+        warnings.simplefilter("error", FermionicSignWarning)
+        system = _t_j(L=2)
+    assert system.jordan_wigner and system.constrained
+    assert tuple(system.sites) == ("1[0]:N", "1[0]:Sz", "1[1]:N", "1[1]:Sz")
+    assert system.dimensions == {"1[0]:N": 2, "1[0]:Sz": 3, "1[1]:N": 2, "1[1]:Sz": 3}
+    assert system.site_qubits["1[1]"] == ("1[1]:N", "1[1]:Sz")
+    # The rest subsites are outside the Jordan-Wigner strings.
+    assert system.jordan_wigner_string("1[1]:N").acts_over() == frozenset({"1[0]:N"})
+    alternative = _t_j("alternative t-J", L=2)
+    assert alternative.constrained
+    assert tuple(alternative.sites)[:2] == ("1[0]:Nup", "1[0]:Ndown")
+
+
+@pytest.mark.parametrize("model", ["t-J", "alternative t-J"])
+@pytest.mark.parametrize(
+    "geometry, parms",
+    [
+        ("chain lattice", {"L": 3}),
+        ("chain lattice", {"L": 4}),
+        ("open chain lattice", {"L": 4}),
+        ("square lattice", {"L": 2, "W": 2}),
+    ],
+)
+def test_t_j_spectrum(model, geometry, parms):
+    t_j_parms = {"t": 1.0, "J": 0.6, "mu": 0.2, "V": 0.3}
+    system = _t_j(model, geometry, **parms)
+    expected = _reference_t_j(system, t_j_parms)
+    assert len(expected) == 3 ** len(system.physical_sites)
+    assert np.allclose(_physical_spectrum(system), expected)
+
+
+def test_t_j_without_signs_is_different():
+    """The ring of 3 sites distinguishes fermions from hard-core particles."""
+    t_j_parms = {"t": 1.0, "J": 0.6, "mu": 0.2, "V": 0.3}
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore", FermionicSignWarning)
+        bosonic = _t_j(L=3, qubit_split=False)
+    expected = _reference_t_j(bosonic, t_j_parms)
+    hard_core = np.sort(bosonic.global_operator("Hamiltonian").eigenenergies())
+    assert not np.allclose(hard_core, expected)
+
+
+def test_t_j_operators():
+    system = _t_j(L=3)
+    sites = tuple(system.physical_sites)
+    block = tuple(system.sites)
+    unphysical = system.operators["global_operators"]["unphysical_sites"]
+    projector = np.diag(
+        np.isclose(np.real(np.diag(unphysical.to_qutip(block).full())), 0).astype(float)
+    )
+
+    def dense(op):
+        return projector @ op.to_qutip(block).full() @ projector
+
+    ham = system.global_operator("Hamiltonian")
+    assert not commutator(ham, unphysical)
+    c_ops = {
+        (site, spin): system.site_operator(f"c_{spin}", site)
+        for site in sites
+        for spin in ("up", "down")
+    }
+    for (site_a, spin_a), c_a in c_ops.items():
+        for (site_b, spin_b), c_b in c_ops.items():
+            # Projected electrons on different sites anticommute.
+            if site_a != site_b:
+                assert np.allclose(dense(anticommutator(c_a, c_b)), 0)
+                assert np.allclose(dense(anticommutator(c_a, c_b.dag())), 0)
+    for site in sites:
+        s_plus, s_minus, s_z, number = (
+            dense(system.site_operator(name, site))
+            for name in ("Splus", "Sminus", "Sz", "n")
+        )
+        assert np.allclose(s_plus @ s_minus - s_minus @ s_plus, 2 * s_z)
+        assert np.allclose(
+            s_z @ s_z + 0.5 * (s_plus @ s_minus + s_minus @ s_plus), 0.75 * number
+        )
+
+
+def test_t_j_gibbs_state_with_penalty():
+    """A large penalty on the unphysical sites gives the physical Gibbs state."""
+    from qalma.operators.states import GibbsDensityOperator
+
+    system = _t_j(L=3)
+    ham = system.global_operator("Hamiltonian")
+    unphysical = system.operators["global_operators"]["unphysical_sites"]
+    state = GibbsDensityOperator(ham + 40 * unphysical, system)
+    energy = state.expect(ham)
+    eigenvalues = _physical_spectrum(system)
+    weights = np.exp(-(eigenvalues - eigenvalues.min()))
+    assert np.isclose(energy, np.sum(weights * eigenvalues) / np.sum(weights))
+    assert abs(state.expect(unphysical)) < 1e-12
+
+
+def test_kondo_lattice_with_spin_one():
+    """Spin-1 sites are a rest subsite: no warning, and they commute with fermions."""
+    with warnings.catch_warnings():
+        warnings.simplefilter("error", FermionicSignWarning)
+        system = build_system(
+            geometry_name="2 band open chain lattice",
+            model_name="Kondo lattice",
+            L=2,
+            local_S=1,
+        )
+    assert system.jordan_wigner and not system.constrained
+    assert system.dimensions["2[0]"] == 3
+    c_up = system.site_operator("c_up", "1[1]")
+    for name in ("Splus", "Sminus", "Sz"):
+        assert not commutator(c_up, system.site_operator(name, "2[0]"))
+    assert "2[0]" not in system.jordan_wigner_string("1[1]:Nup").acts_over()

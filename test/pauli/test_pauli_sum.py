@@ -1,6 +1,7 @@
 """Tests for PauliSumOperator."""
 
 import itertools
+import pickle
 
 import numpy as np
 import pytest
@@ -214,3 +215,17 @@ def test_generic_sum_operations_still_work():
         dense(pauli_product(op.terms[1], op.terms[2])),
         dense(op.terms[1]) @ dense(op.terms[2]),
     )
+
+
+def test_pickle_does_not_store_cached_terms():
+    op = random_sum(200)
+    size_before = len(pickle.dumps(op))
+    _ = op.terms
+    assert len(pickle.dumps(op)) == size_before
+    restored = pickle.loads(pickle.dumps(op))
+    assert restored.to_dict() == op.to_dict()
+    string = op.terms[3]
+    _ = string.site_factors
+    restored_string = pickle.loads(pickle.dumps(string))
+    assert "site_factors" not in restored_string.__dict__
+    assert restored_string.code == string.code

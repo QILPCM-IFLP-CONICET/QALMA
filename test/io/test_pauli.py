@@ -15,7 +15,7 @@ from qalma.io import (
     write_system,
 )
 from qalma.model import build_spin_chain, build_system, build_system_from_dims
-from qalma.operators import PauliStringOperator, PauliSumOperator
+from qalma.operators import PauliStringOperator, PauliSumOperator, SumOperator
 from qalma.operators.functions import commutator
 from qalma.operators.states import GibbsDensityOperator
 
@@ -34,6 +34,11 @@ QUBIT_SYSTEMS = {
     "kondo": lambda: build("2 band open chain lattice", "Kondo lattice", L=2),
     "spins, forced split": lambda: build(
         "chain lattice", "spin", L=3, qubit_split=True
+    ),
+    "t-J": lambda: build("chain lattice", "t-J", L=3, J=0.5),
+    "alternative t-J": lambda: build("chain lattice", "alternative t-J", L=2, J=0.5),
+    "kondo, spin 1": lambda: build(
+        "2 band open chain lattice", "Kondo lattice", L=2, local_S=1
     ),
 }
 
@@ -61,6 +66,8 @@ def test_qubit_systems_roundtrip(name, tmp_path):
     assert list(loaded.sites) == list(system.sites)
     assert loaded.qubit_representation == system.qubit_representation
     assert loaded.jordan_wigner == system.jordan_wigner
+    assert loaded.constrained == system.constrained
+    assert loaded.dimensions == system.dimensions
     assert loaded.site_qubits == system.site_qubits
     # The qubits of the sites of the same type share their local basis.
     assert n_kinds <= 3
@@ -222,3 +229,43 @@ def test_simulation_with_fermionic_states(tmp_path):
     for original, state in zip(states, loaded.states):
         assert isinstance(state.k, PauliSumOperator)
         assert np.isclose(state.expect(loaded.parameters["H"]), original.expect(ham))
+
+
+def test_t_j_operators_and_states(tmp_path):
+    system = QUBIT_SYSTEMS["t-J"]()
+    ham = system.global_operator("Hamiltonian")
+    unphysical = system.operators["global_operators"]["unphysical_sites"]
+    operators = {
+        "H": ham,
+        "Q": unphysical,
+        "c": system.site_operator("c_up", "1[1]"),
+        "gibbs": GibbsDensityOperator(ham + 30 * unphysical, system),
+    }
+    loaded = roundtrip(operators, tmp_path)
+    loaded_system = loaded["H"].system
+    assert loaded_system.constrained
+    for key, original in operators.items():
+        assert np.allclose(dense(loaded[key]), dense(original))
+    assert np.isclose(
+        loaded["gibbs"].expect(loaded["H"]), operators["gibbs"].expect(ham)
+    )
+
+
+def test_empty_and_generic_sums(tmp_path):
+    system = build_spin_chain(3)
+    strings = (
+        PauliStringOperator.from_label("XXI", system, 1.0),
+        PauliStringOperator.from_label("IZZ", system, 2.0),
+    )
+    loaded = roundtrip(
+        {
+            "empty": PauliSumOperator([], [], system),
+            "generic": SumOperator(strings, system),
+        },
+        tmp_path,
+    )
+    assert isinstance(loaded["empty"], PauliSumOperator) and len(loaded["empty"]) == 0
+    assert [type(term) for term in loaded["generic"].terms] == [PauliStringOperator] * 2
+    assert {t.code: t.prefactor for t in loaded["generic"].terms} == {
+        s.code: s.prefactor for s in strings
+    }

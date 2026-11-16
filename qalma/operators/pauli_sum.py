@@ -89,11 +89,11 @@ def permute_codes(
     ``src_order[k]``. Raises ``ValueError`` if a string acts on a site that
     is not in ``dst_position``, or has bits beyond ``len(src_order)`` sites.
     """
-    codes = np.asarray(codes, dtype=np.uint64).reshape(len(codes), -1)
-    src_order = list(src_order)
     result = np.zeros((len(codes), dst_words), dtype=np.uint64)
     if len(codes) == 0:
         return result
+    codes = np.asarray(codes, dtype=np.uint64).reshape(len(codes), -1)
+    src_order = list(src_order)
     # Bits beyond the last site.
     used_bits = 2 * len(src_order)
     for word in range(codes.shape[1]):

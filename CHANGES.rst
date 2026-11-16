@@ -29,6 +29,17 @@ Packaging
 * ``qalma.__version__`` is available and is the single source of the
   version number.
 
+Operators
++++++++++
+
+* New classes ``PauliStringOperator`` (a product of Pauli matrices, stored
+  as a bit string), ``PauliSumOperator`` (linear combinations of them,
+  stored as arrays) and ``TensorProductOperator`` (a Pauli string times
+  local factors on other sites). Products, commutators and
+  anticommutators between them are computed symbolically on the bit
+  strings, and ``to_pauli_sum`` expands operators on two-level sites.
+  The three classes have native HDF5 formats.
+
 Mean-field and RPA
 ++++++++++++++++++
 
@@ -102,9 +113,16 @@ Behaviour changes
 
 * Diagnostic ``print`` calls in the library were removed or turned into
   ``DEBUG`` log messages.
-* Building a system from a model with fermionic operators now emits a
-  ``qalma.FermionicSignWarning``: fermionic signs between different sites
-  are not implemented (see *Known limitations* in the documentation).
+* Fermionic models are split into fermionic qubits (one per fermionic
+  quantum number) plus a rest subsite, and their fermionic operators are
+  mapped to Pauli strings through the Jordan-Wigner transformation, so the
+  signs are exact: ``spinless fermions``, the Hubbard models, ``t-J`` and
+  ``alternative t-J`` (with the unphysical local states counted by the
+  global operator ``unphysical_sites``) and ``Kondo lattice``. The sites of
+  these systems are the subsites (``1[0]:Nup``, ``1[0]:Sz``, ...). The
+  split can be forced or disabled with ``build_system(..., qubit_split=...)``;
+  when it is disabled, or not possible, building the system emits a
+  ``qalma.FermionicSignWarning``.
 * The ``USE_PARALLEL`` environment variable is now parsed as a boolean:
   ``USE_PARALLEL=0`` used to *enable* the parallel routines. The preferred
   name is ``QALMA_USE_PARALLEL``.

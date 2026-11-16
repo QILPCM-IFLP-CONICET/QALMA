@@ -75,11 +75,11 @@ Custom parameters are passed via the ``parms`` dictionary::
 Fermionic models and qubits
 ---------------------------
 
-When a model has fermionic quantum numbers and the local space of every
-site is a product of quantum numbers that take two values (``N`` in
-``spinless fermions``; ``Nup`` and ``Ndown`` in ``fermion Hubbard``; also
-the spin-1/2 sites of ``Kondo lattice``), each of those quantum numbers
-becomes a qubit::
+When a model has fermionic quantum numbers, and each of them takes two
+values (``N`` in ``spinless fermions``; ``Nup`` and ``Ndown`` in ``fermion
+Hubbard``), every site is split into subsites: one qubit per fermionic
+quantum number and, if the site has other quantum numbers that are not
+functions of those, a single subsite with the rest::
 
     system = build_system("chain lattice", "fermion Hubbard", L=4, U=2)
     list(system.sites)        # ['1[0]:Nup', '1[0]:Ndown', '1[1]:Nup', ...]
@@ -88,14 +88,60 @@ becomes a qubit::
 The fermionic modes are mapped to Pauli strings through the Jordan-Wigner
 transformation, in the order of ``system.sites``, so they anticommute also
 within a site. Site operators are still requested by the name of the node
-(``system.site_operator("c_up", "1[0]")``), and they are, like the global
-operators, sums of Pauli strings
-(:class:`~qalma.operators.PauliSumOperator`). A site with a single qubit
-keeps the name of the node.
+(``system.site_operator("c_up", "1[0]")``). Without a rest subsite they
+are, like the global operators, sums of Pauli strings
+(:class:`~qalma.operators.PauliSumOperator`); with one, they are sums of
+:class:`~qalma.operators.TensorProductOperator` (a Pauli string times local
+factors on the rest subsites). A site that is not split keeps the name of
+the node.
+
+The local matrices of the ALPS library are read with the following
+convention: an operator that changes a single fermionic quantum number
+(``c_up``, ``cdag_down``, ...) is the corresponding mode operator, with its
+Jordan-Wigner string; an operator that does not change the fermion parity
+of the site (``n``, ``Sz``, ``Splus`` :math:`= c^\dagger_\uparrow
+c_\downarrow`, ``Sminus`` :math:`= c^\dagger_\downarrow c_\uparrow`, ...)
+is the local matrix itself.
+
+Constrained sites: the t-J model
+++++++++++++++++++++++++++++++++
+
+The local basis of ``t-J`` has three states, an empty site and an electron
+with spin up or down, and the quantum numbers ``N`` (fermionic), ``S``
+:math:`= N/2` and ``Sz``. The site is split into a qubit for ``N`` and a
+three-level subsite for ``Sz``::
+
+    system = build_system("chain lattice", "t-J", L=4, t=1, J=0.4)
+    list(system.sites)        # ['1[0]:N', '1[0]:Sz', '1[1]:N', ...]
+    system.constrained        # True
+
+The product of the two subsites has six states, three of them not
+physical: an empty site with :math:`S_z = \pm 1/2`, and an occupied site
+with :math:`S_z = 0`. The operators of the model vanish on those states and
+do not mix them with the physical ones, so the physical states are a sector
+of the operator
+
+.. math::
+
+   Q = \sum_i (1 - \Pi_i),
+
+with :math:`\Pi_i` the projector of the site :math:`i` onto its physical
+states, available as ``system.operators["global_operators"]["unphysical_sites"]``.
+:math:`Q` is diagonal and commutes with every operator of the model; the
+physical states are those with :math:`Q = 0`. Spectra, ground states and
+Gibbs states must be taken in that sector, for instance by adding
+:math:`\Lambda Q` with a large :math:`\Lambda` to the generator of a Gibbs
+state (the error is :math:`O(e^{-\Lambda})`). The same holds for
+``alternative t-J``, split into two qubits ``Nup`` and ``Ndown`` with the
+doubly occupied state excluded.
+
+Product states over the subsites can impose :math:`Q = 0` only in trivial
+cases: for mean-field methods, the subsites of a node must be in the same
+block.
 
 ``build_system(..., qubit_split=True)`` forces the representation for any
 model whose sites are products of two-level quantum numbers (e.g. spin 1/2
-chains), and ``qubit_split=False`` disables it.
+chains, as qubits without strings), and ``qubit_split=False`` disables it.
 
 .. seealso::
 

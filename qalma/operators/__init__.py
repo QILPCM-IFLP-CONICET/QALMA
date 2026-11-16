@@ -33,6 +33,7 @@ from .product import (
 )
 from .quadratic import QuadraticFormOperator
 from .qutip import QutipOperator
+from .tensor_product import TensorProductOperator
 
 # register_ops wires arithmetic dispatch tables; must run before states/functions
 # so that operator arithmetic works when those subpackages are loaded.
@@ -54,6 +55,7 @@ __all__ = [
     "QutipOperator",
     "ScalarOperator",
     "SumOperator",
+    "TensorProductOperator",
     "iterable_to_operator",
     "to_pauli_sum",
     # Subpackages

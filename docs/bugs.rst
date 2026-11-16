@@ -7,16 +7,17 @@ Known limitations and reporting bugs
 Known limitations
 -----------------
 
-* **Fermionic models.** Models whose sites are products of two-level
-  quantum numbers (``spinless fermions``, ``fermion Hubbard``,
-  ``Kondo lattice``) are represented by one qubit per quantum number, and
+* **Fermionic models.** Models whose fermionic quantum numbers take two
+  values (``spinless fermions``, ``fermion Hubbard``, ``t-J``,
+  ``Kondo lattice``, ...) are split into fermionic qubits plus a rest, and
   their fermionic operators are mapped to Pauli strings through the
   Jordan-Wigner transformation, so the signs are exact (see
-  :doc:`user/systems`). For other local spaces, like the constrained basis
-  of ``t-J``, the signs coming from the anticommutation of fermionic
-  operators on different sites are not implemented: those operators
-  commute, the results are those of the corresponding hard-core particles,
-  and building the system emits a :class:`qalma.FermionicSignWarning`.
+  :doc:`user/systems`). For constrained bases like ``t-J``, the results
+  must be taken in the sector without unphysical sites. If the split is
+  disabled (``qubit_split=False``), or a fermionic quantum number takes more
+  than two values, operators on different sites commute, the results are
+  those of the corresponding hard-core particles, and building the system
+  emits a :class:`qalma.FermionicSignWarning`.
 
 * **Exact methods scale exponentially.** Operations that need the full
   matrix representation of an operator (``to_qutip``, exact
