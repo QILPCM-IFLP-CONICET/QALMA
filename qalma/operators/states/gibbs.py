@@ -486,6 +486,7 @@ class GibbsProductDensityOperator(DensityOperatorMixin, Operator):
         else:
 
             def safe_local_f(op_loc):
+                """Local free energy of ``op_loc``, stable against overflow."""
                 assert isinstance(op_loc, Qobj)
                 spectrum = (-op_loc).eigenenergies()
                 f0 = max(spectrum)

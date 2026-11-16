@@ -85,9 +85,11 @@ The :meth:`~qalma.operators.states.basic.DensityOperatorProtocol.partial_trace` 
     rho_sub = rho.partial_trace(frozenset({"site0", "site1"}))
 
 For :class:`~qalma.operators.states.gibbs.GibbsDensityOperator`, the partial
-trace uses the mean-field Gibbs approximation
-(:doc:`/api/meanfield`), returning a
-:class:`~qalma.operators.states.gibbs.GibbsProductDensityOperator`.
+trace of a large system uses the self-consistent mean-field Gibbs
+approximation (:doc:`/api/meanfield`), and returns a state that can be
+evaluated with ``expect``. Small systems are reduced exactly (``exact=True``).
+The reduction can be improved with the options ``rpa``, ``dynamic`` and
+``hybrid`` (see :doc:`rpa`).
 
 The ``reduce`` method computes the effective operator on a subsystem
 weighted by a reference state:

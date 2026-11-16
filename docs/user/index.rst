@@ -15,5 +15,6 @@ to build and simulate many-body quantum systems.
    evolution
    hdf5_format
    meanfield_variational
+   rpa
    configuration
    examples
