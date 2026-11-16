@@ -110,7 +110,7 @@ class TensorProductOperator(ProductOperator):
 
     def _init_fast(self, code, local_factors, prefactor, system):
         self.code = code
-        # complex arrays, as in ProductOperator (the QuTiP conversion relies on it)
+        # complex arrays, as in ProductOperator
         self.local_factors = {
             site: (
                 factor
