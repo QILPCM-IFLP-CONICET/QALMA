@@ -15,7 +15,8 @@ Packaging
 
 * QALMA is now distributed under the LGPL-3.0 (previously GPL-3.0). The ALPS
   model and lattice libraries in ``qalma/lib`` keep the Boost Software
-  License 1.0.
+  License 1.0, whose text (``qalma/lib/LICENSE_1_0.txt``) is installed with
+  the package.
 * Python 3.11 or newer is required.
 * Runtime dependencies are declared with tested lower bounds:
   ``numpy>=1.26``, ``scipy>=1.11``, ``qutip>=5.1``, ``h5py>=3.10`` and
@@ -134,3 +135,8 @@ Behaviour changes
 * ``qalma.settings.FIGURES_DIR`` was removed; it pointed outside the
   installed package.
 * The code paths for QuTiP 4 were removed (QuTiP >= 5.1 is required).
+* Fixed: building a system whose lattice has loops with a model whose sites
+  do not define the operators of a loop term (for instance ``boson Hubbard``
+  on ``square lattice with loop``) failed with an ``AssertionError``. The
+  global operator with that loop term is now dropped, as global operators
+  with bond terms already were.
