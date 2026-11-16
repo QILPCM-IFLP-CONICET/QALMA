@@ -10,6 +10,11 @@ RPA reduction of Gibbs states
 Overview
 --------
 
+.. note::
+
+   The RPA reduction is experimental: its interface may change in future
+   releases.
+
 For a Gibbs state :math:`\rho = e^{-K}/Z` of a large system, the reduced
 state on a small subsystem :math:`A` cannot be computed exactly. QALMA
 approximates it with a self-consistent mean field (the default of
