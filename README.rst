@@ -38,6 +38,10 @@ Features
 - **MaxEnt projected evolution** — time-evolve density matrices projected onto
   a finite operator basis, enabling simulation of large systems beyond exact
   diagonalization.
+- **Mean-field and RPA reductions** — self-consistent and variational
+  mean-field approximations for Gibbs states of large systems, and reduced
+  states of small subsystems with an RPA correction. These modules are still
+  evolving and their interface may change in future releases.
 - **Symbolic algebra** — operators support addition, multiplication,
   commutators, exponentiation, traces, and partial traces out of the box.
 
