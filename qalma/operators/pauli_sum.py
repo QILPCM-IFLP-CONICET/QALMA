@@ -587,6 +587,20 @@ class PauliSumOperator(SumOperator):
         size = len(block)
         if size == 0:
             return complex(self.coeffs[~self.codes.any(axis=1)].sum())
+        dimensions = system.dimensions
+        if any(dimensions[site] != 2 for site in block):
+            # Sites of other dimensions (e.g. the rest subsites of a split
+            # site) are outside the strings: build the matrix on the sites
+            # the strings act on, and add identities on the others.
+            acted = tuple(site for site in block if site in acts_over)
+            others = tuple(site for site in block if site not in acts_over)
+            identities = [qutip.qeye(dimensions[site]) for site in others]
+            if not acted:
+                scalar = complex(self.coeffs[~self.codes.any(axis=1)].sum())
+                return scalar * qutip.tensor(*identities)
+            result = qutip.tensor(self.to_qutip(acted), *identities)
+            order = acted + others
+            return result.permute([order.index(site) for site in block])
         if size > 62:
             raise ValueError("too many sites for a matrix representation.")
         position = _site_index(system).position

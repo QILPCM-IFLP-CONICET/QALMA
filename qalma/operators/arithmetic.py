@@ -452,8 +452,13 @@ class SumOperator(Operator):
             return self.terms[0].simplify()
 
         # pylint: disable=import-outside-toplevel
+        from qalma.operators.pauli_simplify import has_pauli_terms, simplify_pauli_sum
         from qalma.operators.simplify import group_terms_by_blocks
 
+        # Sums with Pauli strings or tensor products are simplified
+        # symbolically, keeping that structure.
+        if has_pauli_terms(self):
+            return simplify_pauli_sum(self)
         return group_terms_by_blocks(self.flat())
 
     def to_qutip(self, block: Optional[Tuple[str, ...]] = None):
