@@ -24,7 +24,7 @@ from qalma.projections import (
     project_operator_to_n_body as project_to_n_body_operator,
 )
 from qalma.scalarprod import (
-    covar_scalar_product,
+    fetch_covar_scalar_product,
     operator_components,
     orthogonalize_basis,
 )
@@ -126,7 +126,7 @@ def run_restricted_simulation(params, system_data, k_0, sigma_0):
         ev_obs_maxent_act_partial_sum_ell
     )
 
-    sp_local = covar_scalar_product(sigma=sigma_0)
+    sp_local = fetch_covar_scalar_product(sigma=sigma_0)
     local_t_value = 0.0
 
     print("hamiltonian", type(hamiltonian), "k_0", type(k_0))
@@ -182,7 +182,7 @@ def run_restricted_simulation(params, system_data, k_0, sigma_0):
             saved_cut_times_index_ell.append(list(timespan).index(curr_t))
 
             sigma_act = self_consistent_project_meanfield(k_proj, sigma_act, max_it=10)
-            sp_local = covar_scalar_product(sigma=sigma_act)
+            sp_local = fetch_covar_scalar_product(sigma=sigma_act)
 
             hbb_ell_act = build_hierarchical_basis(
                 generator=hamiltonian, seed_op=k_proj, deep=chosen_depth

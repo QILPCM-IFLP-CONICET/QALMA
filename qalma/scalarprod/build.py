@@ -12,10 +12,15 @@ from .covar import CovariantScalarProductFunction
 
 #  ### Functions that build the scalar products ###
 
-__all__ = ["kubo_scalar_product", "covar_scalar_product", "hs_scalar_product"]
+__all__ = [
+    "fetch_covar_scalar_product",
+    "fetch_hs_scalar_product",
+    "fetch_kubo_integral_representation_scalar_product",
+    "fetch_kubo_scalar_product",
+]
 
 
-def kubo_scalar_product(sigma: Operator, threshold=0) -> Callable:
+def fetch_kubo_scalar_product(sigma: Operator, threshold=0) -> Callable:
     """
     Fetch a KMB scalar product callable. Spectral implementation.
 
@@ -49,7 +54,7 @@ def kubo_scalar_product(sigma: Operator, threshold=0) -> Callable:
     return ksp
 
 
-def kubo_integral_representation_scalar_product(sigma: Operator) -> Callable:
+def fetch_kubo_integral_representation_scalar_product(sigma: Operator) -> Callable:
     """
     Fetch a KMB scalar product callable. Integral implementation.
 
@@ -75,7 +80,7 @@ def kubo_integral_representation_scalar_product(sigma: Operator) -> Callable:
     return return_func
 
 
-def covar_scalar_product(sigma: DensityOperatorProtocol) -> Callable:
+def fetch_covar_scalar_product(sigma: DensityOperatorProtocol) -> Callable:
     r"""Fetch a covariance scalar product callable.
 
     Returns a scalar product function based on the covariance of a density
@@ -105,6 +110,6 @@ def covar_scalar_product(sigma: DensityOperatorProtocol) -> Callable:
     return CovariantScalarProductFunction(sigma)
 
 
-def hs_scalar_product() -> Callable:
+def fetch_hs_scalar_product() -> Callable:
     """Fetch a HS scalar product function."""
     return lambda op1, op2: (op1.dag() * op2).tr()
