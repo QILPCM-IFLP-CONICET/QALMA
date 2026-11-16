@@ -135,7 +135,7 @@ class ProductOperator(Operator):
             local operator. Computed once and cached.
 
         """
-        return {key: to_qobj(op.copy()) for key, op in self.site_factors.items()}
+        return {key: to_qobj(op) for key, op in self.site_factors.items()}
 
     @cached_property
     def _dense_tensor(self):

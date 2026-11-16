@@ -692,14 +692,27 @@ def fast_logm(matrix: np.ndarray) -> np.ndarray:
 
 
 def to_qobj(array: np.ndarray, atol: float = 1e-12) -> _Qobj:
-    """Build a _Qobj with CSR storage directly from a dense numpy array."""
-    shape = array.shape
+    """Build a _Qobj directly from a dense 2D array.
+
+    The entries with absolute value below ``atol`` are set to zero. Small
+    matrices, and matrices with zero entries, are stored as CSR; the others
+    as dense.
+
+    The array can have any numeric dtype and memory layout, and it is not
+    modified. The constructors ``fast_from_scipy`` and ``fast_from_numpy``
+    of QuTiP read the buffer as ``complex128`` without any check, so the
+    data is always converted to a C-contiguous ``complex128`` copy first.
+    """
+    data = np.array(array, dtype=np.complex128, order="C", copy=True)
+    if data.ndim != 2:
+        raise ValueError(f"expected a 2D array, not one of shape {data.shape}.")
+    shape = data.shape
     dims = [[d] for d in shape]
-    zero_pos = np.abs(array) < atol
+    zero_pos = np.abs(data) < atol
     if shape[0] < 64 or np.count_nonzero(zero_pos):
-        array[zero_pos] = 0
-        return _Qobj(_fast_from_scipy(_sp_csr_matrix(array)), dims=dims, copy=False)
-    return _Qobj(_fast_from_numpy(array), dims=dims, copy=False)
+        data[zero_pos] = 0
+        return _Qobj(_fast_from_scipy(_sp_csr_matrix(data)), dims=dims, copy=False)
+    return _Qobj(_fast_from_numpy(data), dims=dims, copy=False)
 
 
 def decompose_qutip_operator(
@@ -820,7 +833,8 @@ def reduce_to_proper_spaces(operator: _Qobj, observable: _Qobj) -> _Qobj:
         new_data = unitary @ new_data @ unitary_dag
 
     return _Qobj(
-        _fast_from_numpy(new_data),
+        # fast_from_numpy reads the buffer as complex128 without checks
+        _fast_from_numpy(np.ascontiguousarray(new_data, dtype=np.complex128)),
         dims=operator._dims,
         isherm=operator.isherm,
         isunitary=False,
