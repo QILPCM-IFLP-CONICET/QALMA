@@ -14,7 +14,7 @@ from .covar import CovariantScalarProductFunction
 
 __all__ = [
     "fetch_covar_scalar_product",
-    "fetch_hs_scalar_product"
+    "fetch_hs_scalar_product",
     "fetch_kubo_integral_representation_scalar_product",
     "fetch_kubo_scalar_product",
 ]

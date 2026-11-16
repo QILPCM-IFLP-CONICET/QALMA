@@ -20,7 +20,8 @@ REFERENCE_STATE_NAMES = (
 )
 
 SCALAR_PRODUCTS = {
-    key: fetch_covar_scalar_product(TEST_CASES_STATES[key]) for key in REFERENCE_STATE_NAMES
+    key: fetch_covar_scalar_product(TEST_CASES_STATES[key])
+    for key in REFERENCE_STATE_NAMES
 }
 SCALAR_PRODUCTS["HS scalar product"] = lambda x, y: np.real((x * y).tr())
 
