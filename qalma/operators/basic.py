@@ -472,7 +472,7 @@ class LocalOperator(Operator):
     @cached_property
     def operator_qutip(self) -> Qobj:
         """Return a Qutip representation of the local operator."""
-        return to_qobj(self.operator.copy())
+        return to_qobj(self.operator)
 
     def acts_over(self) -> frozenset:
         """Return the singleton set containing the site of this operator.

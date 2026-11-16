@@ -19,6 +19,7 @@ from qalma.qutip_tools.tools import (
     schmidt_dec_first_rest_qutip_operator_hermitian,
     schmidt_dec_rest_last_qutip_operator,
     schmidt_dec_rest_last_qutip_operator_hermitian,
+    to_qobj,
 )
 from qalma.settings import QALMA_TOLERANCE
 
@@ -588,3 +589,42 @@ def test_trivial_QutipOperator():
     check_equality(a.tr(), 4.0)
     check_equality((a * a).tr(), 8.0)
     check_equality((b * b).tr(), 0.5)
+
+
+_TO_QOBJ_RNG = np.random.default_rng(17)
+_REAL_70 = _TO_QOBJ_RNG.normal(size=(70, 70))
+
+
+@pytest.mark.parametrize(
+    "name, array",
+    [
+        ("complex", np.diag([1.0, 2.0, 3.0]).astype(complex)),
+        ("float64", np.diag([1.0, 2.0, 3.0])),
+        ("float32", np.diag([1.0, 2.0, 3.0]).astype(np.float32)),
+        ("int", np.array([[1, 2], [3, 4]])),
+        ("bool", np.eye(3, dtype=bool)),
+        ("fortran order", np.asfortranarray(np.arange(9.0).reshape(3, 3))),
+        ("transposed", (np.arange(9.0).reshape(3, 3) + 1j).T),
+        ("strided", (np.arange(16.0).reshape(4, 4) + 0j)[::2, ::2]),
+        # dense storage: large and without zero entries
+        ("dense, float64", _REAL_70),
+        ("dense, transposed", (_REAL_70 + 1j).T),
+    ],
+)
+def test_to_qobj_dtypes_and_layouts(name, array):
+    """The fast QuTiP constructors read complex128 buffers: any input must work."""
+    original = array.copy()
+    result = to_qobj(array)
+    assert result.dims == [[array.shape[0]], [array.shape[1]]]
+    assert np.allclose(result.full(), np.array(array, dtype=complex))
+    # The input is not modified.
+    assert np.array_equal(array, original)
+
+
+def test_to_qobj_drops_small_entries_without_modifying_the_input():
+    array = np.array([[1.0, 1e-15], [0.0, 1.0]])
+    result = to_qobj(array)
+    assert result.full()[0, 1] == 0
+    assert array[0, 1] == 1e-15
+    with pytest.raises(ValueError):
+        to_qobj(np.ones(3))
