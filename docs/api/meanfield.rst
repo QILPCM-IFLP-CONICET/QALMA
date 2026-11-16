@@ -50,7 +50,7 @@ The class :class:`~qalma.meanfield.rpa.RPAGibbsDensityOperator` is a Gibbs
 state whose partial traces (and therefore the expectation values computed
 from them) include the RPA correction by default, and which stores the data
 of the RPA that do not depend on the subsystem
-(:class:`~qalma.meanfield.rpa.RPAStructure`) to reuse them in successive
+(:class:`~qalma.meanfield.rpa.rpa_structure.RPAStructure`) to reuse them in successive
 reductions:
 
 .. code-block:: python
@@ -73,7 +73,18 @@ system gives the entropies and negativities of the bosonic RPA state
    :members:
    :undoc-members:
    :show-inheritance:
-   :no-index:
+
+.. autoclass:: qalma.meanfield.rpa.rpa_structure.RPAStructure
+   :members:
+   :exclude-members: generator, sigma_mf, static_gap, m_full, local_basis, positions, zero_rtol
+
+.. autofunction:: qalma.meanfield.rpa.environment.environment_modes
+
+.. autofunction:: qalma.meanfield.rpa.environment.rpa_zero_modes
+
+.. autofunction:: qalma.meanfield.rpa.functions.rpa_entanglement_entropy
+
+.. autofunction:: qalma.meanfield.rpa.functions.rpa_negativity
 
 If the mean-field state breaks a continuous symmetry, the bosonic problem has
 zero modes. They are detected and removed (their number is given by

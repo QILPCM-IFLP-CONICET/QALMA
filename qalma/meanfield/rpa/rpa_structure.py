@@ -101,7 +101,7 @@ class RPAStructure:
         Index of the first element of each site in ``m_full``.
     zero_rtol : float
         Relative tolerance to identify the zero modes of the bosonic RPA
-        problems (see :func:`_bogoliubov_reduced`).
+        problems (see ``_bogoliubov_reduced``).
     """
 
     generator: Operator

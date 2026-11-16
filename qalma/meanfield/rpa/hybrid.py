@@ -122,6 +122,7 @@ def rpa_hybrid_state(
     dim_a = k0.shape[0]
 
     def finish(rho: np.ndarray) -> Qobj:
+        """Hermitize and normalize ``rho`` and return it as a ``Qobj``."""
         rho = 0.5 * (rho + rho.conj().T)
         return Qobj(rho / np.real(np.trace(rho)), dims=k0_qobj.dims)
 
@@ -310,6 +311,7 @@ def effective_bath_modes(
         return omega, coupling
 
     def orthonormal_columns(vectors: np.ndarray) -> np.ndarray:
+        """Orthonormal basis of the column space of ``vectors``."""
         u_mat, sing, _ = np.linalg.svd(vectors, full_matrices=False)
         if sing.size == 0 or sing[0] <= 1e-300:
             return u_mat[:, :0]
