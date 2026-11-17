@@ -46,6 +46,28 @@ Operators
   site are added, and products that differ on a single site are merged,
   instead of converting the terms into dense blocks.
 
+Covariance scalar product
++++++++++++++++++++++++++
+
+* The covariance scalar product relative to a product state
+  (``fetch_covar_scalar_product``, and through it every Gram matrix,
+  projection and basis built from it) has a fast kernel. Pairs of terms with
+  disjoint supports are not visited: their contribution reduces to a product
+  of the total means. Pairs of product terms are evaluated site by site, and
+  dense terms on up to ``MAX_DENSE_SITES`` sites are reduced onto the overlap
+  with NumPy, with a cache bound to the reference state. For a uniform XXZ
+  chain with 30 sites, the Gram matrix of a depth-4 hierarchical basis and
+  its commutators is 15 times faster, and ``update_basis`` 4 times faster.
+  Operators with other kinds of terms use the general implementation.
+  Set ``qalma.scalarprod.covar.USE_FAST_KERNEL = False`` to disable it.
+* The fast kernel is exact up to round-off; the general implementation
+  discards small contributions, so results can change at the level of
+  ``QALMA_TOLERANCE``. In particular, nearly linearly dependent elements of
+  an operator basis are now detected more reliably.
+* Bug fix: the squared norm of operators with non-normal terms (such as
+  ``Splus @ Sz``) used ``<T^dagger T>`` instead of
+  ``<{T^dagger, T}>/2`` for the diagonal contributions.
+
 Mean-field and RPA
 ++++++++++++++++++
 

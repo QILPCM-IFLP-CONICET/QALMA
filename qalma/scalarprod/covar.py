@@ -12,9 +12,15 @@ from qalma.operators.functions import anticommutator
 from qalma.operators.states import ProductDensityOperator
 from qalma.settings import QALMA_TOLERANCE
 
+from ._cov_fast import DenseTermCache, fast_cov_prod_sp
+
 #  ### Functions that build the scalar products ###
 
 __all__ = ["ErrorCummulator", "CovariantScalarProductFunction"]
+
+#: Use the fast kernel of :mod:`qalma.scalarprod._cov_fast` for product
+#: states. Set to ``False`` to always use the general implementation.
+USE_FAST_KERNEL = True
 
 
 class ErrorCummulator:
@@ -63,6 +69,9 @@ class CovariantScalarProductFunction:
         if hasattr(state, "to_product_state"):
             state = state.to_product_state()
         self.sigma = state
+        self._fast_cache = (
+            DenseTermCache(state) if isinstance(state, ProductDensityOperator) else None
+        )
 
     def __call__(self, op1, op2):
         """Evaluate the scalar product."""
@@ -75,7 +84,10 @@ class CovariantScalarProductFunction:
 
         if isinstance(sigma, ProductDensityOperator):
             result = compute_cov_prod_sp(
-                self.sigma, op1.simplify().flat(), op2.simplify().flat()
+                self.sigma,
+                op1.simplify().flat(),
+                op2.simplify().flat(),
+                fast_cache=self._fast_cache,
             )
             return result
 
@@ -129,7 +141,9 @@ class CovariantScalarProductFunction:
             av_cache: Dict[Operator, complex] = {}
 
             def _sp(op1, op2):
-                return compute_cov_prod_sp(self.sigma, op1, op2, av_cache)
+                return compute_cov_prod_sp(
+                    self.sigma, op1, op2, av_cache, fast_cache=self._fast_cache
+                )
 
             for i in range(basis_1_size):
                 for j in range(basis_2_size):
@@ -193,7 +207,9 @@ class CovariantScalarProductFunction:
             av_cache: Dict[Operator, complex] = {}
 
             def _sp(op1, op2):
-                return compute_cov_prod_sp(self.sigma, op1, op2, av_cache)
+                return compute_cov_prod_sp(
+                    self.sigma, op1, op2, av_cache, fast_cache=self._fast_cache
+                )
 
             for i in range(basis_size):
                 for j in range(basis_size):
@@ -256,8 +272,21 @@ def compute_cov_prod_sp(
     op1: Operator,
     op2: Operator,
     av_cache: Optional[Dict[Operator, complex]] = None,
+    fast_cache: Optional[DenseTermCache] = None,
 ) -> complex:
-    """Compute the covariance scalar product associated to a product state."""
+    """Compute the covariance scalar product associated to a product state.
+
+    When :data:`USE_FAST_KERNEL` is set and all the terms of both operators
+    are supported, the product is computed by
+    :func:`~qalma.scalarprod._cov_fast.fast_cov_prod_sp`, visiting only pairs
+    of terms with overlapping supports; ``fast_cache`` keeps its data between
+    calls with the same ``rho``. Otherwise, the general implementation is used.
+    """
+    if USE_FAST_KERNEL:
+        hermitian = op1.isherm if op1 is op2 else (op1.isherm and op2.isherm)
+        value = fast_cov_prod_sp(rho, op1, op2, hermitian, fast_cache)
+        if value is not None:
+            return float(np.real(value)) if op1 is op2 else value
     if av_cache is None:
         av_cache = {}
     if op1 is op2:
