@@ -34,9 +34,8 @@ therefore rebuilds the basis only when the rate exceeds a multiple of this
 floor, and rebuilds the reference state when its local (per site) drift
 exceeds a tolerance. Both criteria are intensive: they do not grow with the
 system size for local perturbations.
-"""
 
-from __future__ import annotations
+"""
 
 import logging
 import os
