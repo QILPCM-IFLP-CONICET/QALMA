@@ -47,6 +47,7 @@ classifiers = [
 
 [project.urls]
 Homepage = "https://github.com/QILPCM-IFLP-CONICET/QALMA"
+Documentation = "https://qalma.readthedocs.io/"
 Changelog = "https://github.com/QILPCM-IFLP-CONICET/QALMA/blob/master/CHANGES.rst"
 Issues = "https://github.com/QILPCM-IFLP-CONICET/QALMA/issues"
 

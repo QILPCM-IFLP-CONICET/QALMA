@@ -21,6 +21,11 @@
       "identifier": "https://github.com/QILPCM-IFLP-CONICET/QALMA",
       "relation": "isSupplementTo",
       "scheme": "url"
+    },
+    {
+      "identifier": "https://qalma.readthedocs.io/",
+      "relation": "isDocumentedBy",
+      "scheme": "url"
     }
   ]
 }

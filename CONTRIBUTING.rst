@@ -46,6 +46,11 @@ Pull requests
 * Add an entry to ``CHANGES.rst`` for user-visible changes.
 * Documentation lives in ``docs/``; build it with
   ``pip install -e ".[docs]"`` and ``make -C docs html``.
+* Commit the notebooks in ``docs/examples/`` without outputs: the
+  documentation build executes them. Store the outputs only for a notebook
+  that is too slow to run in every build. The CI executes all of them
+  (``python -m pytest --nbmake docs/examples``), so keep each one running
+  in a few minutes, and do not write files from them.
 
 Releasing
 ---------

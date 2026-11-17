@@ -1192,8 +1192,7 @@ class SystemDescriptor:
                 term_op = process_edge(e_expr, (edge_type, src, dst), model, t_parm)
                 if isinstance(term_op, str):
                     raise ValueError(
-                        f"   Bond term <<{term_op}>> could not be evaluated.",
-                        operator_names,
+                        f"   Bond term <<{term_op}>> could not be evaluated for {operator_names}."
                     )
 
                 result_terms.append(term_op)
@@ -1229,9 +1228,10 @@ class SystemDescriptor:
                     }
                 )
 
-            term_op = eval_expr(loop_expr, loop_parms)
-            assert not isinstance(term_op, str), f"got {term_op}"
-            return term_op
+            # If some operator of the expression is not defined on the
+            # sites of the loop, ``eval_expr`` returns the expression as a
+            # string. The caller turns that into a ``ValueError``.
+            return eval_expr(loop_expr, loop_parms)
 
         expr = term_spec["expr"]
         term_type = term_spec.get("type", None)
@@ -1253,8 +1253,10 @@ class SystemDescriptor:
                 )
                 if isinstance(term_op, str):
                     raise ValueError(
-                        f"   Loop term <<{term_op}>> could not be evaluated.",
-                        operator_names,
+                        f"Loop term <<{expr}>> of type <<{loop_type}>> could "
+                        f"not be evaluated on the sites {tuple(vertices)}: "
+                        "some of the operators "
+                        f"{sorted(operator_names)} are not defined there."
                     )
 
                 result_terms.append(term_op)
