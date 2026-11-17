@@ -22,6 +22,10 @@ structure of lattice Hamiltonians.
    :target: https://github.com/QILPCM-IFLP-CONICET/QALMA/actions/workflows/check_documentation.yml
    :alt: Docs
 
+.. image:: https://readthedocs.org/projects/qalma/badge/?version=latest
+   :target: https://qalma.readthedocs.io/en/latest/
+   :alt: Documentation on Read the Docs
+
 
 Features
 --------
@@ -95,14 +99,16 @@ Quick example
         e_ops=[Sz.to_qutip()],
     )
 
-See the ``docs/examples/`` notebooks for more complete walkthroughs.
+See the `examples <https://qalma.readthedocs.io/en/latest/user/examples.html>`_
+in the documentation for more complete walkthroughs.
 
 
 Documentation
 -------------
 
-The documentation sources (user guide, API reference, examples) live in the
-``docs/`` directory. To build them locally::
+The documentation (user guide, API reference and examples) is at
+https://qalma.readthedocs.io. Its sources live in the ``docs/`` directory;
+to build them locally::
 
     pip install -e ".[docs]"
     cd docs
