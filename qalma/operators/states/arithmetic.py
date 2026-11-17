@@ -49,6 +49,54 @@ class MixtureDensityOperator(DensityOperatorMixin, SumOperator):
         """
         super().__init__(terms, system, True)
 
+    def __add__(self, rho: Operator):
+        terms: tuple[Operator] = self.terms
+        system = self.system
+
+        if isinstance(rho, MixtureDensityOperator):
+            terms = cast(Tuple[Operator], terms + rho.terms)
+        elif isinstance(rho, DensityOperatorMixin):
+            terms = cast(Tuple[Operator], terms + (rho,))
+        elif isinstance(rho, (int, float)) and rho >= 0:
+            terms = cast(
+                Tuple[Operator],
+                terms + (ProductDensityOperator({}, rho, system, False),),
+            )
+        else:
+            # return super().__add__(rho)
+            return (
+                SumOperator(
+                    tuple((-(-term) * term.prefactor for term in terms)), system
+                )
+                + rho
+            )
+        return MixtureDensityOperator(terms, system)
+
+    def __mul__(self, a):
+        if isinstance(a, float) and a >= 0:
+            return MixtureDensityOperator(
+                tuple(term * a for term in self.terms), self.system
+            )
+        if isinstance(a, MixtureDensityOperator):
+            return SumOperator(
+                tuple(
+                    (term * term_a) * (term.prefactor * term_a.prefactor)
+                    for term in self.terms
+                    for term_a in a.terms
+                )
+            )
+        if isinstance(a, SumOperator):
+            return SumOperator(
+                tuple(
+                    (term * term_a) * term.prefactor
+                    for term in self.terms
+                    for term_a in a.terms
+                )
+            )
+        return SumOperator(
+            tuple((-term * a) * (-term.prefactor) for term in self.terms)
+        )
+
     def __neg__(self):
         """Multiply the operator by -1."""
         logger.warning("Negate a DensityOperator leads to a regular operator.")
