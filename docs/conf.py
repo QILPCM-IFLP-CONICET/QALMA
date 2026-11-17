@@ -92,8 +92,14 @@ intersphinx_mapping = {
 
 # -- nbsphinx ----------------------------------------------------------------
 
-nbsphinx_execute = "never"  # set to "auto" once RTD has ALPS installed
+# "auto" executes the notebooks that are stored without outputs, and renders
+# the ones stored with outputs as they are. Keep the notebooks without
+# outputs unless they are too slow to run in every build; the CI
+# ("notebooks" job in check_documentation.yml) executes all of them anyway.
+nbsphinx_execute = "auto"
 nbsphinx_allow_errors = False
+# Seconds per cell; a cell that takes longer fails the build.
+nbsphinx_timeout = 600
 
 # -- MathJax -----------------------------------------------------------------
 

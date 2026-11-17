@@ -38,6 +38,33 @@ jobs:
         run: |
           pydocstyle qalma/ --convention=numpy || true
 
+  notebooks:
+    # Executes every notebook in docs/examples, including those stored with
+    # outputs (which the Sphinx build renders without running them), so a
+    # change that breaks an example fails here.
+    name: Notebooks de ejemplo
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Install QALMA + nbmake
+        run: |
+          pip install --upgrade pip
+          pip install -e ".[plot]" pytest nbmake
+
+      - name: Execute the notebooks
+        # Fails on the first error of each notebook, or if a notebook takes
+        # more than the timeout (seconds).
+        run: python -m pytest --nbmake --nbmake-timeout=900 docs/examples
+
   docs:
     name: Build de documentación
     runs-on: ubuntu-latest

@@ -54,13 +54,13 @@ def test_load_all_models_and_lattices():
                 model_name,
                 parms={"L": 2, "W": 2, "a": 1, "b": 1, "c": 1, "Nmax": 5},
             )
+            # A ValueError means that the model and the lattice are not
+            # compatible (e.g. the model does not define the site types of
+            # the lattice). Any other exception is a bug.
             try:
                 SystemDescriptor(g, model, {})
-            except Exception as exc:
-                # assert False, f"model {model_name} over
-                # graph {graph_name} could not be loaded due to {type(e)}:{e}"
-                alert(1, "   ", graph_name, "  [failed]", exc)
-                continue
+            except ValueError as exc:
+                alert(1, "   ", graph_name, "  [incompatible]", exc)
 
 
 # ---------------------------------------------------------------------------
