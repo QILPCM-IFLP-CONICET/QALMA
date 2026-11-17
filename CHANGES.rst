@@ -106,6 +106,39 @@ HDF5 files
   available, so neither an ALPS library nor a simulation file can run
   arbitrary code.
 
+Max-Ent evolution
++++++++++++++++++
+
+* New, experimental
+  :func:`~qalma.evolution.leakage_controlled_evolution`: restricted Max-Ent
+  evolution whose basis is rebuilt when the leakage rate
+  ``||pi_perp(-i[H, K~])||`` exceeds a multiple of its value right after the
+  last rebuild, and whose reference state is rebuilt when its local (per
+  site) mean-field drift exceeds a tolerance. Both criteria are intensive.
+  It reports a Galerkin error estimate that keeps the cancellations between
+  basis elements, and a second-order estimate of the entropy production of
+  the instantaneous Max-Ent projection.
+* New helpers :func:`~qalma.evolution.leakage_gram`,
+  :func:`~qalma.evolution.leakage_rate`,
+  :func:`~qalma.evolution.leakage_integrals` and
+  :func:`~qalma.evolution.local_mean_field_drift`.
+
+Bug fixes
++++++++++
+
+* ``remove_under_tolerance_terms`` (used by
+  :func:`~qalma.scalarprod.trim_terms_by_tolerance`) always removed the
+  smallest term, whatever its norm. Since the hierarchical bases of
+  :func:`~qalma.evolution.update_basis` trim every level, each element lost
+  a term, and the generator matrix of the restricted evolution differed from
+  the Galerkin one by 10-30 % whenever the n-body projection acted.
+* :func:`~qalma.evolution.update_basis` and ``update_basis_heavy`` appended
+  the mean-field reference generator to the basis even when it was already
+  in its span (always the case for one-body generators). The Gram matrix
+  became singular, and for deep bases the evolved coefficients were
+  corrupted. The reference is now appended only if it is linearly
+  independent.
+
 Behaviour changes
 +++++++++++++++++
 

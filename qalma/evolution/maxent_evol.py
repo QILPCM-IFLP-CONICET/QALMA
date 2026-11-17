@@ -173,7 +173,7 @@ def update_basis(
         n_body_projection=trim_and_project_function(sigma, n_body, tol=1e-9),
     )
     rest_elements = tuple(extra_observables)
-    if k is not k_ref_new:
+    if k is not k_ref_new and not _is_in_span(new_basis, k_ref_new):
         rest_elements = rest_elements + (k_ref_new,)
 
     if rest_elements:
@@ -184,6 +184,20 @@ def update_basis(
         sigma,
         k_ref_new,
     )
+
+
+def _is_in_span(basis: OperatorBasis, operator: Operator, rtol: float = 1e-6) -> bool:
+    """Check whether ``operator`` is numerically in the span of ``basis``.
+
+    Appending such an operator makes the Gram matrix singular, and the
+    coefficients of the evolution ill-defined.
+    """
+    norm_sq = np.real(basis.sp(operator, operator))
+    if norm_sq <= 0:
+        return True
+    coeffs = basis.coefficient_expansion(operator)
+    par_sq = np.real(coeffs @ basis.gram @ coeffs)
+    return norm_sq - par_sq <= rtol**2 * norm_sq
 
 
 def update_basis_heavy(
@@ -257,7 +271,7 @@ def update_basis_heavy(
     )
 
     rest_elements = tuple(extra_observables)
-    if k is not k_ref_new:
+    if k is not k_ref_new and not _is_in_span(new_basis, k_ref_new):
         rest_elements = rest_elements + (k_ref_new,)
     if rest_elements:
         new_basis = new_basis + rest_elements

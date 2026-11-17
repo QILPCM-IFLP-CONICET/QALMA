@@ -305,10 +305,10 @@ def remove_under_tolerance_terms(
     """
     n = len(terms_with_norms)
     error = 0.0
-    while error < tol and n > 1:
+    # Drop the smallest terms only while the accumulated norm stays below tol.
+    while n > 1 and error + terms_with_norms[n - 1][0] < tol:
         n = n - 1
-        last_norm = terms_with_norms[n][0]
-        error += last_norm
+        error += terms_with_norms[n][0]
 
     return terms_with_norms[:n]
 
