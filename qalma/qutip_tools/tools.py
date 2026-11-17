@@ -279,7 +279,7 @@ if qutip_version < parse_version("5.2.0"):
         Compute a fast tensor product using a CSR representation.
 
         If some of the factors are not in Dense representation, convert
-        everthing to CSR to speedup the computation.
+        everything to CSR to speedup the computation.
         """
         return _qutip_tensor(*factors)
 

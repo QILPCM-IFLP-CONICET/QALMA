@@ -90,7 +90,7 @@ def build_hermitian_basis(basis, sp=lambda x, y: ((x.dag() * y).tr())):
 
 
 def operator_components(op: Operator, orthogonal_basis: List[Operator], sp: Callable):
-    """Compute the projection componens of ``op`` relative to an orthogonal basis.
+    """Compute the projection components of ``op`` relative to an orthogonal basis.
 
     Get the components of the projection of an operator onto an orthogonal
     basis using a scalar product.

@@ -453,7 +453,7 @@ def adaptive_projected_evolution(
         "last_t": t_0,
         "away": 0,
         "error": 0,
-        "cummulated error": 0,
+        "cumulated error": 0,
         "k_ref": None,
     }
     oc_factors: List[float] = []
@@ -584,10 +584,10 @@ def adaptive_projected_evolution(
             logger.info("updating K_ref")
             local_evol_parms["k_ref"] = None
             call_update_basis(local_evol_parms)
-            local_evol_parms["cummulated error"] += last_error
+            local_evol_parms["cumulated error"] += last_error
             last_error = 0
             local_evol_parms["max_error_speed"] = (
-                tol - local_evol_parms["cummulated error"]
+                tol - local_evol_parms["cumulated error"]
             ) / (t_max - local_evol_parms["t_ref"])
             stats["basis update times"].append(t)
             stats["basis time costs"].append(local_evol_parms["basis time cost"])
@@ -609,10 +609,10 @@ def adaptive_projected_evolution(
             )
 
             if error <= local_evol_parms["max_error_speed"] * delta_t:
-                # Compute the cummulated error until the last successful basis change
-                local_evol_parms["cummulated error"] += last_error
+                # Compute the cumulated error until the last successful basis change
+                local_evol_parms["cumulated error"] += last_error
                 local_evol_parms["max_error_speed"] = (
-                    tol - local_evol_parms["cummulated error"]
+                    tol - local_evol_parms["cumulated error"]
                 ) / (t_max - local_evol_parms["t_ref"])
                 stats["basis update times"].append(t)
                 stats["basis time costs"].append(local_evol_parms["basis time cost"])
@@ -624,7 +624,7 @@ def adaptive_projected_evolution(
                 )
                 continue
 
-            if local_evol_parms["cummulated error"] > tol:
+            if local_evol_parms["cumulated error"] > tol:
                 saturated_tolerance = True
                 logger.warning(
                     f"tolerance goal cannot be reached within {n_body} sector."
@@ -643,7 +643,7 @@ def adaptive_projected_evolution(
         local_evol_parms["k_t"] = local_evol_parms["basis"].operator_from_coefficients(
             phi
         )
-        stats["errors"].append(error + local_evol_parms["cummulated error"])
+        stats["errors"].append(error + local_evol_parms["cumulated error"])
         local_evol_parms["error"] = error
         call_on_success_evol(t, local_evol_parms["k_t"])
         stats["n_body_sector"].append(local_evol_parms["curr_n_body"])

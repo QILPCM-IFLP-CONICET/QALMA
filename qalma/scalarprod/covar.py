@@ -357,7 +357,7 @@ def _term_sp_cov_prod_g(
     """
     Compute the covariance scalar product for single term hermitian operators.
 
-    Compute the cov scalar product assocated to rho for two hermitian
+    Compute the cov scalar product associated to rho for two hermitian
     single-term operators.
     """
     overlap = op1.acts_over().intersection(op2.acts_over())
@@ -380,7 +380,7 @@ def _term_sp_cov_prod_h(
     """
     Compute the square of covariance norm for single term operators.
 
-    Compute the cov scalar product assocated to rho for two hermitian
+    Compute the cov scalar product associated to rho for two hermitian
     single-term operators.
     """
     overlap = op1.acts_over().intersection(op2.acts_over())

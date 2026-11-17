@@ -129,7 +129,7 @@ class QuadraticFormOperator(Operator):
     offset: Optional[Operator]
 
     def __init__(self, basis, weights, system=None, linear_term=None, offset=None):
-        r"""Initializae a QuadraticFormOperator.
+        r"""Initialize a QuadraticFormOperator.
 
         Parameters
         ----------
