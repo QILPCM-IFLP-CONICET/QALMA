@@ -177,7 +177,7 @@ def update_basis_callback(state):
     print("    curr_n_body=", state["curr_n_body"])
     print("    len basis=", len(state["basis"].operator_basis))
     print("    away from mean field", state["away"])
-    print("    cummulated error", state["cummulated error"])
+    print("    cumulated error", state["cumulated error"])
     print("    basis.errors", state["basis"].errors)
 
 
@@ -212,7 +212,7 @@ def run_exact(axis):
             )
             for t in TIME_SPAN
         ],
-        label="3nd order Ehrenfest",
+        label="3rd order Ehrenfest",
         ls="-.",
     )
     print("   done")
@@ -478,7 +478,7 @@ def set_parameters():
         "-D",
         type=int,
         default=2,
-        help="deep of the Hiearchical basis/order the perturbative series.",
+        help="deep of the Hierarchical basis/order the perturbative series.",
     )
     argparser.add_argument("--tol", type=float, default=0.001, help="tolerance")
     argparser.add_argument(

@@ -8,7 +8,7 @@ libraries by means of ``build_system``.
 
 An alternative is just to build the system through
 ``build_system_from_dims`` which takes as argument a  dictionary,
-specifiying the names of the system sites as keys, and their
+specifying the names of the system sites as keys, and their
 corresponding dimensions as values.
 
 ``build_spin_chain`` is a short-cut to build a spin chain lattice.

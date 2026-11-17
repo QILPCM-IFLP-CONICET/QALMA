@@ -2,7 +2,7 @@
 RPA Hybrid approach.
 
 Tools to build an approximation of the local state on a subsystem A, by
-replacing the environment by some efective bosonic gaussian modes and classical
+replacing the environment by some effective bosonic gaussian modes and classical
 couplings, when the occupation of the bosonic modes exceed a threshold.
 
 """
