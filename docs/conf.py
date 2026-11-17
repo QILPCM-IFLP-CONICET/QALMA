@@ -7,7 +7,7 @@ sys.path.insert(0, os.path.abspath(".."))
 # -- Project information -----------------------------------------------------
 
 project = "QALMA"
-copyright = "2025, QILPCM-IFLP-CONICET"
+copyright = "2025–2026, QILPCM-IFLP-CONICET"
 author = "QILPCM-IFLP-CONICET"
 # The version is read from the package (qalma/version.py).
 from qalma.version import __version__ as release  # noqa: E402
@@ -114,9 +114,6 @@ mathjax3_config = {
     }
 }
 
-
-# SyntaxWarning from LaTeX strings in notebook cell outputs (Python 3.12+)
-import warnings
 
 # Register ipython3 as an alias for ipython so nbsphinx notebooks render correctly
 from pygments.lexers import get_lexer_by_name  # noqa: E402
