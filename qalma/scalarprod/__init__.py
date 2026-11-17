@@ -1,21 +1,21 @@
 """
+Scalar Product on operator spaces routines.
 
-Routines to compute scalar products of operators and related functions,
-like orthogonalize sets of operators.
-
+Routines to compute scalar products of operators and related functions, like
+orthogonalize sets of operators.
 """
 
 from qalma.scalarprod.basis import HierarchicalOperatorBasis, OperatorBasis
 from qalma.scalarprod.build import (
     fetch_covar_scalar_product,
-    fetch_HS_scalar_product,
-    fetch_kubo_int_scalar_product,
+    fetch_hs_scalar_product,
+    fetch_kubo_integral_representation_scalar_product,
     fetch_kubo_scalar_product,
 )
 from qalma.scalarprod.covar import trim_terms_by_tolerance
 from qalma.scalarprod.gram import gram_matrix
 from qalma.scalarprod.orthogonalize import (
-    build_hermitician_basis,
+    build_hermitian_basis,
     operator_components,
     orthogonalize_basis,
     orthogonalize_basis_cholesky,
@@ -26,10 +26,10 @@ from qalma.scalarprod.orthogonalize import (
 __all__ = [
     "OperatorBasis",
     "HierarchicalOperatorBasis",
-    "build_hermitician_basis",
-    "fetch_HS_scalar_product",
+    "build_hermitian_basis",
+    "fetch_hs_scalar_product",
     "fetch_covar_scalar_product",
-    "fetch_kubo_int_scalar_product",
+    "fetch_kubo_integral_representation_scalar_product",
     "fetch_kubo_scalar_product",
     "gram_matrix",
     "operator_components",

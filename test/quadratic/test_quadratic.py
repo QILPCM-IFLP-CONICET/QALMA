@@ -1,6 +1,4 @@
-"""
-Basic unit test.
-"""
+"""Basic unit test."""
 
 from test.helper import (
     OPERATOR_TYPE_CASES,
@@ -23,8 +21,8 @@ CHAIN_SIZE = 6
 
 
 nonquadratic_test_cases = [
-    "three body, hermitician",
-    "three body, non hermitician",
+    "three body, hermitian",
+    "three body, non hermitian",
     "qutip operator",
 ]
 
@@ -38,10 +36,8 @@ QUADRATIC_OPERATORS = {
 
 @pytest.mark.parametrize(["name"], list((name,) for name in QUADRATIC_OPERATORS))
 def test_simplify_quadratic_form(name):
-    """
-    Try to convert all the test cases into
-    quadratic forms, and check if simplification
-    works in all the cases.
+    """Try to convert all the test cases into quadratic forms, and check if
+    simplification works in all the cases.
     """
     operator = QUADRATIC_OPERATORS[name]
     print("\n *******\n\n name: ", name)
@@ -53,16 +49,15 @@ def test_simplify_quadratic_form(name):
     check_operator_equality(qutip_operator, simplified.to_qutip())
     assert (
         operator.isherm == simplified.isherm
-    ), "quadratic form changed its hermitician character after simplification."
+    ), "quadratic form changed its hermitian character after simplification."
     assert (
         qutip_operator.isherm == operator.isherm
-    ), "qutip operator and the quadratic form have different hermitician character."
+    ), "qutip operator and the quadratic form have different hermitian character."
 
 
 @pytest.mark.parametrize(["name"], list((name,) for name in QUADRATIC_OPERATORS))
 def test_flat_quadratic(name):
-    """Test flat"""
-
+    """Test flat."""
     operator = QUADRATIC_OPERATORS[name]
     print("\n *******\n\n name: ", name)
     qutip_operator = operator.to_qutip().tidyup()
@@ -76,7 +71,7 @@ def test_flat_quadratic(name):
     check_operator_equality(qutip_operator, flat_operator.to_qutip())
     assert (
         operator.isherm == flat_operator.isherm
-    ), "quadratic form changed its hermitician character after simplification."
+    ), "quadratic form changed its hermitian character after simplification."
     assert (
         qutip_operator.isherm == operator.isherm
-    ), "qutip operator and the quadratic form have different hermitician character."
+    ), "qutip operator and the quadratic form have different hermitian character."

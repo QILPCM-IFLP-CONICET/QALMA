@@ -1,6 +1,4 @@
-"""
-Module that implements a meanfield approximation of a Gibbsian state
-"""
+"""Module that implements a meanfield approximation of a Gibbsian state."""
 
 from typing import Callable, Optional
 
@@ -10,25 +8,24 @@ from qalma.meanfield.self_consistent_projections import (
 from qalma.operators import Operator
 from qalma.operators.states import DensityOperatorProtocol, ProductDensityOperator
 from qalma.operators.states.gibbs import GibbsProductDensityOperator
-from qalma.projections import project_operator_to_m_body
+from qalma.projections import project_operator_to_n_body
+
+__all__ = ["project_meanfield"]
 
 
 def project_meanfield(
     k_op,
     sigma0: Optional[ProductDensityOperator | GibbsProductDensityOperator] = None,
     max_it: int = 100,
-    proj_func: Callable = project_operator_to_m_body,
+    proj_func: Callable = project_operator_to_n_body,
 ) -> Operator:
-    """
-    Look for a one-body operator kmf s.t
-    Tr (k_op-kmf)exp(-kmf)=0
+    """Look for a one-body operator kmf s.t Tr (k_op-kmf)exp(-kmf)=0.
 
-    following a self-consistent, iterative process
-    assuming that exp(-kmf)~sigma0
+    following a self-consistent, iterative process assuming that
+    exp(-kmf)~sigma0
 
-    If sigma0 is not provided, sigma0 is taken as the
-    maximally mixed state.
-
+    If sigma0 is not provided, sigma0 is taken as the maximally mixed
+    state.
     """
     sigma: DensityOperatorProtocol = self_consistent_project_meanfield(
         k_op, sigma0, max_it, proj_func=proj_func

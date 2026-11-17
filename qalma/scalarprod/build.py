@@ -1,6 +1,4 @@
-"""
-Functions to fetch specific scalar product functions.
-"""
+"""Functions to fetch specific scalar product functions."""
 
 # from datetime import datetime
 from typing import Callable
@@ -14,11 +12,20 @@ from .covar import CovariantScalarProductFunction
 
 #  ### Functions that build the scalar products ###
 
+__all__ = [
+    "fetch_covar_scalar_product",
+    "fetch_hs_scalar_product",
+    "fetch_kubo_integral_representation_scalar_product",
+    "fetch_kubo_scalar_product",
+]
+
 
 def fetch_kubo_scalar_product(sigma: Operator, threshold=0) -> Callable:
     """
-    Build a KMB scalar product function
-    associated to the state `sigma`
+    Fetch a KMB scalar product callable. Spectral implementation.
+
+    Build a KMB scalar product function associated to the state
+    ``sigma``.
     """
     evals_evecs = sorted(zip(*sigma.eigenstates()), key=lambda x: -x[0])
     w = 1
@@ -47,13 +54,13 @@ def fetch_kubo_scalar_product(sigma: Operator, threshold=0) -> Callable:
     return ksp
 
 
-def fetch_kubo_int_scalar_product(sigma: Operator) -> Callable:
+def fetch_kubo_integral_representation_scalar_product(sigma: Operator) -> Callable:
     """
-    Build a KMB scalar product function
-    associated to the state `sigma`, from
-    its integral form.
-    """
+    Fetch a KMB scalar product callable. Integral implementation.
 
+    Build a KMB scalar product function associated to the state ``sigma``,
+    from its integral form.
+    """
     evals, evecs = sigma.eigenstates()
 
     def return_func(op1, op2):
@@ -74,28 +81,35 @@ def fetch_kubo_int_scalar_product(sigma: Operator) -> Callable:
 
 
 def fetch_covar_scalar_product(sigma: DensityOperatorProtocol) -> Callable:
-    """
+    r"""Fetch a covariance scalar product callable.
+
     Returns a scalar product function based on the covariance of a density
     operator.
 
-    The scalar product for two operators op1 and op2 is defined as:
-        0.5 * Tr(sigma * {op1†, op2}),
-    where sigma is a density operator, {op1†, op2} is the anticommutator of
-    the Hermitian conjugate of op1 and op2, and Tr denotes the trace.
+    The scalar product for two operators ``op1`` and ``op2`` is defined as:
 
-    Parameters:
-        sigma: The density operator (quantum state) used to define the scalar
-        product.
+    .. math::
 
-    Returns:
-        A function that takes two operators (op1, op2) and computes their
-        covariance-based scalar product.
+        \frac{1}{2} \mathrm{Tr}\!\left(\sigma\,\{op_1^\dagger, op_2\}\right),
+
+    where :math:`\sigma` is a density operator, :math:`\{A, B\}` is the
+    anticommutator, and :math:`\mathrm{Tr}` the trace.
+
+    Parameters
+    ----------
+    sigma : DensityOperatorProtocol
+        The density operator (quantum state) used to define the scalar product.
+
+    Returns
+    -------
+    Callable
+        A function ``f(op1, op2) -> complex`` that computes the
+        covariance-based scalar product of two operators.
+
     """
     return CovariantScalarProductFunction(sigma)
 
 
-def fetch_HS_scalar_product() -> Callable:
-    """
-    Build a HS scalar product function
-    """
+def fetch_hs_scalar_product() -> Callable:
+    """Fetch a HS scalar product function."""
     return lambda op1, op2: (op1.dag() * op2).tr()

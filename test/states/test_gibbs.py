@@ -1,6 +1,4 @@
-"""
-Basic unit test for states.
-"""
+"""Basic unit test for states."""
 
 from test.helper import (
     EXPECTATION_VALUE_TOLERANCE,
@@ -45,14 +43,14 @@ SZ_01 = LARGE_SYSTEM.site_operator("Sz", "1[0, 1]")
 
 
 def do_test_expect(rho, sigma_dict):
-    """Compare expectation values"""
-
+    """Compare expectation values."""
     for obs_name, obs_op in OPERATOR_TYPE_CASES.items():
         rho_obs_expect = rho.expect(obs_op)
         for name, sigma in sigma_dict.items():
             if sigma is None:
                 continue
 
+            print("    sigma=", name)
             if hasattr(sigma, "data"):
                 rho_obs_result = (obs_op.to_qutip() * sigma).tr()
             else:
@@ -69,15 +67,16 @@ def do_test_expect(rho, sigma_dict):
 
 
 def do_test_instance(rho) -> None:
-    """
-
-    Parameters
+    """Parameters
     ----------
     rho : GibbsDensityOperator |GibbsProductDensityOperator
         the state over which implement the tests.
 
     """
     rho_times_two = 2 * rho
+    assert hasattr(
+        rho_times_two, "expect"
+    ), f"2*{type(rho)} produced {type(rho_times_two)}."
     rho_qutip = rho.to_qutip()
     assert abs(rho.tr() - 1) < QALMA_TOLERANCE
     assert abs(rho_qutip.tr() - 1) < QALMA_TOLERANCE
@@ -109,7 +108,7 @@ def do_test_instance(rho) -> None:
 
 @pytest.mark.parametrize(("key", "k_gen"), list(GIBBS_GENERATOR_TESTS.items()))
 def test_gibbs(key, k_gen):
-    """Test GibbsDensityOperator"""
+    """Test GibbsDensityOperator."""
     if k_gen is None:
         return
 
@@ -121,7 +120,7 @@ def test_gibbs(key, k_gen):
 
 @pytest.mark.parametrize(("key", "k_gen"), list(PRODUCT_GIBBS_GENERATOR_TESTS.items()))
 def test_product_gibbs(key, k_gen):
-    """Test GibbsProductDensityOperator"""
+    """Test GibbsProductDensityOperator."""
     if k_gen is None:
         return
 
@@ -133,7 +132,7 @@ def test_product_gibbs(key, k_gen):
 
 @pytest.mark.parametrize(("key", "k_gen"), list(PRODUCT_GIBBS_GENERATOR_TESTS.items()))
 def test_product_gibbs_with_offset(key, k_gen):
-    """Test GibbsProductDensityOperator"""
+    """Test GibbsProductDensityOperator."""
     if k_gen is None:
         return
 
@@ -145,16 +144,16 @@ def test_product_gibbs_with_offset(key, k_gen):
 
 @pytest.mark.parametrize(("key", "k_gen"), list(PRODUCT_GIBBS_GENERATOR_TESTS.items()))
 def test_product_gibbs_with_dict(key, k_gen):
-    """Test GibbsProductDensityOperator"""
+    """Test GibbsProductDensityOperator."""
     if k_gen is None:
         return
 
     local_gen_dic = {}
     if isinstance(k_gen, LocalOperator):
-        local_gen_dic[k_gen.site] = k_gen.operator
+        local_gen_dic[k_gen.site] = k_gen.operator_qutip
     elif isinstance(k_gen, ProductOperator):
-        if len(k_gen.sites_op) != 0:
-            site, op = k_gen.sites_op.items()
+        if len(k_gen.site_factors) != 0:
+            site, op = k_gen.site_factors_qutip.items()
             local_gen_dic[site] = op
     elif isinstance(k_gen, QutipOperator):
         (site,) = k_gen.site_names
@@ -163,7 +162,7 @@ def test_product_gibbs_with_dict(key, k_gen):
     elif isinstance(k_gen, SumOperator):
         for term in k_gen.flat().terms:
             if isinstance(term, LocalOperator):
-                local_gen_dic[term.site] = term.operator
+                local_gen_dic[term.site] = term.operator_qutip
             elif isinstance(term, ProductOperator):
                 site, op = term.sites_op.items()
                 local_gen_dic[site] = op

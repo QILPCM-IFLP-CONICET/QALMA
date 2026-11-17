@@ -1,20 +1,38 @@
-"""
-Function to read xml alps libraries to produce model descriptors.
+"""ALPS models.
+
+Function to read XML ALPS libraries to produce model descriptors.
+
+The class ``ModelDescriptor`` contains the information to build a system
+when is combined with the information of a ``GraphDescriptor``.
+
+The module also provides some helper functions.
 """
 
 import logging
 import xml.etree.ElementTree as ET
-from typing import Optional
+from typing import Iterable, Optional
 
 import qutip  # type: ignore[import-untyped]
 
 from qalma.settings import MODEL_LIB_FILE
 from qalma.utils import eval_expr, find_ref
 
+logger = logging.getLogger(__name__)
+
 
 def list_models_in_alps_xml(filename=MODEL_LIB_FILE):
-    """
-    List the models available in the library
+    """Return the names of models available in an ALPS XML library.
+
+    Parameters
+    ----------
+    filename : str, optional
+        Path to the XML ALPS library file.
+
+    Returns
+    -------
+    tuple
+        Names of all models (``HAMILTONIAN`` and ``BASIS``) defined
+        in the library (a tuple of strings).
     """
     result = set()
     xmltree = ET.parse(filename)
@@ -36,12 +54,33 @@ def list_models_in_alps_xml(filename=MODEL_LIB_FILE):
 def build_local_basis_from_qn_descriptors(
     qns: dict, parms: Optional[dict] = None
 ) -> dict:
-    """
-    From a quantum number descriptor and a set of parameters,
-    build a dictionary with keys `qns` and `basis`.
-    `basis` is a list of tuples containing the values of the quantum numbers.
-    `qns` is a dict that maps the name of the quantum numbers to the position
-    in the tuples in `basis`.
+    """Construct a local basis from quantum number descriptors.
+
+    Given a set of quantum number definitions and parameters, build a
+    basis of local states consistent with the specified ranges.
+
+    Parameters
+    ----------
+    qns : dict
+        Quantum number descriptors. Each entry must define ``"min"`` and
+        ``"max"`` values (possibly as expressions).
+    parms : dict, optional
+        Parameters used to evaluate expressions in the descriptors.
+
+    Returns
+    -------
+    dict
+        Dictionary with keys:
+
+        - ``"qns"`` : dict
+            Mapping from quantum number names to positions in basis tuples.
+        - ``"basis"`` : list[tuple]
+            List of basis states represented as tuples of quantum numbers.
+
+    Warns
+    -----
+    UserWarning
+        If the resulting basis is empty.
     """
     local_basis: list = [{}]
     parms = parms.copy() if parms is not None else {}
@@ -77,7 +116,7 @@ def build_local_basis_from_qn_descriptors(
         local_basis = new_basis
 
     if len(local_basis) == 1 and len(local_basis[0]) == 0:
-        logging.warning("empty basis!")
+        logger.warning("empty basis!")
         return {"qns": {}, "basis": []}
     qn_indx = {qn: i for i, qn in enumerate(local_basis[0].keys())}
     basis_vectors = [tuple(state[qn] for qn in qn_indx) for state in local_basis]
@@ -85,17 +124,52 @@ def build_local_basis_from_qn_descriptors(
 
 
 def model_from_alps_xml(filename=MODEL_LIB_FILE, name="spin", parms=None):
-    """
-    Load from `filename` xml library a model of name
-    `name`, using `parms` as parameters.
-    """
+    """Load a model descriptor from an ALPS XML library.
 
+    Parameters
+    ----------
+    filename : str, optional
+        Path to the XML ALPS model library.
+    name : str, optional
+        Name of the model to load.
+    parms : dict, optional
+        Parameters used to instantiate the model.
+
+    Returns
+    -------
+    ModelDescriptor
+        Descriptor of the requested model.
+
+    Notes
+    -----
+    If no matching ``HAMILTONIAN`` is found, the function attempts to
+    load a ``BASIS`` with the given name instead.
+    """
     xmltree = ET.parse(filename)
     models = xmltree.getroot()
     if parms is None:
         parms = {}
 
     def process_basis(node, parms):
+        """Parse a ``<BASIS>`` node and return a :class:`ModelDescriptor`.
+
+        Processes parameters, constraints, site bases, and pre-populates
+        empty bond and global operator descriptors.
+
+        Parameters
+        ----------
+        node : xml.etree.ElementTree.Element
+            The ``<BASIS>`` XML node to parse.
+        parms : dict
+            Parameters inherited from the parent context.
+
+        Returns
+        -------
+        ModelDescriptor
+            A descriptor with site bases, constraints, and empty operator
+            tables.
+
+        """
         parms = process_parms(node, parms)
         constraints = {}
         sitebasis = {}
@@ -122,9 +196,7 @@ def model_from_alps_xml(filename=MODEL_LIB_FILE, name="spin", parms=None):
         )
 
     def process_site_operators(operators: dict, parms: dict):
-        """
-        Enlarge the  operators` dict with the `SITEOPERATOR` nodes.
-        """
+        """Enlarge the  operators` dict with the `SITEOPERATOR` nodes."""
         while True:
             found = False
             for node in models.findall("./SITEOPERATOR"):
@@ -150,6 +222,28 @@ def model_from_alps_xml(filename=MODEL_LIB_FILE, name="spin", parms=None):
         return operators
 
     def process_bond_operators(operators: dict, _parms: dict):
+        """Populate ``operators`` with bondoperators.
+
+        Populate ``operators`` with all ``<BONDOPERATOR>`` nodes in the
+        model.
+
+        Each bond operator is stored as a string expression with source and
+        target placeholders (``@src``, ``@dst``, etc.) ready for later
+        evaluation against concrete site operators.
+
+        Parameters
+        ----------
+        operators : dict
+            Dictionary to populate in-place with bond operator expressions.
+        _parms : dict
+            Parameters (currently unused, reserved for future use).
+
+        Returns
+        -------
+        dict
+            The updated ``operators`` dictionary.
+
+        """
         for node in models.findall("./BONDOPERATOR"):
             descriptor = node.attrib
             name = descriptor["name"]
@@ -165,6 +259,25 @@ def model_from_alps_xml(filename=MODEL_LIB_FILE, name="spin", parms=None):
         return operators
 
     def process_global_operators(operators: dict, parms: dict):
+        """Populate ``operators`` with all ``<GLOBALOPERATOR>`` nodes.
+
+        Each global operator is stored as a dict with keys
+        ``"site terms"``, ``"bond terms"``, and ``"loop terms"``,
+        each containing a list of processed term descriptors.
+
+        Parameters
+        ----------
+        operators : dict
+            Dictionary to populate in-place.
+        parms : dict
+            Parameters used when processing individual terms.
+
+        Returns
+        -------
+        dict
+            The updated ``operators`` dictionary.
+
+        """
         for node in models.findall("./GLOBALOPERATOR"):
             descriptor = node.attrib
             name = descriptor["name"]
@@ -188,6 +301,27 @@ def model_from_alps_xml(filename=MODEL_LIB_FILE, name="spin", parms=None):
         return operators
 
     def process_site_term(node, parms):
+        """Parse a ``<SITETERM>`` node into a term descriptor.
+
+        Parameters
+        ----------
+        node : xml.etree.ElementTree.Element
+            XML node representing the site term.
+        parms : dict
+            Parameters inherited from the parent context.
+
+        Returns
+        -------
+        dict
+        Dictionary with keys:
+
+            - ``"expr"`` : str
+                Operator expression with site placeholder replaced.
+            - ``"type"`` : str
+                Site type identifier.
+            - ``"parms"`` : dict
+                Parameters local to this term.
+        """
         parms_overwrite = process_parms(node, parms)
         parms = {
             key: val
@@ -205,6 +339,24 @@ def model_from_alps_xml(filename=MODEL_LIB_FILE, name="spin", parms=None):
         return {"expr": expr, "type": node_type, "parms": parms}
 
     def process_bondterm(node, parms):
+        """Parse a ``<BONDTERM>`` node into a term descriptor dict.
+
+        Source and target site placeholders are replaced by ``@src`` and
+        ``@dst`` tokens for later evaluation.
+
+        Parameters
+        ----------
+        node : xml.etree.ElementTree.Element
+            The ``<BONDTERM>`` XML node.
+        parms : dict
+            Parameters inherited from the parent context.
+
+        Returns
+        -------
+        dict
+            Term descriptor with keys ``"expr"``, ``"type"``, ``"parms"``.
+
+        """
         parms_overwrite = process_parms(node, parms)
         parms = {
             key: val
@@ -226,6 +378,24 @@ def model_from_alps_xml(filename=MODEL_LIB_FILE, name="spin", parms=None):
         return {"expr": expr, "type": bond_type, "parms": parms}
 
     def process_loopterm(node, parms):
+        """Parse a ``<LOOPTERM>`` node into a term descriptor dict.
+
+        Vertex name placeholders are replaced by ``@[vertex_name]`` tokens.
+
+        Parameters
+        ----------
+        node : xml.etree.ElementTree.Element
+            The ``<LOOPTERM>`` XML node.
+        parms : dict
+            Parameters inherited from the parent context.
+
+        Returns
+        -------
+        dict
+            Term descriptor with keys ``"expr"``, ``"type"``,
+            ``"indices"``, and ``"parms"``.
+
+        """
         parms_overwrite = process_parms(node, parms)
         parms = {
             key: val
@@ -245,6 +415,28 @@ def model_from_alps_xml(filename=MODEL_LIB_FILE, name="spin", parms=None):
         return result
 
     def process_sitebasis(node, parms) -> dict:
+        """Parse a ``<SITEBASIS>`` node into a local basis descriptor.
+
+        Builds the local Hilbert space from the quantum number definitions,
+        constructs the matrix representation of every site operator using
+        the quantum number selection rules, and loads any additional
+        ``<SITEOPERATOR>`` entries compatible with this basis.
+
+        Parameters
+        ----------
+        node : xml.etree.ElementTree.Element
+            The ``<SITEBASIS>`` XML node.
+        parms : dict
+            Parameters inherited from the parent context.
+
+        Returns
+        -------
+        dict
+            A site basis descriptor with keys ``"name"``, ``"qn"``,
+            ``"dimension"``, ``"identity"``, ``"operators"``,
+            ``"parms"``, and ``"localstates"``.
+
+        """
         basis_name = node.attrib.get("name", "")
         parms = process_parms(node, parms)
         quantumnumbers = {}
@@ -312,7 +504,7 @@ def model_from_alps_xml(filename=MODEL_LIB_FILE, name="spin", parms=None):
                     terms.append((dst, src, coeff, fermionic))
 
             if any(t[-1] for t in terms) and not all(t[-1] for t in terms):
-                logging.warning("Wrong fermionic parity %s: %s.", name, terms)
+                logger.warning("Wrong fermionic parity %s: %s.", name, terms)
                 continue
             operators[name] = sum(
                 coeff * qutip.projection(dim, src, dst)
@@ -331,9 +523,31 @@ def model_from_alps_xml(filename=MODEL_LIB_FILE, name="spin", parms=None):
             "operators": operators,
             "parms": parms,
             "localstates": local_basis,
+            # position of each quantum number in the tuples of ``localstates``
+            "qn_index": qn_pos,
         }
 
     def process_hamiltonian(ham, parms):
+        """Parse a ``<HAMILTONIAN>`` node and return a :class:`ModelDescriptor`.
+
+        Processes the associated ``<BASIS>``, then collects all site, bond,
+        and loop terms and stores them under the ``"Hamiltonian"`` key of
+        the descriptor's global operators.
+
+        Parameters
+        ----------
+        ham : xml.etree.ElementTree.Element
+            The ``<HAMILTONIAN>`` XML node.
+        parms : dict
+            Parameters inherited from the caller.
+
+        Returns
+        -------
+        ModelDescriptor
+            A fully populated descriptor including the Hamiltonian term
+            lists and updated parameters.
+
+        """
         parms = process_parms(ham, parms)
         site_terms = []
         bond_terms = []
@@ -364,7 +578,7 @@ def model_from_alps_xml(filename=MODEL_LIB_FILE, name="spin", parms=None):
         return basis
 
     def process_parms(node, parms):
-        """Process the <PARAMETER>s nodes"""
+        """Process the <PARAMETER>s nodes."""
         default_parms = {}
         for parameter in node.findall("./PARAMETER"):
             key_vals = parameter.attrib
@@ -387,9 +601,11 @@ def model_from_alps_xml(filename=MODEL_LIB_FILE, name="spin", parms=None):
 
 
 class ModelDescriptor:
-    """
-    Describes a model, including the description of the
-    local systems, and rules to build site and global operators.
+    """Represent a quantum model independent of geometry.
+
+    A ``ModelDescriptor`` contains all information required to define a
+    quantum system, excluding the underlying graph structure. It can be
+    combined with a ``GraphDescriptor`` to build a full simulation model.
     """
 
     def __init__(
@@ -401,6 +617,29 @@ class ModelDescriptor:
         parms: Optional[dict] = None,
         name: Optional[str] = "",
     ):
+        """Initialize a model descriptor.
+
+        Parameters
+        ----------
+        site_basis : dict
+            Mapping from site-type names to local basis descriptors.
+            The dict is of the kind produced by ``process_sitebasis``.
+            Each value contains the keys ``"dimension"``, ``"identity"``,
+            ``"operators"``, etc.
+        constraints : dict, optional
+            Global quantum number constraints (e.g., ``{"Sz": "0"}``).
+            The default value is an empty dict.
+        bond_op_descr : dict, optional
+            Bond operator descriptors.
+        global_op_descr : dict, optional
+            Global operator descriptors (site terms, bond terms, loop terms).
+            indexed by operator name. Default is an empty dict.
+        parms : dict, optional
+            Model parameters (e.g. ``{"Jz": 1.0, "S": 0.5}``). The default
+            is an empty dict.
+        name : str, optional
+            Human readable name of the model.
+        """
         self.site_basis = site_basis
         self.constraints = constraints or {}
         self.bond_ops = bond_op_descr or {}
@@ -409,9 +648,11 @@ class ModelDescriptor:
         self.name = name
 
     def __repr__(self):
+        """Return a repr() string."""
         return repr(self.__dict__)
 
     def __eq__(self, other):
+        """Check equality."""
         # To be the same, two ``ModelDescriptor``
         # objects should share their `name`, `parms`,
         # `site_basis`, `bond_ops` and `global_ops`
@@ -433,20 +674,30 @@ class ModelDescriptor:
         return True
 
 
-def qutip_model_from_dims(dims, model_name="qutip"):
+def qutip_model_from_dims(dims: Iterable, model_name="qutip") -> ModelDescriptor:
+    """Create a simple model descriptor from local Hilbert space dimensions.
+
+    Parameters
+    ----------
+    dims : list or iterable
+        Dimensions (int) of the local Hilbert spaces.
+    model_name : str, optional
+        Name assigned to the resulting model.
+
+    Returns
+    -------
+    ModelDescriptor
+        Descriptor containing independent local bases with standard
+        operators (identity, number, raising, lowering, etc.).
     """
-    Produce a basic model descriptor from the dimensions
-    """
-    site_basis_cache = {}
     site_basis = {}
-    for i, d in enumerate(dims):
-        name = f"qutip_{i}"
-        curr_site_basis = site_basis_cache.get(d, None)
-        if curr_site_basis is None:
+    for d in dims:
+        name = f"dim={d}"
+        if name not in site_basis:
             identity_operator = qutip.qeye(d)
             curr_site_basis = {
                 "name": name,
-                "qn": {"n"},
+                "qn": {"n": {}},
                 "dimension": d,
                 "identity": identity_operator,
                 "operators": {
@@ -459,6 +710,6 @@ def qutip_model_from_dims(dims, model_name="qutip"):
                 "parms": {},
                 "localstates": [{"n": i} for i in range(d)],
             }
-        site_basis[name] = curr_site_basis
+            site_basis[name] = curr_site_basis
 
     return ModelDescriptor(site_basis, name=model_name)

@@ -1,18 +1,30 @@
-"""
-Routines to build the Gram's matrix associated to a scalar product and a basis.
+"""Gram's matrix computation routines.
+
+Routines to build the associated to a scalar product and an
+operator basis.
 """
 
 import logging
-from typing import Callable, Tuple
+from typing import Callable, List, Tuple
 
 import numpy as np
 from numpy.typing import NDArray
 
 import qalma.settings as qalma_settings
+from qalma.operators import Operator
 from qalma.scalarprod.utils import find_linearly_independent_rows
+
+logger = logging.getLogger(__name__)
 
 # from datetime import datetime
 
+__all__ = [
+    "MAX_WORKERS",
+    "USE_THREADS",
+    "gram_matrix_parallel",
+    "gram_matrix_serial",
+    "merge_gram_matrices",
+]
 
 MAX_WORKERS = qalma_settings.PARALLEL_MAX_WORKERS
 USE_THREADS = qalma_settings.PARALLEL_USE_THREADS
@@ -22,25 +34,25 @@ if qalma_settings.USE_PARALLEL:
         from concurrent.futures import ProcessPoolExecutor, ThreadPoolExecutor
         from functools import partial
 
-        logging.info("using parallel routines to build Gram's matrices.")
+        logger.info("using parallel routines to build Gram's matrices.")
     except ModuleNotFoundError:
         qalma_settings.USE_PARALLEL = False
-        logging.warning(
+        logger.warning(
             "ProcessPoolExecutor/ThreadPoolExecutor cannot be loaded. Using serial routines."
         )
 else:
-    logging.info("using serial routines to build Gram's matrices.")
+    logger.info("using serial routines to build Gram's matrices.")
 
 
 # ### Generic functions depending on the SP ###
 def _sp_worker(pair, basis, sp):
-    """
-    Compute the real-valued part of the scalar product between
-    two SumOperators belonging to some basis, provided these
-    are hermitian.
+    """Compute an element of the Gram matrix.
+
+    Compute the real-valued part of the scalar product between two
+    SumOperators belonging to some basis, provided these are hermitian.
 
     Parameters
-    ==========
+    ----------
     pair: tuple
         A tuple (i, j) indicating indices in the basis list.
     basis: list
@@ -53,38 +65,52 @@ def _sp_worker(pair, basis, sp):
     tuple:
         A tuple (i, j, val) where val is the real part of
         sp(basis[i], basis[j]).
+
     """
     try:
         i, j = pair
         val = float(np.real(sp(basis[i], basis[j])))
         return (i, j, val)
     except Exception as exc_val:
-        logging.error("Error computing Gram's matrix entry (%d, %d):%s", i, j, exc_val)
+        logger.error("Error computing Gram's matrix entry (%d, %d):%s", i, j, exc_val)
         return (i, j, np.nan)
 
 
-def gram_matrix_parallel(basis, sp, num_workers=MAX_WORKERS, use_threads=USE_THREADS):
-    """
-    Compute the Gram matrix of a set of operators in parallel using a scalar product.
+def gram_matrix_parallel(
+    basis: List[Operator],
+    sp: Callable,
+    num_workers: int = MAX_WORKERS,
+    use_threads: bool = USE_THREADS,
+):
+    r"""Compute compute the Gram matrix for an operator basis (parallel implementation).
 
-    This function evaluates all inner products ⟨b_i | b_j⟩ for i, j in `basis`
+    This function evaluates all inner products $\langle b_i | b_j \rangle$
+    for ``i, j`` in ``basis``
     and returns a real symmetric Gram matrix. Parallelization can be done via
     threads or processes.
 
-    Parameters:
-        basis (List[Operator]): List of basis operators.
-        sp (Callable): Scalar product function taking two operators and returning a scalar.
-                       Must be a top-level, pickleable function if using processes.
-                       Notice that sp must be a top-level function, or in general,
-                       an object that can be stored with pickle. This does not include
-                       lambda functions.
-        num_workers (int or None): Number of worker threads or processes to use.
-                                   Defaults to the number of cores.
-        use_threads (bool): If True, uses threading instead of multiprocessing.
-                            Useful when the scalar product is I/O-bound or GIL-friendly.
+    Parameters
+    ----------
+    basis: List[Operator]
+        List of basis operators.
+    sp: Callable
+        Scalar product function taking two operators and returning a scalar.
+        Must be a top-level, pickleable function if using processes.
+        Notice that sp must be a top-level function, or in general,
+        an object that can be stored with pickle. This does not include
+        lambda functions.
+    num_workers:  int or None
+        Number of worker threads or processes to use.
+        Defaults to the number of cores.
+    use_threads: bool
+        If True, uses threading instead of multiprocessing.
+        Useful when the scalar product is I/O-bound or GIL-friendly.
 
-    Returns:
-        np.ndarray: Symmetric real-valued Gram matrix of shape (len(basis), len(basis)).
+    Returns
+    -------
+    result: np.ndarray
+       Symmetric real-valued Gram matrix of shape (len(basis), len(basis)).
+
     """
     size = len(basis)
     result = np.zeros((size, size), dtype=float)
@@ -112,25 +138,34 @@ def gram_matrix_parallel(basis, sp, num_workers=MAX_WORKERS, use_threads=USE_THR
 
 
 def gram_matrix_serial(basis, sp: Callable):
-    """
+    """Compute compute the Gram matrix for an operator basis (serial implementation).
+
     Computes the Gram matrix of a given operator basis using a scalar product.
 
     The Gram matrix is symmetric and defined as:
+
+    .. code-block:: python
+
         Gij = sp(op1, op2)
-    where `sp` is the scalar product function and `op1, op2` are operators from
+
+    where ``sp`` is the scalar product function and `op1, op2` are operators from
     the basis.
 
     Parameters
     ----------
-
-        basis: A list of basis operators.
-        sp: A callable that defines a scalar product function between two
-        operators.
+    basis: List[Operator]
+        A list of basis operators.
+    sp: Callable
+        A callable that defines a scalar product function between two
+    operators.
 
     Return
     ------
+
+    result: NDArray
         A symmetric NumPy array representing the Gram matrix, with entries
         rounded to 14 decimal places.
+
     """
     if hasattr(sp, "compute_gram_matrix"):  # and all(b_i.isherm for b_i in basis):
         return sp.compute_gram_matrix(basis)
@@ -160,8 +195,7 @@ gram_matrix = (
 def merge_gram_matrices(
     g11: NDArray, g11_inv: NDArray, g22: NDArray, g12: NDArray
 ) -> Tuple[NDArray, NDArray, NDArray, NDArray, Tuple[int]]:
-    """
-    Build the gram and gram_inv tensors from the available information.
+    """Build the gram and gram_inv tensors from the available information.
 
     Given two basis, their Gram matrices, the inverse
     of the first and the cross gram matrix, this function finds
@@ -170,19 +204,18 @@ def merge_gram_matrices(
     basis and its inverse, and the Gram matrices of the reduced blocks.
 
     Parameters
-    ==========
-
+    ----------
     g11: NDArray
          The upper-left block of the Gram Matrix
     g11_inv: NDArray
          The inverse of the upper-left block of the Gram Matrix
     g22: NDArray
          The bottom-right block of the Gram Matrix
-    g22: NDArray
+    g12: NDArray
          The cross block of the Gram Matrix
 
     Return values
-    =============
+    -------------
 
     gram_full: NDArray
         The gram matrix of the reduced basis
@@ -199,7 +232,6 @@ def merge_gram_matrices(
        that span the linearly independent common basis.
 
     """
-
     # Build the new Gram matrix
     n_1 = len(g11)
     n_2 = len(g22)

@@ -1,18 +1,14 @@
 # -*- coding: utf-8 -*-
-"""
-Qutip representation of an operator.
-"""
+"""Qutip representation of an operator."""
 
 import logging
 from functools import reduce
 from typing import Dict, Iterable, List, Optional, Tuple, Union
 
 from numpy import imag, log as np_log, real
-from qutip import Qobj, qeye, tensor  # type: ignore[import-untyped]
+from qutip import Qobj as _Qobj, tensor as _tensor  # type: ignore[import-untyped]
 
-from qalma.alpsmodels import qutip_model_from_dims
-from qalma.geometry import GraphDescriptor
-from qalma.model import SystemDescriptor
+from qalma.model import SystemDescriptor, build_system_from_dims
 from qalma.operators.basic import (
     LocalOperator,
     Operator,
@@ -23,32 +19,30 @@ from qalma.operators.product import (
 )
 from qalma.qutip_tools.tools import (
     decompose_qutip_operator,
-    decompose_qutip_operator_hermitician,
-    empty_op,
+    decompose_qutip_operator_hermitian,
     is_diagonal_op,
+    is_empty_op,
     scalar_value,
 )
 
+logger = logging.getLogger(__name__)
+
+__all__ = ["QutipOperator"]
+
 
 class QutipOperator(Operator):
-    """Represents a Qutip operator that acts over a block
-    of sites of a system.
+    """Represents a Qutip operator that acts over a block of sites of a system.
 
     If two QutipOperator are combined in an arithmetic
     operation, the result is QutipOperator acting on
     the union of both blocks.
 
-    Parameters
-    ----------
-
-    Returns
-    -------
 
     """
 
     prefactor: complex
     system: SystemDescriptor
-    operator: Qobj
+    operator: _Qobj
     site_names: dict
 
     def __init__(
@@ -58,32 +52,20 @@ class QutipOperator(Operator):
         names: Optional[Dict[str, int]] = None,
         prefactor=1,
     ):
-        if not isinstance(qoperator, Qobj):
+        # If build from a scalar:
+        if not isinstance(qoperator, _Qobj):
             prefactor = prefactor * qoperator
+            qoperator = None
             names = {}
-            if system is None:
-                graph = GraphDescriptor("Empty graph", {}, {}, {})
-                model = qutip_model_from_dims({})
-                system = SystemDescriptor(graph, model, sites={})
-            qoperator = qeye(1)
-        elif system is None:
-            dims = qoperator.dims[0]
-            model = qutip_model_from_dims(dims)
+
+        dims = [] if qoperator is None else qoperator.dims[0]
+        if system is None:
             if names is None:
                 names = {f"qutip_{i}": i for i in range(len(dims))}
-            sitebasis = model.site_basis
-            sites = {s: sitebasis[f"qutip_{i}"] for i, s in enumerate(names)}
-
-            graph = GraphDescriptor(
-                "disconnected graph",
-                {s: {"type": f"qutip_{i}"} for i, s in enumerate(sites)},
-                {},
-                {},
-            )
-            system = SystemDescriptor(graph, model, sites=sites)
+            dims_names = {name: dims[pos] for name, pos in names.items()}
+            system = build_system_from_dims(dims_names)
         else:
-            # If qoperator is nontrivial, ensure that names points to each factor of qoperator.
-            dims = qoperator.dims[0]
+            # Check that names is correct, and compatible
             if names is None:
                 names = {s: i for i, s in enumerate(system.sites)}
             elif len(names) != len(dims):
@@ -99,6 +81,7 @@ class QutipOperator(Operator):
         self.prefactor = prefactor
 
     def __neg__(self):
+        """Multiply by -1."""
         return QutipOperator(
             self.operator,
             self.system,
@@ -107,6 +90,7 @@ class QutipOperator(Operator):
         )
 
     def __pow__(self, exponent):
+        """Exponentiate the operator at a given power."""
         operator = self.operator
         if exponent < 0:
             operator = operator.inv()
@@ -120,33 +104,25 @@ class QutipOperator(Operator):
         )
 
     def __repr__(self) -> str:
+        """Built the repr str."""
         return (
             f"qutip interface operator over sites {self.site_names} for {self.prefactor} x  \n"
             + repr(self.operator)
         )
 
     def acts_over(self) -> frozenset:
-        """list the sites where the operator acts over"""
+        """List the sites where the operator acts over."""
         return frozenset(self.site_names.keys())
 
     def as_sum_of_products(self):
-        """Decompose the operator as a
-        sum of product operators
-
-        Parameters
-        ----------
-
-        Returns
-        -------
-
-        """
+        """Decompose the operator as a sum of product operators."""
         from qalma.operators.arithmetic import SumOperator
 
         isherm = self.operator.isherm
         site_names = self.site_names
         sites = sorted(site_names, key=lambda x: site_names[x])
         if isherm:
-            decomposition = decompose_qutip_operator_hermitician(
+            decomposition = decompose_qutip_operator_hermitian(
                 self.prefactor * self.operator.tidyup()
             )
         else:
@@ -164,13 +140,15 @@ class QutipOperator(Operator):
             )
         )
         if isherm:
-            assert all(term.isherm for term in terms)
+            assert all(
+                term.isherm for term in terms
+            ), f"{[(type(term), term.isherm) for term in terms]}"
         if len(terms) == 0:
             terms = tuple((ScalarOperator(0, self.system),))
         return SumOperator(terms, self.system, isherm=isherm)
 
     def dag(self):
-        """Hermitician adjoint operator"""
+        """Build the hermitian adjoint operator."""
         prefactor = self.prefactor
         operator = self.operator
         if isinstance(prefactor, complex):
@@ -186,15 +164,16 @@ class QutipOperator(Operator):
         )
 
     def eigenenergies(self):
-        """Spectrum of the operator."""
+        """Compute the spectrum of the operator."""
         return self.operator.eigenenergies() * self.prefactor
 
     def eigenstates(self):
-        """Eigendecomposition"""
+        """Compute the eigendecomposition of the operator."""
         evals, evecs = self.operator.eigenstates()
         return evals * self.prefactor, evecs
 
-    def hermitician_part(self):
+    def hermitian_part(self):
+        """Compute the hermitian part of the operator."""
         if self.isherm:
             return self
         qop = self.operator
@@ -208,7 +187,7 @@ class QutipOperator(Operator):
         return QutipOperator(qop, self.system, self.site_names, prefactor)
 
     def inv(self):
-        """the inverse of the operator"""
+        """Compute the inverse of the operator."""
         operator = self.operator
         return QutipOperator(
             operator.inv(),
@@ -219,7 +198,11 @@ class QutipOperator(Operator):
 
     @property
     def isherm(self) -> bool:
-        """True if operator is hermitician."""
+        """
+        Check if the operator is hermitian.
+
+        Return True if operator is hermitian.
+        """
         isherm = self.operator.isherm
         if imag(self.prefactor) == 0.0:
             return isherm
@@ -231,16 +214,16 @@ class QutipOperator(Operator):
 
     @property
     def isdiagonal(self) -> bool:
-        """Check if the operator is diagonal"""
+        """Check if the operator is diagonal."""
         return is_diagonal_op(self.operator)
 
     @property
     def is_zero(self) -> bool:
-        """Check if the matrix is zero"""
-        return not (self.prefactor) or empty_op(self.operator)
+        """Check if the matrix is zero."""
+        return not (self.prefactor) or is_empty_op(self.operator)
 
     def logm(self):
-        """logarithm of the operator"""
+        """Compute the logarithm of the operator."""
         operator = self.operator
         evals, evecs = operator.eigenstates()
         evals = evals * self.prefactor
@@ -253,17 +236,17 @@ class QutipOperator(Operator):
         return QutipOperator(log_op, self.system, self.site_names)
 
     def partial_trace(self, sites: Union[frozenset, SystemDescriptor]):
-        """
+        """Compute the partial trace of this operator over a subsystem.
 
         Parameters
         ----------
-        sites: Union[frozenset :
-
-        SystemDescriptor] :
-
+        sites : frozenset or SystemDescriptor
+            The sites to keep; all other sites are traced out.
 
         Returns
         -------
+        Operator
+            The partial trace of the operator over the complementary subsystem.
 
         """
         if isinstance(sites, SystemDescriptor):
@@ -319,23 +302,24 @@ class QutipOperator(Operator):
         )
 
     def reduce(self, sites: Iterable, state=None) -> Operator:
-        """
-        Partial trace of the product of the operator and the density operator
-        acting on the subsystem which is traced out.
-        If the state is not provided, the result is the partial trace, divided
-        by the dimension of the subsystem traced out.
+        """Compute the reduced operator on a subsystem.
+
+        Partial trace of the product of this operator and a density operator
+        acting on the complementary subsystem. If no state is provided, the
+        result is the partial trace divided by the dimension of the traced-out
+        subsystem.
 
         Parameters
-        ==========
-        sites: Iterable
+        ----------
+        sites : iterable
+            The sites to keep.
+        state : DensityOperatorProtocol, optional
+            The state relative to which the reduction is performed.
 
-        state: Optional[DensityOperatorProtocol]
-               The state relative to which make the reduction.
-
-        Return
-        ======
-
-        The reduced operator.
+        Returns
+        -------
+        Operator
+            The reduced operator acting on the subsystem specified by ``sites``.
 
         """
         system = self.system
@@ -379,7 +363,7 @@ class QutipOperator(Operator):
         sites_tuple = tuple(sites)
         qop = self.to_qutip(sites_tuple + env_tuple)
         state_qutip = state.partial_trace(environment).to_qutip(env_tuple)
-        state_qutip = tensor(
+        state_qutip = _tensor(
             *(system.site_identity(site) for site in sites_tuple), state_qutip
         )
         qop = (qop * state_qutip).ptrace(list(range(len(sites_tuple))))
@@ -390,7 +374,7 @@ class QutipOperator(Operator):
         )
 
     def simplify(self):
-        """Simplify the operator"""
+        """Simplify the operator."""
         names = self.site_names
         prefactor = self.prefactor
         qt_operator = self.operator
@@ -400,7 +384,7 @@ class QutipOperator(Operator):
         assert len(names) > 0
 
         # If is an empty op, return a ScalarOperator
-        if empty_op(qt_operator):
+        if is_empty_op(qt_operator):
             return ScalarOperator(0.0, self.system)
 
         if len(names) > 1:
@@ -416,15 +400,19 @@ class QutipOperator(Operator):
         return LocalOperator(site, operator, self.system)
 
     def tidyup(self, atol=None):
-        """Removes small elements from the quantum object.
+        """Remove small elements from the quantum object.
 
         Parameters
         ----------
-        atol :
-             (Default value = None)
+        atol : float
+            the threshold
+            (Default value = None)
 
-        Returns
-        -------
+        Return
+        ------
+        Operator
+            An operator with all their matrix elements having absolute values
+            larger than the threshold.
 
         """
         return QutipOperator(
@@ -436,15 +424,18 @@ class QutipOperator(Operator):
 
     def to_qutip(self, block: Optional[Tuple[str, ...]] = None):
         """
+        Return a Qobj representation for the operator.
 
         Parameters
         ----------
         block: Optional[Tuple[str]] :
-             (Default value = None)
+             The sites defining the block on which we want the
+             prepresentation. If ``None``, returns a Qobj acting
+             on all the sites.
 
         Returns
         -------
-        type
+        Operator
             sites in block.
             By default (`block`=`None`), returns an operator
             acting over the full system, with sites sorted in
@@ -457,10 +448,10 @@ class QutipOperator(Operator):
         site_names = sorted(site_names_dict, key=lambda x: site_names_dict[x])
         system = self.system
         sites = system.sites
-        operator_qutip: Qobj = self.operator * self.prefactor
+        operator_qutip: _Qobj = self.operator * self.prefactor
         if block is None:
             if len(sites) > 8:
-                logging.warning(
+                logger.warning(
                     (
                         "to_qutip does not received a block. "
                         "Return an operator over the full system"
@@ -484,9 +475,9 @@ class QutipOperator(Operator):
             )
             extra_identities = (sites[site]["identity"] for site in out_sites)
             operator_qutip = (
-                tensor(operator_qutip, *extra_identities)
+                _tensor(operator_qutip, *extra_identities)
                 if site_names
-                else tensor(*extra_identities)
+                else _tensor(*extra_identities)
             )
 
         # Add sites which are in site_names, but not in block
@@ -500,7 +491,7 @@ class QutipOperator(Operator):
         return operator_qutip.permute(shuffle)
 
     def tr(self) -> complex:
-        """Compute the trace"""
+        """Compute the trace."""
         prefactor = self.prefactor
         if prefactor == 0:
             return prefactor

@@ -1,6 +1,4 @@
-"""
-Basic unit test.
-"""
+"""Basic unit test."""
 
 import os
 from test.helper import alert
@@ -10,11 +8,11 @@ import pytest
 
 from qalma.alpsmodels import list_models_in_alps_xml, model_from_alps_xml
 from qalma.geometry import graph_from_alps_xml, list_geometries_in_alps_xml
-from qalma.settings import FIGURES_DIR, LATTICE_LIB_FILE, MODEL_LIB_FILE
+from qalma.settings import LATTICE_LIB_FILE, MODEL_LIB_FILE
 
 
 @pytest.mark.skipif(not os.environ.get("QALMA_ALLTESTS"), reason="shorter tests")
-def test_load_and_plot_graph():
+def test_load_and_plot_graph(tmp_path):
     for name in list_geometries_in_alps_xml():
         try:
             g = graph_from_alps_xml(
@@ -34,7 +32,7 @@ def test_load_and_plot_graph():
             ax = fig.add_subplot()
         ax.set_title(name)
         g.draw(ax)
-        plt.savefig(FIGURES_DIR + f"/{name}.png")
+        plt.savefig(tmp_path / f"{name}.png")
         plt.close()
     alert(1, "models:")
 

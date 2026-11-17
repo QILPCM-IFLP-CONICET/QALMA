@@ -1,6 +1,4 @@
-"""
-Basic unit test.
-"""
+"""Basic unit test."""
 
 from test.helper import (
     FULL_TEST_CASES,
@@ -16,7 +14,7 @@ import pytest
 import qutip
 
 from qalma.operators import ProductOperator
-from qalma.operators.basic import empty_op, is_diagonal_op, is_scalar_op
+from qalma.operators.basic import is_diagonal_op, is_empty_op, is_scalar_op
 
 SX_A = ProductOperator({LOCAL_SX_A.site: LOCAL_SX_A.operator}, 1.0, LOCAL_SX_A.system)
 SX_A2 = SX_A * SX_A
@@ -27,23 +25,16 @@ OPGLOBAL = SZ_C + SX_ASYB_TIMES_2
 
 @pytest.mark.parametrize(["name", "value"], list(FULL_TEST_CASES.items()))
 def test_empty_op(name, value):
-    """
-    test for the function that checks if the operator
-    is equivalent to 0.
-    """
+    """Test for the function that checks if the operator is equivalent to 0."""
     if value is None:
         return
     value_qutip = value.to_qutip()
     print(name, "of type ", type(value), type(value_qutip))
-    assert empty_op(value_qutip) == empty_op(value)
+    assert is_empty_op(value_qutip) == is_empty_op(value)
 
 
 def test_is_scalar_or_diagonal_operator():
-    """
-    test for the function that checks if the operator
-    is equivalent to 0.
-    """
-
+    """Test for the function that checks if the operator is equivalent to 0."""
     test_cases = {
         "zero": (0 * qutip.qeye(4), True, True),
         "identity": (qutip.qeye(4), True, True),
@@ -69,17 +60,13 @@ def test_is_scalar_or_diagonal_operator():
 
 @pytest.mark.parametrize(["name", "value"], list(FULL_TEST_CASES.items()))
 def test_trace(name, value):
-    """
-    test for the function that checks if the operator
-    is equivalent to 0.
-    """
-
+    """Test for the function that checks if the operator is equivalent to 0."""
     if value is None:
         return
     # TODO: check the trace of quadratic operators.
     if name in (
-        "hermitician quadratic operator",
-        "non hermitician quadratic operator",
+        "hermitian quadratic operator",
+        "non hermitian quadratic operator",
     ):
         return
     value_tr = value.tr()
@@ -91,9 +78,7 @@ def test_trace(name, value):
 
 @pytest.mark.parametrize(["key", "observable"], list(OBSERVABLE_CASES.items()))
 def test_isherm_operator(key, observable):
-    """
-    Check if hermiticity is correctly determined
-    """
+    """Check if hermiticity is correctly determined."""
 
     def do_test_case(name, observable):
         if isinstance(observable, list):
@@ -101,7 +86,7 @@ def test_isherm_operator(key, observable):
                 do_test_case(name, op_case)
             return
 
-        assert observable.isherm, f"{key} is not hermitician?"
+        assert observable.isherm, f"{key} is not hermitian?"
 
         ham = OBSERVABLE_CASES["hamiltonian"]
         print("***addition***")
@@ -121,8 +106,7 @@ def test_isherm_operator(key, observable):
 
 @pytest.mark.parametrize(["name", "operator"], list(FULL_TEST_CASES.items()))
 def test_isdiagonal(name, operator):
-    """test the isdiag property"""
-
+    """Test the isdiag property."""
     print("checking diagonality in ", name, type(operator))
     qobj = operator.to_qutip()
     data_qt = qobj.data
@@ -142,8 +126,7 @@ def test_isdiagonal(name, operator):
 
 @pytest.mark.parametrize(["key", "operator"], list(FULL_TEST_CASES.items()))
 def test_norm(key, operator):
-    """test the isdiag property"""
-
+    """Test the isdiag property."""
     print("checking norms for", key, type(operator))
     q_op = operator.to_qutip_operator()
     for ord in ["fro", "nuc", 2]:

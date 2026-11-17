@@ -1,27 +1,29 @@
-r"""
-QuadraticForm Operators
+r"""Definition of :class:`QuadraticFormOperator` and its simplification routine.
 
-Quadratic Form Operators provides a representation for quantum operators
-of the form
+This module defines :class:`QuadraticFormOperator`, which stores a two-body
+quantum operator in the structured form
 
-Q= L + \sum_a w_a M_a ^2 + \delta Q
+.. math::
 
-with L and M_a one-body operators, w_a certain weights and
-\delta Q a *remainder* as a sum of n-body terms.
+    T = L + \sum_\alpha w_\alpha Q_\alpha^2 + \delta T,
 
+together with :func:`simplify_quadratic_form`, which rebuilds the
+decomposition in a smaller, orthonormal basis, and the helper scalar product
+:func:`one_body_operator_hermitian_hs_sp` used during that rebuilding step.
 
-
+Intended use
+~~~~~~~~~~~~
+:class:`QuadraticFormOperator` objects are normally constructed by
+:func:`~qalma.operators.quadratic.build.build_quadratic_form_from_operator`
+rather than directly.  Direct construction is useful when the basis
+:math:`\{Q_\alpha\}` and weights :math:`\{w_\alpha\}` are already known,
+e.g. when combining two quadratic forms or when unit-testing.
 """
 
 from numbers import Number
-
-# from numbers import Number
-from time import time
 from typing import Callable, Iterable, Optional, Set, Tuple, Union, cast
 
 import numpy as np
-from numpy.random import random
-from numpy.typing import NDArray
 
 from qalma.model import SystemDescriptor
 from qalma.operators.arithmetic import OneBodyOperator, SumOperator
@@ -35,14 +37,90 @@ from qalma.operators.product import (
 )
 from qalma.settings import QALMA_TOLERANCE
 
-# from typing import Union
+__all__ = ["QuadraticFormOperator"]
 
 
 class QuadraticFormOperator(Operator):
-    """
-    Represents a two-body operator of the form
-    sum_alpha w_alpha * Q_alpha^2
-    with Q_alpha a local operator or a One body operator.
+    r"""Two-body operator stored as a sum of squares of one-body operators.
+
+    Represents an operator :math:`T` in the structured form
+
+    .. math::
+
+        T = L + \sum_\alpha w_\alpha Q_\alpha^2 + \delta T,
+
+    where:
+
+    * :math:`L` (``linear_term``) is a one-body operator or scalar.
+    * :math:`Q_\alpha` (``basis``) are Hermitian one-body operators with
+      spectral norm 1.
+    * :math:`w_\alpha` (``weights``) are (typically real) scalar coefficients.
+    * :math:`\delta T` (``offset``) is a remainder operator, usually of
+      n-body order :math:`n \geq 3`, that is not captured by the quadratic
+      decomposition.
+
+    This representation is the canonical input to the variational mean-field
+    routines in :mod:`qalma.meanfield.variational`.  In that context :math:`T`
+    is the two-body projection of the Hamiltonian :math:`K` relative to a
+    reference product state :math:`\sigma_{\rm ref}`, and the modes with the
+    most negative weights :math:`w_\alpha < 0` are the ones that lower the
+    variational free energy :math:`F[\sigma]` the most.
+
+    Attributes
+    ----------
+    basis : tuple[OneBodyOperator | LocalOperator, ...]
+        The Hermitian generators :math:`Q_\alpha`.  All entries satisfy
+        ``Q.isherm is True``.
+    weights : tuple[complex, ...]
+        Scalar coefficients :math:`w_\alpha`, one per element of ``basis``.
+        For Hermitian operators these are real; complex weights arise when
+        the anti-Hermitian part of a non-Hermitian operator is processed.
+    system : SystemDescriptor
+        Descriptor of the full lattice on which the operator acts.
+    linear_term : OneBodyOperator | LocalOperator | ScalarOperator | None
+        The one-body part :math:`L`.  ``None`` means the linear part is zero.
+    offset : Operator | None
+        Remainder :math:`\delta T`.  ``None`` means it is absent.
+
+    Notes
+    -----
+    Arithmetic with scalars and one-body operators (``+``, ``*``) keeps the
+    result in :class:`QuadraticFormOperator` form by updating ``linear_term``
+    or ``weights`` in place.  Multiplication of two
+    :class:`QuadraticFormOperator` objects, or by a generic operator, falls
+    back to :meth:`as_sum_of_products` before delegating to the general
+    dispatch machinery in :mod:`qalma.operators.register_ops`.
+
+    Examples
+    --------
+    Construct directly from a known basis and weights (spin-1/2 chain, 2 sites):
+
+    .. code-block:: python
+
+        from qalma.operators.quadratic import QuadraticFormOperator
+        # Q_0 = Sz_0 + Sz_1  (pre-normalised, spectral norm 1)
+        qf = QuadraticFormOperator(
+            basis=(Q0,),
+            weights=(-1.0,),
+            system=system,
+            linear_term=h_linear,
+        )
+
+    Typical usage via the factory function:
+
+    .. code-block:: python
+
+        from qalma.operators.quadratic import build_quadratic_form_from_operator
+        from qalma.projections import n_body_projection
+
+        ham_2b = n_body_projection(ham, n_max=2, sigma=sigma_ref).hermitian_part()
+        qf = build_quadratic_form_from_operator(
+            ham_2b,
+            isherm=True,
+            sigma_ref=sigma_ref,
+            sort_fn=lambda x: x,   # sort by ascending eigenvalue
+            count=6,               # keep 6 most negative modes
+        )
     """
 
     system: SystemDescriptor
@@ -51,10 +129,29 @@ class QuadraticFormOperator(Operator):
     offset: Optional[Operator]
 
     def __init__(self, basis, weights, system=None, linear_term=None, offset=None):
+        r"""Initialize a QuadraticFormOperator.
+
+        Parameters
+        ----------
+        basis : tuple[Operator, ...]
+            Tuple of Hermitian one-body operators :math:`Q_\alpha`. Each
+            contributes a term :math:`w_\alpha Q_\alpha^2` to the operator.
+        weights : tuple[complex, ...]
+            Scalar weights :math:`w_\alpha`, one per basis element.
+        system : SystemDescriptor or None, optional
+            Descriptor of the full lattice system. Inferred from ``basis``
+            if not provided.
+        linear_term : OneBodyOperator, LocalOperator, ScalarOperator, or None, optional
+            The one-body part :math:`L` of the operator. Default is ``None``.
+        offset : Operator or None, optional
+            Additional remainder term :math:`\delta Q` not captured by the
+            quadratic or linear parts. Default is ``None``.
+
+        """
         # If the system is not given, infer it from the terms
-        if offset:
+        if offset is not None:
             offset = offset.simplify()
-        if linear_term:
+        if linear_term is not None:
             linear_term = linear_term.simplify()
             assert (
                 isinstance(linear_term, OneBodyOperator)
@@ -64,23 +161,17 @@ class QuadraticFormOperator(Operator):
         assert isinstance(basis, tuple)
         assert isinstance(weights, tuple)
         for pos, gen in enumerate(basis):
-            assert (
-                gen.isherm
-            ), f"Operator at pos {pos} got {gen.isherm}\n{gen}"  # TODO: REMOVE ME
+            assert gen.isherm, f"Basis operator at pos {pos} is not Hermitian:\n{gen}"
         assert (
             isinstance(linear_term, (OneBodyOperator, LocalOperator, ScalarOperator))
             or linear_term is None
-        ), f"{type(offset)} should be a LocalOperator or a OneBodyOperator"
+        ), f"{type(linear_term)} should be a LocalOperator, OneBodyOperator, or ScalarOperator"
         if system is None:
             for term in basis:
                 if system is None:
                     system = term.system
                 else:
                     system = system.union(term.system)
-
-        # If check_and_simplify, ensure that all the terms are
-        # one-body operators and try to use the simplified forms
-        # of the operators.
 
         self.weights = weights
         self.basis = basis
@@ -90,6 +181,7 @@ class QuadraticFormOperator(Operator):
         self._simplified = False
 
     def __bool__(self):
+        """Convert to bool."""
         for term in (self.linear_term, self.offset):
             if term is not None:
                 if not term.is_zero:
@@ -97,7 +189,7 @@ class QuadraticFormOperator(Operator):
         return len(self.weights) > 0 and any(self.weights) and any(self.basis)
 
     def __add__(self, other):
-
+        """Add with another operator."""
         # TODO: remove me and fix the sums
         if not bool(other):
             return self
@@ -118,7 +210,7 @@ class QuadraticFormOperator(Operator):
                     offset = offset + other.offset
 
             if linear_term is None:
-                offset = other.linear_term
+                linear_term = other.linear_term
             else:
                 if other.linear_term is not None:
                     linear_term = linear_term + other.linear_term
@@ -138,7 +230,7 @@ class QuadraticFormOperator(Operator):
             basis = self.basis
             weights = self.weights
             return QuadraticFormOperator(
-                basis, weights, system, linear_term, offset=None
+                basis, weights, system, linear_term, offset=self.offset
             )
         return SumOperator(
             (
@@ -149,6 +241,7 @@ class QuadraticFormOperator(Operator):
         )
 
     def __mul__(self, other):
+        """Multiply with another operator by the right."""
         system = self.system
         if isinstance(other, ScalarOperator):
             other = other.prefactor
@@ -172,6 +265,7 @@ class QuadraticFormOperator(Operator):
         return standard_repr * other
 
     def __neg__(self):
+        """Represent the additive opposite."""
         offset = self.offset
         if offset is not None:
             offset = -offset
@@ -201,9 +295,7 @@ class QuadraticFormOperator(Operator):
         return self
 
     def acts_over(self) -> frozenset:
-        """
-        Set of sites over the state acts.
-        """
+        """Set of sites over the state acts."""
         result: Set[str] = set()
         for term in self.basis:
             try:
@@ -223,23 +315,38 @@ class QuadraticFormOperator(Operator):
     def as_sum_of_products(
         self, simplify: bool = True
     ) -> ProductOperator | LocalOperator | SumOperator:
-        """Convert to a linear combination of two-body operators"""
+        r"""Expand into an explicit linear combination of product operators.
+
+        Replaces each quadratic term :math:`w_\alpha Q_\alpha^2` by
+        ``w * Q.dag() * Q`` and appends ``linear_term`` and ``offset`` to
+        the sum.  The result is a
+        :class:`~qalma.operators.arithmetic.SumOperator` (or a simpler type
+        when there is only one term) in the standard product-operator
+        representation.
+
+        Parameters
+        ----------
+        simplify : bool, optional
+            If ``True`` (default), call :meth:`simplify` on the result before
+            returning.  Set to ``False`` to avoid the overhead when the
+            calling code will simplify later.
+
+        Returns
+        -------
+        ProductOperator | LocalOperator | SumOperator
+            The operator in product form.
+
+        Notes
+        -----
+        This method is called automatically by the arithmetic dispatch
+        machinery whenever :class:`QuadraticFormOperator` is multiplied by a
+        generic operator that does not have a registered fast path.
+        """
         isherm = self._isherm
         isdiag = self.isdiagonal
-        if all(b_op.isherm for b_op in self.basis):
-            terms = tuple(
-                (
-                    ((op_term.dag() * op_term) * w)
-                    for w, op_term in zip(self.weights, self.basis)
-                )
-            )
-        else:
-            terms = tuple(
-                (
-                    ((op_term.dag() * op_term) * w)
-                    for w, op_term in zip(self.weights, self.basis)
-                )
-            )
+        terms = tuple(
+            (op_term * op_term) * w for w, op_term in zip(self.weights, self.basis)
+        )
 
         for term in (self.offset, self.linear_term):
             if term is not None:
@@ -254,6 +361,18 @@ class QuadraticFormOperator(Operator):
         return result
 
     def dag(self):
+        r"""Return the adjoint :math:`O^{\dagger}`.
+
+        Conjugates the weights and takes the adjoint of the linear term
+        and offset. The basis elements are assumed Hermitian so they are
+        unchanged.
+
+        Returns
+        -------
+        QuadraticFormOperator
+            The adjoint operator.
+
+        """
         # pylint: disable=protected-access
         linear_term = self.linear_term
         linear_term = None if linear_term is None else linear_term.dag()
@@ -270,6 +389,18 @@ class QuadraticFormOperator(Operator):
         return result
 
     def flat(self):
+        """Convert to a flat sum of product operators.
+
+        Delegates to :meth:`as_sum_of_products` and then flattens the
+        resulting :class:`~qalma.operators.arithmetic.SumOperator`.
+
+        Returns
+        -------
+        Operator
+            A flat :class:`~qalma.operators.arithmetic.SumOperator` with
+            no nested sums.
+
+        """
         return self.as_sum_of_products().flat()
 
     @property
@@ -288,11 +419,18 @@ class QuadraticFormOperator(Operator):
 
     @property
     def isherm(self):
+        """``True`` if the operator is Hermitian.
+
+        Checks that all weights are real and that the linear term and
+        offset (if present) are Hermitian. If inconclusive, converts to
+        a sum of products and delegates the check. The result is cached
+        in ``_isherm``.
+        """
         isherm = self._isherm
         if isherm is not None:
             return isherm
 
-        # We start assumig that the operator is hermitician
+        # We start assumig that the operator is hermitian
         isherm = True
         for term in (self.offset, self.linear_term):
             if term is None:
@@ -306,21 +444,40 @@ class QuadraticFormOperator(Operator):
             return isherm
         if isherm:
             isherm = all(abs(np.imag(weight)) < QALMA_TOLERANCE for weight in weights)
-            if isherm is not None:
-                if isherm or len(weights) == 1:
-                    self._isherm = isherm
-                    return isherm
+            if isherm:
+                self._isherm = isherm
+                return isherm
         # A more drastic approach: convert it to a sum of products
         isherm = self.as_sum_of_products().simplify().isherm or False
         self._isherm = isherm
         return isherm
 
     def n_body_sector(self) -> int:
+        """Return the n-body sector of the operator.
+
+        Returns
+        -------
+        int
+            Always at least ``2`` (the quadratic terms). Returns
+            ``max(2, offset.n_body_sector())`` if an offset is present.
+
+        """
         if self.offset is None:
             return 2
         return max(2, self.offset.n_body_sector())
 
     def num_terms(self) -> int:
+        """Return the total number of terms in the operator.
+
+        Counts the quadratic terms plus any terms in the linear part and
+        offset.
+
+        Returns
+        -------
+        int
+            Total number of summands.
+
+        """
         num_terms = len(self.weights)
         if self.linear_term:
             num_terms += self.linear_term.num_terms()
@@ -329,7 +486,23 @@ class QuadraticFormOperator(Operator):
         return num_terms
 
     def partial_trace(self, sites: Union[frozenset, SystemDescriptor]):
+        r"""Compute the partial trace over the complement of ``sites``.
 
+        Traces out the linear term and offset analytically. For the
+        quadratic terms :math:`w_\alpha Q_\alpha^2`, expands each as a
+        product and takes the partial trace term by term.
+
+        Parameters
+        ----------
+        sites : frozenset[str] or SystemDescriptor
+            Sites to *keep*. All other sites are traced out.
+
+        Returns
+        -------
+        Operator
+            The reduced operator on the subsystem defined by ``sites``.
+
+        """
         if not isinstance(sites, SystemDescriptor):
             sites = self.system.subsystem(sites)
 
@@ -368,23 +541,24 @@ class QuadraticFormOperator(Operator):
         ).simplify()
 
     def reduce(self, sites: Iterable, state=None) -> Operator:
-        """
-        Partial trace of the product of the operator and the density operator
-        acting on the subsystem which is traced out.
-        If the state is not provided, the result is the partial trace, divided
-        by the dimension of the subsystem traced out.
+        """Compute the reduced operator relative to ``state``.
+
+        The reduced operator is the partial trace of the product of this
+        operator and the density operator acting on the complementary
+        subsystem. If no state is provided, the result is the partial trace
+        divided by the dimension of the traced-out subsystem.
 
         Parameters
-        ==========
-        sites: Iterable
+        ----------
+        sites : iterable
+            The sites to keep.
+        state : DensityOperatorProtocol, optional
+            The state relative to which the reduction is performed.
 
-        state: Optional[DensityOperatorProtocol]
-               The state relative to which make the reduction.
-
-        Return
-        ======
-
-        The reduced operator.
+        Returns
+        -------
+        Operator
+            The reduced operator acting on the subsystem specified by ``sites``.
 
         """
         # An alternative would be to build a new QuadraticOperator
@@ -392,9 +566,25 @@ class QuadraticFormOperator(Operator):
         return self.as_sum_of_products().reduce(sites, state)
 
     def simplify(self):
-        """
-        Simplify the operator.
-        Build a new representation with a smaller basis.
+        r"""Return a simplified :class:`QuadraticFormOperator`.
+
+        Rebuilds the quadratic decomposition in a minimal orthonormal basis
+        by calling :func:`simplify_quadratic_form`.  Specifically:
+
+        * Re-diagonalises the coupling matrix of the current ``basis`` and
+          ``weights`` to merge duplicate or nearly-parallel generators.
+        * Optionally projects onto the Hermitian part if ``isherm=True`` is
+          passed internally.
+        * Simplifies ``linear_term`` and ``offset`` separately.
+
+        The result is cached via the ``_simplified`` flag so that repeated
+        calls are cheap.
+
+        Returns
+        -------
+        QuadraticFormOperator
+            A new instance with the same physical content but a potentially
+            smaller or orthonormalised basis.
         """
         # pylint: disable=protected-access
         if self._simplified:
@@ -405,9 +595,9 @@ class QuadraticFormOperator(Operator):
         return result
 
     def to_qutip(self, block: Optional[Tuple[str, ...]] = None):
-        """
-        return a qutip object acting over the sites listed in
-        `block`.
+        """Return a qutip ``Qobj`` object.
+
+        The Qobj acts over the sites listed in `block`.
         By default (`block=None`) returns a qutip object
         acting over all the sites, in lexicographical order.
         """
@@ -429,71 +619,44 @@ class QuadraticFormOperator(Operator):
         return result
 
 
-def quadratic_form_expect(sq_op, state):
+def one_body_operator_hermitian_hs_sp(x_op: OneBodyOperator, y_op: OneBodyOperator):
+    r"""Hilbert–Schmidt scalar product optimised for one-body operators.
+
+    Computes :math:`\langle X, Y \rangle_{\rm HS} = \operatorname{Tr}[X^\dagger Y]`
+    exploiting the tensor-product structure of one-body operators to avoid
+    building the full many-body matrix.
+
+    For a one-body operator :math:`X = \sum_i X_i` the trace factorises as
+
+    .. math::
+
+        \operatorname{Tr}[X^\dagger Y]
+        = \sum_{i,j} \operatorname{Tr}[X_i^\dagger Y_j]
+        = \sum_i \operatorname{Tr}[X_i^\dagger Y_i]
+          + \sum_{i \neq j} \operatorname{Tr}[X_i] \operatorname{Tr}[Y_j],
+
+    where the cross terms between different sites reduce to a product of
+    single-site traces.
+
+    Parameters
+    ----------
+    x_op : OneBodyOperator | LocalOperator | ScalarOperator
+        Left operand.
+    y_op : OneBodyOperator | LocalOperator | ScalarOperator
+        Right operand.
+
+    Returns
+    -------
+    complex
+        The value :math:`\operatorname{Tr}[X^\dagger Y]`.
+
+    Notes
+    -----
+    This function is used as the default ``scalar_product`` argument of
+    :func:`simplify_quadratic_form`.  It assumes the operators act on the
+    same system and is not designed for general many-body operators.
     """
-    Compute the expectation value of op, taking advantage
-    of its structure.
-    """
-    sq_op = sq_op.as_sum_of_products(False)
-    return state.expect(sq_op)
-
-
-def selfconsistent_meanfield_from_quadratic_form(
-    quadratic_form: QuadraticFormOperator, max_it, logdict=None
-):
-    """
-    Build a self-consistent mean field approximation
-    to the gibbs state associated to the quadratic form.
-    """
-    from qalma.operators.states.gibbs import GibbsProductDensityOperator
-
-    #    quadratic_form = simplify_quadratic_form(quadratic_form)
-    system = quadratic_form.system
-    terms = quadratic_form.terms
-    weights = quadratic_form.weights
-
-    operators = [2 * w * b for w, b in zip(weights, terms)]
-    basis = [b for w, b in zip(weights, terms)]
-
-    phi: NDArray = np.array([2.0 * random() - 1.0])
-
-    evolution: list = []
-    timestamps: list = []
-
-    if isinstance(logdict, dict):
-        logdict["states"] = evolution
-        logdict["timestamps"] = timestamps
-
-    remaining_iterations = max_it
-    while remaining_iterations:
-        remaining_iterations -= 1
-        k_exp = OneBodyOperator(
-            tuple(phi_i * operator for phi_i, operator in zip(phi, basis)),
-            system,
-        )
-        k_exp = ((k_exp + k_exp.dag()).simplify()) * 0.5
-        assert k_exp.isherm
-        rho = GibbsProductDensityOperator(k_exp, prefactor=1.0, system=system)
-        new_phi = -(cast(NDArray, rho.expect(operators)).conj())
-        if isinstance(logdict, dict):
-            evolution.append(new_phi)
-            timestamps.append(time())
-
-        change = sum(
-            abs(old_phi_i - new_phi_i) for old_phi_i, new_phi_i in zip(new_phi, phi)
-        )
-        if change < 1e3 * QALMA_TOLERANCE:
-            break
-        phi = new_phi
-
-    return rho
-
-
-def one_body_operator_hermitician_hs_sp(x_op: OneBodyOperator, y_op: OneBodyOperator):
-    """
-    Hilbert Schmidt scalar product optimized for OneBodyOperators
-    """
-    result = 0
+    result: complex = 0
     terms_x: Tuple[ScalarOperator | LocalOperator] = cast(
         Tuple[ScalarOperator | LocalOperator],
         (x_op.terms if isinstance(x_op, OneBodyOperator) else (x_op,)),
@@ -510,21 +673,47 @@ def one_body_operator_hermitician_hs_sp(x_op: OneBodyOperator, y_op: OneBodyOper
             elif isinstance(t_2, ScalarOperator):
                 result += t_1.tr() * t_2.prefactor
             elif t_1.site == t_2.site:
-                result += (t_1.operator * t_2.operator).tr()
+                result += (t_1.operator @ t_2.operator).trace()
             else:
-                result += t_1.operator.tr() * t_2.operator.tr()
+                result += t_1.operator.trace() * t_2.operator.trace()
     return result
 
 
 def simplify_quadratic_form(
     operator: QuadraticFormOperator,
     hermitic: bool = True,
-    scalar_product: Callable = one_body_operator_hermitician_hs_sp,
+    scalar_product: Callable = one_body_operator_hermitian_hs_sp,
 ):
-    """
-    Takes a 2-body operator and returns lists weights, ops
-    such that the original operator is
-    sum(w * op**2 for w,op in zip(weights,ops))
+    r"""Rebuild a :class:`QuadraticFormOperator` in a smaller orthonormal basis.
+
+    Starting from a :class:`QuadraticFormOperator` whose ``basis`` elements
+    may be redundant or non-orthogonal, this function:
+
+    1. Expands the quadratic part via :meth:`~QuadraticFormOperator.as_sum_of_products`
+       and reconstructs a minimal, HS-orthonormal basis by calling
+       :func:`~qalma.operators.quadratic.build.build_quadratic_form_from_operator`.
+    2. If ``hermitic=True``, projects ``linear_term`` and ``offset`` onto
+       their Hermitian parts.
+    3. Only rebuilds if doing so actually reduces the basis size or if
+       the operator was non-Hermitian and ``hermitic=True``.
+
+    Parameters
+    ----------
+    operator : QuadraticFormOperator
+        The operator to simplify.
+    hermitic : bool, optional
+        If ``True`` (default), force the result to be Hermitian by projecting
+        all parts onto their Hermitian components.
+    scalar_product : callable, optional
+        The scalar product used for orthonormalisation.  Defaults to
+        :func:`one_body_operator_hermitian_hs_sp`, which is optimised for
+        one-body operators.
+
+    Returns
+    -------
+    QuadraticFormOperator
+        A logically equivalent operator in a minimal (or unchanged, if no
+        reduction was possible) orthonormal basis.
     """
     from .build import build_quadratic_form_from_operator
 
@@ -534,6 +723,19 @@ def simplify_quadratic_form(
         changed = True
 
     def simplify_other_terms(term):
+        """Simplify ``term``, optionally projecting onto its Hermitian part.
+
+        Parameters
+        ----------
+        term : Operator or None
+            The term to simplify. Returns ``None`` unchanged.
+
+        Returns
+        -------
+        Operator or None
+            The simplified (and optionally Hermitian-projected) term.
+
+        """
         nonlocal changed
         if term is None:
             return term
@@ -550,7 +752,7 @@ def simplify_quadratic_form(
     new_qf_op = build_quadratic_form_from_operator(
         qf_op.as_sum_of_products(), True, hermitic
     )
-    # If the new basis is larger and the hermitician character haven´t changed, keep the older.
+    # If the new basis is larger and the hermitian character haven´t changed, keep the older.
     if changed or len(new_qf_op.basis) < len(qf_op.basis):
         qf_op = new_qf_op
         changed = True

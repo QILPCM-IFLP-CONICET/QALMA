@@ -62,7 +62,7 @@ def update_basis_callback(state):
     print("    curr_n_body=", state["curr_n_body"])
     print("    len basis=", len(state["basis"].operator_basis))
     print("    away from mean field", state["away"])
-    print("    cummulated error", state["cummulated error"])
+    print("    cumulated error", state["cumulated error"])
     print("    basis.errors", state["basis"].errors)
 
 
@@ -89,6 +89,8 @@ def build_system_objects(args):
     )
     HAMILTONIAN = SYSTEM.global_operator("Hamiltonian").simplify()
     SZ_TOTAL = SYSTEM.global_operator("Sz")
+    if SZ_TOTAL is None:
+        SZ_TOTAL = sum(SYSTEM.site_operator("Sz", site) for site in SYSTEM.sites)
 
     SITES = tuple(SYSTEM.sites.keys())
     # Other operators
@@ -155,10 +157,19 @@ def run_meanfield_projection(axis):
         rel_s = compute_rel_entropy(sigma_mf, state_ln)
         varmf.append(sigma_mf)
         rel_s_vals.append(rel_s)
+        with open(f"_meanfield_reduction_L={L}_beta={BETA}_{UUID_CALL}.pkl", "wb") as f:
+            pickle.dump(
+                {
+                    "relative entropy": rel_s_vals,
+                    "states": varmf,
+                    "time_span": result.time_span[: len(varmf)],
+                },
+                f,
+            )
 
     result.states = varmf
     result.expect_ops[0] = [np.real(rho.expect(SZ_TOTAL)) for rho in varmf]
-    result.expect_ops["relative entropy"] = rel_s
+    result.expect_ops["relative entropy"] = rel_s_vals
 
     with open(f"meanfield_reduction_L={L}_beta={BETA}_{UUID_CALL}.pkl", "wb") as f:
         pickle.dump(result, f)
@@ -335,7 +346,7 @@ def set_parameters():
         "-D",
         type=int,
         default=2,
-        help="deep of the Hiearchical basis/order the perturbative series.",
+        help="deep of the Hierarchical basis/order the perturbative series.",
     )
     argparser.add_argument("--tol", type=float, default=0.001, help="tolerance")
     argparser.add_argument(

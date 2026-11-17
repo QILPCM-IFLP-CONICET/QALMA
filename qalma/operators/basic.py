@@ -1,9 +1,7 @@
-"""
-Different representations for operators
-"""
+"""Different representations for operators."""
 
 import logging
-from functools import reduce
+from functools import cached_property, reduce
 from typing import Callable, Dict, Iterable, List, Optional, Tuple, Union
 
 import numpy as np
@@ -12,10 +10,14 @@ from qutip import Qobj
 
 from qalma.model import SystemDescriptor
 from qalma.qutip_tools.tools import (
-    empty_op,
+    _to_array,
+    fast_tensor,
     is_diagonal_op,
+    is_empty_op,
     is_scalar_op,
+    ishermitian,
     norm,
+    to_qobj,
 )
 from qalma.settings import (
     QALMA_ALLOW_OVERWRITE_BINDINGS,
@@ -23,9 +25,13 @@ from qalma.settings import (
 
 from .utils import find_arithmetic_implementation
 
+logger = logging.getLogger(__name__)
+
+__all__ = ["Operator", "LocalOperator"]
+
 
 class Operator:  # pylint: disable=too-many-public-methods
-    """Base class for operators"""
+    """Base class for operators."""
 
     system: SystemDescriptor
     prefactor: complex = 1.0
@@ -36,57 +42,51 @@ class Operator:  # pylint: disable=too-many-public-methods
     __mul__dispatch__: Dict[Tuple, Callable] = {}
 
     @staticmethod
-    def register_add_handler(key: Tuple | List[Tuple]):
-        """Register a function to implement add"""
+    def _register_handler(dispatch_table: Dict, key: Tuple | List[Tuple]):
+        """Return a decorator that registers a handler in ``dispatch_table``.
+
+        Parameters
+        ----------
+        dispatch_table:
+            One of ``Operator.__add__dispatch__`` or
+            ``Operator.__mul__dispatch__``.
+        key:
+            A single ``(TypeA, TypeB)`` pair, or a list of such pairs, that
+            map to the decorated function.
+        """
 
         def register_func(func):
-            if isinstance(key[0], (list, tuple)):
-                keys = key
-            else:
-                keys = (key,)
-
+            """Register the implementation of an arithmetic operation"""
+            keys = key if isinstance(key[0], (list, tuple)) else (key,)
             for curr_key in keys:
-                if curr_key in Operator.__add__dispatch__:
+                if curr_key in dispatch_table:
                     if not QALMA_ALLOW_OVERWRITE_BINDINGS:
-                        assert curr_key not in Operator.__add__dispatch__, (
+                        assert curr_key not in dispatch_table, (
                             f"{curr_key} already registered in "
-                            f"{Operator.__add__dispatch__[curr_key].__code__}."
+                            f"{dispatch_table[curr_key].__code__}."
                         )
-                # print(f"registering add operation for {curr_key} with {func} {func.__code__}")
-                Operator.__add__dispatch__[curr_key] = func
+                dispatch_table[curr_key] = func
             return func
 
         return register_func
 
     @staticmethod
+    def register_add_handler(key: Tuple | List[Tuple]):
+        """Return a decorator that registers an addition handler."""
+        return Operator._register_handler(Operator.__add__dispatch__, key)
+
+    @staticmethod
     def register_mul_handler(key: Tuple | List[Tuple]):
-        """Register a function to implement mul"""
-
-        def register_func(func):
-            if isinstance(key[0], (list, tuple)):
-                keys = key
-            else:
-                keys = (key,)
-
-            for curr_key in keys:
-                if curr_key in Operator.__mul__dispatch__:
-                    if not QALMA_ALLOW_OVERWRITE_BINDINGS:
-                        assert curr_key not in Operator.__mul__dispatch__, (
-                            f"{curr_key} already registered in "
-                            f"{Operator.__mul__dispatch__[curr_key].__code__}."
-                        )
-                Operator.__mul__dispatch__[curr_key] = func
-            return func
-
-        return register_func
+        """Return a decorator that registers a multiplication handler."""
+        return Operator._register_handler(Operator.__mul__dispatch__, key)
 
     def __bool__(self):
+        """Return False if the operator is zero, True otherwise."""
         return not self.is_zero
 
     def __add__(self, term):
-        # Use multiple dispatch to determine how to add
+        """Add ``term`` to this operator using the registered dispatch table."""
         dispatch_table = Operator.__add__dispatch__
-
         # First try with the cases stored in the dispatch table:
         func = dispatch_table.get((type(self), type(term)), None)
         if func is not None:
@@ -109,6 +109,7 @@ class Operator:  # pylint: disable=too-many-public-methods
             raise TypeError(f"{type(self)} cannot be added with  {type(term)}") from exc
 
     def __mul__(self, factor):
+        """Multiply this operator by ``factor`` using the registered dispatch table."""
         # Use multiple dispatch to determine how to multiply
         dispatch_table = Operator.__mul__dispatch__
         # First try with the cases stored in the dispatch table:
@@ -128,15 +129,22 @@ class Operator:  # pylint: disable=too-many-public-methods
             ) from exc
 
     def __neg__(self):
+        """Return the negation of this operator."""
         return -(self.to_qutip_operator())
 
     def __sub__(self, operand):
+        """Subtract ``operand`` from this operator."""
+        from qalma.operators.product import ScalarOperator
+
+        if operand is self:
+            return ScalarOperator(0, self.system)
         if operand is None:
             raise ValueError("None can not be an operand")
         neg_op = -operand
         return self + neg_op
 
     def __radd__(self, term):
+        """Add this operator to ``term`` (right-hand addition)."""
         # Use multiple dispatch to determine how to add
         dispatch_table = Operator.__add__dispatch__
         # First try with the cases stored in the dispatch table:
@@ -171,6 +179,7 @@ class Operator:  # pylint: disable=too-many-public-methods
         raise TypeError(f"{type(self)} cannot be added with  {type(term)}")
 
     def __rmul__(self, factor):
+        """Multiply ``factor`` by this operator (right-hand multiplication)."""
         # Use __mul__dispatch__ to determine how to evaluate the product
 
         dispatch_table = Operator.__mul__dispatch__
@@ -187,6 +196,7 @@ class Operator:  # pylint: disable=too-many-public-methods
         raise TypeError(f"{type(factor)} cannot be multiplied with  {type(self)}")
 
     def __rsub__(self, operand):
+        """Subtract this operator from ``operand`` (right-hand subtraction)."""
         if operand is None:
             raise ValueError("None can not be an operand")
 
@@ -194,12 +204,14 @@ class Operator:  # pylint: disable=too-many-public-methods
         return operand + neg_self
 
     def __pow__(self, exponent):
+        """Raise this operator to ``exponent`` via the QuTiP representation."""
         if exponent is None:
             raise ValueError("None can not be an operand")
 
         return self.to_qutip_operator() ** exponent
 
     def __truediv__(self, operand):
+        """Divide this operator by a scalar or another operator."""
         if isinstance(operand, (int, float, complex)):
             return self * (1.0 / operand)
         if isinstance(operand, Operator):
@@ -207,12 +219,12 @@ class Operator:  # pylint: disable=too-many-public-methods
         raise ValueError("Division of an operator by ", type(operand), " not defined.")
 
     def _repr_latex_(self):
-        """LaTeX Representation"""
+        """Latex representation."""
         acts_over = sorted(self.acts_over())
         if len(acts_over) > 4:
             return repr(self)
         qutip_repr = self.to_qutip(tuple(acts_over))
-        if isinstance(qutip_repr, qutip.Qobj):
+        if isinstance(qutip_repr, Qobj):
             # pylint: disable=protected-access
             parts = qutip_repr._repr_latex_().replace("$$", "$").split("$")
             if len(parts) != 3:
@@ -225,58 +237,55 @@ class Operator:  # pylint: disable=too-many-public-methods
         return result
 
     def acts_over(self) -> frozenset:
-        """
-        Return the list of sites over which the operator acts nontrivially.
+        """Return the list of sites over which the operator acts nontrivially.
+
         If this cannot be determined, return None.
         """
         raise NotImplementedError
 
     def as_sum_of_products(self):
-        """Decompose an operator as a sum of product operators"""
+        """Decompose an operator as a sum of product operators."""
         return self
 
     def dag(self):
-        """Adjoint operator of quantum object"""
+        """Adjoint operator of quantum object."""
         return self.to_qutip_operator().dag()
 
     def flat(self):
-        """simplifies sums and products"""
+        """Simplifies sums and products."""
         return self
 
-    def hermitician_part(self):
-        """The hermitician part of the operator"""
+    def hermitian_part(self):
+        r"""Return the Hermitian part of the operator, $\frac{O + O^{\dagger}}{2}$."""
         if self.isherm:
             return self
         return (self + self.dag()) * 0.5
 
     @property
     def isherm(self) -> bool:
-        """Check if the operator is hermitician"""
+        """Check if the operator is hermitian."""
         return self.to_qutip(tuple()).tidyup().isherm
 
     @property
     def isdiagonal(self) -> bool:
-        """Check if the operator is diagonal"""
+        """Check if the operator is diagonal."""
         return False
 
     @property
     def is_zero(self) -> bool:
-        """True if self is a null operator"""
-        return empty_op(self)
+        """True if self is a null operator."""
+        return is_empty_op(self)
 
     def eigenenergies(self):
-        """List of eigenstates of the operator"""
+        """List of eigenstates of the operator."""
         return self.to_qutip_operator().eigenenergies()
 
     def eigenstates(self):
-        """List of eigenstates of the operator"""
+        """List of eigenstates of the operator."""
         return self.to_qutip_operator().eigenstates()
 
-    def expm(self):
-        """
-        Compute the exponential of the Qutip representation of the operator
-        """
-
+    def expm(self) -> "Operator":
+        """Compute the exponential of the Qutip representation of the operator."""
         # Import here to avoid circular dependency
         # pylint: disable=import-outside-toplevel
         # type: ignore[import-untyped]
@@ -294,84 +303,75 @@ class Operator:  # pylint: disable=too-many-public-methods
         op_qutip = (op_qutip - max_eval).expm()
         return QutipOperator(op_qutip, self.system, prefactor=np.exp(max_eval))
 
-    def inv(self):
-        """the inverse of the operator"""
+    def inv(self) -> "Operator":
+        """Return the inverse of the operator."""
         return self.to_qutip_operator().inv()
 
-    def logm(self):
-        """Logarithm of the operator"""
+    def logm(self) -> "Operator":
+        """Logarithm of the operator."""
         return self.to_qutip_operator().logm()
 
     def n_body_sector(self) -> int:
-        """
-        The maximum number of factors of any term in
-        a product state decomposition.
-        """
+        """Return the maximum number of factors of any term in a product state decomposition."""
         return len(self.acts_over())
 
     def num_terms(self) -> int:
-        """Number of terms that spans the operator"""
+        """Return the number of terms that span the operator."""
         return 1
 
     def norm(self, ord: Optional[int | str | float] = None):
-        """The norm of the operator"""
-
+        """Compute the norm of the operator."""
         return norm(self.to_qutip(), ord)
 
     def partial_trace(self, sites: Union[frozenset, SystemDescriptor]):
-        """Partial trace over sites not listed in `sites`"""
+        """Partial trace over sites not listed in `sites`."""
         raise NotImplementedError
 
     def reduce(self, sites: Iterable, state=None):
-        """
-        Partial trace of the product of the operator and the density operator
-        acting on the subsystem which is traced out.
-        If the state is not provided, the result is the partial trace, divided
-        by the dimension of the subsystem traced out.
+        """Compute the partial trace of the product of the operator and the density operator.
+
+        The density operator acts on the subsystem which is traced out. If the
+        state is not provided, the result is the partial trace divided by the
+        dimension of the subsystem traced out.
 
         Parameters
-        ==========
-        sites: Iterable
+        ----------
+        sites : Iterable
+            Sites to keep.
+        state : Optional[DensityOperatorProtocol]
+            The state relative to which the reduction is made.
 
-        state: Optional[DensityOperatorProtocol]
-               The state relative to which make the reduction.
-
-        Return
-        ======
-
-        The reduced operator.
+        Returns
+        -------
+        Operator
+            The reduced operator.
 
         """
         raise NotImplementedError
 
     def _set_system_(self, system=None):
-        """
-        Change the system associated to the operator,
-        and references of other operators inside.
+        """Change the system associated to the operator, and references of other operators inside.
 
-        In a multiprocess context, the `system` attribute of
-        the objects generated by the children process lost
-        their identity regarding the `system` attribute
-        of the committed object.
-        To get the right reference on the returned objects,
-        call this method without parameters in the worker,
-        before returning the objects.
-        Then, in the main process, set back the original system
-        object.
+        In a multiprocess context, the `system` attribute of the objects
+        generated by the children process lost their identity regarding
+        the `system` attribute of the committed object. To get the right
+        reference on the returned objects, call this method without
+        parameters in the worker, before returning the objects. Then, in
+        the main process, set back the original system object.
         """
         self.system = system
         return self
 
-    def simplify(self):
-        """Returns a more efficient representation"""
+    def simplify(self) -> "Operator":
+        """Return a more efficient representation."""
         return self
 
     def to_qutip(self, block: Optional[Tuple[str, ...]] = None):
-        """Convert to a Qutip object"""
+        """Convert to a Qutip object."""
         raise NotImplementedError
 
     def to_qutip_operator(self):
-        """Produce a Qutip representation of the operator"""
+        """Produce a Qutip representation of the operator."""
         # pylint: disable=import-outside-toplevel
 
         block = tuple(sorted(self.acts_over()))
@@ -379,7 +379,7 @@ class Operator:  # pylint: disable=too-many-public-methods
             return self
         site_names = {site: i for i, site in enumerate(block)}
         qobj = self.to_qutip(block)
-        if isinstance(qobj, qutip.Qobj):
+        if isinstance(qobj, Qobj):
             from .qutip import QutipOperator
 
             assert qobj.type != "scalar"
@@ -391,45 +391,74 @@ class Operator:  # pylint: disable=too-many-public-methods
 
     # pylint: disable=invalid-name
     def tr(self) -> complex:
-        """The trace of the operator"""
+        r"""Return the trace of the operator over the full system.
+
+        Delegates to ``partial_trace`` with an empty site set, then
+        returns the scalar ``prefactor`` of the result.  Subclasses that
+        compute ``tr`` via a different code-path should override this.
+
+        Returns
+        -------
+        complex
+            :math:`\mathrm{Tr}(O)`.
+
+        """
         return self.partial_trace(frozenset()).prefactor
 
     def tidyup(self, _atol=None):
-        """remove tiny elements of the operator"""
+        """Remove tiny elements of the operator."""
         return self
 
 
 class LocalOperator(Operator):
-    """
-    Operator acting over a single site.
-    """
+    """Operator acting over a single site."""
+
+    _to_qutip_cache: Dict[Optional[Tuple[str, ...]], Qobj]
+    operator: np.ndarray
+    site: str
 
     def __init__(
         self,
-        site,
+        site: str,
         local_operator,
         system: Optional[SystemDescriptor] = None,
     ):
-        assert isinstance(site, str)
+        """Initialize a LocalOperator.
+
+        Parameters
+        ----------
+        site : str
+            Name of the site on which this operator acts.
+        local_operator : np.ndarray, Qobj, or scalar
+            The local matrix. Scalars are interpreted as multiples of the
+            site identity.
+        system : SystemDescriptor
+            Descriptor of the full lattice system. Must not be ``None``.
+
+        """
         assert system is not None
         self.site = site
         if isinstance(local_operator, (int, float, complex)):
             local_operator = system.site_identity(site) * local_operator
-        assert isinstance(local_operator, Qobj)
-        self.operator = local_operator
+
+        self.operator = _to_array(local_operator)
+        if isinstance(local_operator, Qobj):
+            self.__dict__["operator_qutip"] = local_operator
+
+        self._to_qutip_cache = {}
         self.system = system
 
     def __bool__(self):
-        operator = self.operator
-        if isinstance(operator, Qobj):
-            return not empty_op(operator)
-        return bool(self.operator)
+        """Return False if the operator matrix is all zeros, True otherwise."""
+        return bool(self.operator.any())
 
     def __neg__(self):
+        """Return the negation of this local operator."""
         return LocalOperator(self.site, -self.operator, self.system)
 
     def __pow__(self, exp):
-        operator = self.operator
+        """Raise this local operator to the power ``exp``."""
+        operator = self.operator_qutip
         if exp < 0 and hasattr(operator, "inv"):
             operator = operator.inv()
             exp = -exp
@@ -437,33 +466,61 @@ class LocalOperator(Operator):
         return LocalOperator(self.site, operator**exp, self.system)
 
     def __repr__(self):
-        return f"Local Operator on site {self.site}:" f"\n {repr(self.operator.full())}"
+        """Return a string representation of this local operator."""
+        return f"Local Operator on site {self.site}:\n {repr(self.operator_qutip)}"
+
+    @cached_property
+    def operator_qutip(self) -> Qobj:
+        """Return a Qutip representation of the local operator."""
+        return to_qobj(self.operator)
 
     def acts_over(self) -> frozenset:
+        """Return the singleton set containing the site of this operator.
+
+        Returns
+        -------
+        frozenset[str]
+            ``frozenset({self.site})``.
+
+        """
         return frozenset((self.site,))
 
     def dag(self):
-        """
-        Return the adjoint operator
-        """
+        """Return the adjoint operator."""
         operator = self.operator
-        if operator.isherm:
+        if self.isherm:
             return self
-        return LocalOperator(self.site, operator.dag(), self.system)
+        return LocalOperator(self.site, operator.T.conj(), self.system)
 
     def expm(self):
-        return LocalOperator(self.site, self.operator.expm(), self.system)
+        """Return the matrix exponential :math:`e^O` of the local operator.
 
-    def hermitician_part(self):
-        """The hermitician part of the operator"""
+        Returns
+        -------
+        LocalOperator
+            A local operator on the same site with matrix :math:`e^O`.
+
+        """
+        return LocalOperator(self.site, self.operator_qutip.expm(), self.system)
+
+    def hermitian_part(self):
+        """Return the Hermitian part of the local operator, (O + O†) / 2."""
         op = self.operator
-        if op.isherm:
+        if self.isherm:
             return self
-        op = (op + op.dag()) * 0.5
+        op = (op + op.T.conj()) * 0.5
         return LocalOperator(self.site, op, self.system)
 
     def inv(self):
-        operator = self.operator
+        """Return the inverse operator :math:`O^{-1}`.
+
+        Returns
+        -------
+        LocalOperator
+            A local operator on the same site with matrix :math:`O^{-1}`.
+
+        """
+        operator = self.operator_qutip
         system = self.system
         site = self.site
         return LocalOperator(
@@ -472,21 +529,31 @@ class LocalOperator(Operator):
             system,
         )
 
-    @property
+    @cached_property
     def isherm(self) -> bool:
-        operator = self.operator
-        if isinstance(operator, (float, int)):
-            return True
-        if isinstance(operator, complex):
-            return operator.imag == 0.0
-        return operator.isherm
+        """``True`` if the local matrix is Hermitian."""
+        return ishermitian(self.operator)
 
-    @property
+    @cached_property
     def isdiagonal(self) -> bool:
+        """``True`` if the local matrix is diagonal."""
         return is_diagonal_op(self.operator)
 
     def logm(self):
+        r"""Return the matrix logarithm of the local operator.
+
+        Computed via eigendecomposition. Eigenvalues below ``1e-50`` are
+        clamped to avoid numerical divergence in the logarithm.
+
+        Returns
+        -------
+        LocalOperator
+            A local operator on the same site with matrix :math:`\\log O`.
+
+        """
+
         def log_qutip(loc_op):
+            """Compute matrix log via eigendecomposition, clamping near-zero eigenvalues."""
             evals, evecs = loc_op.eigenstates()
             evals[abs(evals) < 1.0e-50] = 1.0e-50
             return sum(
@@ -494,11 +561,10 @@ class LocalOperator(Operator):
                 for e_val, e_vec in zip(evals, evecs)
             )
 
-        return LocalOperator(self.site, log_qutip(self.operator), self.system)
+        return LocalOperator(self.site, log_qutip(self.operator_qutip), self.system)
 
     def norm(self, ord=None):
-        """The norm of the operator"""
-
+        """Compute the norm of the operator."""
         result = norm(self.operator, ord)
         if ord in ("fro", "nuc"):
             dim_factor = 1.0
@@ -514,6 +580,25 @@ class LocalOperator(Operator):
         return result
 
     def partial_trace(self, sites: Union[frozenset, SystemDescriptor]):
+        r"""Compute the partial trace over the complement of ``sites``.
+
+        If the operator's site is not in ``sites``, returns a
+        :class:`~qalma.operators.product.ScalarOperator` with value
+        :math:`\\mathrm{Tr}(O) \\cdot \\prod_{j \\notin \\{i\\} \\cup \\text{sites}} d_j`.
+        Otherwise returns a :class:`LocalOperator` scaled by the same
+        dimensional prefactor.
+
+        Parameters
+        ----------
+        sites : frozenset[str] or SystemDescriptor
+            Sites to *keep*. All other sites are traced out.
+
+        Returns
+        -------
+        Operator
+            The reduced operator on the subsystem defined by ``sites``.
+
+        """
         # pylint: disable=import-outside-toplevel
 
         system = self.system
@@ -536,27 +621,27 @@ class LocalOperator(Operator):
         if site not in local_sites:
             from .product import ScalarOperator
 
-            return ScalarOperator(local_op.tr() * prefactor, subsystem)
+            return ScalarOperator(local_op.trace() * prefactor, subsystem)
         return LocalOperator(site, local_op * prefactor, subsystem)
 
     def reduce(self, sites: Iterable, state=None) -> Operator:
-        """
-        Partial trace of the product of the operator and the density operator
-        acting on the subsystem which is traced out.
-        If the state is not provided, the result is the partial trace, divided
-        by the dimension of the subsystem traced out.
+        """Compute the partial trace of the product of the operator and the density operator.
+
+        The density operator acts on the subsystem which is traced out. If the
+        state is not provided, the result is the partial trace divided by the
+        dimension of the subsystem traced out.
 
         Parameters
-        ==========
-        sites: Iterable
+        ----------
+        sites : Iterable
+            Sites to keep.
+        state : Optional[DensityOperatorProtocol]
+            The state relative to which the reduction is made.
 
-        state: Optional[DensityOperatorProtocol]
-               The state relative to which make the reduction.
-
-        Return
-        ======
-
-        The reduced operator.
+        Returns
+        -------
+        Operator
+            The reduced operator.
 
         """
         # pylint: disable=import-outside-toplevel
@@ -569,13 +654,26 @@ class LocalOperator(Operator):
         if state is not None:
             scalar_val = state.expect(self)
         else:
-            scalar_val = self.operator.tr() / system.dimensions[site]
+            scalar_val = self.operator.trace() / system.dimensions[site]
 
         from .product import ScalarOperator
 
         return ScalarOperator(scalar_val, system)
 
     def simplify(self):
+        """Return a simpler equivalent operator if the local matrix is scalar.
+
+        If the local matrix is a multiple of the identity, returns a
+        :class:`~qalma.operators.product.ScalarOperator`. Otherwise returns
+        ``self`` unchanged.
+
+        Returns
+        -------
+        Operator
+            A :class:`~qalma.operators.product.ScalarOperator` if the matrix
+            is proportional to the identity, otherwise ``self``.
+
+        """
         # TODO: reduce multiples of the identity to ScalarOperators
         # pylint: disable=import-outside-toplevel
         operator = self.operator
@@ -588,17 +686,22 @@ class LocalOperator(Operator):
         return ScalarOperator(value, self.system)
 
     def to_qutip(self, block: Optional[Tuple[str, ...]] = None):
-        """Convert to a Qutip object"""
+        """Convert to a Qutip object."""
+        cached = self._to_qutip_cache.get(block, None)
+        if cached is not None:
+            return cached
+
         site = self.site
         system = self.system
         sites = system.sites
         dimensions = system.dimensions
         operator = self.operator
         # Ensure that block at least contains site
+        orig_block = block
         if block is None:
             block = tuple(sorted(sites))
             if len(block) > 8:
-                logging.warning(
+                logger.warning(
                     "Asking for a qutip representation of an operator over the full system"
                 )
         elif site not in block:
@@ -608,14 +711,13 @@ class LocalOperator(Operator):
             operator = qutip.qeye(dimensions[site]) * operator
         elif isinstance(operator, Operator):
             operator = operator.to_qutip((site,))
+        else:
+            operator = self.operator_qutip
         # Build factors
         factors_dict = (operator if s == site else sites[s]["identity"] for s in block)
-        return qutip.tensor(*factors_dict)
-
-    def tr(self):
-        result = self.partial_trace(frozenset())
-        return result.prefactor
+        self._to_qutip_cache[orig_block] = result = fast_tensor(*factors_dict)
+        return result
 
     def tidyup(self, atol=None):
-        """remove tiny elements of the operator"""
-        return LocalOperator(self.site, self.operator.tidyup(atol), self.system)
+        """Remove tiny elements of the operator."""
+        return LocalOperator(self.site, self.operator_qutip.tidyup(atol), self.system)

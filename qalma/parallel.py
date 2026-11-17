@@ -1,7 +1,4 @@
-"""
-Parallel routines
-
-"""
+"""Parallel routines."""
 
 import logging
 from functools import partial
@@ -10,13 +7,17 @@ from typing import Any, Dict, Optional, Tuple
 import qalma.settings as qalma_settings
 from qalma.operators import Operator
 from qalma.operators.arithmetic import iterable_to_operator
-from qalma.operators.simplify import collect_nbody_terms
-from qalma.operators.states.basic import (
-    ProductDensityOperator,
-)
+from qalma.operators.simplify import _commutator_term_pairs, collect_nbody_terms
 from qalma.operators.states.gibbs import (
     GibbsProductDensityOperator,
 )
+from qalma.operators.states.product import (
+    ProductDensityOperator,
+)
+
+logger = logging.getLogger(__name__)
+
+__all__ = ["commutator_qalma_parallel"]
 
 USE_PARALLEL = qalma_settings.USE_PARALLEL
 MAX_WORKERS = qalma_settings.PARALLEL_MAX_WORKERS
@@ -30,31 +31,36 @@ if qalma_settings.USE_PARALLEL:
     try:
         from concurrent.futures import ProcessPoolExecutor, ThreadPoolExecutor
 
-        logging.info("Using parallel routines for large objects.")
+        logger.info("Using parallel routines for large objects.")
     except ModuleNotFoundError:
         USE_PARALLEL = False
-        logging.warning(
+        logger.warning(
             "ProcessPoolExecutor/ThreadPoolExecutor cannot be loaded. Using serial routines."
         )
         MAX_WORKERS = 1
         USE_THREADS = False
 else:
-    logging.info("Using serial routines for large objects.")
+    logger.info("Using serial routines for large objects.")
     MAX_WORKERS = 1
     USE_THREADS = False
 
 
 def _commutator_term_worker(entries):
-    """
-    Compute the commutator [hi, kj] = hi * kj - kj * hi and simplify the result.
+    """Compute the commutator [hi, kj] = hi * kj - kj * hi and simplify the result.
+
     The `system` attribute of the result is set to `None` to reduce the
     serializing cost.
 
-    Parameters:
-        hi_kj (tuple): A tuple (hi, kj) of SumOperator objects.
+    Parameters
+    ----------
+    entries : tuple
+        A tuple (hi, kj) of SumOperator objects.
 
-    Returns:
-        Operator: The simplified commutator operator with small terms removed (threshold 1e-5).
+    Returns
+    -------
+    Operator
+        The simplified commutator operator with small terms removed (threshold 1e-5).
+
     """
     op_1, op_2 = entries
     return (op_1 * op_2 - op_2 * op_1).simplify()._set_system_()
@@ -66,30 +72,32 @@ def commutator_qalma_parallel(
     use_threads: bool = USE_THREADS,
     num_workers: int = MAX_WORKERS,
 ) -> Operator:
-    """
-    The commutator of two Operator objects `op_1` and  `op_2`.
+    """Compute the commutator of two Operator objects `op_1` and `op_2`.
+
     Parallel implementation.
+
+    Parameters
+    ----------
+    op_1 : Operator
+        First operator.
+    op_2 : Operator
+        Second operator.
+    use_threads : bool, optional
+        Whether to use threads instead of processes.
+    num_workers : int, optional
+        Number of parallel workers.
+
+    Returns
+    -------
+    Operator
+        The commutator [op_1, op_2] = op_1 * op_2 - op_2 * op_1, simplified.
+
     """
     system = op_1.system.union(op_2.system)
     op_1_terms = collect_nbody_terms(op_1.flat())
     op_2_terms = collect_nbody_terms(op_2.flat())
 
-    def fetch_terms():
-        for block_1, terms_1 in op_1_terms.items():
-            for block_2, terms_2 in op_2_terms.items():
-                if (
-                    block_1 is not None
-                    and block_2 is not None
-                    and not block_1.intersection(block_2)
-                ):
-                    continue
-                for term_1 in terms_1:
-                    for term_2 in terms_2:
-                        if term_1 is term_2:
-                            continue
-                        yield (term_1, term_2)
-
-    terms_pairs = tuple(pair for pair in fetch_terms())
+    terms_pairs = tuple(_commutator_term_pairs(op_1_terms, op_2_terms))
     len_terms_pairs = len(terms_pairs)
     # The wall-time estimated for a task can be estimated as
     # WallTime =   N_TASKS / NUM_PROC * TIME_SINGLE_TASK + NUM_PROC * PARALLELIZING_OVERHEAD_TIME
@@ -117,7 +125,7 @@ def commutator_qalma_parallel(
 
 
 def _project_monomial_worker(operator, nmax, sigma):
-    """Worker"""
+    """Project a single operator to the nmax subspace relative to state sigma."""
     return (
         DISPATCH_PROJECTION_METHOD_PARALLEL[type(operator)](operator, nmax, sigma)
         .simplify()
@@ -132,9 +140,26 @@ def parallel_process_non_dispatched_terms(
     use_threads=USE_THREADS,
     max_workers=MAX_WORKERS,
 ) -> Tuple[Operator, ...]:
-    """
-    Project each operator in `terms` to the nmax subspace, relative
-    to the state `sigma`.
+    """Project each operator in `terms` to the nmax subspace, relative to `sigma`.
+
+    Parameters
+    ----------
+    terms : tuple of Operator
+        Operators to project.
+    nmax : int
+        Maximum body order of the projection subspace.
+    sigma : ProductDensityOperator or GibbsProductDensityOperator, optional
+        Reference state for the projection.
+    use_threads : bool, optional
+        Whether to use threads instead of processes.
+    max_workers : int, optional
+        Maximum number of parallel workers.
+
+    Returns
+    -------
+    tuple of Operator
+        Projected operators with the system attribute restored.
+
     """
     system = terms[0].system
     non_dispatched_length = len(terms)

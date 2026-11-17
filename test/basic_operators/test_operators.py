@@ -1,6 +1,4 @@
-"""
-Basic unit test.
-"""
+"""Basic unit test."""
 
 from test.helper import (
     CHAIN_SIZE,
@@ -49,21 +47,21 @@ ACTS_OVER_RESULTS = {
     "product, 2": set(),
     "scalar, real": set(),
     "scalar, complex": set(),
-    "local operator, hermitician": {"1[0]"},
-    "local operator, non hermitician": {"1[0]"},
+    "local operator, hermitian": {"1[0]"},
+    "local operator, non hermitian": {"1[0]"},
     "One body, diagonal": FULL_CHAIN,
-    "One body, hermitician": FULL_CHAIN,
-    "One body, non hermitician": FULL_CHAIN,
-    "three body, hermitician": {"1[0]", "1[1]", "1[2]"},
-    "three body, non hermitician": FULL_CHAIN,
-    "product operator, hermitician": {"1[0]", "1[1]"},
-    "product operator, hermitician, twice": {"1[0]", "1[1]"},
-    "product operator, non hermitician": {"1[0]", "1[1]"},
-    "sum operator, hermitician": {"1[0]", "1[1]"},
-    "sum operator, hermitician from non hermitician": {"1[0]", "1[1]"},
-    "sum operator, anti-hermitician": {"1[0]", "1[1]"},
-    "hermitician quadratic operator": FULL_CHAIN,
-    "non hermitician quadratic operator": FULL_CHAIN,
+    "One body, hermitian": FULL_CHAIN,
+    "One body, non hermitian": FULL_CHAIN,
+    "three body, hermitian": {"1[0]", "1[1]", "1[2]"},
+    "three body, non hermitian": FULL_CHAIN,
+    "product operator, hermitian": {"1[0]", "1[1]"},
+    "product operator, hermitian, twice": {"1[0]", "1[1]"},
+    "product operator, non hermitian": {"1[0]", "1[1]"},
+    "sum operator, hermitian": {"1[0]", "1[1]"},
+    "sum operator, hermitian from non hermitian": {"1[0]", "1[1]"},
+    "sum operator, anti-hermitian": {"1[0]", "1[1]"},
+    "hermitian quadratic operator": FULL_CHAIN,
+    "non hermitian quadratic operator": FULL_CHAIN,
     "fully mixed": FULL_CHAIN,
     "z semipolarized": FULL_CHAIN,
     "x semipolarized": FULL_CHAIN,
@@ -87,7 +85,7 @@ ACTS_OVER_RESULTS = {
 
 @pytest.mark.parametrize(["name", "operator"], list(FULL_TEST_CASES.items()))
 def test_acts_over(name, operator):
-    """Check acts_over method"""
+    """Check acts_over method."""
     print(name)
     acts_over = operator.acts_over()
     print("    acts over ", acts_over)
@@ -108,10 +106,10 @@ def test_acts_over(name, operator):
     ],
 )
 def test_product_and_trace(name1, operator1, name2, operator2):
-    """Check acts_over method"""
+    """Check acts_over method."""
     skip_cases = {
-        "hermitician quadratic operator",
-        "non hermitician quadratic operator",
+        "hermitian quadratic operator",
+        "non hermitian quadratic operator",
     }
     if name1 in skip_cases or name2 in skip_cases:
         return
@@ -151,7 +149,7 @@ def test_product_and_trace(name1, operator1, name2, operator2):
 
 
 def test_build_hamiltonian():
-    """build ham"""
+    """Build ham."""
     assert SZ_TOTAL is not None
     assert HAMILTONIAN is not None
     hamiltonian_with_field = HAMILTONIAN + SZ_TOTAL
@@ -162,7 +160,7 @@ def test_build_hamiltonian():
 
 
 def test_type_operator():
-    """Tests for operator types"""
+    """Tests for operator types."""
     assert isinstance(SX_A, ProductOperator)
     assert isinstance(SY_B, LocalOperator)
     assert isinstance(SZ_C, LocalOperator)
@@ -176,19 +174,19 @@ def test_type_operator():
     assert isinstance((SX_A + SY_B), OneBodyOperator)
     assert isinstance(
         (SX_A + SY_B) * 3, OneBodyOperator
-    ), f"{type((SX_A + SY_B)*3.)} is not OneBodyOperator"
+    ), f"{type((SX_A + SY_B) * 3.0)} is not OneBodyOperator"
     assert isinstance(
         3.0 * (SX_A + SY_B), OneBodyOperator
-    ), f"{type(3.0*(SX_A + SY_B))} is not OneBodyOperator"
+    ), f"{type(3.0 * (SX_A + SY_B))} is not OneBodyOperator"
 
     assert isinstance((SX_A + SY_B) * 2.0, OneBodyOperator)
     assert isinstance(SY_B + SX_A, OneBodyOperator)
     assert isinstance(SX_ASY_B, ProductOperator)
-    assert len(SX_ASY_B.sites_op) == 2
+    assert len(SX_ASY_B.site_factors) == 2
     assert isinstance(SX_AsyB_times_2, ProductOperator)
     assert isinstance(OP_GLOBAL, SumOperator)
     assert isinstance(SX_A + SY_B, SumOperator)
-    assert len(SX_AsyB_times_2.sites_op) == 2
+    assert len(SX_AsyB_times_2.site_factors) == 2
 
     OP_GLOBAL.prefactor = 2
     assert SX_A2.prefactor == 1
@@ -205,7 +203,7 @@ def test_type_operator():
 
 
 def test_inv_operator():
-    """test the exponentiation of different kind of operators"""
+    """Test the exponentiation of different kind of operators."""
     sx_a_inv = SX_A.inv()
     assert isinstance(sx_a_inv, LocalOperator)
     assert check_operator_equality(sx_a_inv.to_qutip(), SX_A.to_qutip().inv())
@@ -229,7 +227,7 @@ def test_inv_operator():
 
 
 def test_exp_operator():
-    """test the exponentiation of different kind of operators"""
+    """Test the exponentiation of different kind of operators."""
     SX_A_exp = SX_A.expm()
     assert isinstance(SX_A_exp, LocalOperator)
     assert check_operator_equality(SX_A_exp.to_qutip(), SX_A.to_qutip().expm())
@@ -255,7 +253,7 @@ def test_exp_operator():
 
 
 def test_local_operator():
-    """Tests for local operators"""
+    """Tests for local operators."""
     assert (SX_A * SX_A).tr() == 0.5 * 2 ** (CHAIN_SIZE - 1)
     assert (SZ_A * SZ_A).tr() == 0.5 * 2 ** (CHAIN_SIZE - 1)
 
@@ -297,8 +295,7 @@ def test_local_operator():
 
 
 def test_product_operator():
-    """Tests for product operators"""
-
+    """Tests for product operators."""
     assert (SX_ASY_B * SX_A * SY_B).tr() == 0.25 * 2 ** (CHAIN_SIZE - 2)
     assert (OP_GLOBAL * SX_A * SY_B).tr() == 0.5 * 2 ** (CHAIN_SIZE - 2)
     assert (SX_AsyB_times_2 * SX_AsyB_times_2).tr() == 2 ** (CHAIN_SIZE - 2)

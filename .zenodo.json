@@ -1,0 +1,31 @@
+{
+  "title": "QALMA: Quantum Algebras for Lattice Models and Applications",
+  "upload_type": "software",
+  "description": "QALMA is a Python library that connects ALPS model and lattice definitions with QuTiP quantum objects. It provides an algebraic representation of many-body operators and states, mean-field approximations, and Max-Ent projected evolution for lattice systems.",
+  "creators": [
+    {
+      "name": "Matera, Juan Mauricio"
+    }
+  ],
+  "license": "lgpl-3.0-only",
+  "keywords": [
+    "quantum many-body systems",
+    "lattice models",
+    "mean-field approximation",
+    "maximum entropy",
+    "QuTiP",
+    "ALPS"
+  ],
+  "related_identifiers": [
+    {
+      "identifier": "https://github.com/QILPCM-IFLP-CONICET/QALMA",
+      "relation": "isSupplementTo",
+      "scheme": "url"
+    },
+    {
+      "identifier": "https://qalma.readthedocs.io/",
+      "relation": "isDocumentedBy",
+      "scheme": "url"
+    }
+  ]
+}

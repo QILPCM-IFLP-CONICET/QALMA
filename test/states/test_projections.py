@@ -1,6 +1,4 @@
-"""
-Test functions that implement n-body projections
-"""
+"""Test functions that implement n-body projections."""
 
 import os
 from test.helper import (
@@ -33,12 +31,12 @@ from qalma.operators.states import (
 )
 from qalma.projections import (
     one_body_from_qutip_operator,
-    project_operator_to_m_body,
+    project_operator_to_n_body,
 )
 from qalma.projections.nbody import (
-    _project_qutip_operator_to_m_body_recursive,
-    project_product_operator_as_n_body_operator,
-    project_qutip_operator_as_n_body_operator,
+    _project_product_operator_combinatorial,
+    _project_qutip_operator_combinatorial,
+    _project_qutip_operator_recursive,
     project_to_n_body_operator,
 )
 from qalma.settings import QALMA_TOLERANCE
@@ -132,8 +130,7 @@ if os.environ.get("QALMA_ALLTESTS"):
 
 @pytest.mark.parametrize(["op_name", "op_test"], list(TEST_OPERATORS.items()))
 def test_compare_recursive_and_iterative_n_body_projections(op_name, op_test):
-    """
-    Compare the results of the recursive and the iterative implementations
+    """Compare the results of the recursive and the iterative implementations
     of the n-body projections.
     """
     failed = {}
@@ -148,12 +145,12 @@ def test_compare_recursive_and_iterative_n_body_projections(op_name, op_test):
             print(" <sx>=", 0)
         for n_body in [1]:
             print("   n=", n_body)
-            result_m = project_operator_to_m_body(op_test, n_body, sigma0)
+            result_m = project_operator_to_n_body(op_test, n_body, sigma0)
             result_n = project_to_n_body_operator(op_test, n_body, sigma0)
             if isherm:
                 assert (
                     result_m.isherm
-                ), "project_operator_to_m_body should preserve hermiticity"
+                ), "project_operator_to_n_body should preserve hermiticity"
                 assert (
                     result_n.isherm
                 ), "project_to_n_body_operator should preserve hermiticity"
@@ -177,10 +174,9 @@ def test_compare_recursive_and_iterative_n_body_projections(op_name, op_test):
 
 @pytest.mark.parametrize(["op_name", "op_test"], list(TEST_OPERATORS.items()))
 def test_compare_iterative_and_recursive_n_body_qutip_projections(op_name, op_test):
-    """
-    This test compares the results of using the recursive
-    `_project_qutip_operator_to_m_body_recursive` and the iterative
-    `project_qutip_operator_as_n_body_operator` n-body projections.
+    """This test compares the results of using the recursive
+    `_project_qutip_operator_recursive` and the iterative
+    `_project_qutip_operator_combinatorial` n-body projections.
     """
     failed = {}
     print(f"projecting <<{op_name}>> in mean field")
@@ -190,15 +186,14 @@ def test_compare_iterative_and_recursive_n_body_qutip_projections(op_name, op_te
     assert isinstance(op_test, QutipOperator)
 
     for state_name, sigma0 in TEST_STATES.items():
+        if not isinstance(sigma0, ProductDensityOperator):
+            continue
+
         print(f"  = sigma0{state_name}")
         for n_body in range(0, 4):
             print("   n=", n_body)
-            result_m = _project_qutip_operator_to_m_body_recursive(
-                op_test, n_body, sigma0
-            )
-            result_n = project_qutip_operator_as_n_body_operator(
-                op_test, n_body, sigma0
-            )
+            result_m = _project_qutip_operator_recursive(op_test, n_body, sigma0)
+            result_n = _project_qutip_operator_combinatorial(op_test, n_body, sigma0)
             if not check_operator_equality(result_m, result_n, 5e-6):
                 failed[
                     (
@@ -218,10 +213,9 @@ def test_compare_iterative_and_recursive_n_body_qutip_projections(op_name, op_te
 
 @pytest.mark.parametrize(["op_name", "op_test"], list(TEST_OPERATORS.items()))
 def test_compare_iterative_and_recursive_n_body_product_projections(op_name, op_test):
-    """
-    This test compares the results of using the recursive
-    `project_operator_to_m_body` and the iterative specific
-    `project_product_operator_as_n_body_operator` product n-body projections.
+    """This test compares the results of using the recursive
+    `project_operator_to_n_body` and the iterative specific
+    `_project_product_operator_combinatorial` product n-body projections.
     """
     failed = {}
     print(f"projecting <<{op_name}>> in mean field")
@@ -235,13 +229,13 @@ def test_compare_iterative_and_recursive_n_body_product_projections(op_name, op_
             return
 
     for state_name, sigma0 in TEST_STATES.items():
+        if not isinstance(sigma0, ProductDensityOperator):
+            continue
         print(f"  = sigma0{state_name}")
         for n_body in range(0, 4):
             print("   n=", n_body)
-            result_m = project_operator_to_m_body(op_test, n_body, sigma0)
-            result_n = project_product_operator_as_n_body_operator(
-                op_test, n_body, sigma0
-            )
+            result_m = project_operator_to_n_body(op_test, n_body, sigma0)
+            result_n = _project_product_operator_combinatorial(op_test, n_body, sigma0)
             if not check_operator_equality(result_m, result_n, 1e-7):
                 failed[
                     (
@@ -266,16 +260,15 @@ def test_compare_iterative_and_recursive_n_body_product_projections(op_name, op_
         for name in TEST_OPERATORS
         for proj_name, proj_func in (
             ("project_to_n_body_operator", project_to_n_body_operator),
-            ("project_operator_to_m_body", project_operator_to_m_body),
+            ("project_operator_to_n_body", project_operator_to_n_body),
         )
     ],
 )
 def test_idempotency_nbody_projection(op_name, projection_name, projection_function):
-    """
-    Test the mean field projection over different states,
-    and using both implementations.
-    Also check if hermiticity is preserved.
+    """Test the mean field projection over different states, and using both
+    implementations.
 
+    Also check if hermiticity is preserved.
     """
     op_test = TEST_OPERATORS[op_name]
     print("testing the consistency of projection in", op_name)
@@ -307,7 +300,7 @@ def test_idempotency_nbody_projection(op_name, projection_name, projection_funct
         for state_name, state in TEST_CASES_STATES.items()
         for proj_name, proj_func in (
             ("project_to_n_body_operator", project_to_n_body_operator),
-            ("project_operator_to_m_body", project_operator_to_m_body),
+            ("project_operator_to_n_body", project_operator_to_n_body),
         )
         if isinstance(state, (GibbsProductDensityOperator, ProductDensityOperator))
     ],
@@ -325,8 +318,8 @@ def test_2body_to_1body_product_projection(
         if len(op_prod.acts_over()) != 2:
             continue
         print("* testing against", op_name)
-        site1, site2 = op_prod.sites_op
-        op1, op2 = op_prod.sites_op[site1], op_prod.sites_op[site2]
+        site1, site2 = op_prod.site_factors
+        op1, op2 = op_prod.site_factors_qutip[site1], op_prod.site_factors_qutip[site2]
         rho_1 = state.partial_trace(frozenset([site1]))
         rho_2 = state.partial_trace(frozenset([site2]))
         op1_expect = (rho_1.to_qutip() * op1).tr()
@@ -354,7 +347,7 @@ def test_2body_to_1body_product_projection(
 
 @pytest.mark.parametrize(["op_name", "op_test"], list(TEST_OPERATORS.items()))
 def test_self_consistent_meanfield_projection(op_name, op_test):
-    """Test the mean field projection over different states"""
+    """Test the mean field projection over different states."""
     if op_name not in EXPECTED_PROJECTIONS:
         return
     expected = EXPECTED_PROJECTIONS[op_name]
@@ -392,15 +385,14 @@ def test_self_consistent_meanfield_projection(op_name, op_test):
 def test_compare_meanfield_projection_using_iterative_and_recursive_projections(
     op_name, op_test
 ):
-    """
-    Compare the results of the self-consistent mean field projection from
+    """Compare the results of the self-consistent mean field projection from
     both iterative and recursive projection routines.
     """
     failed = {}
     print(f"projecting <<{op_name}>> in mean field")
     for state_name, sigma0 in TEST_STATES.items():
         result_m = project_meanfield(
-            op_test, sigma0, proj_func=project_operator_to_m_body
+            op_test, sigma0, proj_func=project_operator_to_n_body
         )
         result_n = project_meanfield(
             op_test, sigma0, proj_func=project_to_n_body_operator
@@ -433,9 +425,8 @@ def test_compare_meanfield_projection_using_iterative_and_recursive_projections(
     ["operator_case", "operator"], list(OPERATOR_TYPE_CASES.items())
 )
 def test_one_body_from_qutip_operator_1(operator_case, operator):
-    """
-    Test if the `one_body_from_qutip_operator` function returns
-    the right type of operator.
+    """Test if the `one_body_from_qutip_operator` function returns the right
+    type of operator.
     """
     print(operator_case, "as scalar + one body + rest")
     result = one_body_from_qutip_operator(operator.to_qutip_operator())
@@ -465,14 +456,13 @@ def test_one_body_from_qutip_operator_1(operator_case, operator):
 
 
 def test_one_body_from_qutip_operator_2():
-    """
-    one_body_from_qutip_operator tries to decompose
+    """one_body_from_qutip_operator tries to decompose
     an operator K in the sparse Qutip form into
     a sum of two operators
     K = K_0 + Delta K
     with K_0 a OneBodyOperator and
     DeltaK s.t.
-    Tr[DeltaK sigma]=0
+    Tr[DeltaK sigma]=0.
     """
     failed = {}
 
@@ -554,7 +544,7 @@ def test_one_body_from_qutip_operator_2():
 
 @pytest.mark.parametrize(
     ["operator_case", "operator", "name_ref", "gen"],
-    (
+    [
         (
             operator_case,
             operator,
@@ -563,7 +553,7 @@ def test_one_body_from_qutip_operator_2():
         )
         for operator_case, operator in OPERATOR_TYPE_CASES.items()
         for name_ref, gen in PRODUCT_GIBBS_GENERATOR_TESTS.items()
-    ),
+    ],
 )
 def test_one_body_from_qutip_operator_with_reference_state(
     operator_case, operator, name_ref, gen

@@ -1,12 +1,15 @@
-"""
-Classes to represent density operators as Gibbs states $rho=e^{-k}$.
+r"""Classes to represent density operators as Gibbs states.
+
+.. math::
+
+    \rho = \frac{e^{-K}}{\mathrm{Tr}(e^{-K})}
 
 """
 
 from typing import Callable, Dict, Iterable, Optional, Tuple, Union, cast
 
 import numpy as np
-import qutip
+from qutip import Qobj
 
 from qalma.model import SystemDescriptor
 from qalma.operators.arithmetic import OneBodyOperator
@@ -19,15 +22,51 @@ from qalma.operators.product import (
 )
 from qalma.operators.states.basic import (
     DensityOperatorMixin,
-    ProductDensityOperator,
+    DensityOperatorProtocol,
 )
+from qalma.operators.states.product import ProductDensityOperator
 from qalma.operators.states.utils import k_by_site_from_operator
 from qalma.qutip_tools.tools import is_diagonal_op, safe_exp_and_normalize
 
+__all__ = ["GibbsDensityOperator", "GibbsProductDensityOperator"]
+
 
 class GibbsDensityOperator(DensityOperatorMixin, Operator):
-    """
-    Stores an operator of the form rho= prefactor * exp(-K) / Tr(exp(-K)).
+    r"""Density operator of the form :math:`\rho = \lambda\, e^{-K} / \mathrm{Tr}(e^{-K})`.
+
+    Stores the operator implicitly through its generator :math:`K` rather
+    than as an explicit matrix, enabling efficient representation of
+    many-body Gibbs states. The full QuTiP matrix is computed on demand via
+    :meth:`~qalma.operators.states.gibbs.GibbsDensityOperator.to_qutip`
+    and the normalization is performed lazily on the first call.
+
+    Parameters
+    ----------
+    k : Operator
+        The generator operator :math:`K`. The Gibbs state is
+        :math:`\rho \propto e^{-K}`.
+    system : SystemDescriptor or None, optional
+        Descriptor of the full lattice system. Defaults to ``k.system``.
+    prefactor : float, optional
+        Positive scalar weight :math:`\lambda`. Default is ``1.0``.
+    normalized : bool, optional
+        If ``True``, assumes :math:`K` is already normalized so that
+        :math:`\mathrm{Tr}(e^{-K}) = 1`. Default is ``False``.
+    meanfield : Operator or None, optional
+        Pre-computed mean-field approximation. Used internally to cache
+        the mean-field state and avoid redundant computation.
+    symmetry_projections : tuple[Callable, ...], optional
+        Sequence of projection functions to enforce symmetries after
+        normalization. Default is an empty tuple (no projections).
+
+    Attributes
+    ----------
+    k : Operator
+        The generator :math:`K`. May be shifted during normalization.
+    prefactor : complex
+        Scalar weight :math:`\lambda`.
+    normalized : bool
+        Whether the generator has been normalized.
 
     """
 
@@ -46,6 +85,7 @@ class GibbsDensityOperator(DensityOperatorMixin, Operator):
         symmetry_projections: Tuple[Callable, ...] = tuple(),
     ):
         self.symmetry_projections = symmetry_projections
+
         if prefactor == 0:
             self.k = ScalarOperator(0, k.system)
             self.f_global = 0.0
@@ -59,6 +99,7 @@ class GibbsDensityOperator(DensityOperatorMixin, Operator):
 
         assert prefactor > 0
         self.k = k
+        assert isinstance(k, Operator)
         self.f_global = 0.0
         self._free_energy = 0.0
         self.prefactor = prefactor
@@ -66,30 +107,38 @@ class GibbsDensityOperator(DensityOperatorMixin, Operator):
         self.system = system if system is not None else k.system
         self._meanfield = meanfield
 
-    def __mul__(self, operand):
-        if isinstance(operand, (int, float, np.float64)) and operand >= 0:
-            return GibbsDensityOperator(
-                self.k,
-                self.system,
-                self.prefactor * operand,
-                normalized=self.normalized,
-            )
-        return self.to_qutip_operator() * operand
-
     def __neg__(self):
+        """Return the negation of the operator's QuTiP representation."""
         return -(self.to_qutip_operator())
 
-    def __rmul__(self, operand):
-        if isinstance(operand, (int, float, np.float64)) and operand >= 0.0:
-            return GibbsDensityOperator(
-                self.k,
-                self.system,
-                self.prefactor * operand,
-                normalized=self.normalized,
-            )
-        return operand * self.to_qutip_operator()
+    def __repr__(self):
+        """Build the repr str."""
+        tqo = self.to_qutip_operator()
+        result = "Gibbs operator"
+        result += f"\n->as Qutip Operator {type(tqo)}\n"
+        result += repr(tqo)
+        return result
 
     def __truediv__(self, operand):
+        """Divide the operator by a scalar or another operator.
+
+        Parameters
+        ----------
+        operand : int, float, complex, or Operator
+            The divisor.
+
+        Returns
+        -------
+        GibbsDensityOperator or Operator
+            A new :class:`GibbsDensityOperator` with scaled prefactor if
+            ``operand`` is scalar, or ``self * operand.inv()`` otherwise.
+
+        Raises
+        ------
+        ValueError
+            If ``operand`` is neither a scalar nor an :class:`Operator`.
+
+        """
         if isinstance(operand, (int, float, complex)):
             return GibbsDensityOperator(
                 self.k,
@@ -102,43 +151,148 @@ class GibbsDensityOperator(DensityOperatorMixin, Operator):
         raise ValueError("Division of an operator by ", type(operand), " not defined.")
 
     def acts_over(self) -> frozenset:
-        """
-        Return a set with the name of the
-        sites where the operator nontrivially acts
+        """Return the set of sites on which the operator acts non-trivially.
+
+        Returns
+        -------
+        frozenset[str]
+            Intersection of the sites of :math:`K` and the system sites.
+
         """
         return self.k.acts_over().intersection(self.system.sites)
 
-    # def expect(
-    #    self, obs_objs: Union[Operator, Iterable]
-    # ) -> Union[np.ndarray, dict, Number]:
-    #    return self.to_qutip_operator().expect(obs_objs)
-
     @property
     def free_energy(self):
-        """compute the free energy"""
+        r"""Free energy :math:`F = -\log Z` where :math:`Z = \mathrm{Tr}(e^{-K})`.
+
+        Triggers normalization on first access if not yet normalized.
+
+        Returns
+        -------
+        float
+            The free energy of the Gibbs state.
+
+        """
         if not self.normalized:
             self.normalize()
         return self._free_energy
 
     @free_energy.setter
     def free_energy(self, value):
-        """set the free energy"""
-        self._free_energy = value
-        return self._free_energy
+        """Set the free energy directly.
 
-    def logm(self):
+        Parameters
+        ----------
+        value : float
+            The free energy value to assign.
+
+        """
+        self._free_energy = value
+
+    def logm(self) -> Operator:
+        r"""Return the matrix logarithm :math:`\log\rho = -K`.
+
+        Normalizes the operator first to ensure :math:`\mathrm{Tr}(e^{-K})=1`.
+
+        Returns
+        -------
+        Operator
+            The operator :math:`-K`.
+
+        """
         self.normalize()
         k = self.k
         return -k
 
+    def variational_free_energy(self, ham: Operator) -> float:
+        r"""Compute the variational free energy of ``ham`` under this state.
+
+        Overrides the base-class implementation with an analytic shortcut:
+        after normalization :math:`\mathrm{Tr}(e^{-K}) = 1`, so
+        :math:`\log\rho = -K` exactly and
+
+        .. math::
+
+            F_{\rm var}[\rho, H]
+                = \mathrm{Tr}[\rho\,(H + \log\rho)]
+                = \mathrm{Tr}[\rho\,(H - K)].
+
+        This avoids building the explicit :math:`H + \log\rho` operator.
+
+        Parameters
+        ----------
+        ham : Operator
+            The generator :math:`H` of the target Gibbs state.
+
+        Returns
+        -------
+        float
+            :math:`\mathrm{Tr}[\rho\,(H - K)]`.
+
+        """
+        self.normalize()
+        return float(np.real(cast(complex, self.expect(ham - self.k))))
+
     def normalize(self) -> Operator:
-        """Normalize the operator in a way that exp(-K).tr()==1"""
+        r"""Normalize :math:`K` so that :math:`\mathrm{Tr}(e^{-K}) = 1`.
+
+        The normalization shifts :math:`K` by :math:`\log Z` and stores
+        :math:`F = -\log Z` as the free energy. This is a no-op if the
+        operator is already normalized.
+
+        Returns
+        -------
+        Operator
+            ``self``, normalized in-place.
+
+        """
         if not self.normalized:
             self.to_qutip(cast(Tuple[str], tuple()))
 
         return self
 
-    def partial_trace(self, sites: Union[frozenset, SystemDescriptor]):
+    def partial_trace(
+        self,
+        sites: Union[frozenset, SystemDescriptor],
+        rpa: bool = False,
+        dynamic: bool = False,
+        exact: bool = True,
+        hybrid: bool = False,
+        hybrid_options: Optional[dict] = None,
+    ):
+        """Compute the partial trace over the complement of ``sites``.
+
+        Uses the mean-field Gibbs partial trace, which approximates the
+        reduced state as a product of local Gibbs states.
+
+        Parameters
+        ----------
+        sites : frozenset[str] or SystemDescriptor
+            Sites to *keep*. All other sites are traced out.
+        rpa : bool, optional
+            If ``True``, add the RPA correction of the Gaussian fluctuations
+            of the environment to the mean-field generator of the reduced
+            state (see :mod:`qalma.meanfield.rpa`). The default is False.
+        dynamic : bool, optional
+            If ``True`` (and ``rpa``), use the dynamical RPA correction.
+            The default is False.
+        exact : bool, optional
+            If ``True`` (default), small systems are reduced exactly. If
+            ``False``, the mean-field branch is always used.
+        hybrid : bool, optional
+            If ``True`` (and ``rpa``), keep the subsystem exact and treat
+            only the environment in the RPA (non perturbative). See
+            :func:`qalma.meanfield.rpa.rpa_hybrid_state`.
+        hybrid_options : dict, optional
+            Options of :func:`qalma.meanfield.rpa.rpa_hybrid_state`.
+
+        Returns
+        -------
+        Operator
+            The reduced density operator on the subsystem defined by
+            ``sites``.
+
+        """
         # pylint: disable=import-outside-toplevel
         from qalma.meanfield.gibbs_partial_trace import (
             gibbs_meanfield_partial_trace,
@@ -146,13 +300,52 @@ class GibbsDensityOperator(DensityOperatorMixin, Operator):
 
         if isinstance(sites, SystemDescriptor):
             sites = frozenset(sites.sites)
-        return gibbs_meanfield_partial_trace(self, sites)
+        return gibbs_meanfield_partial_trace(
+            self,
+            sites,
+            rpa=rpa,
+            dynamic=dynamic,
+            exact=exact,
+            hybrid=hybrid,
+            hybrid_options=hybrid_options,
+        )
 
-    def reduce(self, sites, state=None):
-        """Alias of partial trace"""
-        return self.partial_trace(sites)
+    def reduce(self, sites, state=None, **kwargs):
+        """Alias of :meth:`~qalma.operators.states.gibbs.GibbsDensityOperator.partial_trace`.
+
+        Parameters
+        ----------
+        sites : frozenset[str] or SystemDescriptor
+            Sites to *keep*.
+        state : optional
+            Ignored. Included for interface compatibility.
+        **kwargs
+            Options passed to
+            :meth:`~qalma.operators.states.gibbs.GibbsDensityOperator.partial_trace`
+            (``rpa``, ``dynamic``).
+
+        Returns
+        -------
+        Operator
+            The reduced density operator on the subsystem defined by
+            ``sites``.
+
+        """
+        return self.partial_trace(sites, **kwargs)
 
     def to_qutip_operator(self):
+        r"""Return a :class:`~qalma.operators.states.qutip.QutipDensityOperator` representation.
+
+        Computes the full matrix :math:`\rho = e^{-K}/Z` as a
+        ``qutip.Qobj`` and wraps it in a
+        :class:`~qalma.operators.states.qutip.QutipDensityOperator`.
+
+        Returns
+        -------
+        QutipDensityOperator
+            The explicit matrix representation of the Gibbs state.
+
+        """
         # pylint: disable=import-outside-toplevel
         from qalma.operators.states import QutipDensityOperator
 
@@ -165,11 +358,33 @@ class GibbsDensityOperator(DensityOperatorMixin, Operator):
         )
 
     def to_qutip(self, block: Optional[Tuple[str, ...]] = None):
+        """Return the QuTiP matrix representation of the Gibbs state.
+
+        If not yet normalized, computes :math:`e^{-K}`, normalizes it, and
+        stores the free energy. Subsequent calls use the cached normalized
+        generator. If ``block`` is a proper subset of all system sites, the
+        result is a partial trace over the missing sites.
+
+        Parameters
+        ----------
+        block : tuple[str, ...] or None, optional
+            Ordered list of site names for the tensor-product structure of
+            the returned :class:`qutip.Qobj`. Defaults to all sites in
+            lexicographical order.
+
+        Returns
+        -------
+        qutip.Qobj or float
+            The density matrix restricted to ``block``. Returns ``1.0`` if
+            :math:`K` evaluates to a scalar.
+
+        """
         system = self.system
         all_sites = tuple(system.sites)
         if block is None:
             block = tuple(sorted(all_sites))
-        elif len(block) < len(all_sites):
+        n_kept = len(block)
+        if n_kept < len(all_sites):
             assert all(
                 site in all_sites for site in block
             ), "sites must be in the (sub)system"
@@ -177,26 +392,60 @@ class GibbsDensityOperator(DensityOperatorMixin, Operator):
                 sorted((site for site in all_sites if site not in block))
             )
 
+        # The matrices below are already written in the order of ``block``.
         if self.normalized:
             result = (-self.k).to_qutip(block).expm()
         else:
             k_qutip = self.k.to_qutip(block)
-            if not isinstance(k_qutip, qutip.Qobj):
+            if not isinstance(k_qutip, Qobj):
                 return 1.0
             result, log_prefactor = safe_exp_and_normalize(-k_qutip)
             self.k = self.k + log_prefactor
             self._free_energy = -log_prefactor
             self.normalized = True
-            if block:
-                result = result.permute(tuple(all_sites.index(site) for site in block))
-            result = result.ptrace(tuple(range(len(block))))
+        if n_kept < len(block):
+            result = result.ptrace(tuple(range(n_kept)))
         return result
 
 
 class GibbsProductDensityOperator(DensityOperatorMixin, Operator):
-    """
-    Stores an operator of the form
-    rho = prefactor * \\otimes_i exp(-K_i)/Tr(exp(-K_i)).
+    r"""Product Gibbs state :math:`\rho = \lambda \bigotimes_i \rho_i`.
+
+    Represents a density operator that factorizes over sites:
+
+    .. math::
+
+        \rho = \lambda \bigotimes_i \frac{e^{-K_i}}{\mathrm{Tr}(e^{-K_i})}
+
+    where each :math:`K_i` is a local operator on site :math:`i`. This is
+    the mean-field (product state) approximation to a full Gibbs state.
+
+    Parameters
+    ----------
+    k : Operator or dict[str, Qobj]
+        Either a many-body operator whose one-body terms define the local
+        generators :math:`K_i`, or a dict mapping site names to local
+        :class:`qutip.Qobj` generators directly.
+    system : SystemDescriptor or None, optional
+        Descriptor of the full lattice system. Required when ``k`` is a
+        dict. Defaults to ``k.system`` when ``k`` is an :class:`Operator`.
+    prefactor : complex, optional
+        Positive real scalar weight :math:`\lambda`. Default is ``1``.
+    normalized : bool, optional
+        If ``True``, assumes each local :math:`K_i` is already normalized.
+        Default is ``False``.
+
+    Attributes
+    ----------
+    k_by_site : dict[str, Qobj]
+        Local generators :math:`K_i` stored as :class:`qutip.Qobj`, one
+        per site, normalized so that :math:`\mathrm{Tr}(e^{-K_i}) = 1`.
+    prefactor : complex
+        Scalar weight :math:`\lambda`.
+    free_energies : dict[str, float]
+        Local free energies :math:`F_i = -\log Z_i` for each site.
+    isherm : bool
+        Always ``True`` — Gibbs states are Hermitian by construction.
 
     """
 
@@ -207,7 +456,7 @@ class GibbsProductDensityOperator(DensityOperatorMixin, Operator):
 
     def __init__(
         self,
-        k: Union[Operator, dict],
+        k: Union[Operator, Dict[str, Operator]],
         system: Optional[SystemDescriptor] = None,
         prefactor: complex = 1,
         normalized: bool = False,
@@ -223,22 +472,23 @@ class GibbsProductDensityOperator(DensityOperatorMixin, Operator):
             assert system is not None
             self_system = self.system = cast(SystemDescriptor, system)
             k_by_site = k
+            assert all(isinstance(k_loc, Qobj) for k_loc in k_by_site.values())
         else:
             k_operator: Operator = cast(Operator, k)
             k_operator = k_operator.simplify()
-            if system:
-                system = k_operator.system.union(system)
-            else:
-                system = k_operator.system
-            self_system = self.system = cast(SystemDescriptor, system)
+            system = k_operator.system.union(system)
+            self_system = self.system = system
             k_by_site = k_by_site_from_operator(k_operator)
+            assert all(isinstance(k_loc, Qobj) for k_loc in k_by_site.values())
 
         if normalized:
             f_locals = {site: 0.0 for site in k_by_site}
         else:
 
             def safe_local_f(op_loc):
-                spectrum = -(op_loc.eigenenergies())
+                """Local free energy of ``op_loc``, stable against overflow."""
+                assert isinstance(op_loc, Qobj)
+                spectrum = (-op_loc).eigenenergies()
                 f0 = max(spectrum)
                 spectrum = spectrum - f0
                 return -np.log(sum(np.exp(spectrum))) - f0
@@ -256,54 +506,89 @@ class GibbsProductDensityOperator(DensityOperatorMixin, Operator):
             f_locals[site] = -f_local
             k_by_site[site] = self_system.site_identity(site) * f_local
 
-        # for site, op_qutip in k_by_site.items():
-        #     eig_vals = op_qutip.eigenenergies()
-        #     probs = np.exp(-eig_vals)
-        #     assert abs(sum(probs) - 1) < 1e-8, f"{probs} from {eig_vals}"
-        #     assert all(p >= 0 for p in probs)
-
         self.free_energies = f_locals
         self.k_by_site = k_by_site
 
-    def __mul__(self, operand):
-        if isinstance(operand, (int, float)):
-            if operand > 0:
-                return GibbsProductDensityOperator(
-                    self.k_by_site, self.system, self.prefactor * operand, True
-                )
-        return self.to_product_state() * operand
-
     def __neg__(self):
+        """Return the negation of the product state representation."""
         return -(self.to_product_state())
 
-    def __rmul__(self, operand):
-        if isinstance(operand, (int, float)):
-            if operand > 0:
-                return GibbsProductDensityOperator(
-                    self.k_by_site, self.system, self.prefactor * operand, True
-                )
-        return operand * self.to_product_state()
+    def __repr__(self):
+        """Build the repr str."""
+        result = "Gibbs Product density operator:\n"
+        result += "\n".join(
+            f"{site}:exp(-1*{op})" for site, op in self.k_by_site.items()
+        )
+        result += f"\n free energies:{self.free_energies}"
+        return result
 
     def acts_over(self) -> frozenset:
-        """
-        Return a set with the names of the sites where
-        the operator non-trivially acts over.
+        """Return the set of sites on which the operator acts non-trivially.
+
+        Returns
+        -------
+        frozenset[str]
+            Names of all sites with a non-trivial local generator
+            :math:`K_i`.
+
         """
         return frozenset(site for site in self.k_by_site)
 
     def expect(
-        self, obs_objs: Union[Operator, Iterable]
+        self,
+        obs_objs: Union[Operator, Iterable],
+        _local_states: Optional[Dict[frozenset, DensityOperatorProtocol]] = None,
     ) -> Union[np.ndarray, dict, complex]:
-        return (self.to_product_state()).expect(obs_objs)
+        r"""Compute the expectation value :math:`\langle O \rangle_\rho`.
+
+        Delegates to the :class:`ProductDensityOperator` representation,
+        which computes expectation values efficiently using the product
+        structure.
+
+        Parameters
+        ----------
+        obs_objs : Operator or Iterable[Operator]
+            Observable or collection of observables whose expectation values
+            are computed.
+        _local_states : dict[frozenset, DensityOperatorProtocol] or None, optional
+            Pre-computed local states for subsystems. Used internally to
+            avoid redundant partial traces.
+
+        Returns
+        -------
+        complex or np.ndarray or dict
+            Expectation value(s) of the observable(s).
+
+        """
+        return (self.to_product_state()).expect(obs_objs, _local_states=_local_states)
 
     @property
     def isdiagonal(self) -> bool:
+        """``True`` if all local generators are diagonal.
+
+        Returns
+        -------
+        bool
+            ``True`` only when every :math:`K_i` is a diagonal matrix.
+
+        """
         for operator in self.k_by_site.values():
             if not is_diagonal_op(operator):
                 return False
         return True
 
-    def logm(self):
+    def logm(self) -> Operator:
+        r"""Return the matrix logarithm :math:`\log\rho = -\sum_i K_i`.
+
+        Exploits the product structure: since :math:`\rho = \bigotimes_i
+        e^{-K_i}`, we have :math:`\log\rho = -\sum_i K_i`.
+
+        Returns
+        -------
+        OneBodyOperator
+            The sum :math:`-\sum_i K_i` as a one-body operator.
+
+        """
         terms = tuple(
             LocalOperator(site, -loc_op, self.system)
             for site, loc_op in self.k_by_site.items()
@@ -311,7 +596,23 @@ class GibbsProductDensityOperator(DensityOperatorMixin, Operator):
         return OneBodyOperator(terms, self.system, False)
 
     def partial_trace(self, sites: Union[frozenset, SystemDescriptor]):
+        """Compute the partial trace over the complement of ``sites``.
 
+        For a product state, the partial trace simply discards the local
+        factors of the traced-out sites.
+
+        Parameters
+        ----------
+        sites : frozenset[str] or SystemDescriptor
+            Sites to *keep*.
+
+        Returns
+        -------
+        GibbsProductDensityOperator
+            The reduced product Gibbs state on the subsystem defined by
+            ``sites``.
+
+        """
         if isinstance(sites, SystemDescriptor):
             subsystem = sites
             sites = frozenset(
@@ -333,11 +634,36 @@ class GibbsProductDensityOperator(DensityOperatorMixin, Operator):
         )
 
     def reduce(self, sites, state=None):
-        """Alias of partial trace"""
+        """Alias of :meth:`~qalma.operators.states.gibbs.GibbsProductDensityOperator.partial_trace`.
+
+        Parameters
+        ----------
+        sites : frozenset[str] or SystemDescriptor
+            Sites to *keep*.
+        state : optional
+            Ignored. Included for interface compatibility.
+
+        Returns
+        -------
+        GibbsProductDensityOperator
+            The reduced product Gibbs state on the subsystem defined by
+            ``sites``.
+
+        """
         return self.partial_trace(sites)
 
     def to_product_state(self):
-        """Convert the operator in a productstate"""
+        r"""Convert to an explicit :class:`ProductDensityOperator`.
+
+        Computes each local density matrix :math:`\rho_i = e^{-K_i}` and
+        assembles them into a :class:`ProductDensityOperator`.
+
+        Returns
+        -------
+        ProductDensityOperator
+            The product state with explicit local density matrices.
+
+        """
         local_states = {
             site: (-local_k).expm() for site, local_k in self.k_by_site.items()
         }
@@ -345,8 +671,27 @@ class GibbsProductDensityOperator(DensityOperatorMixin, Operator):
             local_states,
             self.prefactor,
             system=self.system,
-            normalize=True,
+            normalized=False,
         )
 
     def to_qutip(self, block: Optional[Tuple[str, ...]] = None):
+        r"""Return the QuTiP matrix representation of the product Gibbs state.
+
+        Delegates to :meth:`~qalma.operators.states.gibbs.GibbsProductDensityOperator.to_product_state`
+        and then calls its
+        :meth:`~qalma.operators.states.product.ProductDensityOperator.to_qutip` method.
+
+        Parameters
+        ----------
+        block : tuple[str, ...] or None, optional
+            Ordered list of site names defining the tensor-product structure.
+            Defaults to all sites in lexicographical order.
+
+        Returns
+        -------
+        qutip.Qobj
+            The full density matrix :math:`\bigotimes_i \rho_i` over
+            ``block``.
+
+        """
         return self.to_product_state().to_qutip(block)

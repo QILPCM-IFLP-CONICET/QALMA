@@ -1,17 +1,130 @@
-Quatum Algebra for Lattice Models and Applications (QALMA)
-==========================================================
+Quantum Algebra for Lattice Models and Applications (QALMA)
+===========================================================
+
 .. image:: logo.svg
+   :alt: QALMA logo
+   :align: center
+   :width: 300px
 
-By now, this project defines a partial interface between ALPS[https://github.com/ALPSCore/ALPSCore] and QuTiP[https://github.com/qutip/qutip]. The idea is to be able to load models and geometries from xml model and lattices libraries defined following the ALPS syntax, and produce objects which are compatible with QuTiP.
+|
+
+QALMA is a Python library for building and simulating many-body quantum
+systems on lattices. It bridges the `ALPS <https://alpscore.org>`_ XML model
+and lattice libraries with `QuTiP <https://qutip.org>`_, and provides its own
+efficient algebraic representation of operators that exploits the tensor-product
+structure of lattice Hamiltonians.
+
+.. image:: https://github.com/QILPCM-IFLP-CONICET/QALMA/actions/workflows/ubuntu.yml/badge.svg
+   :target: https://github.com/QILPCM-IFLP-CONICET/QALMA/actions/workflows/ubuntu.yml
+   :alt: Tests
+
+.. image:: https://github.com/QILPCM-IFLP-CONICET/QALMA/actions/workflows/check_documentation.yml/badge.svg
+   :target: https://github.com/QILPCM-IFLP-CONICET/QALMA/actions/workflows/check_documentation.yml
+   :alt: Docs
+
+.. image:: https://readthedocs.org/projects/qalma/badge/?version=latest
+   :target: https://qalma.readthedocs.io/en/latest/
+   :alt: Documentation on Read the Docs
 
 
+Features
+--------
+
+- **ALPS integration** — load models and lattice geometries directly from ALPS
+  XML libraries (spin models, Bose-Hubbard, Heisenberg, custom models, chain /
+  square / triangular lattices, and more).
+- **Algebraic operator representation** — operators are stored as sums of
+  local and few-body terms, not as full matrices. Memory and computation scale
+  polynomially with system size instead of exponentially.
+- **QuTiP interoperability** — any QALMA operator or state can be converted to
+  a QuTiP ``Qobj`` with a single call, making the full QuTiP solver ecosystem
+  immediately available.
+- **MaxEnt projected evolution** — time-evolve density matrices projected onto
+  a finite operator basis, enabling simulation of large systems beyond exact
+  diagonalization.
+- **Mean-field and RPA reductions** — self-consistent and variational
+  mean-field approximations for Gibbs states of large systems, and reduced
+  states of small subsystems with an RPA correction. These modules are still
+  evolving and their interface may change in future releases.
+- **Symbolic algebra** — operators support addition, multiplication,
+  commutators, exponentiation, traces, and partial traces out of the box.
+
+
+Installation
+------------
+
+QALMA needs Python 3.11 or newer. Install the latest release from PyPI with::
+
+    pip install qalma
+
+The plotting helpers need `matplotlib`, which is installed with the ``plot``
+extra (``pip install "qalma[plot]"``).
+
+To get the development version, install directly from the GitHub repository.
+For a clean setup it is recommended to use a virtual environment::
+
+    python -m venv qalma_env
+    source qalma_env/bin/activate          # macOS / Linux
+    # .\qalma_env\Scripts\activate.bat     # Windows Command Prompt
+    pip install git+https://github.com/QILPCM-IFLP-CONICET/QALMA/
+
+
+Quick example
+-------------
+
+.. code-block:: python
+
+    from qalma import build_system
+    import numpy as np
+
+    # Spin-1/2 Heisenberg chain with 4 sites (periodic boundary conditions)
+    system = build_system()
+
+    H  = system.global_operator("Hamiltonian")
+    Sz = system.global_operator("Sz")
+
+    # Algebraic manipulation — no explicit matrices needed
+    Htotal = (H - 2 * Sz).simplify()
+
+    print("Spectrum:", Htotal.eigenenergies())
+
+    # Convert to QuTiP and evolve
+    import qutip, numpy as np
+    rho0 = (-Htotal).expm()
+    rho0 = rho0 / rho0.tr()
+    result = qutip.mesolve(
+        H=Htotal.to_qutip(),
+        rho0=rho0.to_qutip(),
+        tlist=np.linspace(0, 10, 200),
+        e_ops=[Sz.to_qutip()],
+    )
+
+See the `examples <https://qalma.readthedocs.io/en/latest/user/examples.html>`_
+in the documentation for more complete walkthroughs.
+
+
+Documentation
+-------------
+
+The documentation (user guide, API reference and examples) is at
+https://qalma.readthedocs.io. Its sources live in the ``docs/`` directory;
+to build them locally::
+
+    pip install -e ".[docs]"
+    cd docs
+    make html
 
 
 License
 -------
 
-QALMA is released under the GNU General Public License Version 3 (GPL3).
+QALMA is free software: you can redistribute it and/or modify it under the
+terms of the `GNU Lesser General Public License, version 3 (LGPL-3.0)
+<COPYING.LESSER>`_, which supplements the `GNU General Public License,
+version 3 <COPYING>`_. In short: you can use QALMA from code under any
+license, but distributed modifications of QALMA itself must remain under the
+LGPL.
 
-
--.. |Travis| image:: https://secure.travis-ci.org/mmatera/qalma.svg?branch=master
--.. _Travis: https://travis-ci.org/mmatera/qalma
+The model and lattice libraries in ``qalma/lib/*.xml`` come from the
+`ALPS project <https://alpscore.org>`_ and are distributed under the
+`Boost Software License 1.0 <qalma/lib/LICENSE_1_0.txt>`_.

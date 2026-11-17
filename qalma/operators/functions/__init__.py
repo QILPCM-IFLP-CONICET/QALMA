@@ -1,6 +1,4 @@
-"""
-Operator Functions
-"""
+"""Operator Functions."""
 
 from qalma.operators.functions.commutators import (
     anticommutator,

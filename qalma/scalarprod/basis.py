@@ -1,6 +1,4 @@
-"""
-Basis of Operator metric sub-spaces
-"""
+"""Basis of Operator metric sub-spaces."""
 
 import logging
 from typing import Callable, Iterable, Optional, Tuple, cast
@@ -8,19 +6,25 @@ from typing import Callable, Iterable, Optional, Tuple, cast
 import numpy as np
 from numpy.linalg import LinAlgError, cholesky, inv
 from numpy.typing import NDArray
-from scipy.linalg import expm as linalg_expm
+from scipy.linalg import expm as _linalg_expm
 
 from qalma.operators.arithmetic import SumOperator
 from qalma.operators.basic import Operator
 from qalma.operators.functions import commutator
-from qalma.scalarprod.build import fetch_HS_scalar_product
+from qalma.scalarprod.build import fetch_hs_scalar_product
 from qalma.scalarprod.gram import gram_matrix, merge_gram_matrices
 from qalma.scalarprod.utils import find_linearly_independent_rows
 from qalma.settings import QALMA_TOLERANCE
 
+logger = logging.getLogger(__name__)
+
+__all__ = ["OperatorBasis", "HierarchicalOperatorBasis"]
+
 
 class OperatorBasis:
     """
+    Operator Basis.
+
     Represent a basis of a subspace of the operator algebra with a
     metric given by a scalar product function.
 
@@ -65,7 +69,7 @@ class OperatorBasis:
             self.generator = None
 
         if sp is None:
-            sp = fetch_HS_scalar_product()
+            sp = fetch_hs_scalar_product()
 
         self.sp = sp
 
@@ -85,12 +89,15 @@ class OperatorBasis:
             self.build_tensors()
 
     def __add__(self, other_basis):
+        """Add two basis."""
         return append_basis(self, other_basis)
 
     def __radd__(self, other_basis):
+        """Add two basis."""
         return prepend_basis(self, other_basis)
 
     def __repr__(self):
+        """Build a repr str."""
         result = "Basis in the "
         result += f"{max(op.n_body_sector() for op in self.operator_basis)}"
         result += "-body sector"
@@ -108,8 +115,9 @@ class OperatorBasis:
         self, generator: Optional[Operator] = None, sp: Optional[Callable] = None
     ):
         """
-        Build the arrays required to compute projections, expansions
-        and evolutions
+        Build the internal tensors.
+
+        Build the arrays required to compute projections, expansions and evolutions.
 
         Parameters
         ----------
@@ -124,7 +132,6 @@ class OperatorBasis:
             Raised if the basis elements does not span a non-trivial subspace.
 
         """
-
         if generator is not None:
             self.generator = generator
         else:
@@ -136,7 +143,7 @@ class OperatorBasis:
 
         operator_basis = self.operator_basis
 
-        gram = gram_matrix(operator_basis, self.sp)
+        gram = gram_matrix(list(operator_basis), self.sp)
 
         # Cholesky decomposition
         # G = L . L^\dagger
@@ -153,7 +160,7 @@ class OperatorBasis:
                 pass
 
             li_indx = find_linearly_independent_rows(gram, tol=threshold)
-            logging.warning(
+            logger.warning(
                 (
                     "using a non-independent set of operators. "
                     "Reduce it to a linearly independent set %s..."
@@ -208,9 +215,9 @@ class OperatorBasis:
         self.errors = errors
 
     def coefficient_expansion(self, operator: Operator) -> NDArray:
-        """
-        Get the coefficients a_i s.t. the orthogonal projection
-        of `operator` onto the basis is
+        """Get the coefficients a_i s.t.
+
+        the orthogonal projection of `operator` onto the basis is
         sum(a_i*b_i)
 
         Parameters
@@ -230,16 +237,15 @@ class OperatorBasis:
         )
 
     def operator_norm(self, operator: Operator):
-        """The induced norm of operator"""
+        """Compute the induced norm of operator."""
         return self.sp(operator, operator) ** 0.5
 
     def operator_from_coefficients(self, phi) -> Operator:
-        """
-        Build an operator from coefficients
+        """Build an operator from coefficients.
 
         Parameters
         ----------
-        phi : TYPE
+        phi : array-like
             The coefficients of the expansion.
 
         Returns
@@ -248,16 +254,14 @@ class OperatorBasis:
             The operator obtained from the components.
 
         """
-
         return sum(op_i * a_i for op_i, a_i in zip(self.operator_basis, phi))
 
     def project_onto(self, operator) -> Operator:
-        """
-        Project operator onto the subspace
+        """Project operator onto the subspace.
 
         Parameters
         ----------
-        operator : TYPE
+        operator : Operator
             The operator to be projected.
 
         Returns
@@ -267,32 +271,35 @@ class OperatorBasis:
             the basis.
 
         """
-
         return self.operator_from_coefficients(self.coefficient_expansion(operator))
 
     def evolve(self, t: float, a_0: np.ndarray) -> Tuple[np.ndarray, float]:
-        """
+        """Evolve the coefficients ``a_0`` of an operator expansion.
+
         Compute the coefficients for the expansion of the operator
-        operator(t) = sum a_i(t) b_i
-        evolving according the projected evolution,
-        given its expansion at t=0, and the estimated error induced by
+
+        .. math::
+            O(t) = \\sum_i a_i(t)\\, b_i
+
+        evolving according to the projected evolution,
+        given its expansion at :math:`t=0`, and the estimated error induced by
         the projection.
 
         Parameters
         ----------
         t : float
-            DESCRIPTION.
+            Target time.
         a_0 : np.ndarray
-            DESCRIPTION.
+            Initial coefficient vector.
 
         Returns
         -------
-        Tuple(ndarray, float)
-            Returns two ndarrays: the first with the evolved coefficient, and
-            the second with the estimated error.
+        tuple[np.ndarray, float]
+            A pair ``(a_t, error)`` where ``a_t`` holds the evolved
+            coefficients and ``error`` is the estimated projection error.
 
         """
-        a_t = linalg_expm(t * self.gen_matrix) @ a_0
+        a_t = _linalg_expm(t * self.gen_matrix) @ a_0
         # The error is estimated by
         # |\Delta K| = |\int_0^t \sum_a \Pi_{\perp}[H,Q_a] phi_a(\tau)d \tau  |
         #            <= \sum_a |\Pi_{\perp}[H,Q_a]| |phi_a(t)| t
@@ -302,9 +309,11 @@ class OperatorBasis:
 
 class HierarchicalOperatorBasis(OperatorBasis):
     """
-    A HierarchicalOperatorBasis is a basis where
-    the elements are linear combinations of iterated commutators
-    of a seed element and the generator of the evolutions.
+    Hierarchical Operator Basis.
+
+    A HierarchicalOperatorBasis is a basis where the elements are linear
+    combinations of iterated commutators of a seed element and the generator of
+    the evolutions.
     """
 
     deep: int
@@ -321,7 +330,7 @@ class HierarchicalOperatorBasis(OperatorBasis):
             generator = 1j * generator
 
         if sp is None:
-            sp = fetch_HS_scalar_product()
+            sp = fetch_hs_scalar_product()
 
         self.sp = sp
         self.generator = generator.simplify()
@@ -329,6 +338,7 @@ class HierarchicalOperatorBasis(OperatorBasis):
         self.build_tensors()
 
     def __add__(self, other):
+        """Add two basis."""
         return (
             OperatorBasis(
                 self.operator_basis,
@@ -397,18 +407,22 @@ class HierarchicalOperatorBasis(OperatorBasis):
                     comm_norm = np.abs(sp(new_elem, new_elem))
 
             if not new_elem.isherm:
-                new_elem = new_elem.hermitician_part()
+                new_elem = new_elem.hermitian_part()
 
             new_elem = new_elem.tidyup()
 
             if not new_elem.isherm:
-                new_elem = new_elem.hermitician_part()
+                new_elem = new_elem.hermitian_part()
 
             if np.abs(comm_norm) < tol_sq:
                 closed = True
                 deep = dimension = i + 1
-                logging.warning(
-                    """A commutator got (almost) zero norm. deep->%d""", len(elements)
+                logger.warning(
+                    """A commutator got (almost) zero norm.
+
+                    deep->%d
+                    """,
+                    len(elements),
                 )
                 errors = errors[:dimension]
                 break
@@ -444,8 +458,7 @@ class HierarchicalOperatorBasis(OperatorBasis):
     def build_tensors(
         self, generator: Optional[Operator] = None, sp: Optional[Callable] = None
     ):
-        """
-        Build the tensors required to compute projections and evolutions.
+        """Build the tensors required to compute projections and evolutions.
 
         Parameters
         ----------
@@ -456,11 +469,11 @@ class HierarchicalOperatorBasis(OperatorBasis):
 
         Returns
         -------
-        None.
+        None
 
         """
         if generator is not None or sp is not None:
-            logging.warning("A HierarchicalBasis cannot regenerate its elements.")
+            logger.warning("A HierarchicalBasis cannot regenerate its elements.")
 
         # Loop to ensure that all the elements
         # in the basis are linearly independent.
@@ -476,7 +489,7 @@ class HierarchicalOperatorBasis(OperatorBasis):
                 l_gram = cholesky(gram)
                 break
             except LinAlgError:
-                logging.warning(
+                logger.warning(
                     (
                         "using a non-independent set of operators. "
                         "Reduce it to a linearly independent set..."
@@ -511,12 +524,14 @@ class HierarchicalOperatorBasis(OperatorBasis):
 
 def append_basis(basis_1: OperatorBasis, basis_2: OperatorBasis | Iterable[Operator]):
     """
-    Build a new basis with the elements of basis_1 and the
-    elements of basis_2, given preference to the elements in basis_1.
-    Efficiently reuses precomputed tensors from basis_1.
+    Append basis.
 
-    If basis_1 and basis_2 are the same objects, or basis_2 is
-    generated by basis_1, then basis_1 is returned.
+    Build a new basis with the elements of basis_1 and the elements of
+    basis_2, given preference to the elements in basis_1. Efficiently reuses
+    precomputed tensors from basis_1.
+
+    If basis_1 and basis_2 are the same objects, or basis_2 is generated
+    by basis_1, then basis_1 is returned.
     """
     # If both basis are identical, return one of them.
     if basis_1 is basis_2 or not basis_2:
@@ -525,10 +540,7 @@ def append_basis(basis_1: OperatorBasis, basis_2: OperatorBasis | Iterable[Opera
     sp: Callable = basis_1.sp
 
     def rebuild_comm_norms(basis, hij):
-        """
-        Reconstruct the norm of the commutators from
-        the stored arrays.
-        """
+        """Reconstruct the norm of the commutators from the stored arrays."""
         if basis.generator is None:
             return None
         norms = basis.errors**2
@@ -568,9 +580,9 @@ def append_basis(basis_1: OperatorBasis, basis_2: OperatorBasis | Iterable[Opera
     n2 = len(ops2)
 
     if same_sp:
-        g22 = basis_2_gram if basis_2_gram is not None else gram_matrix(ops2, sp)
+        g22 = basis_2_gram if basis_2_gram is not None else gram_matrix(list(ops2), sp)
     else:
-        g22 = gram_matrix(ops2, sp)
+        g22 = gram_matrix(list(ops2), sp)
     if hasattr(sp, "compute_cross_gram_matrix"):
         g12 = sp.compute_cross_gram_matrix(ops1, ops2)
     else:
@@ -581,7 +593,7 @@ def append_basis(basis_1: OperatorBasis, basis_2: OperatorBasis | Iterable[Opera
             g11, g11_inv, g22, g12
         )
     except ValueError:
-        logging.warning(
+        logger.warning(
             (
                 "basis_1 looks singular when combined with basis_2. "
                 "Trying with full reconstruction"
@@ -633,12 +645,12 @@ def append_basis(basis_1: OperatorBasis, basis_2: OperatorBasis | Iterable[Opera
         reuse: bool,
         rows_it,
     ) -> Tuple[NDArray, NDArray, Tuple[Operator, ...]]:
-        """Prepare the diagonal blocks"""
+        """Prepare the diagonal blocks."""
         if reuse and hij_block is not None:
             if n_block != len(hij_block):
                 rows_li = tuple(rows_it)
-                ops = tuple(ops[idx].hermitician_part() for idx in rows_li)
-                assert all(op.isherm for op in ops), "must be hermitician"
+                ops = tuple(ops[idx].hermitian_part() for idx in rows_li)
+                assert all(op.isherm for op in ops), "must be hermitian"
                 errors = np.array([errors[idx] for idx in rows_li])
                 hij_block = cast(NDArray, hij_block)[rows_li, :][:, rows_li]
 
@@ -646,7 +658,7 @@ def append_basis(basis_1: OperatorBasis, basis_2: OperatorBasis | Iterable[Opera
 
         # If not reuse, just remove the ld operators from ops and return empty blocks.
         if n_block != len(ops):
-            ops = tuple(ops[idx].hermitician_part() for idx in rows_it)
+            ops = tuple(ops[idx].hermitian_part() for idx in rows_it)
 
         return (
             np.empty(
@@ -661,7 +673,7 @@ def append_basis(basis_1: OperatorBasis, basis_2: OperatorBasis | Iterable[Opera
         )
 
     def fill_h_blocks(b_1, b_2, h_diag, error_sq, reuse):
-        "Compute h12, err_1_sq and h11 if needed."
+        """Compute h12, err_1_sq and h11 if needed."""
         hij_off = np.empty(
             (
                 len(b_2),
@@ -740,9 +752,10 @@ def prepend_basis(
     basis_1: OperatorBasis, basis_2: OperatorBasis | Iterable[Operator]
 ) -> OperatorBasis:
     """
-    Build a new basis with the elements of basis_1 and the
-    elements of basis_2, given preference to the elements in
-    basis_2.
+    Prepend basis.
+
+    Build a new basis with the elements of basis_1 and the elements of
+    basis_2, given preference to the elements in basis_2.
     """
     # If the changes are trivial, return basis_1
     if basis_2 is basis_1 or not basis_2:
@@ -757,11 +770,12 @@ def prepend_basis(
     return append_basis(basis_1, basis_2)
 
 
-def do_compute_cross_gram_matrix(sp, ops1, ops2, dtype=np.float128):
+def do_compute_cross_gram_matrix(sp, ops1, ops2, dtype=np.longdouble):
     """
-    Compute the cross elements of the Gram's matrix
-    between operators ops1 and ops2 regarding the
-    scalar product `sp`
+    Compute cross Gram's matrix.
+
+    Compute the cross elements of the Gram's matrix between operators ops1
+    and ops2 regarding the scalar product `sp`.
     """
     g12 = np.empty(
         (
@@ -774,16 +788,3 @@ def do_compute_cross_gram_matrix(sp, ops1, ops2, dtype=np.float128):
         for j_idx, o2 in enumerate(ops2):
             g12[i_idx, j_idx] = np.real(sp(o1, o2))
     return g12
-
-
-def _relative_non_hermitician_part(x: Operator):
-    """
-    Auxiliar function to check how much `x` fails
-    being hermitician. Used for test only.
-    """
-    if x.isherm:
-        return True
-    x_dag = x.dag()
-    x_ah = x_dag - x
-    error = abs((x_ah * x_ah).tr()) ** 0.5 / ((x_dag * x).tr()) ** 0.5
-    return error < QALMA_TOLERANCE

@@ -1,6 +1,4 @@
-"""
-Functions used to run MaxEnt simulations.
-"""
+"""Functions used to run MaxEnt simulations."""
 
 from __future__ import annotations
 
@@ -12,8 +10,13 @@ from numpy.typing import NDArray
 # function used to safely and robustly map K-states to states
 
 
+__all__ = ["slice_times", "m_th_partial_sum"]
+
+
 def slice_times(tlist: NDArray, tcuts: List[float]) -> List[NDArray]:
     """
+    Slice a list of times (``tcuts``).
+
     Divides a time list (`tlist`) into slices based on a sequence of cutoff
     times (`tcuts`).
 
@@ -36,7 +39,6 @@ def slice_times(tlist: NDArray, tcuts: List[float]) -> List[NDArray]:
         in the last slice.
 
     """
-
     sliced_times = [np.array([t for t in tlist if t <= tcuts[1]])]
 
     for d in range(2, len(tcuts)):
@@ -51,8 +53,10 @@ def slice_times(tlist: NDArray, tcuts: List[float]) -> List[NDArray]:
 
 def m_th_partial_sum(phi: NDArray, m: int) -> float:
     """
-    Computes the $m$-th partial sum of the squared magnitudes of the last `m`
-    coefficients of `phi`.
+    Evaluate the $m$-th partial sum of errors.
+
+    Computes the $m$-th partial sum of the squared magnitudes of the last
+    `m` coefficients of `phi`.
 
     Parameters
     ----------

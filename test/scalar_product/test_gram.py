@@ -1,6 +1,4 @@
-"""
-Tests and benchmarks for `gram_matrix`.
-"""
+"""Tests and benchmarks for `gram_matrix`."""
 
 import os
 from test.helper import HAMILTONIAN, SX_A, SX_TOTAL, SZ_TOTAL, TEST_CASES_STATES
@@ -16,9 +14,9 @@ from qalma.scalarprod.gram import (
 
 REFERENCE_STATE_NAMES = (
     "ProductGibbs from scalar, zero",
-    "ProductGibbs from product operator, hermitician",
+    "ProductGibbs from product operator, hermitian",
     "ProductGibbs from sum local qutip operator and local operator",
-    "ProductGibbs from One body, hermitician",
+    "ProductGibbs from One body, hermitian",
 )
 
 SCALAR_PRODUCTS = {
@@ -48,11 +46,29 @@ else:
     HIERARCHICAL_BASIS_CASES = {}
 
 
+@pytest.mark.skipif(
+    not os.environ.get("BENCHMARKS", 0), reason="run only in benchmarks"
+)
+@pytest.mark.benchmark(
+    group="reference",
+    min_rounds=10,
+    max_time=0.5,
+)
+def test_reference_benchmark(benchmark):
+    # Uses as a baseline the time that takes to sum
+    # the square of the first 30000 integers in Python.
+    # The task takes nearly 1s on average in my Thinkpad T15
+    # with 16GB RAM running Ubuntu.
+    def reference_task():
+        return sum([i**2 for i in range(30000)])
+
+    result = benchmark(reference_task)
+    assert result == sum(i**2 for i in range(30000))
+
+
 @pytest.mark.parametrize(["case", "basis"], list(HIERARCHICAL_BASIS_CASES.items()))
 def test_gram_matrix_benchmark(benchmark, case, basis):
-    """
-    Benchmark scalar products
-    """
+    """Benchmark scalar products."""
     sp = basis.sp
     ops = basis.operator_basis
 
@@ -64,9 +80,7 @@ def test_gram_matrix_benchmark(benchmark, case, basis):
 
 @pytest.mark.parametrize(["case", "basis"], list(HIERARCHICAL_BASIS_CASES.items()))
 def test_brute_force_gram_matrix_benchmark(benchmark, case, basis):
-    """
-    Benchmark scalar products
-    """
+    """Benchmark scalar products."""
     sp = basis.sp
     ops = basis.operator_basis
 
@@ -92,9 +106,7 @@ def test_brute_force_gram_matrix_benchmark(benchmark, case, basis):
 
 @pytest.mark.parametrize(["case", "basis"], list(HIERARCHICAL_BASIS_CASES.items()))
 def test_cross_gram_matrix_benchmark(benchmark, case, basis):
-    """
-    Benchmark scalar products
-    """
+    """Benchmark scalar products."""
     sp = basis.sp
     ops = basis.operator_basis
 

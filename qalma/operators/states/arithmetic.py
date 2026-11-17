@@ -1,14 +1,12 @@
-"""
-Arithmetic operations with states.
+"""Arithmetic operations with states.
 
-Essentially, arithmetic operations with states involves just mixing of operators,
-implemented though the class MixtureDensityOperator.
-
+Essentially, arithmetic operations with states involves just mixing of
+operators, implemented though the class MixtureDensityOperator.
 """
 
 import logging
 import pickle
-from typing import Iterable, Optional, Set, Tuple, Union, cast
+from typing import Dict, Iterable, Optional, Set, Tuple, Union, cast
 
 import numpy as np
 
@@ -22,18 +20,33 @@ from qalma.operators.product import (
 )
 from qalma.operators.states.basic import (
     DensityOperatorMixin,
-    ProductDensityOperator,
+    DensityOperatorProtocol,
 )
+
+logger = logging.getLogger(__name__)
+
+__all__ = ["MixtureDensityOperator"]
 
 
 class MixtureDensityOperator(DensityOperatorMixin, SumOperator):
-    """
-    A mixture of density operators
-    """
+    """A mixture of density operators."""
 
     terms: Tuple[Operator]
 
     def __init__(self, terms: tuple, system: Optional[SystemDescriptor] = None):
+        """
+        Initialize a MixtureDensityOperator.
+
+        Parameters
+        ----------
+        terms : tuple[Operator, ...]
+            Tuple of density operators to mix. Each term must have a
+            ``prefactor`` attribute representing its weight in the mixture.
+        system : SystemDescriptor or None, optional
+            Descriptor of the full lattice system. Inferred from ``terms``
+            if not provided.
+
+        """
         super().__init__(terms, system, True)
 
     def __add__(self, rho: Operator):
@@ -85,52 +98,17 @@ class MixtureDensityOperator(DensityOperatorMixin, SumOperator):
         )
 
     def __neg__(self):
-        logging.warning("Negate a DensityOperator leads to a regular operator.")
+        """Multiply the operator by -1."""
+        logger.warning("Negate a DensityOperator leads to a regular operator.")
         new_terms = tuple(((-t) * (t.prefactor) for t in self.terms))
         return SumOperator(new_terms, self.system, isherm=True)
 
-    def __radd__(self, rho: Operator):
-        terms = self.terms
-        system = self.system
-
-        if isinstance(rho, MixtureDensityOperator):
-            terms = cast(Tuple[Operator], rho.terms + terms)
-        elif isinstance(rho, DensityOperatorMixin):
-            terms = cast(Tuple[Operator], (rho,) + terms)
-        elif isinstance(rho, (int, float)) and rho >= 0:
-            terms = cast(
-                Tuple[Operator],
-                (ProductDensityOperator({}, rho, system, False),) + terms,
-            )
-        else:
-            # return super().__add__(rho)
-            return rho + SumOperator(terms, system)
-        return MixtureDensityOperator(terms, system)
-
-    def __rmul__(self, a):
-        if isinstance(a, float) and a >= 0:
-            return MixtureDensityOperator(
-                tuple(term * a for term in self.terms), self.system
-            )
-        if isinstance(a, SumOperator):
-            return SumOperator(
-                tuple(
-                    (
-                        term_a * term * term.prefactor
-                        for term in self.terms
-                        for term_a in a.terms
-                    )
-                ),
-                self.system,
-            )
-        return SumOperator(
-            tuple((-a * term) * (-term.prefactor) for term in self.terms), self.system
-        )
-
     def acts_over(self) -> frozenset:
         """
-        Return a set with the name of the
-        sites where the operator nontrivially acts
+        Return the block over which the operator acts over.
+
+        Return a set with the name of the sites where the operator
+        nontrivially acts.
         """
         sites: Set[str] = set()
         for term in self.terms:
@@ -139,10 +117,31 @@ class MixtureDensityOperator(DensityOperatorMixin, SumOperator):
         return frozenset(sites)
 
     def expect(
-        self, obs_objs: Union[Operator, Iterable]
+        self,
+        obs_objs: Union[Operator, Iterable],
+        _local_states: Optional[Dict[frozenset, DensityOperatorProtocol]] = None,
     ) -> Union[np.ndarray, dict, complex]:
+        r"""Compute expectation values as a weighted sum over the mixture components.
+
+        For each component :math:`\rho_k` with weight :math:`\lambda_k`,
+        computes :math:`\langle O \rangle = \sum_k \lambda_k \langle O \rangle_{\rho_k}`.
+
+        Parameters
+        ----------
+        obs_objs : Operator or Iterable[Operator] or dict
+            Observable or collection of observables.
+        _local_states : dict or None, optional
+            Pre-computed local states (unused, kept for interface compatibility).
+
+        Returns
+        -------
+        complex or np.ndarray or dict
+            Expectation value(s) of the observable(s).
+
+        """
 
         def compute_results(curr_obs, sub_averages, prefactors):
+            """Combine per-component averages into the mixture expectation value."""
             if isinstance(curr_obs, dict):
                 result = {}
                 for key in curr_obs:
@@ -153,8 +152,6 @@ class MixtureDensityOperator(DensityOperatorMixin, SumOperator):
                         prefactors,
                     )
                 return result
-            # Operator, list or tuple, just return the linear combination, because exp_eval
-            # is a tuple of Operator or ndarray objects.
             return sum(
                 exp_val * p_refactor
                 for exp_val, p_refactor in zip(sub_averages, prefactors)
@@ -167,21 +164,49 @@ class MixtureDensityOperator(DensityOperatorMixin, SumOperator):
         return compute_results(obs_objs, averages, prefactors)
 
     def partial_trace(self, sites: Union[frozenset, SystemDescriptor]):
+        """Compute the partial trace over the complement of ``sites``.
+
+        Applies partial trace to each component and returns a new
+        :class:`MixtureDensityOperator` on the reduced subsystem.
+
+        Parameters
+        ----------
+        sites : frozenset[str] or SystemDescriptor
+            Sites to *keep*. All other sites are traced out.
+
+        Returns
+        -------
+        MixtureDensityOperator
+            The reduced mixture on the subsystem defined by ``sites``.
+
+        """
         new_terms = tuple(cast(Operator, t).partial_trace(sites) for t in self.terms)
         subsystem = new_terms[0].system
         return MixtureDensityOperator(new_terms, subsystem)
 
     def simplify(self):
-        # DensityOperator's are considered "simplified".
+        """
+        Return a simplified representation of the operator.
+
+        Return ``self`` — mixture density operators are already in
+        simplified form.
+
+        Returns
+        -------
+        MixtureDensityOperator
+            ``self``.
+
+        """
         return self
 
     def __setstate__(self, state):
+        """Set the state of the object."""
         state = pickle.loads(state)
         self.__dict__.update(state)
         self._set_system_(self.system)
 
     def to_qutip(self, block: Optional[Tuple[str, ...]] = None):
-        """Produce a qutip compatible object"""
+        """Produce a qutip compatible object."""
         if len(self.terms) == 0:
             return ScalarOperator(0, self.system).to_qutip()
 

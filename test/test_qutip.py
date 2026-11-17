@@ -1,6 +1,4 @@
-"""
-Basic unit test.
-"""
+"""Basic unit test."""
 
 import numpy as np
 import pytest
@@ -14,13 +12,14 @@ from qalma.qutip_tools.tools import (
     data_is_scalar,
     data_is_zero,
     decompose_qutip_operator,
-    decompose_qutip_operator_hermitician,
+    decompose_qutip_operator_hermitian,
     norm,
     reduce_to_proper_spaces,
     schmidt_dec_first_rest_qutip_operator,
-    schmidt_dec_first_rest_qutip_operator_hermitician,
+    schmidt_dec_first_rest_qutip_operator_hermitian,
     schmidt_dec_rest_last_qutip_operator,
-    schmidt_dec_rest_last_qutip_operator_hermitician,
+    schmidt_dec_rest_last_qutip_operator_hermitian,
+    to_qobj,
 )
 from qalma.settings import QALMA_TOLERANCE
 
@@ -93,9 +92,8 @@ SUBSYSTEMS = [
 
 
 QUTIP_TEST_CASES = {
-    "hermitician quadratic operator": {
-        "operator": OPERATOR_TYPE_CASES["hermitician quadratic operator"].to_qutip()
-        * 2,
+    "hermitian quadratic operator": {
+        "operator": OPERATOR_TYPE_CASES["hermitian quadratic operator"].to_qutip() * 2,
         "diagonal": False,
         "scalar": False,
         "zero": False,
@@ -210,19 +208,19 @@ QUTIP_DECOMPOSITION_TEST_CASES = {
     "product operator AB": tensor(create(2), create(3)),
     "product operator ABC": tensor(create(2), ID_3_QUTIP, create(3)),
     "product operator complex ABC": tensor(create(2), ID_3_QUTIP, 1j * create(3)),
-    "product operator hermitician AB": tensor(SY_QUTIP, LX_QUTIP),
-    "product operator hermitician ABC": tensor(SX_QUTIP, ID_3_QUTIP, LX_QUTIP),
-    "sum of product operator hermitician AB": tensor(SX_QUTIP, LX_QUTIP)
+    "product operator hermitian AB": tensor(SY_QUTIP, LX_QUTIP),
+    "product operator hermitian ABC": tensor(SX_QUTIP, ID_3_QUTIP, LX_QUTIP),
+    "sum of product operator hermitian AB": tensor(SX_QUTIP, LX_QUTIP)
     + tensor(SY_QUTIP, LY_QUTIP),
-    "sum of product operator hermitician ABC": (
+    "sum of product operator hermitian ABC": (
         tensor(SX_QUTIP, ID_3_QUTIP, LX_QUTIP) + tensor(SY_QUTIP, ID_3_QUTIP, LY_QUTIP)
     ),
-    "sum of product operator hermitician with diagonal terms ABC": (
+    "sum of product operator hermitian with diagonal terms ABC": (
         tensor(SX_QUTIP, ID_3_QUTIP, LX_QUTIP)
         + tensor(SY_QUTIP, ID_3_QUTIP, LY_QUTIP)
         + tensor(SZ_QUTIP, ID_3_QUTIP, LZ_QUTIP)
     ),
-    "complex sum of product operator hermitician with diagonal terms ABC": (
+    "complex sum of product operator hermitian with diagonal terms ABC": (
         tensor(SX_QUTIP, ID_3_QUTIP, LX_QUTIP)
         + tensor(SY_QUTIP, ID_3_QUTIP, LY_QUTIP)
         + tensor(SZ_QUTIP, ID_3_QUTIP, LZ_QUTIP)
@@ -271,10 +269,7 @@ def test_qutip_properties(case, data):
     ["name", "qutip_operator"], list(QUTIP_DECOMPOSITION_TEST_CASES.items())
 )
 def test_schmidt_dec_first_rest_qutip_operator(name, qutip_operator):
-    """
-    test decomposition of qutip operators
-    as sums of product operators
-    """
+    """Test decomposition of qutip operators as sums of product operators."""
     print("decomposing ", name)
     print("qutip operator:\n", qutip_operator)
     terms = schmidt_dec_first_rest_qutip_operator(qutip_operator)
@@ -287,24 +282,21 @@ def test_schmidt_dec_first_rest_qutip_operator(name, qutip_operator):
     if not qutip_operator.isherm:
         return
 
-    print("check hermitician decomposition")
-    terms = schmidt_dec_first_rest_qutip_operator_hermitician(qutip_operator)
+    print("check hermitian decomposition")
+    terms = schmidt_dec_first_rest_qutip_operator_hermitian(qutip_operator)
     if terms[0] or not data_is_zero(qutip_operator.data):
         reconstructed = sum(tensor(*t) for t in zip(*terms))
         print("reconstructed:\n", reconstructed)
         assert check_operator_equality(
             qutip_operator, reconstructed
-        ), "hermitician reconstruction does not match with the original."
+        ), "hermitian reconstruction does not match with the original."
 
 
 @pytest.mark.parametrize(
     ["name", "qutip_operator"], list(QUTIP_DECOMPOSITION_TEST_CASES.items())
 )
 def test_schmidt_dec_rest_last_qutip_operator(name, qutip_operator):
-    """
-    test decomposition of qutip operators
-    as sums of product operators
-    """
+    """Test decomposition of qutip operators as sums of product operators."""
     print("decomposing ", name)
     print("qutip operator:\n", qutip_operator)
     terms = schmidt_dec_rest_last_qutip_operator(qutip_operator)
@@ -317,23 +309,20 @@ def test_schmidt_dec_rest_last_qutip_operator(name, qutip_operator):
     if not qutip_operator.isherm:
         return
 
-    print("check hermitician decomposition")
-    terms = schmidt_dec_rest_last_qutip_operator_hermitician(qutip_operator)
+    print("check hermitian decomposition")
+    terms = schmidt_dec_rest_last_qutip_operator_hermitian(qutip_operator)
     if terms[0] or not data_is_zero(qutip_operator.data):
         reconstructed = sum(tensor(*t) for t in zip(*terms))
         assert check_operator_equality(
             qutip_operator, reconstructed
-        ), "hermitician reconstruction does not match with the original."
+        ), "hermitian reconstruction does not match with the original."
 
 
 @pytest.mark.parametrize(
     ["name", "qutip_operator"], list(QUTIP_DECOMPOSITION_TEST_CASES.items())
 )
 def test_decompose_qutip_operators(name, qutip_operator):
-    """
-    test decomposition of qutip operators
-    as sums of product operators
-    """
+    """Test decomposition of qutip operators as sums of product operators."""
     print("decomposing ", name)
 
     print("qutip operator:\n", qutip_operator)
@@ -347,8 +336,8 @@ def test_decompose_qutip_operators(name, qutip_operator):
     if not qutip_operator.isherm:
         return
 
-    print("check hermitician decomposition")
-    terms = decompose_qutip_operator_hermitician(qutip_operator)
+    print("check hermitian decomposition")
+    terms = decompose_qutip_operator_hermitian(qutip_operator)
     print("terms:\n", 20 * "-")
     for term in terms:
         print(term)
@@ -358,7 +347,7 @@ def test_decompose_qutip_operators(name, qutip_operator):
     print("reconstructed:\n", reconstructed)
     assert check_operator_equality(
         qutip_operator, reconstructed
-    ), "hermitician reconstruction does not match with the original."
+    ), "hermitian reconstruction does not match with the original."
 
 
 @pytest.mark.parametrize(
@@ -432,7 +421,7 @@ def test_decompose_qutip_operators(name, qutip_operator):
 def test_qutip_operators(
     case: str, op_case: Operator, expected_value: complex, op_native: Qobj
 ):
-    """Test for the qutip representation"""
+    """Test for the qutip representation."""
     print("testing case", case, expected_value, "=?=", op_native.tr())
     site_map = {site_name: i for i, site_name in enumerate(op_case.system.sites)}
     failed_tr = {}
@@ -464,15 +453,12 @@ def test_qutip_operators(
 
 @pytest.mark.parametrize(["name", "operator_case"], list(OPERATOR_TYPE_CASES.items()))
 def test_as_sum_of_products(name, operator_case):
-    """
-    Convert qutip operators into product
-    operators back and forward
-    """
+    """Convert qutip operators into product operators back and forward."""
     print("testing QutipOperator.as_sum_of_products")
     print("   operator", name, "of type", type(operator_case))
     qutip_op = 3 * (operator_case.to_qutip_operator())
 
-    # TODO: support handling hermitician operators
+    # TODO: support handling hermitian operators
     if not qutip_op.isherm:
         return
     reconstructed = qutip_op.as_sum_of_products()
@@ -486,7 +472,7 @@ def test_as_sum_of_products(name, operator_case):
 
 
 def test_detached_operators():
-    """Check operators not coming from a system"""
+    """Check operators not coming from a system."""
     # Tests for QutipOperators defined without a system
     test_op = SX_A_SY_B_TIMES_2
     system = test_op.system
@@ -558,9 +544,7 @@ def test_to_qutip_operator():
 
 
 def test_reduce_to_proper_spaces():
-    """
-    Test the projections to proper spaces.
-    """
+    """Test the projections to proper spaces."""
     observable_x = tensor(sigmax(), ID_2_QUTIP) + tensor(ID_2_QUTIP, sigmax())
     observable_z = tensor(sigmaz(), ID_2_QUTIP) + tensor(ID_2_QUTIP, sigmaz())
     observable_h = observable_x + observable_z  # Hadamard
@@ -605,3 +589,42 @@ def test_trivial_QutipOperator():
     check_equality(a.tr(), 4.0)
     check_equality((a * a).tr(), 8.0)
     check_equality((b * b).tr(), 0.5)
+
+
+_TO_QOBJ_RNG = np.random.default_rng(17)
+_REAL_70 = _TO_QOBJ_RNG.normal(size=(70, 70))
+
+
+@pytest.mark.parametrize(
+    "name, array",
+    [
+        ("complex", np.diag([1.0, 2.0, 3.0]).astype(complex)),
+        ("float64", np.diag([1.0, 2.0, 3.0])),
+        ("float32", np.diag([1.0, 2.0, 3.0]).astype(np.float32)),
+        ("int", np.array([[1, 2], [3, 4]])),
+        ("bool", np.eye(3, dtype=bool)),
+        ("fortran order", np.asfortranarray(np.arange(9.0).reshape(3, 3))),
+        ("transposed", (np.arange(9.0).reshape(3, 3) + 1j).T),
+        ("strided", (np.arange(16.0).reshape(4, 4) + 0j)[::2, ::2]),
+        # dense storage: large and without zero entries
+        ("dense, float64", _REAL_70),
+        ("dense, transposed", (_REAL_70 + 1j).T),
+    ],
+)
+def test_to_qobj_dtypes_and_layouts(name, array):
+    """The fast QuTiP constructors read complex128 buffers: any input must work."""
+    original = array.copy()
+    result = to_qobj(array)
+    assert result.dims == [[array.shape[0]], [array.shape[1]]]
+    assert np.allclose(result.full(), np.array(array, dtype=complex))
+    # The input is not modified.
+    assert np.array_equal(array, original)
+
+
+def test_to_qobj_drops_small_entries_without_modifying_the_input():
+    array = np.array([[1.0, 1e-15], [0.0, 1.0]])
+    result = to_qobj(array)
+    assert result.full()[0, 1] == 0
+    assert array[0, 1] == 1e-15
+    with pytest.raises(ValueError):
+        to_qobj(np.ones(3))

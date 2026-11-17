@@ -1,6 +1,4 @@
-"""
-Functions for operators.
-"""
+"""Functions for operators."""
 
 # from collections.abc import Iterable
 # from typing import Callable, List, Optional, Tuple
@@ -12,7 +10,12 @@ from qalma.operators.arithmetic import SumOperator, iterable_to_operator
 from qalma.operators.basic import (
     Operator,
 )
-from qalma.operators.simplify import collect_nbody_terms
+from qalma.operators.pauli import (
+    anticommutator_pauli,
+    commutator_pauli,
+    is_pauli_sum,
+)
+from qalma.operators.simplify import _commutator_term_pairs, collect_nbody_terms
 from qalma.parallel import USE_PARALLEL, commutator_qalma_parallel
 
 # from qalma.operators.simplify import simplify_sum_operator
@@ -21,17 +24,26 @@ from qalma.parallel import USE_PARALLEL, commutator_qalma_parallel
 # from datetime import datetime
 
 
+__all__ = ["anticommutator", "commutator"]
+
+
 def anticommutator(
     op_1: Union[Qobj, Operator], op_2: Union[Qobj, Operator]
 ) -> Union[Qobj, Operator]:
-    """
-    Computes the anticommutator of two operators, defined as {op1, op2} = op1 * op2 + op2 * op1.
+    """Compute the anticommutator of two operators, {op1, op2} = op1*op2 + op2*op1.
 
-    Parameters:
-        op1, op2: operators (can be a matrix or a quantum operator object).
+    Parameters
+    ----------
+    op_1 : Operator or qutip.Qobj
+        First operator.
+    op_2 : Operator or qutip.Qobj
+        Second operator.
 
-    Returns:
-        The anticommutator of op1 and op2.
+    Returns
+    -------
+    Operator or qutip.Qobj
+        The anticommutator ``op_1 * op_2 + op_2 * op_1``.
+
     """
     if isinstance(op_1, Qobj):
         if not isinstance(op_2, Qobj):
@@ -45,14 +57,26 @@ def anticommutator(
 
 
 def anticommutator_qalma_serial(op_1: Operator, op_2: Operator) -> Operator:
-    """
-    Computes the anticommutator of two operators, defined as {op1, op2} = op1 * op2 + op2 * op1.
+    r"""Compute the anticommutator of two QALMA operators.
 
-    Parameters:
-        op1, op2: operators (can be a matrix or a quantum operator object).
+    The anticommutator is defined as
 
-    Returns:
-        The anticommutator of op1 and op2.
+    .. math::
+
+        \{op_1, op_2\} = op_1 \cdot op_2 + op_2 \cdot op_1.
+
+    Parameters
+    ----------
+    op_1 : Operator
+        First operator.
+    op_2 : Operator
+        Second operator.
+
+    Returns
+    -------
+    Operator
+        The anticommutator ``op_1 * op_2 + op_2 * op_1``, simplified.
+
     """
     system = op_1.system or op_2.system
     if isinstance(op_1, SumOperator):
@@ -82,9 +106,7 @@ def anticommutator_qalma_serial(op_1: Operator, op_2: Operator) -> Operator:
 def commutator(
     op_1: Union[Operator, Qobj], op_2: Union[Operator, Qobj]
 ) -> Union[Qobj, Operator]:
-    """
-    Commutator of two operators
-    """
+    """Commutator of two operators."""
     if isinstance(op_1, Qobj):
         if not isinstance(op_2, Qobj):
             op_2 = op_2.to_qutip()
@@ -97,35 +119,40 @@ def commutator(
 
 
 def commutator_qalma_serial(op_1: Operator, op_2: Operator) -> Operator:
-    """
-    The commutator of two Operator objects `op_1` and  `op_2`.
+    """Compute the commutator of two Operator objects `op_1` and `op_2` (serial implementation).
+
     Serial implementation.
     """
     system = op_1.system.union(op_2.system)
     op_1_terms = collect_nbody_terms(op_1.flat())
     op_2_terms = collect_nbody_terms(op_2.flat())
 
-    def fetch_terms():
-        for block_1, terms_1 in op_1_terms.items():
-            for block_2, terms_2 in op_2_terms.items():
-                if (
-                    block_1 is not None
-                    and block_2 is not None
-                    and not block_1.intersection(block_2)
-                ):
-                    continue
-                for term_1 in terms_1:
-                    for term_2 in terms_2:
-                        if term_1 is term_2:
-                            continue
-                        yield (term_1, term_2)
-
-    terms = tuple(op_1 * op_2 - op_2 * op_1 for op_1, op_2 in fetch_terms())
+    terms = tuple(
+        op_1 * op_2 - op_2 * op_1
+        for op_1, op_2 in _commutator_term_pairs(op_1_terms, op_2_terms)
+    )
     return iterable_to_operator(terms, system).simplify()
 
 
-anticommutator_qalma = anticommutator_qalma_serial
-
-commutator_qalma = (
+_commutator_qalma_generic = (
     commutator_qalma_parallel if USE_PARALLEL else commutator_qalma_serial
 )
+
+
+def commutator_qalma(op_1: Operator, op_2: Operator) -> Operator:
+    """Commutator of two QALMA operators.
+
+    Sums of Pauli strings are handled symbolically by
+    :func:`qalma.operators.pauli.commutator_pauli`; any other combination
+    goes through the generic (serial or parallel) implementation.
+    """
+    if is_pauli_sum(op_1) and is_pauli_sum(op_2):
+        return commutator_pauli(op_1, op_2)
+    return _commutator_qalma_generic(op_1, op_2)
+
+
+def anticommutator_qalma(op_1: Operator, op_2: Operator) -> Operator:
+    """Anticommutator of two QALMA operators (symbolic for Pauli sums)."""
+    if is_pauli_sum(op_1) and is_pauli_sum(op_2):
+        return anticommutator_pauli(op_1, op_2)
+    return anticommutator_qalma_serial(op_1, op_2)
