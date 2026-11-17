@@ -23,6 +23,15 @@ qalma.evolution.maxent\_evol
    :show-inheritance:
    :exclude-members: GibbsDensityOperator, GibbsProductDensityOperator, Operator
 
+qalma.evolution.leakage\_control
+---------------------------------
+
+.. automodule:: qalma.evolution.leakage_control
+   :members:
+   :undoc-members:
+   :show-inheritance:
+   :exclude-members: GibbsDensityOperator, GibbsProductDensityOperator, Operator
+
 qalma.evolution.heisenberg\_solver
 -----------------------------------
 

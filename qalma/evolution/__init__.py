@@ -7,6 +7,13 @@ from qalma.evolution.hierarchical_basis import (
     fn_hij_tensor_with_errors,
     k_state_from_phi_basis,
 )
+from qalma.evolution.leakage_control import (
+    leakage_controlled_evolution,
+    leakage_gram,
+    leakage_integrals,
+    leakage_rate,
+    local_mean_field_drift,
+)
 from qalma.evolution.maxent_evol import (
     adaptive_projected_evolution,
     projected_evolution,
@@ -31,6 +38,11 @@ __all__ = [
     "fn_hij_tensor_with_errors",
     "heisenberg_solve",
     "k_state_from_phi_basis",
+    "leakage_controlled_evolution",
+    "leakage_gram",
+    "leakage_integrals",
+    "leakage_rate",
+    "local_mean_field_drift",
     "slice_times",
     "m_th_partial_sum",
     "qutip_me_solve",
