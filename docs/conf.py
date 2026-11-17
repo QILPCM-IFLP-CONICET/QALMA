@@ -27,8 +27,13 @@ extensions = [
     "sphinx.ext.mathjax",
     "nbsphinx",
     "myst_parser",
+    "sphinx.ext.extlinks",
     "sphinx.ext.imgconverter",  # Automatically handles image format conversions
 ]
+
+extlinks = {
+    "doi": ("https://doi.org", "DOI:%s"),
+}
 
 templates_path = ["_templates"]
 source_suffix = {
