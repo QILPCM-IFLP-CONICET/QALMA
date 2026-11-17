@@ -167,7 +167,7 @@ def test_variational_improves_over_mixed_state(L, Jz, Jxy, Gamma, label):
 # ── Test 3: detección de orden espiral en la cadena J1-J2 ─────────────────────
 
 _BETA = 3.0  # temperatura inversa; a beta=1 el MFA no rompe simetría en XX ni J1-J2
-_POINT_FIELD = 1e-2  # amplitud del campo puntual en el sitio central
+_POINT_FIELD = 1e-2  # amplitude del campo puntual en el sitio central
 _NUMFIELDS = 6  # independiente de L: captura al menos 2 modos no triviales
 # dado que H XXX tiene degeneración 3 en la matriz de acoplamientos
 
