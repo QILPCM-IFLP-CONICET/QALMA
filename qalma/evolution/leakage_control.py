@@ -59,6 +59,14 @@ from .simulation import Simulation
 
 logger = logging.getLogger(__name__)
 
+__all__ = [
+    "leakage_controlled_evolution",
+    "leakage_gram",
+    "leakage_integrals",
+    "leakage_rate",
+    "local_mean_field_drift",
+]
+
 
 # ─────────────────────────── leakage tensors ────────────────────────────────
 
@@ -255,9 +263,22 @@ def leakage_controlled_evolution(
         Tolerance for the local drift of the mean-field reference.
     n_quad : int
         Trapezoidal intervals used for the leakage integrals.
-    e_ops, extra_observables, basis_update_callback, on_update_basis_callback,
-    store_states, checkpoint_file :
-        As in :func:`adaptive_projected_evolution`.
+    e_ops : dict, list or callable, optional
+        Observables to evaluate at each output time, or a callable
+        ``e_ops(t, k)``, as in :func:`adaptive_projected_evolution`.
+    extra_observables : tuple of Operator
+        Operators always added to the basis.
+    basis_update_callback : callable
+        Builds the basis, the reference state and its generator; defaults to
+        :func:`update_basis`.
+    on_update_basis_callback : callable, optional
+        Called with a dictionary describing the new segment after each
+        rebuild (keys ``"basis"``, ``"sigma_ref"``, ``"k_ref"``, ``"phi_0"``,
+        ``"gen"``, ``"e_mat"``, ``"floor"`` and ``"t_ref"``).
+    store_states : bool
+        Store the generators ``K~(t)`` also when ``e_ops`` is given.
+    checkpoint_file : str or path-like, optional
+        If given, the simulation is saved there after each output time.
 
     Returns
     -------
