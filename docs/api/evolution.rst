@@ -30,6 +30,14 @@ qalma.evolution.leakage\_control
    :members:
    :undoc-members:
    :show-inheritance:
+
+qalma.evolution.memory\_evolution
+----------------------------------
+
+.. automodule:: qalma.evolution.memory_evolution
+   :members:
+   :undoc-members:
+   :show-inheritance:
    :exclude-members: GibbsDensityOperator, GibbsProductDensityOperator, Operator
 
 qalma.evolution.heisenberg\_solver

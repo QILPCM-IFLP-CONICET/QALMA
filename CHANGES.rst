@@ -132,6 +132,18 @@ HDF5 files
 Max-Ent evolution
 +++++++++++++++++
 
+* New :func:`~qalma.evolution.memory_projected_evolution`, the recommended
+  restricted Max-Ent evolution: the first-order evolution plus a memory term
+  with an exponentially decaying kernel, built from the leakage Gram matrix
+  (projection of the second-order equation, Mori-Zwanzig closure). The memory
+  time is estimated automatically
+  (:func:`~qalma.evolution.estimate_memory_time`), the velocity is continuous
+  across basis rebuilds, and a warning is issued when the dynamics leaves the
+  n-body sector (:func:`~qalma.evolution.sector_leakage_fraction`).
+* :func:`~qalma.evolution.adaptive_projected_evolution` is deprecated in
+  favour of :func:`~qalma.evolution.memory_projected_evolution` (or
+  :func:`~qalma.evolution.leakage_controlled_evolution` for the first-order
+  evolution); its behaviour is unchanged.
 * New, experimental
   :func:`~qalma.evolution.leakage_controlled_evolution`: restricted Max-Ent
   evolution whose basis is rebuilt when the leakage rate
