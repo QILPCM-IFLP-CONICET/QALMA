@@ -4,6 +4,7 @@ import itertools
 
 import numpy as np
 import pytest
+from scipy.integrate import trapezoid
 from scipy.linalg import eigh, expm
 from scipy.optimize import minimize
 
@@ -198,9 +199,9 @@ def test_leakage_integrals(basis_case):
     taus = np.linspace(0, tau, 2001)
     phis = np.array([expm(s * gen) @ phi_0 for s in taus])
     assert eps == pytest.approx(
-        np.trapezoid([leakage_rate(e_mat, p) for p in phis], taus), rel=1e-3
+        trapezoid([leakage_rate(e_mat, p) for p in phis], taus), rel=1e-3
     )
-    assert np.allclose(psi, np.trapezoid(phis, taus, axis=0), atol=1e-5)
+    assert np.allclose(psi, trapezoid(phis, taus, axis=0), atol=1e-5)
     # tau = 0
     phi, eps, psi, _ = leakage_integrals(gen, phi_0, e_mat, 0.0)
     assert eps == 0 and np.allclose(psi, 0) and np.allclose(phi, phi_0)
