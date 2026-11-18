@@ -1,55 +1,61 @@
-"""Functions used to run MaxEnt simulations."""
+"""Power-series solution of the equation of motion of the generator."""
 
 from __future__ import annotations
 
 from datetime import datetime
 from functools import reduce
-from typing import Any, Callable, Dict, Iterable, Optional, cast
+from typing import Any, Dict, List, Optional
 
-from qalma.operators.states import GibbsDensityOperator
+from qalma.operators import Operator
 from qalma.scalarprod.basis import HierarchicalOperatorBasis
 
+from .common import EOps, GeneratorRecorder
 from .simulation import Simulation
 
 __all__ = ["series_evolution"]
 
 
 def series_evolution(
-    ham, k0, t_span, order, *, e_ops: Optional[Callable | Dict] = None
+    ham: Operator,
+    k0: Operator,
+    t_span,
+    order: int,
+    *,
+    e_ops: EOps = None,
+    store_states: Optional[bool] = None,
 ) -> Simulation:
-    """Compute the solution of the Schrödinger equation.
+    """Solve the Schrödinger equation for the generator as a power series.
 
-    dk
-    -- = -i [H, k]
-    dt
-
-    as a linear combination of the iterated commutators
-
-    k = k0 - i [H, k0] t - [H,[H, k0]] t**2 - ...
+    ``K(t) = K0 - i [H, K0] t - [H, [H, K0]] t**2 / 2 + ...``, truncated at
+    ``order``.
 
     Parameters
     ----------
     ham : Operator
-        The Hamiltonian operator
+        The Hamiltonian.
     k0 : Operator
-        The initial condition
-    t_span: np.array
-        the times for with the evolution is computed
-    order:
-        the order of the solution
+        The initial generator, ``rho(0) ~ exp(-k0)``.
+    t_span : array-like
+        Output times.
+    order : int
+        Order of the truncated series.
+    e_ops : dict, list or callable, optional
+        Observables evaluated in ``rho(t) ~ exp(-K(t))``, or a callable
+        ``e_ops(t, rho)``.
+    store_states : bool, optional
+        Store the generators ``K(t)``. By default, only when ``e_ops`` is not
+        given.
 
     Returns
     -------
-    Simulation:
-        A simulation object.
-
+    Simulation
+        ``states`` holds generators; ``stats`` has ``"method"``,
+        ``"wall time"``, ``"init time"`` and ``"run time"`` (in seconds).
     """
-    # TODO: implement me for time-dependent hamiltonians
-    # and solve in the interaction picture
-    process_state: Optional[Callable] = None
-    e_ops_dict: Dict
-    expect_ops: Dict[Any, complex] = {}
-    stats: Dict = {"solver": "series solver"}
+    start_time = datetime.now()
+    states: List[Operator] = []
+    expect_ops: Dict[Any, Any] = {}
+    record = GeneratorRecorder(e_ops, store_states, states, expect_ops)
 
     def compute_inst_k(t, basis, prefactor):
         norms = [row[pos] for pos, row in enumerate(basis.gen_matrix[1:])]
@@ -63,41 +69,28 @@ def series_evolution(
         ]
         return basis.operator_from_coefficients(t_coeffs)
 
-    def compute_and_store_expect(_, rho_t):
-        """Compute expectation values and store them."""
-        for key, val in rho_t.expect(e_ops_dict).items():
-            expect_ops.setdefault(key, []).append(val)
-
-    if e_ops is not None:
-        if hasattr(e_ops, "__call__"):
-            process_state = e_ops
-        else:
-            if not isinstance(e_ops, dict):
-                e_ops_dict = dict(enumerate(cast(Iterable, e_ops)))
-            else:
-                e_ops_dict = e_ops
-            process_state = compute_and_store_expect
-
-    start_time = datetime.now()
     h_basis = HierarchicalOperatorBasis(k0, ham, order)
     prefactor = h_basis.sp(h_basis.operator_basis[0], k0)
-    states = []
-    finish_time = datetime.now()
-    stats["init time"] = finish_time - start_time
+    init_time = (datetime.now() - start_time).total_seconds()
 
-    start_time = datetime.now()
+    run_start = datetime.now()
     for t in t_span:
-        k = compute_inst_k(t, h_basis, prefactor)
-        if process_state is None:
-            states.append(k)
-            continue
-        rho = GibbsDensityOperator(k)
-        process_state(t, rho)
-    finish_time = datetime.now()
-    stats["run time"] = finish_time - start_time
+        record(t, compute_inst_k(t, h_basis, prefactor))
+    run_time = (datetime.now() - run_start).total_seconds()
 
+    stats = {
+        "method": "series",
+        "wall time": (datetime.now() - start_time).total_seconds(),
+        "init time": init_time,
+        "run time": run_time,
+    }
     return Simulation(
-        parameters={"method": "series", "system": ham.system},
+        parameters={
+            "method": "series",
+            "system": ham.system,
+            "states": "generator" if record.store_states else "none",
+            "order": order,
+        },
         stats=stats,
         time_span=list(t_span),
         states=states,

@@ -1,61 +1,36 @@
-"""Solvers for the dynamics."""
+"""Solvers for the dynamics.
+
+All the solvers return a :class:`Simulation` and follow the conventions
+described in :mod:`qalma.evolution.common`.
+"""
 
 from qalma.evolution.heisenberg_solver import heisenberg_solve
-from qalma.evolution.hierarchical_basis import (
-    build_hierarchical_basis,
-    fn_hij_tensor,
-    fn_hij_tensor_with_errors,
-    k_state_from_phi_basis,
-)
 from qalma.evolution.leakage_control import (
-    leakage_controlled_evolution,
+    estimate_memory_time,
     leakage_gram,
     leakage_integrals,
     leakage_rate,
     local_mean_field_drift,
-)
-from qalma.evolution.maxent_evol import (
-    adaptive_projected_evolution,
-    projected_evolution,
-    update_basis,
-    update_basis_light,
-)
-from qalma.evolution.memory_evolution import (
-    estimate_memory_time,
-    memory_projected_evolution,
     sector_leakage_fraction,
 )
+from qalma.evolution.maxent_evol import adaptive_maxent_evolution, update_basis
 from qalma.evolution.qutip_solver import qutip_me_solve
 from qalma.evolution.series_solver import series_evolution
-from qalma.evolution.tools import (
-    m_th_partial_sum,
-    slice_times,
-)
 
 from .simulation import Simulation, SimulationHDF5
 
 __all__ = [
     "Simulation",
     "SimulationHDF5",
-    "adaptive_projected_evolution",
-    "build_hierarchical_basis",
-    "fn_hij_tensor",
-    "fn_hij_tensor_with_errors",
-    "heisenberg_solve",
-    "k_state_from_phi_basis",
+    "adaptive_maxent_evolution",
     "estimate_memory_time",
-    "leakage_controlled_evolution",
-    "memory_projected_evolution",
-    "sector_leakage_fraction",
+    "heisenberg_solve",
     "leakage_gram",
     "leakage_integrals",
     "leakage_rate",
     "local_mean_field_drift",
-    "slice_times",
-    "m_th_partial_sum",
     "qutip_me_solve",
-    "projected_evolution",
+    "sector_leakage_fraction",
     "series_evolution",
     "update_basis",
-    "update_basis_light",
 ]

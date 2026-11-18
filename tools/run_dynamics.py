@@ -16,13 +16,9 @@ from qalma.evolution import (
     series_evolution as series_solver,
 )
 from qalma.evolution.maxent_evol import (
-    adaptive_projected_evolution,
-    projected_evolution,
-    update_basis,
-    update_basis_heavy,
-    update_basis_light,
+    adaptive_maxent_evolution,
 )
-from qalma.meanfield.variational import compute_rel_entropy, variational_quadratic_mfa
+from qalma.meanfield.variational import compute_free_energy, variational_quadratic_mfa
 from qalma.model import build_system
 from qalma.operators import Operator, ScalarOperator
 from qalma.operators.states import (
@@ -43,12 +39,6 @@ TRACK_OBSERVABLES: Dict[str, Operator] = {}
 UUID_CALL = f"{uuid.uuid4()}"
 
 UPDATE_CONDITION = "adaptive"
-UPDATE_BASIS_PROTOCOLS = {
-    "standard": update_basis,
-    "heavy": update_basis_heavy,
-    "light": update_basis_light,
-}
-UBP = "standard"
 
 
 # PARAMETERS
@@ -159,26 +149,21 @@ def find_exact_sim(sim=None, le=None, beta=None):
     return exact_sim
 
 
-def update_basis_callback(state):
+def update_basis_callback(segment):
     """
-    Function called each time the basis is updated.
+    Function called each time the basis is rebuilt.
     """
-    print("  update basis:\n    now:", datetime.now())
-    print("    t=", state["t"], "t_ref=", state["t_ref"], "t_last", state["last_t"])
+    print("  basis rebuilt:\n    now:", datetime.now())
     print(
-        "    Delta t=",
-        state["t"] - state["t_ref"],
-        "x speed",
-        state["max_error_speed"],
-        "=",
-        (state["t"] - state["t_ref"]) * state["max_error_speed"],
+        "    t_ref=",
+        segment["t_ref"],
+        "dim=",
+        len(segment["basis"].operator_basis),
+        "leakage floor=",
+        segment["floor"],
+        "memory time=",
+        segment["tau"],
     )
-    print("    basis time cost=", state["basis time cost"])
-    print("    curr_n_body=", state["curr_n_body"])
-    print("    len basis=", len(state["basis"].operator_basis))
-    print("    away from mean field", state["away"])
-    print("    cumulated error", state["cumulated error"])
-    print("    basis.errors", state["basis"].errors)
 
 
 def run_exact(axis):
@@ -261,7 +246,7 @@ def run_meanfield_projection(axis):
     for t, state_ln in zip(time_span, exact_states):
         print("           t=", t)
         sigma_mf = variational_quadratic_mfa(state_ln, sigma_ref=sigma_mf)
-        rel_s = compute_rel_entropy(sigma_mf, state_ln)
+        rel_s = compute_free_energy(sigma_mf, state_ln)
         varmf.append(sigma_mf)
         rel_s_vals.append(rel_s)
         expect_0.append(np.real(sigma_mf.expect(SZ_TOTAL)))
@@ -345,7 +330,7 @@ def run_projected(axis):
                 basis = build_basis(k)
             sigma_prj = GibbsDensityOperator(basis.project_onto(k))
             projected.append(sigma_prj.to_qutip_operator())
-            rel_s.append(compute_rel_entropy(sigma_prj, k))
+            rel_s.append(compute_free_energy(sigma_prj, k))
         except Exception as e:
             print("EXCEPTION")
             print(e)
@@ -383,44 +368,40 @@ def run_projected(axis):
     print("   done")
 
 
-def run_simulation_adaptive(basis_depth, n_body, tolerance, axis):
+def run_simulation_adaptive(basis_depth, n_body, memory_time, axis):
     print(f"Adaptative evolution BETA={BETA}")
     k_0 = K0 * BETA
     hamiltonian = HAMILTONIAN
     print(
-        f"                   Start max ent ell={basis_depth},m={n_body},tol={tolerance}:",
+        f"                   Start max ent ell={basis_depth},m={n_body},tau={memory_time}:",
         datetime.now(),
     )
     try:
-        adaptive_sol = adaptive_projected_evolution(
+        adaptive_sol = adaptive_maxent_evolution(
             hamiltonian,
             k_0,
             TIME_SPAN,
             basis_depth,
             n_body,
-            tol=tolerance,
+            memory_time=memory_time,
             e_ops=[SZ_TOTAL],
             store_states=True,
-            on_update_basis_callback=update_basis_callback,
-            include_one_body_projection=True,
+            on_rebuild=update_basis_callback,
             extra_observables=tuple(TRACK_OBSERVABLES.values()),
-            basis_update_callback=UPDATE_BASIS_PROTOCOLS[UBP],
-            update_condition=UPDATE_CONDITION,
         )
         adaptive_sol.parameters["beta"] = BETA
-        adaptive_sol.parameters["UBP"] = UBP
         adaptive_sol.parameters["L"] = L
         adaptive_sol.parameters["track observables"] = tuple(TRACK_OBSERVABLES)
         assert len(adaptive_sol.states) > 0
-        out_filename = f"adaptive3_ubp={UBP}_L={L}_beta={BETA}_nbody={n_body}_deep={basis_depth}_{UUID_CALL}.h5"
+        out_filename = f"adaptive3_L={L}_beta={BETA}_nbody={n_body}_deep={basis_depth}_{UUID_CALL}.h5"
 
         adaptive_sol.save_hdf5(out_filename)
         print("Adaptive evolution simulation results stored in", out_filename)
-        # plt.scatter(ts[:len(max_ent)], [np.real(rho.expect(k_0)) for rho in max_ent], label=f"$\\ell={basis_depth}$, m={n_body}, tol={tolerance}")
+        # plt.scatter(ts[:len(max_ent)], [np.real(rho.expect(k_0)) for rho in max_ent], label=f"$\\ell={basis_depth}$, m={n_body}, tau={memory_time}")
         plt.scatter(
             TIME_SPAN[: len(adaptive_sol.time_span)],
             [np.real(ex_val) for ex_val in adaptive_sol.expect_ops[0]],
-            label=f"c->$\\ell={basis_depth}$, m={n_body}, tol={tolerance}",
+            label=f"c->$\\ell={basis_depth}$, m={n_body}, tau={memory_time}",
         )
     except Exception as e:
         print("                   EXCEPTION ")
@@ -428,24 +409,32 @@ def run_simulation_adaptive(basis_depth, n_body, tolerance, axis):
         raise
 
 
-def run_simulation_projected(basis_depth, n_body, tolerance, axis):
+def run_simulation_projected(basis_depth, n_body, memory_time, axis):
     k_0 = K0 * BETA
     hamiltonian = HAMILTONIAN
     print(
-        f"                   Start max ent ell={basis_depth},m={n_body},tol={tolerance}:",
+        f"                   Start max ent ell={basis_depth},m={n_body},tau={memory_time}:",
         datetime.now(),
     )
     try:
         max_ent = [
             GibbsDensityOperator(k)
-            for k in projected_evolution(hamiltonian, k_0, TIME_SPAN, 100, 100)
+            for k in adaptive_maxent_evolution(
+                hamiltonian,
+                k_0,
+                TIME_SPAN,
+                basis_depth,
+                n_body,
+                adaptive=False,
+                memory_time=None,
+            ).states
         ]
-        # plt.scatter(ts[:len(max_ent)], [np.real(rho.expect(k_0)) for rho in max_ent], label=f"$\\ell={basis_depth}$, m={n_body}, tol={tolerance}")
+        # plt.scatter(ts[:len(max_ent)], [np.real(rho.expect(k_0)) for rho in max_ent], label=f"$\\ell={basis_depth}$, m={n_body}, tau={memory_time}")
         plt.scatter(
             TIME_SPAN[: len(max_ent)],
             [np.real(rho.expect(SZ_TOTAL)) for rho in max_ent],
             ls="-.",
-            label=f"proyected-> $\\ell={basis_depth}$, m={n_body}, tol={tolerance}",
+            label=f"proyected-> $\\ell={basis_depth}$, m={n_body}, tau={memory_time}",
         )
     except Exception as e:
         print("                   EXCEPTION ")
@@ -453,8 +442,17 @@ def run_simulation_projected(basis_depth, n_body, tolerance, axis):
         raise
 
 
+def parse_memory_time(value: str):
+    """Parse the --memory-time option: "auto", "none" or a positive number."""
+    if value.lower() == "auto":
+        return "auto"
+    if value.lower() == "none":
+        return None
+    return float(value)
+
+
 def set_parameters():
-    global UPDATE_CONDITION, BETA, FULL, L, MAX_M, ELL, TOL, UBP
+    global UPDATE_CONDITION, BETA, FULL, L, MAX_M, ELL, TOL
 
     argparser = argparse.ArgumentParser(
         prog="run_dynamics",
@@ -480,22 +478,17 @@ def set_parameters():
         default=2,
         help="deep of the Hierarchical basis/order the perturbative series.",
     )
-    argparser.add_argument("--tol", type=float, default=0.001, help="tolerance")
+    argparser.add_argument(
+        "--memory-time",
+        type=str,
+        default="auto",
+        help='memory time of the closure: "auto", "none" or a number.',
+    )
     argparser.add_argument(
         "--update-condition",
         type=str,
         default="adaptive",
         help="If true, update the basis on each step.",
-    )
-    argparser.add_argument(
-        "--ubp",
-        type=str,
-        default="standard",
-        help=(
-            "update basis protocol. The protocol used to update the basis."
-            "One of `standard` (default), `heavy` (projected hierarchical basis) or `light` "
-            "(hierarchical basis starting from the 1-body projection of the generating operator)."
-        ),
     )
     argparser.add_argument(
         "--track",
@@ -519,8 +512,7 @@ def set_parameters():
     FULL = args.full
     L = args.length
     MAX_M = args.n_body
-    TOL = args.tol
-    UBP = args.ubp
+    TOL = parse_memory_time(args.memory_time)
     build_system_objects(args)
 
 

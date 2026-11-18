@@ -1,6 +1,4 @@
-"""Tests for the restricted Max-Ent evolution with a memory closure."""
-
-import warnings
+"""Tests for adaptive_maxent_evolution."""
 
 import numpy as np
 import pytest
@@ -8,10 +6,8 @@ from scipy.linalg import eigh, expm
 
 from qalma import build_system
 from qalma.evolution import (
-    adaptive_projected_evolution,
+    adaptive_maxent_evolution,
     estimate_memory_time,
-    leakage_controlled_evolution,
-    memory_projected_evolution,
     sector_leakage_fraction,
     update_basis,
 )
@@ -82,8 +78,10 @@ def precession_runs():
     """First-order and memory evolutions of the XXZ precession (4 sites)."""
     system, sites, ops, ham, k0 = xxz_precession(4)
     t_span = np.linspace(0, 4, 21)
-    first = leakage_controlled_evolution(ham, k0, t_span, 4, 2, store_states=True)
-    memory = memory_projected_evolution(ham, k0, t_span, 4, 2, store_states=True)
+    first = adaptive_maxent_evolution(
+        ham, k0, t_span, 4, 2, memory_time=None, store_states=True
+    )
+    memory = adaptive_maxent_evolution(ham, k0, t_span, 4, 2, store_states=True)
     return system, sites, ops, ham, k0, t_span, first, memory
 
 
@@ -138,34 +136,65 @@ def test_warning_when_the_sector_is_too_small():
     ham = system.global_operator("Hamiltonian")
     k0 = (0.5 * sum(sx[i] * sx[i + 1] + sy[i] * sy[i + 1] for i in range(3))).simplify()
     with pytest.warns(RuntimeWarning, match="outside the 2-body sector"):
-        memory_projected_evolution(ham, k0, np.linspace(0, 0.4, 3), 2, 2)
+        adaptive_maxent_evolution(ham, k0, np.linspace(0, 0.4, 3), 2, 2)
 
 
 # ─────────────────────────── evolution ──────────────────────────────────────
 
 
-def test_without_memory_reproduces_first_order():
-    """memory_time=None gives exactly leakage_controlled_evolution."""
+def test_single_basis_first_order_is_the_exact_linear_evolution():
+    """adaptive=False, memory_time=None gives exp(t A) phi_0 in the initial basis."""
     system, sites, ops, ham, k0 = heisenberg_field(4)
-    t_span = np.linspace(0, 2, 11)
-    first = leakage_controlled_evolution(ham, k0, t_span, 4, 2, store_states=True)
-    no_memory = memory_projected_evolution(
-        ham, k0, t_span, 4, 2, memory_time=None, store_states=True
+    t_span = np.linspace(0, 1.5, 7)
+    sim = adaptive_maxent_evolution(
+        ham, k0, t_span, 3, 2, adaptive=False, memory_time=None, store_states=True
     )
-    assert first.stats["basis update times"] == no_memory.stats["basis update times"]
-    for k_1, k_2 in zip(first.states, no_memory.states):
-        diff = (k_1 - k_2).to_qutip(sites).full()
+    assert sim.stats["update reasons"] == ["initial"]
+    basis, _, _ = update_basis(
+        k0.simplify(), GibbsProductDensityOperator({}, system), ham, 3, 2, ()
+    )
+    phi_0 = np.real(basis.coefficient_expansion(k0))
+    gen = np.real(basis.gen_matrix)
+    for t, k_t in zip(t_span, sim.states):
+        expected = basis.operator_from_coefficients(expm(t * gen) @ phi_0)
+        diff = (k_t - expected).to_qutip(sites).full()
         assert np.abs(diff).max() < 1e-8
+
+
+def test_conventions_of_the_simulation():
+    """parameters and stats follow the common conventions of the solvers."""
+    system, sites, ops, ham, k0 = heisenberg_field(4)
+    t_span = np.linspace(0, 0.4, 3)
+    with_obs = adaptive_maxent_evolution(ham, k0, t_span, 2, 2, e_ops=[ops["Sx"][1]])
+    assert with_obs.parameters["method"] == "adaptive maxent"
+    assert with_obs.parameters["states"] == "none" and with_obs.states == []
+    assert list(with_obs.expect_ops) == [0]
+    assert with_obs.stats["method"] == "adaptive maxent"
+    assert with_obs.stats["wall time"] > 0
+    seen = []
+    adaptive_maxent_evolution(
+        ham,
+        k0,
+        t_span,
+        2,
+        2,
+        e_ops=lambda t, rho: seen.append(rho.expect(ops["Sx"][1])),
+    )
+    assert len(seen) == len(t_span)
+    without_obs = adaptive_maxent_evolution(ham, k0, t_span, 2, 2, memory_time=None)
+    assert without_obs.parameters["states"] == "generator"
+    assert len(without_obs.states) == len(t_span)
+    assert all(np.isnan(tau) for tau in without_obs.stats["memory times"])
 
 
 def test_short_memory_approaches_first_order():
     """A very short memory time gives almost the first-order evolution."""
     system, sites, ops, ham, k0 = heisenberg_field(4)
     t_span = np.linspace(0, 1, 6)
-    first = memory_projected_evolution(
+    first = adaptive_maxent_evolution(
         ham, k0, t_span, 4, 2, memory_time=None, store_states=True
     )
-    short = memory_projected_evolution(
+    short = adaptive_maxent_evolution(
         ham, k0, t_span, 4, 2, memory_time=1e-3, store_states=True
     )
     for k_1, k_2 in zip(first.states, short.states):
@@ -206,7 +235,7 @@ def test_statistics_and_continuity(precession_runs):
 def test_velocity_jumps_without_continuity():
     """Without continuous_velocity, the velocity jumps at the rebuilds."""
     system, sites, ops, ham, k0 = xxz_precession(4)
-    sim = memory_projected_evolution(
+    sim = adaptive_maxent_evolution(
         ham,
         k0,
         np.linspace(0, 2, 11),
@@ -221,7 +250,7 @@ def test_velocity_jumps_without_continuity():
 def test_auto_memory_time_is_estimated_once_leakage_appears():
     """With a local one-body K(0) there is no initial leakage; tau is estimated later."""
     system, sites, ops, ham, k0 = heisenberg_field(4)
-    sim = memory_projected_evolution(
+    sim = adaptive_maxent_evolution(
         ham, k0, np.linspace(0, 1, 6), 4, 2, default_memory_time=0.123
     )
     assert sim.stats["memory times"][0] != 0.123
@@ -232,13 +261,4 @@ def test_invalid_memory_time():
     """Negative or zero memory times are rejected."""
     system, sites, ops, ham, k0 = heisenberg_field(4)
     with pytest.raises(ValueError):
-        memory_projected_evolution(ham, k0, [0.0, 0.1], 2, 2, memory_time=0.0)
-
-
-def test_adaptive_projected_evolution_is_deprecated():
-    """The previous adaptive evolution still works but is deprecated."""
-    system, sites, ops, ham, k0 = heisenberg_field(4)
-    with pytest.warns(DeprecationWarning, match="memory_projected_evolution"):
-        with warnings.catch_warnings():
-            warnings.simplefilter("ignore", RuntimeWarning)
-            adaptive_projected_evolution(ham, k0, [0.0, 0.1], 2, 2)
+        adaptive_maxent_evolution(ham, k0, [0.0, 0.1], 2, 2, memory_time=0.0)

@@ -8,8 +8,9 @@ Simulating Quantum Evolution
 Overview
 --------
 
-QALMA implements the MaxEnt projected Schrödinger equation: instead of
-evolving the full density matrix, it projects the equation of motion
+QALMA implements the restricted Max-Ent evolution: instead of evolving the
+full density matrix :math:`\rho(t)\propto e^{-K(t)}`, it projects the equation
+of motion of the generator
 
 .. math::
 
@@ -22,195 +23,142 @@ of ODEs for the coefficients :math:`\phi_a(t)` in
 
    K(t) = \sum_a \phi_a(t)\, Q_a.
 
-The basis is chosen adaptively to control the approximation error.
+The basis is built from :math:`K` by iterated commutators with :math:`H`,
+projected onto the sector of operators of at most ``n_body`` sites, and is
+rebuilt along the evolution.
 
-Adaptive projected evolution
-----------------------------
+The restricted evolution approximates the instantaneous Max-Ent projection
+:math:`\Pi_n\rho(t)` of the exact state onto the states with ``n_body``
+generators. Its distance to the exact state,
+:math:`S(\rho\|\Pi_n\rho) = S(\Pi_n\rho)-S(\rho)`, is an entropy production
+that no ``n_body`` ansatz can remove. :math:`\Pi_n\rho` reproduces all the
+expectation values of at most ``n_body`` sites, so the error of local
+observables and pair correlations is entirely due to the method.
 
-The main entry point is
-:func:`~qalma.evolution.maxent_evol.adaptive_projected_evolution`::
+Adaptive Max-Ent evolution
+--------------------------
+
+The main entry point is :func:`~qalma.evolution.adaptive_maxent_evolution`::
 
     import numpy as np
-    from qalma.evolution import adaptive_projected_evolution
+    from qalma.evolution import adaptive_maxent_evolution
 
     t_span = np.linspace(0, 5, 100)
-    sim = adaptive_projected_evolution(
-        ham,          # Hamiltonian operator
+    sim = adaptive_maxent_evolution(
+        ham,          # Hamiltonian
         k0,           # initial generator K(0)
         t_span,
-        order=2,      # order of the hierarchical basis
-        n_body=2,     # project onto 2-body sector
-        tol=1e-3,     # accuracy goal
+        order=4,      # depth of the hierarchical basis
+        n_body=2,     # many-body sector of the basis
         e_ops={"E": ham, "Sz": Sz_total},
     )
 
-The ``order`` parameter controls the depth of iterated commutators
-:math:`[H, [H, \ldots [H, K]\ldots]]` used to build the basis. Higher order
-captures faster dynamics at greater computational cost.
+``order`` controls the depth of the iterated commutators
+:math:`[H, [H, \ldots [H, K]\ldots]]`; ``n_body`` the size of the sector, and
+with it the irreducible error and the cost.
 
-Accuracy control
-~~~~~~~~~~~~~~~~
+Memory closure
+~~~~~~~~~~~~~~
 
-The ``tol`` parameter bounds the cumulative approximation error. When the
-current basis can no longer represent the evolved state within ``tol``, the
-basis is rebuilt automatically from the current :math:`K(t)`. The
-``update_condition`` argument controls this behavior:
-
-``"adaptive"`` (default)
-    Rebuild when the error bound is saturated.
-``"always"``
-    Rebuild at every time step.
-``"never"``
-    Fix the basis from the start (fastest, least accurate).
-
-Memory-closure evolution (recommended)
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-:func:`~qalma.evolution.memory_projected_evolution` is the recommended
-restricted Max-Ent evolution. It approximates the instantaneous Max-Ent
-projection :math:`\Pi_n\rho(t)` of the exact state, whose entropy grows by
-:math:`S(\rho\|\Pi_n\rho) = S(\Pi_n\rho)-S(\rho)`. The first-order
-restricted evolution is almost isentropic and cannot follow it; this method
-adds the feedback of the leaked part of the dynamics as a memory term with an
-exponentially decaying kernel,
+The first-order restricted evolution, :math:`\dot\phi = A\phi`, discards the
+feedback of the part of the dynamics that leaves the span of the basis. It is
+almost isentropic, and cannot follow the entropy production of
+:math:`\Pi_n\rho(t)`. By default the evolution includes that feedback as a
+memory term with an exponentially decaying kernel,
 
 .. math::
 
     \dot\phi = A\phi + m, \qquad
     \dot m = -G^{+}E\,\phi - m/\tau ,
 
-where :math:`A` is the generator matrix of the basis and :math:`E` its leakage
-Gram matrix (:func:`~qalma.evolution.leakage_gram`). For
-:math:`\tau\to\infty` this is the projection of :math:`\ddot K = L^2K`
-onto the basis; for :math:`\tau\to 0` the first-order evolution.
+where :math:`E` is the leakage Gram matrix
+(:func:`~qalma.evolution.leakage_gram`). For :math:`\tau\to\infty` this is
+the projection of :math:`\ddot K = L^2K` onto the basis, and for
+:math:`\tau\to 0` the first-order evolution.
 
-* ``memory_time="auto"`` (default) estimates :math:`\tau` at each rebuild
-  from the short-time decay of the leaked part,
-  :math:`\tau=\sqrt{\pi/2}\,\|R\|/\|QLR\|` with
-  :math:`R=(1-\pi)L\tilde K` (:func:`~qalma.evolution.estimate_memory_time`);
-  a number fixes it, and ``None`` disables the memory.
-* At each rebuild the previous velocity :math:`\dot{\tilde K}` is added to
-  the new basis and the memory chosen so that :math:`\dot\phi` is continuous
-  (``continuous_velocity=True``): observables have no kinks at the rebuilds.
-* The basis and the reference are rebuilt with the leakage and drift criteria
-  described below.
-* A ``RuntimeWarning`` is issued when almost all of :math:`[H,\tilde K]` lies
-  outside the n-body sector (:func:`~qalma.evolution.sector_leakage_fraction`):
-  the basis cannot represent the dynamics, and the memory then produces
-  spurious entropy. Increase ``n_body`` in that case.
+``memory_time="auto"`` (default)
+    Estimate :math:`\tau=\sqrt{\pi/2}\,\|R\|/\|QLR\|` at each rebuild, with
+    :math:`R=(1-\pi)L\tilde K` the leaked part of the dynamics
+    (:func:`~qalma.evolution.estimate_memory_time`).
+a number
+    Fix the memory time.
+``None``
+    Disable the memory term (first-order evolution).
 
-::
+At each rebuild the previous velocity is added to the new basis and the
+memory is chosen so that :math:`\dot\phi` is continuous: observables have no
+kinks at the rebuilds (``continuous_velocity=True``).
 
-    from qalma.evolution import memory_projected_evolution
+Rebuild criteria
+~~~~~~~~~~~~~~~~
 
-    sim = memory_projected_evolution(ham, k0, t_span, order=4, n_body=2,
-                                     e_ops=observables)
-    sim.stats["memory times"]             # tau of each segment
-    sim.stats["sector leakage fraction"]  # close to 1: increase n_body
+The basis is rebuilt from the current :math:`\tilde K` when the leakage rate
+:math:`\|\pi_\perp(-i[H,\tilde K])\|` exceeds ``max(rate_factor * floor,
+rate_min)``, where ``floor`` is its value right after the last rebuild (the
+leakage out of the n-body sector, which no rebuild can remove). The basis
+and the mean-field reference are rebuilt when the local drift of the
+reference, :math:`\max_i S(\sigma'_i\|\sigma_{0,i})`, exceeds ``drift_tol``
+(:func:`~qalma.evolution.local_mean_field_drift`). Both criteria are
+intensive, so they need not be rescaled with the system size.
+``adaptive=False`` uses a single basis built from :math:`K(0)`.
 
-In tests on spin chains with six and eight sites, the memory closure reduced
-the error with respect to :math:`\Pi_n\rho(t)` by a factor 1.5-3 with respect
-to the first-order evolution, at the same cost.
+A ``RuntimeWarning`` is issued when almost all of :math:`[H,\tilde K]` lies
+outside the n-body sector (:func:`~qalma.evolution.sector_leakage_fraction`):
+the basis cannot represent the dynamics, and the memory then produces
+spurious entropy. Increase ``n_body`` in that case.
 
-:func:`~qalma.evolution.adaptive_projected_evolution` is deprecated.
+Diagnostics
+~~~~~~~~~~~
 
-Leakage-controlled evolution (experimental)
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Per output time, ``sim.stats`` has ``"errors"`` (accumulated Galerkin
+estimate of :math:`\|K-\tilde K\|`), ``"irreducible entropy estimate"`` (a
+second-order estimate of :math:`S(\rho\|\Pi_n\rho)`), ``"leakage rate"`` and
+``"local drift"``. Per rebuild, it has ``"basis update times"``,
+``"update reasons"`` (``"initial"``, ``"leakage"`` or ``"drift"``),
+``"leakage floors"``, ``"memory times"``, ``"sector leakage fraction"``,
+``"velocity jump"`` and ``"basis time costs"``.
 
-:func:`~qalma.evolution.leakage_controlled_evolution` controls the basis
-with the *leakage* of the dynamics out of its span,
-:math:`r_a = \pi_\perp(-i[H, Q_a])`, through the matrix
-:math:`E_{ab} = (r_a, r_b)` (:func:`~qalma.evolution.leakage_gram`),
-computed once per basis:
+Other solvers
+-------------
 
-* the basis is rebuilt when the leakage rate
-  :math:`\|\pi_\perp(-i[H, \tilde K])\| = \sqrt{\phi^T E \phi}` exceeds
-  ``rate_factor`` times its value right after the last rebuild. That value,
-  :math:`\|(1 - \pi^{(n)})[H, \tilde K]\|`, is the leakage out of the
-  n-body sector, which no rebuild can remove;
-* the basis and the mean-field reference are rebuilt when the local drift
-  of the reference, :math:`\max_i S(\sigma'_i \| \sigma_{0,i})`, exceeds
-  ``drift_tol`` (:func:`~qalma.evolution.local_mean_field_drift`).
+:func:`~qalma.evolution.series_evolution` ``(ham, k0, t_span, order)``
+    Power series of :math:`K(t)` truncated at ``order``.
+:func:`~qalma.evolution.heisenberg_solve` ``(ham, rho0, t_span, e_ops=..., order=2)``
+    Heisenberg evolution of the observables in ``e_ops`` in hierarchical
+    bases; it returns only expectation values.
+:func:`~qalma.evolution.qutip_me_solve` ``(ham, rho0, t_span, c_ops=None)``
+    Exact evolution of the density operator with ``qutip.mesolve``, also
+    with collapse operators.
 
-Both criteria are intensive, so their thresholds do not need to be scaled
-with the system size::
+Common conventions and the Simulation object
+--------------------------------------------
 
-    from qalma.evolution import leakage_controlled_evolution
+All the solvers return a :class:`~qalma.evolution.simulation.Simulation` and
+follow the conventions of :mod:`qalma.evolution.common`:
 
-    sim = leakage_controlled_evolution(
-        ham, k0, t_span, order=4, n_body=2,
-        rate_factor=2.0, drift_tol=0.01, e_ops=observables,
-    )
-    sim.stats["errors"]                        # accumulated Galerkin estimate
-    sim.stats["irreducible entropy estimate"]  # ~ S(rho || Pi_n rho)
-    sim.stats["update reasons"]                # "initial", "leakage", "drift"
+* the signature is ``solver(ham, k0 | rho0, t_span, *, e_ops=None,
+  store_states=None, ...)``, with every option given by keyword;
+* ``e_ops`` is a dict of operators, a list of operators (stored with the keys
+  ``0, 1, ...``), or a callable ``e_ops(t, rho)`` that receives the state;
+* ``store_states=None`` stores the states only when ``e_ops`` is not given.
 
-The restricted evolution approximates the Max-Ent projection
-:math:`\Pi_n\rho(t)` of the exact state, not the state itself. The
-difference :math:`S(\rho\|\Pi_n\rho) = S(\Pi_n\rho) - S(\rho)` is the
-entropy produced by the projection, which no n-body generator can remove;
-``"irreducible entropy estimate"`` is its second-order estimate
-:math:`\tfrac12\|R\|^2`, with :math:`R = \int \pi_\perp(-i[H,\tilde K])\,dt`
-the accumulated leakage. It is accurate at short times and overestimates
-once :math:`S(\rho\|\Pi_n\rho)` saturates.
-
-This function is experimental, and its interface may change.
-
-Basis update strategies
------------------------
-
-Three basis-update callbacks are available:
-
-:func:`~qalma.evolution.maxent_evol.update_basis`
-    Default. Builds a hierarchical basis seeded from the full :math:`K(t)`,
-    applying n-body projection at each level.
-
-:func:`~qalma.evolution.maxent_evol.update_basis_light`
-    Uses the mean-field approximation of :math:`K(t)` as the seed.
-    Cheaper to build, may need more frequent updates.
-
-:func:`~qalma.evolution.maxent_evol.update_basis_heavy`
-    Two-pass: builds the full hierarchical basis first, then applies the
-    n-body projection in a second pass reusing the Gram matrix.
-
-Pass the chosen callback via ``basis_update_callback``::
-
-    from qalma.evolution import adaptive_projected_evolution, update_basis_light
-
-    sim = adaptive_projected_evolution(
-        ham, k0, t_span, order=2, n_body=2,
-        basis_update_callback=update_basis_light,
-    )
-
-Static projected evolution
---------------------------
-
-For a fixed basis (no adaptive updates), use
-:func:`~qalma.evolution.maxent_evol.projected_evolution`::
-
-    from qalma.evolution import projected_evolution
-
-    sim = projected_evolution(ham, k0, t_span, order=3, n_body=2)
-
-The basis is built once from :math:`K(0)` and held fixed throughout.
-
-The Simulation object
----------------------
-
-Both functions return a :class:`~qalma.evolution.simulation.Simulation`
-dataclass with the following attributes:
+The attributes of the simulation are:
 
 ``sim.time_span``
-    List of times at which the solution was recorded.
+    Times at which the solution was recorded.
 ``sim.states``
-    List of generator operators :math:`K(t_i)`.
+    The states: generators :math:`K(t_i)` for the Max-Ent and series solvers,
+    density operators for ``qutip_me_solve``, nothing for
+    ``heisenberg_solve``; ``sim.parameters["states"]`` says which
+    (``"generator"``, ``"density"`` or ``"none"``).
 ``sim.expect_ops``
-    Dict of expectation value arrays, one per observable passed to ``e_ops``.
+    Dict of expectation values, one list per observable in ``e_ops``.
 ``sim.stats``
-    Dict with diagnostics: per-step errors, basis update times, occupation
-    factors.
+    Dict with ``"method"``, ``"wall time"`` (in seconds) and the diagnostics
+    of each method.
 ``sim.parameters``
-    Dict of simulation parameters (order, n_body, tol, etc.).
+    Dict with ``"method"``, ``"system"``, ``"states"`` and the options of the
+    simulation.
 
 Saving and loading results
 --------------------------
@@ -249,7 +197,7 @@ Some things cannot be stored that way:
   stores any other object as a pickle; the file then needs
   ``load_hdf5(..., allow_pickle=True)``.
 
-:func:`~qalma.evolution.adaptive_projected_evolution` can write the partial
+:func:`~qalma.evolution.adaptive_maxent_evolution` can write the partial
 result after each step, with ``checkpoint_file="run.h5"``.
 
 Files written by older versions of QALMA

@@ -31,7 +31,7 @@ def test_rabi_evolution():
         "sztotal": SZ_TOTAL,
         "Hamiltonian": HAMILTONIAN,
     }
-    result = heisenberg_solve(H, rho0, ts, e_ops=e_ops, deep=4).expect_ops["sxtotal"]
+    result = heisenberg_solve(H, rho0, ts, e_ops=e_ops, order=4).expect_ops["sxtotal"]
     result_qutip = qutip_me_solve(H, rho0, ts, e_ops=e_ops).expect_ops["sxtotal"]
     print("len result=", len(result), "len qutip=", len(result_qutip))
     print("result", np.real(result))

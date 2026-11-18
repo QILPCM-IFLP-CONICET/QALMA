@@ -193,9 +193,8 @@ import pytest  # noqa: E402
 
 from qalma.evolution import (  # noqa: E402
     SimulationHDF5,
-    adaptive_projected_evolution,
+    adaptive_maxent_evolution,
     heisenberg_solve,
-    projected_evolution,
     series_evolution,
 )
 from qalma.io import (  # noqa: E402
@@ -503,12 +502,12 @@ def solver_results():
     return {
         "series": lambda: series_evolution(ham, SX_AB, t_span, 2),
         "series, e_ops": lambda: series_evolution(ham, SX_AB, t_span, 2, e_ops=e_ops),
-        "projected": lambda: projected_evolution(ham, SX_AB, t_span, 2, n_body=2),
-        "adaptive": lambda: adaptive_projected_evolution(
-            ham, SX_AB, t_span, 3, 2, tol=2.0
+        "single basis": lambda: adaptive_maxent_evolution(
+            ham, SX_AB, t_span, 2, 2, adaptive=False, memory_time=None
         ),
-        "adaptive, e_ops": lambda: adaptive_projected_evolution(
-            ham, SX_AB, t_span, 3, 2, tol=2.0, e_ops=[SZ_TOTAL], store_states=True
+        "adaptive": lambda: adaptive_maxent_evolution(ham, SX_AB, t_span, 3, 2),
+        "adaptive, e_ops": lambda: adaptive_maxent_evolution(
+            ham, SX_AB, t_span, 3, 2, e_ops=[SZ_TOTAL], store_states=True
         ),
         "heisenberg": lambda: heisenberg_solve(ham, rho0, t_span, e_ops=e_ops),
         "qutip": lambda: qutip_me_solve(ham, rho0, t_span),
@@ -540,13 +539,13 @@ def test_adaptive_evolution_checkpoints(tmp_path, monkeypatch):
     t_span = np.linspace(0, 1, 4)
     ham = 0.1 * HAMILTONIAN + SZ_TOTAL
     # By default, nothing is written.
-    adaptive_projected_evolution(ham, SX_AB, t_span, 3, 2, tol=2.0)
+    adaptive_maxent_evolution(ham, SX_AB, t_span, 3, 2)
     assert os.listdir(tmp_path) == []
 
     checkpoint = tmp_path / "checkpoints" / "run.h5"
     checkpoint.parent.mkdir()
-    simulation = adaptive_projected_evolution(
-        ham, SX_AB, t_span, 3, 2, tol=2.0, checkpoint_file=checkpoint
+    simulation = adaptive_maxent_evolution(
+        ham, SX_AB, t_span, 3, 2, checkpoint_file=checkpoint
     )
     assert os.listdir(tmp_path) == ["checkpoints"]
     assert os.listdir(checkpoint.parent) == ["run.h5"]
