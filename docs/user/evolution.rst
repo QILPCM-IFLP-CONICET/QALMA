@@ -63,6 +63,57 @@ basis is rebuilt automatically from the current :math:`K(t)`. The
 ``"never"``
     Fix the basis from the start (fastest, least accurate).
 
+Memory-closure evolution (recommended)
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+:func:`~qalma.evolution.memory_projected_evolution` is the recommended
+restricted Max-Ent evolution. It approximates the instantaneous Max-Ent
+projection :math:`\Pi_n\rho(t)` of the exact state, whose entropy grows by
+:math:`S(\rho\|\Pi_n\rho) = S(\Pi_n\rho)-S(\rho)`. The first-order
+restricted evolution is almost isentropic and cannot follow it; this method
+adds the feedback of the leaked part of the dynamics as a memory term with an
+exponentially decaying kernel,
+
+.. math::
+
+    \dot\phi = A\phi + m, \qquad
+    \dot m = -G^{+}E\,\phi - m/\tau ,
+
+where :math:`A` is the generator matrix of the basis and :math:`E` its leakage
+Gram matrix (:func:`~qalma.evolution.leakage_gram`). For
+:math:`\tau\to\infty` this is the projection of :math:`\ddot K = L^2K`
+onto the basis; for :math:`\tau\to 0` the first-order evolution.
+
+* ``memory_time="auto"`` (default) estimates :math:`\tau` at each rebuild
+  from the short-time decay of the leaked part,
+  :math:`\tau=\sqrt{\pi/2}\,\|R\|/\|QLR\|` with
+  :math:`R=(1-\pi)L\tilde K` (:func:`~qalma.evolution.estimate_memory_time`);
+  a number fixes it, and ``None`` disables the memory.
+* At each rebuild the previous velocity :math:`\dot{\tilde K}` is added to
+  the new basis and the memory chosen so that :math:`\dot\phi` is continuous
+  (``continuous_velocity=True``): observables have no kinks at the rebuilds.
+* The basis and the reference are rebuilt with the leakage and drift criteria
+  described below.
+* A ``RuntimeWarning`` is issued when almost all of :math:`[H,\tilde K]` lies
+  outside the n-body sector (:func:`~qalma.evolution.sector_leakage_fraction`):
+  the basis cannot represent the dynamics, and the memory then produces
+  spurious entropy. Increase ``n_body`` in that case.
+
+::
+
+    from qalma.evolution import memory_projected_evolution
+
+    sim = memory_projected_evolution(ham, k0, t_span, order=4, n_body=2,
+                                     e_ops=observables)
+    sim.stats["memory times"]             # tau of each segment
+    sim.stats["sector leakage fraction"]  # close to 1: increase n_body
+
+In tests on spin chains with six and eight sites, the memory closure reduced
+the error with respect to :math:`\Pi_n\rho(t)` by a factor 1.5-3 with respect
+to the first-order evolution, at the same cost.
+
+:func:`~qalma.evolution.adaptive_projected_evolution` is deprecated.
+
 Leakage-controlled evolution (experimental)
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 

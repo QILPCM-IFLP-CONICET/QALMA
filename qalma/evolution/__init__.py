@@ -20,6 +20,11 @@ from qalma.evolution.maxent_evol import (
     update_basis,
     update_basis_light,
 )
+from qalma.evolution.memory_evolution import (
+    estimate_memory_time,
+    memory_projected_evolution,
+    sector_leakage_fraction,
+)
 from qalma.evolution.qutip_solver import qutip_me_solve
 from qalma.evolution.series_solver import series_evolution
 from qalma.evolution.tools import (
@@ -38,7 +43,10 @@ __all__ = [
     "fn_hij_tensor_with_errors",
     "heisenberg_solve",
     "k_state_from_phi_basis",
+    "estimate_memory_time",
     "leakage_controlled_evolution",
+    "memory_projected_evolution",
+    "sector_leakage_fraction",
     "leakage_gram",
     "leakage_integrals",
     "leakage_rate",

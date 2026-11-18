@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import logging
 import os
+import warnings
 from datetime import datetime
 from typing import Any, Callable, Dict, Iterable, List, Optional, Tuple, Union, cast
 
@@ -444,6 +445,13 @@ def adaptive_projected_evolution(
         A Simulation object storing the results of the simulation.
 
     """
+    warnings.warn(
+        "adaptive_projected_evolution is deprecated and will be removed in a "
+        "future version; use qalma.evolution.memory_projected_evolution "
+        "(or leakage_controlled_evolution for the first-order evolution).",
+        DeprecationWarning,
+        stacklevel=2,
+    )
     t_0 = t_span[0]
     error = 0
     errors: List[float] = []
