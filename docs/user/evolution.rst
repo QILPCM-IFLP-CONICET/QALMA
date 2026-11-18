@@ -63,6 +63,48 @@ basis is rebuilt automatically from the current :math:`K(t)`. The
 ``"never"``
     Fix the basis from the start (fastest, least accurate).
 
+Leakage-controlled evolution (experimental)
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+:func:`~qalma.evolution.leakage_controlled_evolution` controls the basis
+with the *leakage* of the dynamics out of its span,
+:math:`r_a = \pi_\perp(-i[H, Q_a])`, through the matrix
+:math:`E_{ab} = (r_a, r_b)` (:func:`~qalma.evolution.leakage_gram`),
+computed once per basis:
+
+* the basis is rebuilt when the leakage rate
+  :math:`\|\pi_\perp(-i[H, \tilde K])\| = \sqrt{\phi^T E \phi}` exceeds
+  ``rate_factor`` times its value right after the last rebuild. That value,
+  :math:`\|(1 - \pi^{(n)})[H, \tilde K]\|`, is the leakage out of the
+  n-body sector, which no rebuild can remove;
+* the basis and the mean-field reference are rebuilt when the local drift
+  of the reference, :math:`\max_i S(\sigma'_i \| \sigma_{0,i})`, exceeds
+  ``drift_tol`` (:func:`~qalma.evolution.local_mean_field_drift`).
+
+Both criteria are intensive, so their thresholds do not need to be scaled
+with the system size::
+
+    from qalma.evolution import leakage_controlled_evolution
+
+    sim = leakage_controlled_evolution(
+        ham, k0, t_span, order=4, n_body=2,
+        rate_factor=2.0, drift_tol=0.01, e_ops=observables,
+    )
+    sim.stats["errors"]                        # accumulated Galerkin estimate
+    sim.stats["irreducible entropy estimate"]  # ~ S(rho || Pi_n rho)
+    sim.stats["update reasons"]                # "initial", "leakage", "drift"
+
+The restricted evolution approximates the Max-Ent projection
+:math:`\Pi_n\rho(t)` of the exact state, not the state itself. The
+difference :math:`S(\rho\|\Pi_n\rho) = S(\Pi_n\rho) - S(\rho)` is the
+entropy produced by the projection, which no n-body generator can remove;
+``"irreducible entropy estimate"`` is its second-order estimate
+:math:`\tfrac12\|R\|^2`, with :math:`R = \int \pi_\perp(-i[H,\tilde K])\,dt`
+the accumulated leakage. It is accurate at short times and overestimates
+once :math:`S(\rho\|\Pi_n\rho)` saturates.
+
+This function is experimental, and its interface may change.
+
 Basis update strategies
 -----------------------
 

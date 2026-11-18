@@ -129,6 +129,23 @@ HDF5 files
   available, so neither an ALPS library nor a simulation file can run
   arbitrary code.
 
+Max-Ent evolution
++++++++++++++++++
+
+* New, experimental
+  :func:`~qalma.evolution.leakage_controlled_evolution`: restricted Max-Ent
+  evolution whose basis is rebuilt when the leakage rate
+  ``||pi_perp(-i[H, K~])||`` exceeds a multiple of its value right after the
+  last rebuild, and whose reference state is rebuilt when its local (per
+  site) mean-field drift exceeds a tolerance. Both criteria are intensive.
+  It reports a Galerkin error estimate that keeps the cancellations between
+  basis elements, and a second-order estimate of the entropy production of
+  the instantaneous Max-Ent projection.
+* New helpers :func:`~qalma.evolution.leakage_gram`,
+  :func:`~qalma.evolution.leakage_rate`,
+  :func:`~qalma.evolution.leakage_integrals` and
+  :func:`~qalma.evolution.local_mean_field_drift`.
+
 Behaviour changes
 +++++++++++++++++
 
