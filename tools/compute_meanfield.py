@@ -6,7 +6,7 @@ from datetime import datetime
 
 import numpy as np
 
-from qalma.meanfield.variational import compute_rel_entropy, variational_quadratic_mfa
+from qalma.meanfield.variational import compute_free_energy, variational_quadratic_mfa
 
 logging.basicConfig(level=logging.INFO)
 
@@ -27,7 +27,7 @@ def run_meanfield_projection(filename):
             "\t\t\t\t\t\t\t\tprojecting rho[%s] at %s", str(t), str(datetime.now())
         )
         sigma_mf = variational_quadratic_mfa(state_ln, sigma_ref=sigma_mf)
-        rel_s = compute_rel_entropy(sigma_mf, state_ln)
+        rel_s = compute_free_energy(sigma_mf, state_ln)
         varmf.append(sigma_mf)
         rel_s_vals.append(rel_s)
         with open(f"_{out_filename}", "wb") as f:

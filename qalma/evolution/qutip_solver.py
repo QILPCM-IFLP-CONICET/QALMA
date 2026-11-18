@@ -1,7 +1,8 @@
-"""Functions used to run MaxEnt simulations."""
+"""Exact evolution of density operators with ``qutip.mesolve``."""
 
 from __future__ import annotations
 
+from datetime import datetime
 from typing import Any, Callable, Dict, List, Optional
 
 import qutip
@@ -17,9 +18,9 @@ __all__ = ["qutip_me_solve"]
 
 
 def qutip_me_solve(
-    H: Operator,  # pylint: disable=invalid-name
+    ham: Operator,
     rho0: Operator,
-    tlist: ArrayLike,
+    t_span: ArrayLike,
     *,
     c_ops: Optional[
         List[Operator] | dict[Any, Operator] | Callable[[float, "Qobj"], Any]
@@ -27,6 +28,7 @@ def qutip_me_solve(
     e_ops: Optional[
         list[Operator] | dict[Any, Operator] | Callable[[float, "Qobj"], Any]
     ] = None,
+    store_states: Optional[bool] = None,
     args: Optional[Dict[str, Any]] = None,
     options: Optional[Dict[str, Any]] = None,
 ) -> Simulation:
@@ -34,13 +36,13 @@ def qutip_me_solve(
 
     Parameters
     ----------
-    H : Operator
+    ham : Operator
         Possibly time-dependent system Liouvillian or Hamiltonian as a Qobj or
         QobjEvo. List of [:obj:`.Qobj`, :obj:`.Coefficient`] or callable that
         can be made into :obj:`.QobjEvo` are also accepted.
     rho0 : Operator
         Initial density matrix or state vector (ket).
-    tlist : array_like
+    t_span : array_like
         List of times for :math:`t`.
     c_ops : list[Operator] or dict[Any, Operator] or Callable, optional
         Single collapse operator, or list of collapse operators, or a list
@@ -48,8 +50,11 @@ def qutip_me_solve(
         empty list.
     e_ops : list[Operator] or dict[Any, Operator] or Callable, optional
         Single operator, or list or dict of operators, for which to evaluate
-        expectation values. Callable must have signature
-        ``f(t: float, state: Qobj) -> Any``.
+        expectation values. A callable is called as ``f(t, rho)`` with the
+        state as a QALMA operator (as a ``Qobj`` if ``rho0`` is a ``Qobj``).
+    store_states : bool, optional
+        Store the density operators. By default, only when ``e_ops`` is not
+        given. Overrides ``options["store_states"]``.
     args : dict[str, Any], optional
         Dictionary of parameters for time-dependent Hamiltonians and
         collapse operators.
@@ -81,7 +86,7 @@ def qutip_me_solve(
             Absolute and relative tolerance of the ODE integrator.
         ``nsteps`` : int
             Maximum number of internally defined steps allowed in one
-            ``tlist`` step.
+            ``t_span`` step.
         ``max_step`` : float
             Maximum length of one internal step. When using pulses, it
             should be less than half the width of the thinnest pulse.
@@ -92,16 +97,20 @@ def qutip_me_solve(
     Returns
     -------
     Simulation
-        A Simulation object storing the parameters and results of the
-        simulation.
+        ``states`` holds density operators (``parameters["states"] ==
+        "density"``, or ``"none"`` if they were not stored).
+        ``parameters["qutip options"]`` holds the options of the solver, and
+        ``stats["qutip"]`` the statistics reported by QuTiP; ``stats`` also
+        has ``"method"`` and ``"wall time"``.
 
     """
+    start_time = datetime.now()
     system = None
-    if isinstance(H, Operator):
-        system = H.system
-        h_qutip = H.to_qutip()
+    if isinstance(ham, Operator):
+        system = ham.system
+        h_qutip = ham.to_qutip()
     else:
-        h_qutip = H
+        h_qutip = ham
 
     if isinstance(rho0, Operator):
         state_operator_class = (
@@ -130,7 +139,7 @@ def qutip_me_solve(
             e_ops_qutip = e_ops
 
             def e_ops_wrapper(t, rho):
-                """Wrapper of the expectation operators."""
+                """Evaluate the expectation operators on the QALMA state."""
                 return e_ops_qutip(t, state_operator_class(rho, system=system))
 
             e_ops = e_ops_wrapper
@@ -144,22 +153,36 @@ def qutip_me_solve(
         elif isinstance(c_ops, (tuple, list)):
             c_ops = [val if isinstance(val, Qobj) else val.to_qutip() for val in c_ops]
 
+    options = dict(options or {})
+    if store_states is not None:
+        options["store_states"] = bool(store_states)
     result = qutip.mesolve(
         h_qutip,
         rho0_qutip,
-        tlist,
+        t_span,
         c_ops=c_ops,
         e_ops=e_ops,
         options=options,
         args=args,
     )
-    parameters = {**result.options}
-    parameters["system"] = system
-
+    states: List[Operator] = [
+        state_operator_class(state, system=system) for state in result.states
+    ]
+    parameters = {
+        "method": "qutip mesolve",
+        "system": system,
+        "states": "density" if states else "none",
+        "qutip options": dict(result.options),
+    }
+    stats = {
+        "method": "qutip mesolve",
+        "wall time": (datetime.now() - start_time).total_seconds(),
+        "qutip": dict(result.stats),
+    }
     return Simulation(
-        time_span=result.times,
-        stats=result.stats,
+        time_span=list(result.times),
+        stats=stats,
         expect_ops=result.e_data,
-        states=[state_operator_class(state, system=system) for state in result.states],
+        states=states,
         parameters=parameters,
     )

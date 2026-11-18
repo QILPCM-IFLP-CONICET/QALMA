@@ -1,4 +1,4 @@
-"""Tests for the leakage-based error control of the Max-Ent evolution."""
+"""Tests for the leakage diagnostics of the restricted Max-Ent evolution."""
 
 import itertools
 
@@ -10,7 +10,7 @@ from scipy.optimize import minimize
 
 from qalma import build_system
 from qalma.evolution import (
-    leakage_controlled_evolution,
+    adaptive_maxent_evolution,
     leakage_gram,
     leakage_integrals,
     leakage_rate,
@@ -177,8 +177,8 @@ def test_leakage_vanishes_for_conserved_generator():
     system = build_system("open chain lattice", "spin", L=4, J=1.0)
     ham = system.global_operator("Hamiltonian")
     k0 = 0.4 * system.global_operator("Sz")
-    sim = leakage_controlled_evolution(
-        ham, k0, np.linspace(0, 1, 5), 3, 2, store_states=True
+    sim = adaptive_maxent_evolution(
+        ham, k0, np.linspace(0, 1, 5), 3, 2, memory_time=None, store_states=True
     )
     assert max(sim.stats["errors"]) < 1e-10
     assert max(sim.stats["leakage rate"]) < 1e-8
@@ -244,8 +244,8 @@ def evolution_case():
     k0 = 0.5 * sx[1]
     t_span = np.linspace(0, 1.6, 9)
     e_ops = {f"x{i}": op for i, op in enumerate(sx)}
-    sim = leakage_controlled_evolution(
-        ham, k0, t_span, 4, 2, e_ops=e_ops, store_states=True
+    sim = adaptive_maxent_evolution(
+        ham, k0, t_span, 4, 2, memory_time=None, e_ops=e_ops, store_states=True
     )
     return system, sites, ham, k0, t_span, e_ops, sim
 
@@ -308,12 +308,12 @@ def test_rebuild_reasons_follow_thresholds():
     system, sites, ham, sx = spin_chain(4)
     k0 = (0.5 * sum(sx)).simplify()
     t_span = np.linspace(0, 1.0, 6)
-    frozen = leakage_controlled_evolution(
-        ham, k0, t_span, 3, 2, rate_min=1e6, drift_tol=1e6
+    frozen = adaptive_maxent_evolution(
+        ham, k0, t_span, 3, 2, memory_time=None, rate_min=1e6, drift_tol=1e6
     )
     assert frozen.stats["update reasons"] == ["initial"]
-    by_drift = leakage_controlled_evolution(
-        ham, k0, t_span, 3, 2, rate_min=1e6, drift_tol=1e-6
+    by_drift = adaptive_maxent_evolution(
+        ham, k0, t_span, 3, 2, memory_time=None, rate_min=1e6, drift_tol=1e-6
     )
     assert "drift" in by_drift.stats["update reasons"]
     assert "leakage" not in by_drift.stats["update reasons"]
