@@ -14,7 +14,7 @@ states of the manifold, which this class does not represent.
 
 import logging
 import pickle
-from typing import Any, Dict, Optional, Sequence, Tuple, Union, cast
+from typing import Any, Dict, Optional, Sequence, Tuple, Union
 
 import numpy as np
 from qutip import Qobj
@@ -54,10 +54,11 @@ def _resolve_order(
             f"permutation has {len(permutation)} entries for "
             f"{len(lexicographic)} sites."
         )
-    if all(isinstance(item, str) for item in permutation):
-        if sorted(permutation) != list(lexicographic):
+    names = [item for item in permutation if isinstance(item, str)]
+    if len(names) == len(permutation):
+        if sorted(names) != list(lexicographic):
             raise ValueError("The site names do not match the system.")
-        return tuple(str(item) for item in permutation)
+        return tuple(names)
     if sorted(int(item) for item in permutation) != list(range(len(lexicographic))):
         raise ValueError("permutation must be a permutation of range(n_sites).")
     return tuple(lexicographic[int(i)] for i in permutation)
@@ -159,7 +160,7 @@ class MPSGSOperator(DensityOperatorMixin, Operator):
         *,
         mps: Optional[MPS] = None,
         chi_max: int = 64,
-        prefactor: complex = 1.0,
+        prefactor: float = 1.0,
         dmrg_options: Optional[Dict[str, Any]] = None,
         energy: Optional[float] = None,
     ):
@@ -171,13 +172,6 @@ class MPSGSOperator(DensityOperatorMixin, Operator):
             system = hamiltonian.system
         assert np.imag(prefactor) == 0 and np.real(prefactor) > 0
         self.system = system
-        imag_prefactor = np.imag(prefactor)
-        if imag_prefactor != 0:
-            if abs(imag_prefactor) > 1e-12:
-                raise ValueError("prefactor must be a positive number, got{prefactor}.")
-        prefactor = np.real(prefactor)
-        if prefactor < 0:
-            raise ValueError("prefactor must be a positive number, got{prefactor}.")
         self.prefactor = prefactor
         self.hamiltonian = hamiltonian
         self.chi_max = chi_max
@@ -319,7 +313,10 @@ class MPSGSOperator(DensityOperatorMixin, Operator):
 
         The entropy of a pure state vanishes.
         """
-        return float(np.real(cast(complex, self.expect(ham))))
+        value = self.expect(ham)
+        if isinstance(value, dict):
+            raise TypeError("`ham` must be a single operator.")
+        return float(np.real(np.asarray(value).item()))
 
     def partial_trace(self, sites: Union[frozenset, SystemDescriptor], **_kwargs):
         """Reduced state of ``sites`` as a :class:`QutipDensityOperator`.
@@ -345,7 +342,7 @@ class MPSGSOperator(DensityOperatorMixin, Operator):
                 raise ValueError(f"sites {sorted(unknown)} are not in the system.")
             subsystem = self.system.subsystem(sites)
         if not sites:
-            return ProductDensityOperator({}, np.real(self.prefactor), subsystem)
+            return ProductDensityOperator({}, float(np.real(self.prefactor)), subsystem)
         positions = sorted(self._position[site] for site in sites)
         block = tuple(self.order[pos] for pos in positions)
         rho = self.mps.reduced_density_matrix(positions)

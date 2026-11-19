@@ -155,12 +155,8 @@ def build_mpo(
                 for mid in range(pos + 1, positions[j + 1]):
                     ident = np.eye(dims[mid])
                     for alpha in range(fac.shape[3]):
-                        key_tuple = (
-                            t_idx,
-                            j,
-                            alpha,
-                        )
-                        mpo[mid][index[mid][key_tuple], index[mid + 1][key]] += ident
+                        chan = (t_idx, j, alpha)
+                        mpo[mid][index[mid][chan], index[mid + 1][chan]] += ident
     return mpo
 
 

@@ -20,34 +20,24 @@ LOGGER = logging.getLogger(__name__)
 __all__ = ["dmrg"]
 
 
-def _update_left(
-    env: np.ndarray | None, tensor: np.ndarray, w_op: np.ndarray
-) -> np.ndarray:
+def _update_left(env: np.ndarray, tensor: np.ndarray, w_op: np.ndarray) -> np.ndarray:
     """Add one site to a left environment ``(bra, mpo, ket)``.
 
     ``new[b, y, c] = sum conj(A)[a, s, b] env[a, w, x] W[w, y, s, t] A[x, t, c]``,
     contracted pairwise with ``tensordot`` (``einsum`` does not use BLAS here).
     """
-    if env is not None:
-        tmp = np.tensordot(env, tensor, axes=([2], [0]))  # a w t c
-    else:
-        tmp = tensor.copy()
+    tmp = np.tensordot(env, tensor, axes=([2], [0]))  # a w t c
     tmp = np.tensordot(tmp, w_op, axes=([1, 2], [0, 3]))  # a c y s
     tmp = np.tensordot(tensor.conj(), tmp, axes=([0, 1], [0, 3]))  # b c y
     return tmp.transpose(0, 2, 1)
 
 
-def _update_right(
-    env: np.ndarray | None, tensor: np.ndarray, w_op: np.ndarray
-) -> np.ndarray:
+def _update_right(env: np.ndarray, tensor: np.ndarray, w_op: np.ndarray) -> np.ndarray:
     """Add one site to a right environment ``(bra, mpo, ket)``.
 
     ``new[a, w, x] = sum conj(A)[a, s, b] env[b, y, c] W[w, y, s, t] A[x, t, c]``.
     """
-    if env is not None:
-        tmp = np.tensordot(env, tensor, axes=([2], [2]))  # b y x t
-    else:
-        tmp = tensor.copy()
+    tmp = np.tensordot(env, tensor, axes=([2], [2]))  # b y x t
     tmp = np.tensordot(tmp, w_op, axes=([1, 3], [1, 3]))  # b x w s
     tmp = np.tensordot(tensor.conj(), tmp, axes=([1, 2], [3, 0]))  # a x w
     return tmp.transpose(0, 2, 1)
@@ -70,10 +60,10 @@ def _apply_heff(
 
 def _lowest_state(
     theta: np.ndarray,
-    left: np.ndarray | None,
+    left: np.ndarray,
     w_1: np.ndarray,
     w_2: np.ndarray,
-    right: np.ndarray | None,
+    right: np.ndarray,
     dense_threshold: int,
     tol: float,
 ) -> Tuple[float, np.ndarray]:
@@ -179,8 +169,9 @@ def dmrg(
     mps.move_center(0)
     tensors: List[np.ndarray] = mps.tensors
 
-    left: List[Optional[np.ndarray]] = [None] * (n_sites + 1)
-    right: List[Optional[np.ndarray]] = [None] * (n_sites + 1)
+    unset = np.zeros((0, 0, 0), dtype=complex)  # placeholder, filled before use
+    left: List[np.ndarray] = [unset] * (n_sites + 1)
+    right: List[np.ndarray] = [unset] * (n_sites + 1)
     left[0] = np.ones((1, 1, 1), dtype=complex)
     right[n_sites] = np.ones((1, 1, 1), dtype=complex)
     for pos in range(n_sites - 1, 0, -1):

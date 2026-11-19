@@ -225,9 +225,9 @@ class MPS:
         work = self._shallow_copy()
         if work.center is None:
             work.move_center(0)
-        if work.center is None:
-            return 0.0
-        return float(np.linalg.norm(work.tensors[work.center]))
+        center = work.center
+        assert center is not None
+        return float(np.linalg.norm(work.tensors[center]))
 
     def normalize(self) -> "MPS":
         """Normalize in place and return ``self``."""

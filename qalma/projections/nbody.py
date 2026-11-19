@@ -750,9 +750,9 @@ def projection_method(
     as :class:`~qalma.operators.pauli.PauliStringOperator`, a
     :class:`ProductOperator`) use the method of their base class.
     """
-    table = DISPATCH_PROJECTION_METHOD if table is None else table
+    table_dict = DISPATCH_PROJECTION_METHOD if table is None else table
     for cls in type(operator).__mro__:
-        method = table.get(cls)
+        method = table_dict.get(cls)
         if method is not None:
             return method
     raise TypeError(f"No n-body projection method for {type(operator).__name__}.")
@@ -966,7 +966,7 @@ def project_k_to_sep(K: _Qobj, maxit: int = 200) -> list:
     return local_sigmas
 
 
-DISPATCH_PROJECTION_METHOD = {
+DISPATCH_PROJECTION_METHOD: Dict[type, Callable] = {
     ScalarOperator: lambda x, y, z: x,
     ProductOperator: _project_product_operator_recursive,
     QutipOperator: _project_qutip_operator_combinatorial,

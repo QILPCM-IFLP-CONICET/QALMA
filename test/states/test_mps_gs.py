@@ -10,6 +10,7 @@ from scipy.sparse.linalg import eigsh
 
 from qalma import build_system
 from qalma.mps import MPS, MPSGSOperator, build_mpo, dmrg, mpo_to_dense
+from qalma.mps.gs_operator import hamiltonian_terms
 from qalma.mps.mpo import term_to_factors
 from qalma.operators.states import GibbsDensityOperator, ProductDensityOperator
 
@@ -298,6 +299,18 @@ def test_pickle_and_cache_invalidation():
     assert abs(clone.expect(ham) - rho.energy) < ATOL
 
 
+@pytest.mark.parametrize("n_sites", [3, 5])
+def test_hamiltonian_terms_and_mpo_reproduce_the_hamiltonian(n_sites):
+    """The MPO built from the QALMA terms is the Hamiltonian, in chain order."""
+    system, ham = chiral_chain(n_sites)
+    order = tuple(f"1[{i}]" for i in reversed(range(n_sites)))
+    terms, offset = hamiltonian_terms(ham, order)
+    mpo = build_mpo(terms, [2] * n_sites)
+    dense = mpo_to_dense(mpo) + offset * np.eye(2**n_sites)
+    expected = ham.to_qutip(order).full()
+    assert np.allclose(dense, expected)
+
+
 def test_dmrg_function_and_mps_utilities():
     system, ham = chain(6)
     block = tuple(sorted(system.sites))
@@ -310,6 +323,7 @@ def test_dmrg_function_and_mps_utilities():
     mpo = build_mpo(terms, [2] * 6)
     state, info = dmrg(mpo, chi_max=16, seed=3)
     assert info["converged"]
+    assert info["energy"] == pytest.approx(exact_ground_state(ham, system)[0], abs=1e-8)
     assert state.norm() == pytest.approx(1.0)
     assert abs(state.overlap(state)) == pytest.approx(1.0)
     dense = state.to_dense()
