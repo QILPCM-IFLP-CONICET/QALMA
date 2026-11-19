@@ -120,7 +120,7 @@ HDF5 files
   support raise a ``TypeError``, unless ``allow_pickle=True`` is given.
 * Fixed: ``append`` and ``extend`` on the states of a ``SimulationHDF5``
   stored the states under a wrong name.
-* ``adaptive_projected_evolution`` no longer writes a pickle checkpoint
+* The adaptive Max-Ent evolution no longer writes a pickle checkpoint
   (``__adaptative_*.pkl``) in the working directory after each step. Pass
   ``checkpoint_file`` to get an HDF5 checkpoint in the file of your choice.
 * The expressions of the models (``qalma.utils.eval_expr``) are restricted
@@ -132,31 +132,59 @@ HDF5 files
 Max-Ent evolution
 +++++++++++++++++
 
-* New :func:`~qalma.evolution.memory_projected_evolution`, the recommended
-  restricted Max-Ent evolution: the first-order evolution plus a memory term
-  with an exponentially decaying kernel, built from the leakage Gram matrix
-  (projection of the second-order equation, Mori-Zwanzig closure). The memory
-  time is estimated automatically
-  (:func:`~qalma.evolution.estimate_memory_time`), the velocity is continuous
-  across basis rebuilds, and a warning is issued when the dynamics leaves the
-  n-body sector (:func:`~qalma.evolution.sector_leakage_fraction`).
-* :func:`~qalma.evolution.adaptive_projected_evolution` is deprecated in
-  favour of :func:`~qalma.evolution.memory_projected_evolution` (or
-  :func:`~qalma.evolution.leakage_controlled_evolution` for the first-order
-  evolution); its behaviour is unchanged.
-* New, experimental
-  :func:`~qalma.evolution.leakage_controlled_evolution`: restricted Max-Ent
-  evolution whose basis is rebuilt when the leakage rate
-  ``||pi_perp(-i[H, K~])||`` exceeds a multiple of its value right after the
-  last rebuild, and whose reference state is rebuilt when its local (per
-  site) mean-field drift exceeds a tolerance. Both criteria are intensive.
-  It reports a Galerkin error estimate that keeps the cancellations between
-  basis elements, and a second-order estimate of the entropy production of
-  the instantaneous Max-Ent projection.
-* New helpers :func:`~qalma.evolution.leakage_gram`,
+* A single function, :func:`~qalma.evolution.adaptive_maxent_evolution`,
+  computes the restricted Max-Ent evolution. It replaces
+  ``adaptive_projected_evolution``, ``projected_evolution`` and the
+  ``update_basis_light`` and ``update_basis_heavy`` recipes, which were
+  removed (as was the ``basis_update_callback`` option):
+
+  * the basis is rebuilt when the leakage rate ``||pi_perp(-i[H, K~])||``
+    exceeds a multiple of its value right after the last rebuild, and the
+    mean-field reference when its local (per site) drift exceeds a
+    tolerance; both criteria are intensive. ``adaptive=False`` uses a single
+    basis built from ``K(0)``;
+  * a memory term with an exponentially decaying kernel, built from the
+    leakage Gram matrix (projection of the second-order equation of motion,
+    Mori-Zwanzig closure), is included by default; its lifetime is estimated
+    from the dynamics (``memory_time="auto"``), and ``memory_time=None``
+    gives the first-order evolution;
+  * the velocity is continuous across basis rebuilds, and a
+    ``RuntimeWarning`` is issued when the dynamics leaves the n-body sector;
+  * the statistics include a Galerkin error estimate that keeps the
+    cancellations between basis elements, and an estimate of the entropy
+    production of the instantaneous Max-Ent projection.
+* The restricted Max-Ent evolution works on fermionic models, whose
+  operators are Pauli strings (Jordan-Wigner). Three components rejected
+  Pauli sums acting on single sites, which are one-body operators with a
+  different representation: the linear term of
+  :class:`~qalma.operators.quadratic.QuadraticFormOperator` (now converted
+  to a one-body operator), the one-body generators of
+  :class:`~qalma.operators.states.GibbsProductDensityOperator`, and the
+  dispatch of :func:`~qalma.projections.n_body_projection`, which now
+  searches the class hierarchy (a Pauli string is projected as a product
+  operator). The fast covariance kernel already evaluates Pauli strings
+  site by site, as product operators.
+* New diagnostics :func:`~qalma.evolution.leakage_gram`,
   :func:`~qalma.evolution.leakage_rate`,
-  :func:`~qalma.evolution.leakage_integrals` and
-  :func:`~qalma.evolution.local_mean_field_drift`.
+  :func:`~qalma.evolution.leakage_integrals`,
+  :func:`~qalma.evolution.local_mean_field_drift`,
+  :func:`~qalma.evolution.estimate_memory_time` and
+  :func:`~qalma.evolution.sector_leakage_fraction`.
+* All the solvers follow the same conventions (:mod:`qalma.evolution.common`):
+  ``solver(ham, k0 | rho0, t_span, *, e_ops=None, store_states=None, ...)``;
+  ``e_ops`` may be a dict, a list or a callable ``e_ops(t, rho)``; states are
+  stored by default only without ``e_ops``; ``parameters`` contains
+  ``"method"``, ``"system"`` and ``"states"`` (``"generator"``,
+  ``"density"`` or ``"none"``), and ``stats`` contains ``"method"`` and
+  ``"wall time"``. In consequence, ``qutip_me_solve`` and ``heisenberg_solve``
+  take ``ham`` and ``t_span`` instead of ``H`` and ``tlist``,
+  ``heisenberg_solve`` takes ``order`` instead of ``deep`` and no longer has
+  ``options``, and the options and statistics of QuTiP are stored under
+  ``parameters["qutip options"]`` and ``stats["qutip"]``.
+* Removed the ``qalma.maxent`` command-line program and the modules
+  ``qalma.evolution.hierarchical_basis`` and ``qalma.evolution.tools``, which
+  duplicated :class:`~qalma.scalarprod.HierarchicalOperatorBasis` or were
+  only used by that program.
 
 Behaviour changes
 +++++++++++++++++

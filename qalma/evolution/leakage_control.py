@@ -1,47 +1,38 @@
 r"""
-Leakage-controlled Max-Ent projected evolution (experimental).
+Leakage and memory diagnostics of the restricted Max-Ent evolution.
 
-The restricted Max-Ent evolution of :func:`adaptive_projected_evolution`
-propagates the generator ``K~(t) = sum_a phi_a(t) Q_a`` inside the span of an
-operator basis ``B = {Q_a}``, using the covariance geometry of a mean-field
-reference state ``sigma0``. This module provides error indicators based on
-the *leakage* of the dynamics out of that span,
+The restricted evolution of :func:`~qalma.evolution.adaptive_maxent_evolution`
+propagates the generator :math:`\tilde K(t)=\sum_a\phi_a(t)Q_a` inside the span
+of an operator basis :math:`B=\{Q_a\}`, using the covariance geometry of a
+mean-field reference state :math:`\sigma_0`. This module provides the
+quantities built from the *leakage* of the dynamics out of that span,
 
 .. math::
 
     r_a = \pi_\perp(-i[H, Q_a]),\qquad
     E_{ab} = (r_a, r_b)^{\rm cov}_{\sigma_0},
 
-which is computed once per basis. From ``E``:
+which is computed once per basis (:func:`leakage_gram`). From :math:`E`:
 
-* the instantaneous leakage rate ``||pi_perp(-i[H, K~])|| = sqrt(phi^T E phi)``;
+* the leakage rate :math:`\|\pi_\perp(-i[H,\tilde K])\|=\sqrt{\phi^T E\,\phi}`
+  (:func:`leakage_rate`);
 * the Galerkin error estimate
-  ``eps(tau) = int_0^tau sqrt(phi(s)^T E phi(s)) ds``, which, unlike the
-  estimate of :meth:`OperatorBasis.evolve`, does not use the triangle
-  inequality over the basis elements;
-* the accumulated leakage ``R(tau) = sum_a psi_a(tau) r_a`` with
-  ``psi(tau) = int_0^tau phi(s) ds``. To second order, ``R`` approximates the
-  component of the exact generator outside the n-body sector, and
-  ``1/2 ||R||^2`` estimates the entropy production of the instantaneous
-  Max-Ent projection, ``S(Pi_n rho(t)) - S(rho(0)) = S(rho(t) || Pi_n rho(t))``
-  (the error that no n-body generator can remove).
+  :math:`\varepsilon(\tau)=\int_0^\tau\sqrt{\phi^T E\,\phi}\,ds`, and the
+  accumulated leakage :math:`R=\sum_a\psi_a r_a` with
+  :math:`\psi=\int\phi\,ds` (:func:`leakage_integrals`); to second order,
+  :math:`\tfrac12\|R\|^2` estimates the irreducible error
+  :math:`S(\rho\|\Pi_n\rho)=S(\Pi_n\rho)-S(\rho)`.
 
-Right after a basis is built from ``K~(t)``, the leakage rate equals
-``||(1 - pi^(n)) [H, K~]||``, the part of the commutator outside the n-body
-sector, which no rebuild of the basis can remove. It grows afterwards because
-of the finite depth of the basis. :func:`leakage_controlled_evolution`
-therefore rebuilds the basis only when the rate exceeds a multiple of this
-floor, and rebuilds the reference state when its local (per site) drift
-exceeds a tolerance. Both criteria are intensive: they do not grow with the
-system size for local perturbations.
+It also provides the local drift of the mean-field reference
+(:func:`local_mean_field_drift`), the lifetime of the memory kernel
+(:func:`estimate_memory_time`), and the fraction of the dynamics that leaves
+the n-body sector (:func:`sector_leakage_fraction`).
 """
 
 from __future__ import annotations
 
 import logging
-import os
-from datetime import datetime
-from typing import Any, Callable, Dict, Iterable, List, Optional, Tuple, Union, cast
+from typing import Tuple
 
 import numpy as np
 import qutip
@@ -50,21 +41,19 @@ from scipy.linalg import expm
 
 from qalma.operators import Operator
 from qalma.operators.functions import commutator
-from qalma.operators.states import GibbsDensityOperator, GibbsProductDensityOperator
+from qalma.operators.states import GibbsProductDensityOperator
 from qalma.projections import n_body_projection
-from qalma.scalarprod import OperatorBasis
-
-from .maxent_evol import update_basis
-from .simulation import Simulation
+from qalma.scalarprod import OperatorBasis, fetch_covar_scalar_product
 
 logger = logging.getLogger(__name__)
 
 __all__ = [
-    "leakage_controlled_evolution",
+    "estimate_memory_time",
     "leakage_gram",
     "leakage_integrals",
     "leakage_rate",
     "local_mean_field_drift",
+    "sector_leakage_fraction",
 ]
 
 
@@ -204,224 +193,80 @@ def local_mean_field_drift(k: Operator, sigma) -> Tuple[float, float]:
     return float(drifts_arr.max(initial=0.0)), float(drifts_arr.sum())
 
 
-# ─────────────────────────── evolution ──────────────────────────────────────
+# ─────────────────────────── memory and sector diagnostics ──────────────────
 
 
-def leakage_controlled_evolution(
-    ham: Operator,
-    k0: Operator,
-    t_span,
-    order: int,
-    n_body: int = 2,
-    *,
-    rate_factor: float = 2.0,
-    rate_min: float = 0.05,
-    drift_tol: float = 0.01,
-    n_quad: int = 20,
-    e_ops: Optional[Dict | List | Callable] = None,
-    extra_observables: Tuple[Operator, ...] = tuple(),
-    basis_update_callback: Callable[
-        ..., Tuple[OperatorBasis, Operator, Operator]
-    ] = update_basis,
-    on_update_basis_callback: Optional[Callable] = None,
-    store_states: bool = False,
-    checkpoint_file: Optional[Union[str, os.PathLike]] = None,
-) -> Simulation:
-    """Max-Ent projected evolution with leakage-based error control (experimental).
+def _norm(basis: OperatorBasis, operator: Operator) -> float:
+    """Return the norm of ``operator`` in the scalar product of ``basis``."""
+    return float(np.sqrt(max(np.real(basis.sp(operator, operator)), 0.0)))
 
-    Propagates ``K~(t)`` as in :func:`adaptive_projected_evolution`, with a
-    different control of the basis and of the reference state:
 
-    * the basis is rebuilt from ``K~`` at the last accepted time when the
-      leakage rate ``||pi_perp(-i[H, K~])||`` exceeds
-      ``max(rate_factor * floor, rate_min)``, where ``floor`` is the rate
-      right after the last rebuild (the leakage out of the n-body sector,
-      which a rebuild cannot remove);
-    * the basis and the reference are rebuilt when the local drift of the
-      mean-field reference, ``max_i S(sigma'_i || sigma0_i)``, exceeds
-      ``drift_tol`` (:func:`local_mean_field_drift`);
-    * the basis is never rebuilt twice at the same time; if the criteria
-      still fail right after a rebuild, the step is accepted.
+def _residual(basis: OperatorBasis, operator: Operator) -> Operator:
+    """Return the component of ``operator`` orthogonal to the span of ``basis``."""
+    operator = operator.simplify()
+    parallel = basis.operator_from_coefficients(basis.coefficient_expansion(operator))
+    return (operator - parallel).simplify()
+
+
+def estimate_memory_time(
+    basis: OperatorBasis, k: Operator, fallback: float = 0.5, tiny: float = 1e-10
+) -> Tuple[float, float, float]:
+    r"""Estimate the lifetime of the memory kernel for the generator ``k``.
+
+    With :math:`R = (1 - \pi) L k` the leakage of ``k`` out of the span of the
+    basis, the autocorrelation of the leaked part decays at short times as
+    :math:`\|R\|^2 (1 - s^2 \|QLR\|^2 / 2\|R\|^2)`, a Gaussian with time
+    :math:`\tau_G = \|R\| / \|QLR\|`. The exponential kernel with the same
+    integral has :math:`\tau = \sqrt{\pi/2}\,\tau_G`.
 
     Parameters
     ----------
-    ham : Operator
-        The Hamiltonian.
-    k0 : Operator
-        The initial generator, ``rho(0) ~ exp(-k0)``.
-    t_span : array-like
-        Output times; the first one is the initial time.
-    order : int
-        Depth of the hierarchical basis.
-    n_body : int
-        Many-body sector onto which the basis is projected.
-    rate_factor : float
-        Allowed growth of the leakage rate over its value after a rebuild.
-    rate_min : float
-        Leakage rate below which the basis is never rebuilt.
-    drift_tol : float
-        Tolerance for the local drift of the mean-field reference.
-    n_quad : int
-        Trapezoidal intervals used for the leakage integrals.
-    e_ops : dict, list or callable, optional
-        Observables to evaluate at each output time, or a callable
-        ``e_ops(t, k)``, as in :func:`adaptive_projected_evolution`.
-    extra_observables : tuple of Operator
-        Operators always added to the basis.
-    basis_update_callback : callable
-        Builds the basis, the reference state and its generator; defaults to
-        :func:`update_basis`.
-    on_update_basis_callback : callable, optional
-        Called with a dictionary describing the new segment after each
-        rebuild (keys ``"basis"``, ``"sigma_ref"``, ``"k_ref"``, ``"phi_0"``,
-        ``"gen"``, ``"e_mat"``, ``"floor"`` and ``"t_ref"``).
-    store_states : bool
-        Store the generators ``K~(t)`` also when ``e_ops`` is given.
-    checkpoint_file : str or path-like, optional
-        If given, the simulation is saved there after each output time.
+    basis : OperatorBasis
+        Basis with a generator (``-i H`` up to the convention of the basis).
+    k : Operator
+        The current generator.
+    fallback : float
+        Value returned when there is no leakage.
+    tiny : float
+        Threshold below which a norm is considered zero.
 
     Returns
     -------
-    Simulation
-        With ``stats`` keys:
-
-        * ``"errors"``: accumulated Galerkin estimate
-          ``sum_segments int ||pi_perp(-i[H, K~])|| dt``;
-        * ``"irreducible entropy estimate"``: ``1/2 (sum_segments ||R||)^2``,
-          a second-order estimate of ``S(rho(t) || Pi_n rho(t))``;
-        * ``"leakage rate"``, ``"local drift"``: per output time;
-        * ``"basis update times"``, ``"update reasons"``,
-          ``"leakage floors"``, ``"basis time costs"``: per rebuild.
-
-    Notes
-    -----
-    This method is experimental; its interface may change.
+    tau : float
+        Estimated memory time (``fallback`` if there is no leakage).
+    leak_norm : float
+        :math:`\|R\|`.
+    second_norm : float
+        :math:`\|QLR\|`.
     """
-    t_span = list(t_span)
-    t_0 = t_span[0]
-    states: List[Operator] = []
-    expect_ops: Dict[Any, Any] = {}
-    tlist: List[float] = []
-    parameters: Dict[str, Any] = {
-        "n_body": n_body,
-        "order": order,
-        "rate_factor": rate_factor,
-        "rate_min": rate_min,
-        "drift_tol": drift_tol,
-        "n_quad": n_quad,
-        "basis_update_callback": basis_update_callback.__name__,
-        "system": ham.system,
-        "method": "Leakage-Controlled Restricted Evolution",
-    }
-    stats: Dict[str, Any] = {
-        "method": "Leakage-Controlled Restricted Evolution",
-        "errors": [],
-        "irreducible entropy estimate": [],
-        "leakage rate": [],
-        "local drift": [],
-        "basis update times": [],
-        "update reasons": [],
-        "leakage floors": [],
-        "basis time costs": [],
-    }
-    simulation = Simulation(
-        parameters=parameters,
-        stats=stats,
-        time_span=tlist,
-        expect_ops=expect_ops,
-        states=states,
-    )
+    leak = _residual(basis, commutator(k.simplify(), basis.generator))
+    leak_norm = _norm(basis, leak)
+    if leak_norm < tiny:
+        return fallback, leak_norm, 0.0
+    second = _residual(basis, commutator(leak, basis.generator))
+    second_norm = _norm(basis, second)
+    if second_norm < tiny:
+        return fallback, leak_norm, second_norm
+    return float(np.sqrt(np.pi / 2) * leak_norm / second_norm), leak_norm, second_norm
 
-    if e_ops is None:
 
-        def on_success(t, k):
-            """Store the state ``k``."""
-            states.append(k)
+def sector_leakage_fraction(
+    ham: Operator, k: Operator, sigma, n_body: int, tiny: float = 1e-12
+) -> float:
+    r"""Fraction of :math:`[H, k]` outside the ``n_body`` sector.
 
-    elif hasattr(e_ops, "__call__"):
-        on_success = cast(Callable, e_ops)
-    else:
-        if not isinstance(e_ops, dict):
-            e_ops = {pos: e_op for pos, e_op in enumerate(cast(Iterable, e_ops))}
-
-        def on_success(t, k):
-            """Evaluate the observables and optionally store ``k``."""
-            for key, val in GibbsDensityOperator(k).expect(e_ops).items():
-                expect_ops.setdefault(key, []).append(val)
-            if store_states:
-                states.append(k)
-
-    def rebuild(k, sigma_prev, t, reason) -> Dict[str, Any]:
-        """Build basis, reference and leakage tensors from ``k`` at time ``t``."""
-        start = datetime.now()
-        basis, sigma, k_ref = basis_update_callback(
-            k.simplify(), sigma_prev, ham, order, n_body, extra_observables
-        )
-        phi_0 = np.real(basis.coefficient_expansion(k))
-        e_mat = leakage_gram(basis)
-        floor = leakage_rate(e_mat, phi_0)
-        cost = datetime.now() - start
-        stats["basis update times"].append(t)
-        stats["update reasons"].append(reason)
-        stats["leakage floors"].append(floor)
-        stats["basis time costs"].append(cost.seconds + 1e-6 * cost.microseconds)
-        segment = {
-            "basis": basis,
-            "sigma_ref": sigma,
-            "k_ref": k_ref,
-            "phi_0": phi_0,
-            "gen": np.real(np.asarray(basis.gen_matrix)),
-            "e_mat": e_mat,
-            "floor": floor,
-            "t_ref": t,
-        }
-        logger.info(f"basis rebuilt at t={t} ({reason}), leakage floor {floor:.3g}")
-        if on_update_basis_callback is not None:
-            on_update_basis_callback(segment)
-        return segment
-
-    segment = rebuild(k0, GibbsProductDensityOperator({}, k0.system), t_0, "initial")
-    accumulated_eps = 0.0  # error of the closed segments
-    accumulated_leak = 0.0  # sum of ||R|| over the closed segments
-    last = {"t": t_0, "k": k0, "eps": 0.0, "leak": 0.0}
-
-    tlist.append(t_0)
-    stats["errors"].append(0.0)
-    stats["irreducible entropy estimate"].append(0.0)
-    stats["leakage rate"].append(segment["floor"])
-    stats["local drift"].append(0.0)
-    on_success(t_0, k0)
-
-    for t in t_span[1:]:
-        while True:
-            tau = t - segment["t_ref"]
-            phi, eps, psi, rate = leakage_integrals(
-                segment["gen"], segment["phi_0"], segment["e_mat"], tau, n_quad
-            )
-            k_t = segment["basis"].operator_from_coefficients(phi).simplify()
-            drift, _ = local_mean_field_drift(k_t, segment["sigma_ref"])
-            reason = None
-            if rate > max(rate_factor * segment["floor"], rate_min):
-                reason = "leakage"
-            elif drift > drift_tol:
-                reason = "drift"
-            fresh = abs(segment["t_ref"] - last["t"]) < 1e-12
-            if reason is None or fresh:
-                break
-            accumulated_eps += last["eps"]
-            accumulated_leak += last["leak"]
-            segment = rebuild(last["k"], segment["sigma_ref"], last["t"], reason)
-
-        leak = leakage_rate(segment["e_mat"], psi)
-        last = {"t": t, "k": k_t, "eps": eps, "leak": leak}
-        tlist.append(t)
-        stats["errors"].append(accumulated_eps + eps)
-        stats["irreducible entropy estimate"].append(
-            0.5 * (accumulated_leak + leak) ** 2
-        )
-        stats["leakage rate"].append(rate)
-        stats["local drift"].append(drift)
-        on_success(t, k_t)
-        if checkpoint_file is not None:
-            simulation.save_hdf5(checkpoint_file, mode="w")
-    return simulation
+    Returns :math:`\|(1 - \pi^{(n)})[H, k]\| / \|[H, k]\|` in the covariance
+    geometry of the product state ``sigma``. A value close to one means that
+    the dynamics leaves the n-body sector entirely, so that no n-body basis
+    can represent it and ``n_body`` should be increased.
+    """
+    if hasattr(sigma, "to_product_state"):
+        sigma = sigma.to_product_state()
+    sp = fetch_covar_scalar_product(sigma)
+    comm = commutator(ham, k.simplify()).simplify()
+    total = np.real(sp(comm, comm))
+    if total < tiny:
+        return 0.0
+    projected = n_body_projection(comm, n_max=n_body, sigma=sigma).simplify()
+    outside = (comm - projected).simplify()
+    return float(np.sqrt(max(np.real(sp(outside, outside)), 0.0) / total))

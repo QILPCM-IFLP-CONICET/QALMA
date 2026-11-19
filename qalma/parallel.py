@@ -126,11 +126,18 @@ def commutator_qalma_parallel(
 
 def _project_monomial_worker(operator, nmax, sigma):
     """Project a single operator to the nmax subspace relative to state sigma."""
-    return (
-        DISPATCH_PROJECTION_METHOD_PARALLEL[type(operator)](operator, nmax, sigma)
-        .simplify()
-        ._set_system_(None)
+    # Search the type hierarchy, so that subclasses use the method of their base.
+    method = next(
+        (
+            DISPATCH_PROJECTION_METHOD_PARALLEL[cls]
+            for cls in type(operator).__mro__
+            if cls in DISPATCH_PROJECTION_METHOD_PARALLEL
+        ),
+        None,
     )
+    if method is None:
+        raise TypeError(f"No n-body projection method for {type(operator).__name__}.")
+    return method(operator, nmax, sigma).simplify()._set_system_(None)
 
 
 def parallel_process_non_dispatched_terms(

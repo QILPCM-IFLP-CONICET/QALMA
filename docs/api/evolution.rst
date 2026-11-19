@@ -6,6 +6,15 @@ qalma.evolution
    :show-inheritance:
    :no-index:
 
+qalma.evolution.common
+----------------------
+
+.. automodule:: qalma.evolution.common
+   :members:
+   :undoc-members:
+   :show-inheritance:
+   :exclude-members: GibbsDensityOperator, Operator
+
 qalma.evolution.simulation
 --------------------------
 
@@ -21,7 +30,8 @@ qalma.evolution.maxent\_evol
    :members:
    :undoc-members:
    :show-inheritance:
-   :exclude-members: GibbsDensityOperator, GibbsProductDensityOperator, Operator
+   :exclude-members: GibbsDensityOperator, GibbsProductDensityOperator, Operator,
+      HierarchicalOperatorBasis, OperatorBasis, ProductDensityOperator, Simulation
 
 qalma.evolution.leakage\_control
 ---------------------------------
@@ -30,15 +40,6 @@ qalma.evolution.leakage\_control
    :members:
    :undoc-members:
    :show-inheritance:
-
-qalma.evolution.memory\_evolution
-----------------------------------
-
-.. automodule:: qalma.evolution.memory_evolution
-   :members:
-   :undoc-members:
-   :show-inheritance:
-   :exclude-members: GibbsDensityOperator, GibbsProductDensityOperator, Operator
 
 qalma.evolution.heisenberg\_solver
 -----------------------------------
@@ -58,15 +59,6 @@ qalma.evolution.series\_solver
    :show-inheritance:
    :exclude-members: GibbsDensityOperator, HierarchicalOperatorBasis, Operator
 
-qalma.evolution.hierarchical\_basis
--------------------------------------
-
-.. automodule:: qalma.evolution.hierarchical_basis
-   :members:
-   :undoc-members:
-   :show-inheritance:
-   :exclude-members: HierarchicalOperatorBasis, OperatorBasis, Operator
-
 qalma.evolution.qutip\_solver
 ------------------------------
 
@@ -75,11 +67,3 @@ qalma.evolution.qutip\_solver
    :undoc-members:
    :show-inheritance:
    :exclude-members: Qobj, Operator, QutipOperator, QutipDensityOperator, Simulation
-
-qalma.evolution.tools
-----------------------
-
-.. automodule:: qalma.evolution.tools
-   :members:
-   :undoc-members:
-   :show-inheritance:

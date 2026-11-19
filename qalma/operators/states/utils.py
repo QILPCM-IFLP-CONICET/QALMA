@@ -219,20 +219,21 @@ def k_by_site_from_operator(k: Operator) -> Dict[str, Operator]:
         result: Dict[str, _Qobj] = {}
         offset = 0
         for term in getattr(k, "terms"):
-            if isinstance(term, LocalOperator):
-                site = term.site
-                result[site] = term.operator_qutip
-            elif isinstance(term, ScalarOperator):
+            if isinstance(term, ScalarOperator):
                 offset += term.prefactor
-            elif isinstance(term, SumOperator):
+                continue
+            if isinstance(term, LocalOperator):
+                sub_terms = {term.site: term.operator_qutip}
+            elif isinstance(term, (SumOperator, ProductOperator, QutipOperator)):
+                # Includes single-site Pauli strings and dense blocks.
                 sub_terms = k_by_site_from_operator(term)
-                for sub_site, sub_term in sub_terms.items():
-                    if sub_site in result:
-                        result[sub_site] += sub_term
-                    else:
-                        result[sub_site] = sub_term
             else:
                 raise TypeError(f"term of {type(term)} not allowed.")
+            for sub_site, sub_term in sub_terms.items():
+                if sub_site in result:
+                    result[sub_site] = result[sub_site] + sub_term
+                else:
+                    result[sub_site] = sub_term
 
         if offset:
             if result:

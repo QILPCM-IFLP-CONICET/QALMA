@@ -21,7 +21,7 @@ e.g. when combining two quadratic forms or when unit-testing.
 """
 
 from numbers import Number
-from typing import Callable, Iterable, Optional, Set, Tuple, Union, cast
+from typing import Callable, Iterable, List, Optional, Set, Tuple, Union, cast
 
 import numpy as np
 
@@ -38,6 +38,45 @@ from qalma.operators.product import (
 from qalma.settings import QALMA_TOLERANCE
 
 __all__ = ["QuadraticFormOperator"]
+
+
+def _as_one_body_operator(operator: Operator) -> Operator:
+    """Express an operator acting on single sites as a one-body operator.
+
+    Operators such as Pauli sums whose terms act each on a single site are
+    one-body operators with a different representation. They are converted
+    to a sum of :class:`LocalOperator` (and a :class:`ScalarOperator` for the
+    identity part), which is what :class:`QuadraticFormOperator` expects for
+    its linear term.
+    """
+    if isinstance(operator, (OneBodyOperator, LocalOperator, ScalarOperator)):
+        return operator
+    flat = operator.flat()
+    terms = flat.terms if isinstance(flat, SumOperator) else (flat,)
+    system = operator.system
+    parts: List[Operator] = []
+    for term in terms:
+        support = tuple(term.acts_over())
+        if len(support) > 1:
+            raise ValueError(
+                f"{type(operator).__name__} is not a one-body operator: "
+                f"a term acts on {support}."
+            )
+        if not support:
+            parts.append(
+                ScalarOperator(complex(term.tr() / _dimension(system)), system)
+            )
+            continue
+        matrix = term.to_qutip(support).full()
+        parts.append(LocalOperator(support[0], matrix, system))
+    if not parts:
+        return ScalarOperator(0, system)
+    return OneBodyOperator(tuple(parts), system).simplify()
+
+
+def _dimension(system: SystemDescriptor) -> int:
+    """Dimension of the Hilbert space of ``system``."""
+    return int(np.prod(list(system.dimensions.values())))
 
 
 class QuadraticFormOperator(Operator):
@@ -152,11 +191,7 @@ class QuadraticFormOperator(Operator):
         if offset is not None:
             offset = offset.simplify()
         if linear_term is not None:
-            linear_term = linear_term.simplify()
-            assert (
-                isinstance(linear_term, OneBodyOperator)
-                or len(linear_term.acts_over()) < 2
-            )
+            linear_term = _as_one_body_operator(linear_term.simplify())
         self._isherm = None
         assert isinstance(basis, tuple)
         assert isinstance(weights, tuple)

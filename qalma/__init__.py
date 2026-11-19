@@ -11,7 +11,6 @@ from . import (
     evolution,
     geometry,
     io,
-    maxent,
     meanfield,
     model,
     operators,
@@ -45,7 +44,6 @@ __all__ = [
     # Core subpackages
     "evolution",
     "io",
-    "maxent",
     "meanfield",
     "operators",
     "projections",

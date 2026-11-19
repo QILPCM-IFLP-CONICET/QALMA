@@ -7,7 +7,6 @@ from datetime import datetime
 
 import matplotlib.pyplot as plt
 import numpy as np
-from pympler.asizeof import asizeof
 
 from qalma.evolution import (
     Simulation,
@@ -15,10 +14,9 @@ from qalma.evolution import (
     series_evolution as series_solver,
 )
 from qalma.evolution.maxent_evol import (
-    adaptive_projected_evolution,
-    projected_evolution,
+    adaptive_maxent_evolution,
 )
-from qalma.meanfield.variational import compute_rel_entropy, variational_quadratic_mfa
+from qalma.meanfield.variational import compute_free_energy, variational_quadratic_mfa
 from qalma.model import build_system
 from qalma.operators import ScalarOperator
 from qalma.operators.states import (
@@ -34,36 +32,21 @@ logging.basicConfig(level=logging.INFO)
 UUID_CALL = f"{uuid.uuid4()}"
 
 
-def update_basis_callback(state):
+def update_basis_callback(segment):
     """
-    Function called each time the basis is updated.
+    Function called each time the basis is rebuilt.
     """
-    print("  update basis:\n    now:", datetime.now())
-    print("    t=", state["t"], "t_ref=", state["t_ref"], "t_last", state["last_t"])
+    print("  basis rebuilt:\n    now:", datetime.now())
     print(
-        "    Delta t=",
-        state["t"] - state["t_ref"],
-        "x speed",
-        state["max_error_speed"],
-        "=",
-        (state["t"] - state["t_ref"]) * state["max_error_speed"],
+        "    t_ref=",
+        segment["t_ref"],
+        "dim=",
+        len(segment["basis"].operator_basis),
+        "leakage floor=",
+        segment["floor"],
+        "memory time=",
+        segment["tau"],
     )
-
-    print("    phi_0 =", state["phi_0"])
-    print("    basis time cost=", state["basis time cost"])
-    print("    basis memory cost=", [asizeof(b) for b in state["basis"].operator_basis])
-    print(
-        "    basis nbody sector=",
-        [b.n_body_sector() for b in state["basis"].operator_basis],
-    )
-    print(
-        "    basis num terms=", [b.num_terms() for b in state["basis"].operator_basis]
-    )
-    print("    curr_n_body=", state["curr_n_body"])
-    print("    len basis=", len(state["basis"].operator_basis))
-    print("    away from mean field", state["away"])
-    print("    cumulated error", state["cumulated error"])
-    print("    basis.errors", state["basis"].errors)
 
 
 np.set_printoptions(
@@ -154,7 +137,7 @@ def run_meanfield_projection(axis):
     varmf = [GibbsProductDensityOperator(BETA * K0)]
     for t, state_ln in zip(result.time_span[1:], result.states[1:]):
         sigma_mf = variational_quadratic_mfa(state_ln, sigma_ref=varmf[-1])
-        rel_s = compute_rel_entropy(sigma_mf, state_ln)
+        rel_s = compute_free_energy(sigma_mf, state_ln)
         varmf.append(sigma_mf)
         rel_s_vals.append(rel_s)
         with open(f"_meanfield_reduction_L={L}_beta={BETA}_{UUID_CALL}.pkl", "wb") as f:
@@ -250,25 +233,24 @@ def run_projected(axis):
     print("   done")
 
 
-def run_simulation_adaptive(basis_depth, n_body, tolerance, axis):
+def run_simulation_adaptive(basis_depth, n_body, memory_time, axis):
     k_0 = K0 * BETA
     hamiltonian = HAMILTONIAN
     print(
-        f"                   Start max ent ell={basis_depth},m={n_body},tol={tolerance}:",
+        f"                   Start max ent ell={basis_depth},m={n_body},tau={memory_time}:",
         datetime.now(),
     )
     try:
-        adaptative_sol = adaptive_projected_evolution(
+        adaptative_sol = adaptive_maxent_evolution(
             hamiltonian,
             k_0,
             TIME_SPAN,
             basis_depth,
             n_body,
-            tol=tolerance,
+            memory_time=memory_time,
             e_ops=[SZ_TOTAL],
-            on_update_basis_callback=update_basis_callback,
-            include_one_body_projection=True,
-            extra_observables=TRACK_OBSERVABLES,
+            on_rebuild=update_basis_callback,
+            extra_observables=tuple(TRACK_OBSERVABLES.values()),
         )
 
         with open(
@@ -277,11 +259,11 @@ def run_simulation_adaptive(basis_depth, n_body, tolerance, axis):
         ) as f:
             pickle.dump(adaptative_sol, f)
 
-        # plt.scatter(ts[:len(max_ent)], [np.real(rho.expect(k_0)) for rho in max_ent], label=f"$\\ell={basis_depth}$, m={n_body}, tol={tolerance}")
+        # plt.scatter(ts[:len(max_ent)], [np.real(rho.expect(k_0)) for rho in max_ent], label=f"$\\ell={basis_depth}$, m={n_body}, tau={memory_time}")
         plt.scatter(
             TIME_SPAN[: len(adaptative_sol.time_span)],
             [np.real(ex_val) for ex_val in adaptative_sol.expect_ops[0]],
-            label=f"c->$\\ell={basis_depth}$, m={n_body}, tol={tolerance}",
+            label=f"c->$\\ell={basis_depth}$, m={n_body}, tau={memory_time}",
         )
         print("len:", len(adaptative_sol.time_span))
     except Exception as e:
@@ -290,30 +272,47 @@ def run_simulation_adaptive(basis_depth, n_body, tolerance, axis):
         raise
 
 
-def run_simulation_projected(basis_depth, n_body, tolerance, axis):
+def run_simulation_projected(basis_depth, n_body, memory_time, axis):
     k_0 = K0 * BETA
     hamiltonian = HAMILTONIAN
     print(
-        f"                   Start max ent ell={basis_depth},m={n_body},tol={tolerance}:",
+        f"                   Start max ent ell={basis_depth},m={n_body},tau={memory_time}:",
         datetime.now(),
     )
     try:
         max_ent = [
             GibbsDensityOperator(k)
-            for k in projected_evolution(hamiltonian, k_0, TIME_SPAN, 100, 100)
+            for k in adaptive_maxent_evolution(
+                hamiltonian,
+                k_0,
+                TIME_SPAN,
+                basis_depth,
+                n_body,
+                adaptive=False,
+                memory_time=None,
+            ).states
         ]
-        # plt.scatter(ts[:len(max_ent)], [np.real(rho.expect(k_0)) for rho in max_ent], label=f"$\\ell={basis_depth}$, m={n_body}, tol={tolerance}")
+        # plt.scatter(ts[:len(max_ent)], [np.real(rho.expect(k_0)) for rho in max_ent], label=f"$\\ell={basis_depth}$, m={n_body}, tau={memory_time}")
         plt.scatter(
             TIME_SPAN[: len(max_ent)],
             [np.real(rho.expect(SZ_TOTAL)) for rho in max_ent],
             ls="-.",
-            label=f"proyected-> $\\ell={basis_depth}$, m={n_body}, tol={tolerance}",
+            label=f"proyected-> $\\ell={basis_depth}$, m={n_body}, tau={memory_time}",
         )
         print("len:", len(max_ent))
     except Exception as e:
         print("                   EXCEPTION ")
         print(type(e), e)
         raise
+
+
+def parse_memory_time(value: str):
+    """Parse the --memory-time option: "auto", "none" or a positive number."""
+    if value.lower() == "auto":
+        return "auto"
+    if value.lower() == "none":
+        return None
+    return float(value)
 
 
 def set_parameters():
@@ -348,7 +347,12 @@ def set_parameters():
         default=2,
         help="deep of the Hierarchical basis/order the perturbative series.",
     )
-    argparser.add_argument("--tol", type=float, default=0.001, help="tolerance")
+    argparser.add_argument(
+        "--memory-time",
+        type=str,
+        default="auto",
+        help='memory time of the closure: "auto", "none" or a number.',
+    )
     argparser.add_argument(
         "--track",
         type=str,
@@ -368,7 +372,7 @@ def set_parameters():
     print(type(args), args)
     L = args.length
     W = args.width if args.width > 0 else L
-    TOL = args.tol
+    TOL = parse_memory_time(args.memory_time)
     ELL = args.deep
     BETA = args.beta
     MAX_M = args.n_body

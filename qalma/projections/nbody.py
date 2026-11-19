@@ -741,9 +741,26 @@ def project_operator_to_n_body(
     )
 
 
+def projection_method(
+    operator: Operator, table: Optional[Dict[type, Callable]] = None
+) -> Callable:
+    """Return the n-body projection function for the type of ``operator``.
+
+    The type hierarchy of the operator is searched, so that subclasses (such
+    as :class:`~qalma.operators.pauli.PauliStringOperator`, a
+    :class:`ProductOperator`) use the method of their base class.
+    """
+    table = DISPATCH_PROJECTION_METHOD if table is None else table
+    for cls in type(operator).__mro__:
+        method = table.get(cls)
+        if method is not None:
+            return method
+    raise TypeError(f"No n-body projection method for {type(operator).__name__}.")
+
+
 def _project_monomial(operator, n_max, sigma):
     """Apply the projection function specific for the given type of operator."""
-    return DISPATCH_PROJECTION_METHOD[type(operator)](operator, n_max, sigma).simplify()
+    return projection_method(operator)(operator, n_max, sigma).simplify()
 
 
 def project_sum_operator(
