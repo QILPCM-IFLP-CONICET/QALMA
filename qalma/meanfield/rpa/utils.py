@@ -52,7 +52,7 @@ def kubo_mori_susceptibility(
     basis: List[np.ndarray],
     spectrum: Optional[Tuple[np.ndarray, np.ndarray]] = None,
 ):
-    r"""Connected Kubo-Mori susceptibility of a local state.
+    r"""Return the connected Kubo-Mori susceptibility of a local state.
 
     .. math::
 

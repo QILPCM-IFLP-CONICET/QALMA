@@ -1,10 +1,9 @@
-"""
-RPA Hybrid approach.
+"""Hybrid RPA reduction: the subsystem exact and the environment bosonized.
 
-Tools to build an approximation of the local state on a subsystem A, by
-replacing the environment by some effective bosonic gaussian modes and classical
-couplings, when the occupation of the bosonic modes exceed a threshold.
-
+The environment of a subsystem ``A`` is replaced by a few effective bosonic
+modes, and by static classical Gaussian fields for the modes with large
+thermal occupation. The Hamiltonian of ``A`` and the effective modes is
+diagonalized exactly.
 """
 
 import logging
@@ -20,6 +19,8 @@ from qalma.operators.basic import LocalOperator
 
 from .environment import _environment_bogoliubov
 from .rpa_structure import RPAStructure
+
+__all__ = ["effective_bath_modes", "rpa_hybrid_state"]
 
 LOGGER = logging.getLogger(__name__)
 

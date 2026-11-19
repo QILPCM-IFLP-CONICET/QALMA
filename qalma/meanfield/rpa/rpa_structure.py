@@ -1,8 +1,7 @@
-r"""RPA structure
+"""Subsystem-independent data of the RPA of a Gibbs state.
 
-RPAStructure contains the information to generate an RPA-like approximation
-of any subsystem.
-
+:class:`RPAStructure` stores the data needed to compute the RPA reduction of
+any subsystem, and the bosonization of the whole system.
 """
 
 import logging
@@ -59,7 +58,7 @@ def _check_stability(chi0_static: np.ndarray, m_ee: np.ndarray) -> None:
 def _local_spectra(
     generator: Operator, sigma_mf
 ) -> Dict[str, Tuple[np.ndarray, np.ndarray]]:
-    """Populations and eigenvectors of the local mean-field generators."""
+    """Return the populations and eigenvectors of the local mean-field generators."""
     system = generator.system
     terms = generator.terms if isinstance(generator, SumOperator) else [generator]
     contributions: Dict[str, List[Operator]] = {}
@@ -158,7 +157,7 @@ class RPAStructure:
         return self._spectra[site]
 
     def static_chi0(self, site: str) -> np.ndarray:
-        """Return the static susceptibility :math:`\\chi^0` of ``site``."""
+        r"""Return the static susceptibility :math:`\chi^0` of ``site``."""
         if site not in self._chi0:
             self._chi0[site] = kubo_mori_susceptibility(
                 *self.local_data(site), spectrum=self.local_spectrum(site)

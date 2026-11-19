@@ -403,7 +403,11 @@ def test_gibbs_state_has_no_rpa_options():
 
 
 def _pair_state(spin, field, beta, jx=1.0, jy=0.5):
-    """Pair of spins ``spin`` of the XY model of Matera et al., PRA 82, 052332."""
+    """Pair of spins ``spin`` of the XY model of Matera et al., PRA 82, 052332.
+
+    The equations cited in this section are numbered as in the preprint,
+    arXiv:1009.1750v2.
+    """
     system = build_system("chain lattice", "spin", L=2, J=1, local_S=spin)
     site_a, site_b = list(system.sites)
 
