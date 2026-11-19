@@ -156,8 +156,8 @@ Hamiltonian is not positive definite, the RPA is unstable and a
 from .dynamic import rpa_dynamic_kernel
 from .functions import rpa_entanglement_entropy, rpa_negativity
 from .hybrid import effective_bath_modes, rpa_hybrid_state
-from .rpa import RPAGibbsDensityOperator, rpa_coupling_kernel, rpa_generator_correction
-from .rpa_structure import build_rpa_structure
+from .rpa import RPAGibbsDensityOperator, rpa_generator_correction
+from .rpa_structure import build_rpa_structure, rpa_coupling_kernel
 from .utils import kubo_mori_susceptibility, local_boson_modes
 
 __all__ = [

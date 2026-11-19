@@ -1,10 +1,11 @@
 """Tests for the RPA reduction of Gibbs states."""
 
 import numpy as np
+import pytest
 import qutip
 
+from qalma import settings
 from qalma.meanfield import variational_quadratic_mfa
-from qalma.meanfield.gibbs_partial_trace import gibbs_meanfield_generator
 from qalma.meanfield.rpa import (
     RPAGibbsDensityOperator,
     build_rpa_structure,
@@ -35,18 +36,28 @@ def _two_site_coefficient(operator: qutip.Qobj, key: str) -> float:
 
 
 def _setup(system, beta):
-    """Gibbs state of the Hamiltonian, with a fixed mean-field state."""
+    """RPA Gibbs state of the Hamiltonian, with a fixed mean-field state."""
     hamiltonian = system.global_operator("Hamiltonian")
     k_op = (beta * hamiltonian).simplify()
     sigma_mf = variational_quadratic_mfa(k_op.flat())
-    state = GibbsDensityOperator(k_op, meanfield=sigma_mf)
+    state = RPAGibbsDensityOperator(k_op, meanfield=sigma_mf)
     return state, sigma_mf
 
 
-def _reduced_generator(state, sites, **kwargs):
+def _reduced_generator(state, sites, rpa=False, dynamic=False):
     """Reduced generator of ``state`` over ``sites``, as a qutip operator."""
-    generator, _ = gibbs_meanfield_generator(state, sites, **kwargs)
+    generator = state.reduced_generator(sites, rpa=rpa, dynamic=dynamic)
     return generator.to_qutip(tuple(sorted(sites)))
+
+
+def _normalized(rho):
+    """Normalize a qutip density matrix."""
+    return rho / rho.tr()
+
+
+def _gibbs_matrix(state, sites, **kwargs):
+    """Normalized ``exp(-K_A')`` of the approximate reduced generator."""
+    return _normalized((-_reduced_generator(state, sites, **kwargs)).expm())
 
 
 # ### Reference implementation based on explicit Matsubara sums ###
@@ -245,12 +256,12 @@ def test_partial_trace_rpa_option():
         rho = state.partial_trace(sites_a, **kwargs).to_qutip(block)
         return 0.5 * (rho / rho.tr() - exact).norm("tr")
 
-    mean_field = trace_distance()
+    mean_field = trace_distance(rpa=False)
     assert trace_distance(rpa=True) < 0.5 * mean_field
     assert trace_distance(rpa=True, dynamic=True) < 0.5 * mean_field
     # ``reduce`` forwards the options
-    rho_reduce = state.reduce(sites_a, rpa=True).to_qutip(block)
-    rho_trace = state.partial_trace(sites_a, rpa=True).to_qutip(block)
+    rho_reduce = state.reduce(sites_a, dynamic=True).to_qutip(block)
+    rho_trace = state.partial_trace(sites_a, dynamic=True).to_qutip(block)
     assert (rho_reduce - rho_trace).norm("tr") < 1e-10
 
 
@@ -268,24 +279,24 @@ def _rpa_state(system, beta, **kwargs):
 
 
 def test_rpa_state_partial_trace_uses_rpa_by_default():
-    """Its reductions coincide with those of a Gibbs state with ``rpa=True``."""
+    """Its reductions are the Gibbs states of the RPA-corrected generator."""
     system = build_spin_chain(10, field=0.3)
     sites = list(system.sites)
     sites_a = frozenset([sites[4], sites[6]])
     block = tuple(sorted(sites_a))
     rpa_state, plain_state = _rpa_state(system, 0.5)
-    reduced = rpa_state.partial_trace(sites_a).to_qutip(block)
-    expected_rpa = plain_state.partial_trace(sites_a, rpa=True).to_qutip(block)
-    mean_field = plain_state.partial_trace(sites_a).to_qutip(block)
+    reduced = _normalized(rpa_state.partial_trace(sites_a).to_qutip(block))
+    expected_rpa = _gibbs_matrix(rpa_state, sites_a, rpa=True)
+    mean_field = _normalized(plain_state.partial_trace(sites_a).to_qutip(block))
     assert (reduced - expected_rpa).norm("tr") < 1e-10
     assert (reduced - mean_field).norm("tr") > 1e-4
     # the options can be overridden
-    no_rpa = rpa_state.partial_trace(sites_a, rpa=False).to_qutip(block)
+    no_rpa = _normalized(rpa_state.partial_trace(sites_a, rpa=False).to_qutip(block))
     assert (no_rpa - mean_field).norm("tr") < 1e-10
-    dynamic = rpa_state.partial_trace(sites_a, dynamic=True).to_qutip(block)
-    expected_dyn = plain_state.partial_trace(sites_a, rpa=True, dynamic=True).to_qutip(
-        block
+    dynamic = _normalized(
+        rpa_state.partial_trace(sites_a, dynamic=True).to_qutip(block)
     )
+    expected_dyn = _gibbs_matrix(rpa_state, sites_a, rpa=True, dynamic=True)
     assert (dynamic - expected_dyn).norm("tr") < 1e-10
 
 
@@ -295,12 +306,14 @@ def test_rpa_state_dynamic_by_default():
     sites = list(system.sites)
     sites_a = frozenset(sites[4:6])
     block = tuple(sorted(sites_a))
-    rpa_state, plain_state = _rpa_state(system, 0.5, dynamic=True)
-    reduced = rpa_state.partial_trace(sites_a).to_qutip(block)
-    expected = plain_state.partial_trace(sites_a, rpa=True, dynamic=True).to_qutip(
-        block
-    )
+    rpa_state, _ = _rpa_state(system, 0.5, dynamic=True)
+    reduced = _normalized(rpa_state.partial_trace(sites_a).to_qutip(block))
+    expected = _gibbs_matrix(rpa_state, sites_a, rpa=True, dynamic=True)
     assert (reduced - expected).norm("tr") < 1e-10
+    assert (
+        _reduced_generator(rpa_state, sites_a, rpa=True, dynamic=True)
+        - rpa_state.reduced_generator(sites_a).to_qutip(block)
+    ).norm("tr") < 1e-10
 
 
 def test_rpa_state_stores_structures():
@@ -354,20 +367,38 @@ def test_rpa_state_dynamic_improves_energy():
     assert error_rpa < 0.5 * error_mf
 
 
-def test_rpa_state_exact_option():
-    """Small systems are reduced exactly unless ``exact=False``."""
+def test_max_exact_sites_option(monkeypatch):
+    """Small reductions are exact unless ``max_exact_sites`` excludes them."""
     system = build_spin_chain(4, field=0.3)
     sites = list(system.sites)
     sites_a = frozenset(sites[:2])
     block = tuple(sorted(sites_a))
     rpa_state, plain_state = _rpa_state(system, 0.5)
     exact = plain_state.to_qutip_operator().partial_trace(sites_a).to_qutip(block)
-    reduced = rpa_state.partial_trace(sites_a).to_qutip(block)
-    assert (reduced - exact).norm("tr") < 1e-10
-    approx = rpa_state.partial_trace(sites_a, exact=False).to_qutip(block)
-    mean_field = plain_state.partial_trace(sites_a, exact=False).to_qutip(block)
+    for state in (rpa_state, plain_state):
+        reduced = state.partial_trace(sites_a).to_qutip(block)
+        assert (reduced - exact).norm("tr") < 1e-10
+        reduced = state.partial_trace(sites_a, max_exact_sites=4).to_qutip(block)
+        assert (reduced - exact).norm("tr") < 1e-10
+    approx = rpa_state.partial_trace(sites_a, max_exact_sites=3).to_qutip(block)
+    mean_field = plain_state.partial_trace(sites_a, max_exact_sites=3).to_qutip(block)
     assert (approx - exact).norm("tr") > 1e-6
+    assert (mean_field - exact).norm("tr") > 1e-6
     assert (approx - mean_field).norm("tr") > 1e-6
+    # the default is read from the settings when the reduction is computed
+    monkeypatch.setattr(settings, "MAXIMUM_GIBBS_EXACT_PARTIAL_TRACE", 0)
+    default = plain_state.partial_trace(sites_a).to_qutip(block)
+    assert (default - mean_field).norm("tr") < 1e-10
+    with pytest.raises(ValueError):
+        plain_state.partial_trace(sites_a, max_exact_sites=-1)
+
+
+def test_gibbs_state_has_no_rpa_options():
+    """The plain Gibbs state only provides the mean-field reduction."""
+    system = build_spin_chain(4, field=0.3)
+    _, plain_state = _rpa_state(system, 0.5)
+    with pytest.raises(TypeError):
+        plain_state.partial_trace(frozenset(list(system.sites)[:2]), rpa=True)
 
 
 # ### Full bosonization: Gaussian state of the whole system ###
@@ -495,10 +526,10 @@ def test_hybrid_pair_in_normal_phase():
         exact = _exact_pair_entropy(spin, 1.5, 60.0)
         options = {"n_fock": 8}
         rho = state.partial_trace(
-            frozenset([site_a]), exact=False, hybrid=True, hybrid_options=options
+            frozenset([site_a]), max_exact_sites=0, hybrid=True, hybrid_options=options
         ).to_qutip((site_a,))
         rho_mf = state.partial_trace(
-            frozenset([site_a]), exact=False, rpa=False
+            frozenset([site_a]), max_exact_sites=0, rpa=False
         ).to_qutip((site_a,))
         entropy = _entropy_bits((rho / rho.tr()).full())
         assert _entropy_bits((rho_mf / rho_mf.tr()).full()) < 1e-6
@@ -506,7 +537,7 @@ def test_hybrid_pair_in_normal_phase():
         # the result converges with the Fock truncation
         rho_big = state.partial_trace(
             frozenset([site_a]),
-            exact=False,
+            max_exact_sites=0,
             hybrid=True,
             hybrid_options={"n_fock": 12},
         ).to_qutip((site_a,))
@@ -517,10 +548,10 @@ def test_hybrid_uncoupled_spins_give_mean_field():
     """Without coupling, the hybrid reduction is the mean-field state."""
     state, site_a, _ = _pair_state(0.5, 1.2, 10.0, jx=0.0, jy=0.0)
     hybrid = state.partial_trace(
-        frozenset([site_a]), exact=False, hybrid=True
+        frozenset([site_a]), max_exact_sites=0, hybrid=True
     ).to_qutip((site_a,))
     mean_field = state.partial_trace(
-        frozenset([site_a]), exact=False, rpa=False
+        frozenset([site_a]), max_exact_sites=0, rpa=False
     ).to_qutip((site_a,))
     assert (hybrid / hybrid.tr() - mean_field / mean_field.tr()).norm("tr") < 1e-8
 
@@ -544,11 +575,13 @@ def test_hybrid_chain_with_classical_modes():
     def distance(rho):
         return 0.5 * (rho / rho.tr() - exact).norm("tr")
 
-    mean_field = distance(plain.partial_trace(sites_a, exact=False).to_qutip(block))
+    mean_field = distance(
+        plain.partial_trace(sites_a, max_exact_sites=0).to_qutip(block)
+    )
     hybrid = distance(
         state.partial_trace(
             sites_a,
-            exact=False,
+            max_exact_sites=0,
             hybrid=True,
             hybrid_options={"n_fock": 4, "n_gauss": 5},
         ).to_qutip(block)
@@ -562,7 +595,7 @@ def test_hybrid_dimension_guard():
     try:
         state.partial_trace(
             frozenset([site_a]),
-            exact=False,
+            max_exact_sites=0,
             hybrid=True,
             hybrid_options={"n_fock": 100, "max_dim": 50},
         )
@@ -587,8 +620,9 @@ def test_rpa_state_hybrid_by_default():
     )
     plain = GibbsDensityOperator(k_op, meanfield=sigma_mf)
     reduced = state.partial_trace(sites_a).to_qutip(block)
-    expected = plain.partial_trace(
-        sites_a, rpa=True, hybrid=True, hybrid_options=options
+    default = RPAGibbsDensityOperator(k_op, meanfield=sigma_mf)
+    expected = default.partial_trace(
+        sites_a, hybrid=True, hybrid_options=options
     ).to_qutip(block)
     assert (reduced - expected).norm("tr") < 1e-10
     mean_field = plain.partial_trace(sites_a).to_qutip(block)
@@ -717,11 +751,16 @@ def test_hybrid_with_zero_modes_includes_the_charge_fluctuations():
 
     def distance(**options):
         rho = state.partial_trace(
-            sites_a, exact=False, hybrid=True, hybrid_options={"n_gauss": 9, **options}
+            sites_a,
+            max_exact_sites=0,
+            hybrid=True,
+            hybrid_options={"n_gauss": 9, **options},
         ).to_qutip(block)
         return 0.5 * (rho / rho.tr() - exact).norm("tr")
 
-    mean_field = state.partial_trace(sites_a, exact=False, rpa=False).to_qutip(block)
+    mean_field = state.partial_trace(sites_a, max_exact_sites=0, rpa=False).to_qutip(
+        block
+    )
     error_mf = 0.5 * (mean_field / mean_field.tr() - exact).norm("tr")
     assert abs(distance(charge_fluctuations=False) - error_mf) < 1e-6
     assert distance(charge_fluctuations=True) < 0.95 * error_mf
@@ -733,7 +772,7 @@ def test_hybrid_zero_modes_with_classical_modes_is_rejected():
     try:
         state.partial_trace(
             frozenset([sites[0]]),
-            exact=False,
+            max_exact_sites=0,
             hybrid=True,
             hybrid_options={"n_fock": 3},
         )
