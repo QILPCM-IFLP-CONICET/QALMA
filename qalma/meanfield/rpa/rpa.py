@@ -149,7 +149,7 @@ class RPAGibbsDensityOperator(GibbsDensityOperator):
         Options of :func:`rpa_hybrid_state`.
     zero_rtol : float, optional
         Relative tolerance to identify the zero modes of the bosonic RPA
-        problems, which are removed (see ``_bogoliubov_reduced``). The
+        problems, which are removed (see :func:`qalma.gaussian.bogoliubov_reduced`). The
         broken symmetry associated with them must be restored with the
         ``symmetry_projections`` of the state. The default is 1e-5.
     """

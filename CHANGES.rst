@@ -93,6 +93,19 @@ Mean-field and RPA
 * Only the Gaussian truncation is implemented; see :ref:`rpa` for its
   limitations.
 
+Gaussian bosonic states
++++++++++++++++++++++++
+
+* New module ``qalma.gaussian``. ``BosonicGaussianSystem`` represents a
+  Gaussian state of bosonic modes through its matrix of contractions, and
+  gives covariance matrices, entropies and negativities of subsets of modes.
+  It is built from a quadratic generator
+  (``build_boson_system_from_quadratic_form``, the thermal state, with the
+  removal of zero modes) or from the contractions
+  (``build_boson_system_from_correlations``, which checks the commutation and
+  uncertainty relations). The full bosonization of the RPA
+  (``build_rpa_boson_system``) uses it.
+
 HDF5 files
 ++++++++++
 

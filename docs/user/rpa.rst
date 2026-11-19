@@ -169,6 +169,12 @@ These are quantities of the bosonic RPA state, not of the spin state, and
 they are not defined when the mean-field state breaks a continuous symmetry
 (zero modes).
 
+The bosonic state is a :class:`~qalma.gaussian.BosonicGaussianSystem`
+(``state.rpa_structure.boson_system()``), whose modes are labelled by their
+sites. The same class represents any Gaussian bosonic state, built from a
+quadratic generator or from its matrix of contractions (see
+:mod:`qalma.gaussian`).
+
 Limitations
 -----------
 

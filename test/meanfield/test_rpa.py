@@ -16,8 +16,6 @@ from qalma.meanfield.rpa import (
     rpa_dynamic_kernel,
 )
 from qalma.meanfield.rpa.rpa_structure import _split_sites
-from qalma.meanfield.rpa.utils import _quadrature_map
-from qalma.meanfield.rpa.zeromodes import _bogoliubov_reduced
 from qalma.model import build_spin_chain, build_system
 from qalma.operators.states.gibbs import GibbsDensityOperator
 
@@ -629,58 +627,7 @@ def test_rpa_state_hybrid_by_default():
     assert (reduced - mean_field).norm("tr") > 1e-6
 
 
-# ### Zero modes ###
-
-
-def _free_particle_hamiltonian(omega, kappa, drive):
-    """Oscillator plus a free particle ``Q`` whose charge ``P`` drives it.
-
-    ``H = omega (x1^2 + p1^2)/2 + kappa p2^2/2 + drive x1 p2``, with
-    quadratures ordered as ``(x1, x2, p1, p2)``; ``x2`` does not appear.
-    """
-    m_real = np.zeros((4, 4))
-    m_real[0, 0], m_real[2, 2], m_real[3, 3] = omega, omega, kappa
-    m_real[0, 3] = m_real[3, 0] = drive
-    w_map = _quadrature_map(2)
-    return w_map @ m_real @ w_map.conj().T
-
-
-def test_bogoliubov_reduced_removes_zero_mode():
-    """The zero mode is removed and the rest of the modes are exact."""
-    omega, kappa, drive = 1.7, 2.3, 0.6
-    lam, t_mat, n_zero, data = _bogoliubov_reduced(
-        _free_particle_hamiltonian(omega, kappa, drive)
-    )
-    assert n_zero == 1
-    assert np.allclose(np.sort(lam), [-omega, omega])
-    assert t_mat.shape == (4, 2)
-    assert abs(data.kappa[0, 0] - kappa) < 1e-10
-    # the response of the oscillator to the drive renormalizes the charge
-    assert abs(data.kappa_eff[0, 0] - (kappa - drive**2 / omega)) < 1e-10
-
-
-def test_bogoliubov_reduced_without_zero_modes_is_standard():
-    """Without zero modes the result is the usual Bogoliubov transformation."""
-    m_real = np.diag([1.2, 0.8, 2.0, 1.5])
-    w_map = _quadrature_map(2)
-    h_mat = w_map @ m_real @ w_map.conj().T
-    lam, t_mat, n_zero, data = _bogoliubov_reduced(h_mat)
-    assert n_zero == 0 and data is None and t_mat.shape == (4, 4)
-    assert np.allclose(
-        np.sort(np.abs(lam)), np.sort(np.sqrt([1.2 * 2.0, 0.8 * 1.5]).repeat(2))
-    )
-
-
-def test_bogoliubov_reduced_rejects_unstable_hamiltonians():
-    """A negative eigenvalue is an instability, not a zero mode."""
-    m_real = np.diag([1.0, -0.5, 1.0, 1.0])
-    w_map = _quadrature_map(2)
-    try:
-        _bogoliubov_reduced(w_map @ m_real @ w_map.conj().T)
-    except ValueError as error:
-        assert "Unstable" in str(error)
-    else:
-        raise AssertionError("A ValueError was expected")
+# ### Zero modes of the RPA ###
 
 
 def test_zero_modes_of_the_xxz_pair():

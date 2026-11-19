@@ -1,4 +1,12 @@
-r"""Zero modes"""
+r"""Bogoliubov transformations of quadratic bosonic forms.
+
+The ``n`` bosonic modes are collected in
+:math:`\Phi = (b_1,\dots,b_n,b_1^\dagger,\dots,b_n^\dagger)^T` and a quadratic
+form is :math:`K = \frac12\Phi^\dagger \mathcal{H}\Phi`, with
+:math:`\mathcal{H} = \begin{pmatrix}A & B\\ B^* & A^*\end{pmatrix}`. The real
+quadratures are :math:`R = (x_1,\dots,x_n,p_1,\dots,p_n)^T`, with
+:math:`x = (b+b^\dagger)/\sqrt2` and :math:`p = (b-b^\dagger)/(i\sqrt2)`.
+"""
 
 import logging
 from dataclasses import dataclass
@@ -7,13 +15,83 @@ from typing import Optional, Tuple
 import numpy as np
 import scipy.linalg
 
-from .utils import _ZERO_MODE_RTOL, _bogoliubov, _quadrature_map
+__all__ = [
+    "ZERO_MODE_RTOL",
+    "ZeroModeData",
+    "bogoliubov_transformation",
+    "bogoliubov_reduced",
+    "quadrature_map",
+    "symplectic_spectrum",
+]
+
+ZERO_MODE_RTOL = 1e-5
+"""Default relative tolerance to identify the zero modes of a quadratic form."""
 
 LOGGER = logging.getLogger(__name__)
 
 
+def bogoliubov_transformation(h_mat: np.ndarray) -> Tuple[np.ndarray, np.ndarray]:
+    r"""Diagonalize a bosonic quadratic Hamiltonian.
+
+    Given :math:`H = \frac12\Phi^\dagger \mathcal{H}\Phi` with
+    :math:`\Phi = (a, a^\dagger)^T` and :math:`\mathcal{H}` positive
+    definite, find :math:`T` such that :math:`\Phi = T\tilde\Psi`, with
+    :math:`[\tilde\Psi, \tilde\Psi^\dagger] = \tilde\eta` and
+    :math:`H = \frac12 \tilde\Psi^\dagger |\Lambda| \tilde\Psi`
+    (Colpa's algorithm).
+
+    Parameters
+    ----------
+    h_mat : numpy.ndarray
+        Hermitian positive definite matrix :math:`\mathcal{H}`.
+
+    Returns
+    -------
+    lam : numpy.ndarray
+        Signed mode frequencies :math:`\lambda_m`; the sign is the
+        commutator sign :math:`\tilde\eta_m` of the mode.
+    t_mat : numpy.ndarray
+        Transformation :math:`T`.
+
+    Raises
+    ------
+    ValueError
+        If ``h_mat`` is not positive definite (unstable quadratic form).
+    """
+    n_half = h_mat.shape[0] // 2
+    try:
+        chol = np.linalg.cholesky(h_mat)
+    except np.linalg.LinAlgError as err:
+        raise ValueError(
+            "Unstable quadratic form: the bosonic Hamiltonian is not "
+            "positive definite."
+        ) from err
+    k_mat = chol.conj().T
+    eta = np.diag(np.concatenate([np.ones(n_half), -np.ones(n_half)]))
+    lam, vecs = np.linalg.eigh(k_mat @ eta @ k_mat.conj().T)
+    t_mat = np.linalg.solve(k_mat, vecs) * np.sqrt(np.abs(lam))[None, :]
+    return lam, t_mat
+
+
+def quadrature_map(n_modes: int) -> np.ndarray:
+    """Matrix ``W`` such that ``(b, b^dag) = W (x, p)``, with unit commutator."""
+    eye = np.eye(n_modes)
+    return np.block([[eye, 1j * eye], [eye, -1j * eye]]) / np.sqrt(2.0)
+
+
+def symplectic_spectrum(sigma: np.ndarray) -> np.ndarray:
+    r"""Return the symplectic eigenvalues :math:`\nu_\alpha` of a covariance matrix."""
+    n_sub = sigma.shape[0] // 2
+    if n_sub == 0:
+        return np.zeros(0)
+    eye, zero = np.eye(n_sub), np.zeros((n_sub, n_sub))
+    omega = np.block([[zero, eye], [-eye, zero]])
+    values = np.sort(np.abs(np.linalg.eigvals(1j * omega @ sigma)))
+    return values[::2]
+
+
 @dataclass
-class _ZeroModeData:
+class ZeroModeData:
     """Conserved charges conjugate to the zero modes of the bosonic problem.
 
     In real quadratures, ``H = 1/2 R^T M R``. Each zero mode ``Q`` (null
@@ -42,38 +120,14 @@ class _ZeroModeData:
     drive_rows: np.ndarray
 
 
-@dataclass
-class _ZeroModes:
-    """Charges conjugate to the zero modes of the environment.
-
-    Attributes
-    ----------
-    e_coupling : numpy.ndarray
-        ``(nA, m)``: coupling ``B_mu = ... + e_coupling[mu, a] P_a`` of the
-        boundary operators to the charges.
-    c_drive : numpy.ndarray
-        ``(m, 2 n_reduced)``: coefficients of the drive of the charges on the
-        normal modes, as ``c_mat`` for the boundary operators.
-    kappa_eff : numpy.ndarray
-        Inverse covariance of the charges.
-    kappa : numpy.ndarray
-        Bare inverse covariance of the charges.
-    """
-
-    e_coupling: np.ndarray
-    c_drive: np.ndarray
-    kappa_eff: np.ndarray
-    kappa: np.ndarray
-
-
-def _bogoliubov_reduced(
+def bogoliubov_reduced(
     h_mat: np.ndarray,
-    zero_rtol: float = _ZERO_MODE_RTOL,
+    zero_rtol: float = ZERO_MODE_RTOL,
     static: Optional[np.ndarray] = None,
-) -> Tuple[np.ndarray, np.ndarray, int, Optional[_ZeroModeData]]:
+) -> Tuple[np.ndarray, np.ndarray, int, Optional[ZeroModeData]]:
     r"""Diagonalize a bosonic quadratic Hamiltonian, removing its zero modes.
 
-    If :math:`\mathcal{H}` is positive definite this is :func:`_bogoliubov`.
+    If :math:`\mathcal{H}` is positive definite this is :func:`bogoliubov_transformation`.
     If it is positive semidefinite, its null vectors are zero modes: the
     Hamiltonian does not depend on a collective coordinate :math:`Q` (a
     broken continuous symmetry, as the Goldstone mode of an ordered state),
@@ -112,27 +166,26 @@ def _bogoliubov_reduced(
         is dropped.
     n_zero : int
         Number of zero modes removed.
-    zero_data : _ZeroModeData or None
+    zero_data : ZeroModeData or None
         Data of the conserved charges conjugate to the zero modes.
 
     Raises
     ------
     ValueError
-        If ``h_mat`` has negative eigenvalues (unstable RPA), or if the zero
+        If ``h_mat`` has negative eigenvalues (unstable quadratic form), or if the zero
         modes do not form an isotropic subspace.
     """
     n_modes = h_mat.shape[0] // 2
     if n_modes == 0:
-        lam, t_mat = _bogoliubov(h_mat)
+        lam, t_mat = bogoliubov_transformation(h_mat)
         return lam, t_mat, 0, None
     scale = max(float(np.linalg.norm(h_mat, 2)), 1e-300)
     tol = zero_rtol * scale
     eigenvalues, eigenvectors = np.linalg.eigh(h_mat)
     if eigenvalues[0] < -tol:
         raise ValueError(
-            "Unstable RPA: the bosonic Hamiltonian of the environment is not "
-            "positive semidefinite (the environment is beyond its critical "
-            "point)."
+            "Unstable quadratic form: the bosonic Hamiltonian is not "
+            "positive semidefinite."
         )
     static_both = (
         np.zeros(2 * n_modes, dtype=bool)
@@ -145,10 +198,10 @@ def _bogoliubov_reduced(
     )
     n_zero = int(np.sum(static_weight < 0.5))
     if n_zero == 0:
-        lam, t_mat = _bogoliubov(h_mat)
+        lam, t_mat = bogoliubov_transformation(h_mat)
         return lam, t_mat, 0, None
 
-    w_map = _quadrature_map(n_modes)
+    w_map = quadrature_map(n_modes)
     m_complex = w_map.conj().T @ h_mat @ w_map
     if np.max(np.abs(m_complex.imag)) > 1e-8 * scale:
         raise ValueError(
@@ -165,19 +218,21 @@ def _bogoliubov_reduced(
     weight = np.sum(vectors[static_quadrature] ** 2, axis=0)
     null = vectors[:, (np.abs(values) <= tol) & (weight < 0.5)]
     if null.shape[1] != n_zero:
-        raise ValueError("Inconsistent number of zero modes of the RPA.")
+        raise ValueError("Inconsistent number of zero modes of the quadratic form.")
     eye, zero = np.eye(n_modes), np.zeros((n_modes, n_modes))
     omega = np.block([[zero, eye], [-eye, zero]])
     if np.max(np.abs(null.T @ omega @ null)) > 1e-7:
         raise ValueError(
-            "The zero modes of the RPA do not form an isotropic subspace "
+            "The zero modes of the quadratic form do not form an isotropic subspace "
             "(they are not associated with a broken continuous symmetry)."
         )
     # Complement of the zero modes in their symplectic-orthogonal subspace
     complement = scipy.linalg.null_space(np.vstack([null.T @ omega, null.T]))
     n_reduced = n_modes - null.shape[1]
     if complement.shape[1] != 2 * n_reduced:
-        raise ValueError("Unable to reduce the RPA to the symplectic quotient.")
+        raise ValueError(
+            "Unable to reduce the quadratic form to the symplectic quotient."
+        )
     # Symplectic (canonical) basis of the complement
     omega_c = complement.T @ omega @ complement
     schur_t, schur_q = scipy.linalg.schur(omega_c, output="real")
@@ -203,11 +258,13 @@ def _bogoliubov_reduced(
     m_reduced = 0.5 * (m_reduced + m_reduced.T)
     if np.linalg.eigvalsh(m_reduced)[0] <= 0.0:
         raise ValueError(
-            "Unstable RPA: besides the zero modes, the bosonic Hamiltonian is "
-            "not positive definite."
+            "Unstable quadratic form: besides the zero modes, the bosonic "
+            "Hamiltonian is not positive definite."
         )
-    w_reduced = _quadrature_map(n_reduced)
-    lam, t_reduced = _bogoliubov(w_reduced @ m_reduced @ w_reduced.conj().T)
+    w_reduced = quadrature_map(n_reduced)
+    lam, t_reduced = bogoliubov_transformation(
+        w_reduced @ m_reduced @ w_reduced.conj().T
+    )
     t_mat = w_map @ z_mat @ w_reduced.conj().T @ t_reduced
 
     # Conserved charges conjugate to the zero modes, symplectically orthogonal
@@ -223,14 +280,14 @@ def _bogoliubov_reduced(
     kappa = s0p.T @ m_real @ s0p
     drive = z_mat.T @ m_real @ s0p
     kappa_eff = kappa - drive.T @ np.linalg.solve(m_reduced, drive)
-    zero_data = _ZeroModeData(
+    zero_data = ZeroModeData(
         s0p=s0p,
         kappa=0.5 * (kappa + kappa.T),
         kappa_eff=0.5 * (kappa_eff + kappa_eff.T),
         drive_rows=(m_real @ s0p).T,
     )
     LOGGER.warning(
-        "RPA: %d zero mode(s) of the bosonic Hamiltonian were removed; "
+        "%d zero mode(s) of the bosonic Hamiltonian were removed; "
         "the associated broken symmetry must be restored.",
         n_zero,
     )
