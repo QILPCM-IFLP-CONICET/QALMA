@@ -189,6 +189,16 @@ Max-Ent evolution
 Bug fixes
 +++++++++
 
+* The parallel routines enabled by ``QALMA_USE_PARALLEL`` never ran in
+  parallel: the number of workers of the parallel commutator and n-body
+  projection was computed as ``min(1, ...)``, always 1. It is now given by
+  ``qalma.parallel.optimal_workers``, between 1 and ``QALMA_MAX_WORKERS``.
+  With ``QALMA_USE_PARALLEL``, the Gram matrices of the covariance product
+  also used a process pool for every matrix, evaluating each entry without
+  the caches of the fast kernel, which made the restricted evolution about
+  40 % slower; scalar products that provide ``compute_gram_matrix`` now
+  always use it. ``QALMA_PARALLEL_USE_THREADS`` selects threads instead of
+  processes.
 * ``remove_under_tolerance_terms`` (used by
   :func:`~qalma.scalarprod.trim_terms_by_tolerance`) always removed the
   smallest term, whatever its norm. Since the hierarchical bases of

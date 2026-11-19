@@ -187,9 +187,20 @@ def gram_matrix_serial(basis, sp: Callable):
     return result.round(14)
 
 
-gram_matrix = (
-    gram_matrix_parallel if qalma_settings.USE_PARALLEL else gram_matrix_serial
-)
+def gram_matrix(basis, sp: Callable) -> NDArray:
+    """Compute the Gram matrix of ``basis`` for the scalar product ``sp``.
+
+    Scalar products that provide ``compute_gram_matrix`` (such as the
+    covariance product of a product state, with its fast kernel and caches)
+    always use it. For other scalar products, the matrix is computed in
+    parallel when parallel routines are enabled (``QALMA_USE_PARALLEL``),
+    and serially otherwise.
+    """
+    if hasattr(sp, "compute_gram_matrix"):
+        return sp.compute_gram_matrix(basis)
+    if qalma_settings.USE_PARALLEL:
+        return gram_matrix_parallel(basis, sp)
+    return gram_matrix_serial(basis, sp)
 
 
 def merge_gram_matrices(

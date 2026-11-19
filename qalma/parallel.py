@@ -17,7 +17,7 @@ from qalma.operators.states.product import (
 
 logger = logging.getLogger(__name__)
 
-__all__ = ["commutator_qalma_parallel"]
+__all__ = ["commutator_qalma_parallel", "optimal_workers"]
 
 USE_PARALLEL = qalma_settings.USE_PARALLEL
 MAX_WORKERS = qalma_settings.PARALLEL_MAX_WORKERS
@@ -43,6 +43,17 @@ else:
     logger.info("Using serial routines for large objects.")
     MAX_WORKERS = 1
     USE_THREADS = False
+
+
+def optimal_workers(n_tasks: int, scale: float, max_workers: int) -> int:
+    """Return the number of workers for ``n_tasks`` independent tasks.
+
+    The wall time is estimated as
+    ``n_tasks / n_workers * t_task + n_workers * t_overhead``, which is minimal
+    for ``n_workers = sqrt(n_tasks * t_task / t_overhead)``; ``scale`` stands
+    for ``t_task / t_overhead``. The result is between 1 and ``max_workers``.
+    """
+    return min(max_workers, max(1, int((scale * n_tasks) ** 0.5)))
 
 
 def _commutator_term_worker(entries):
@@ -99,12 +110,7 @@ def commutator_qalma_parallel(
 
     terms_pairs = tuple(_commutator_term_pairs(op_1_terms, op_2_terms))
     len_terms_pairs = len(terms_pairs)
-    # The wall-time estimated for a task can be estimated as
-    # WallTime =   N_TASKS / NUM_PROC * TIME_SINGLE_TASK + NUM_PROC * PARALLELIZING_OVERHEAD_TIME
-    # The optimal number of processes is given by
-    #  NUM_PROC = sqrt( N_TASKS *  TIME_SINGLE_TASK/PARALLELIZING_OVERHEAD_TIME )
-
-    num_workers = min(1, max(num_workers, int((0.001 * len_terms_pairs) ** 0.5)))
+    num_workers = optimal_workers(len_terms_pairs, 0.001, num_workers)
     if num_workers == 1 or not USE_PARALLEL:
         terms = tuple(op_1 * op_2 - op_2 * op_1 for op_1, op_2 in terms_pairs)
         return iterable_to_operator(terms, system).simplify()
@@ -172,12 +178,7 @@ def parallel_process_non_dispatched_terms(
     non_dispatched_length = len(terms)
     project_worker = partial(_project_monomial_worker, nmax=nmax, sigma=sigma)
     executor_cls = ThreadPoolExecutor if use_threads else ProcessPoolExecutor
-    # The wall-time estimated for a task can be estimated as
-    # WallTime =   N_TASKS / NUM_PROC * TIME_SINGLE_TASK + NUM_PROC * PARALLELIZING_OVERHEAD_TIME
-    # The optimal number of processes is given by
-    #  NUM_PROC = sqrt( N_TASKS *  TIME_SINGLE_TASK/PARALLELIZING_OVERHEAD_TIME )
-
-    num_workers = min(1, max(max_workers, int((0.1 * non_dispatched_length) ** 0.5)))
+    num_workers = optimal_workers(non_dispatched_length, 0.1, max_workers)
     if num_workers > 1:
         chunksize = max(1, int(non_dispatched_length / num_workers))
         with executor_cls(max_workers=num_workers) as executor:
