@@ -153,6 +153,17 @@ Max-Ent evolution
   * the statistics include a Galerkin error estimate that keeps the
     cancellations between basis elements, and an estimate of the entropy
     production of the instantaneous Max-Ent projection.
+* The restricted Max-Ent evolution works on fermionic models, whose
+  operators are Pauli strings (Jordan-Wigner). Three components rejected
+  Pauli sums acting on single sites, which are one-body operators with a
+  different representation: the linear term of
+  :class:`~qalma.operators.quadratic.QuadraticFormOperator` (now converted
+  to a one-body operator), the one-body generators of
+  :class:`~qalma.operators.states.GibbsProductDensityOperator`, and the
+  dispatch of :func:`~qalma.projections.n_body_projection`, which now
+  searches the class hierarchy (a Pauli string is projected as a product
+  operator). The fast covariance kernel already evaluates Pauli strings
+  site by site, as product operators.
 * New diagnostics :func:`~qalma.evolution.leakage_gram`,
   :func:`~qalma.evolution.leakage_rate`,
   :func:`~qalma.evolution.leakage_integrals`,
