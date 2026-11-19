@@ -201,6 +201,27 @@ Bug fixes
   deep bases the evolved coefficients were corrupted. The reference is now
   appended only if it is linearly independent.
 
+Performance
++++++++++++
+
+* The n-body projection of dense blocks relative to a product state is
+  computed directly, as a combination of partial reductions
+  (inclusion-exclusion over the subsets of the support), instead of expanding
+  the block into products of local operators: about 60 times faster for
+  three- and four-site blocks.
+* The fast covariance kernel caches the reference state on each overlap of
+  supports, which was rebuilt for every pair of terms.
+* :func:`~qalma.evolution.leakage_gram` computes the Gram matrix of the
+  commutators once per pair (it is symmetric), reuses the matrix ``h`` stored
+  in the basis, and caches the commutators of the basis elements, which
+  :func:`~qalma.evolution.estimate_memory_time` and
+  :func:`~qalma.evolution.sector_leakage_fraction` reuse when the generator
+  lies in the span of the basis.
+* Together, these changes make
+  :func:`~qalma.evolution.adaptive_maxent_evolution` about 3.4 times faster
+  for an extensive generator (XXZ chain with eight sites), with the same
+  results.
+
 Behaviour changes
 +++++++++++++++++
 

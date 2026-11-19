@@ -62,6 +62,7 @@ from qalma.scalarprod import (
 from .common import EOps, GeneratorRecorder
 from .leakage_control import (
     _norm,
+    basis_commutators,
     estimate_memory_time,
     leakage_gram,
     leakage_rate,
@@ -485,14 +486,19 @@ def adaptive_maxent_evolution(
         tau: Optional[float]
         if auto:
             tau_est, leak_norm, _ = estimate_memory_time(
-                basis, k, fallback=current_tau[0]
+                basis, k, fallback=current_tau[0], phi=phi_0
             )
             estimated = leak_norm > 1e-10
             current_tau[0] = tau_est
             tau = tau_est
         else:
             tau = None if memory_time is None else float(memory_time)
-        fraction = sector_leakage_fraction(ham, k, sigma, n_body)
+        # L k is a combination of the cached commutators of the basis.
+        comms = basis_commutators(basis)
+        lk = sum(
+            (c * comm for c, comm in zip(phi_0, comms) if c != 0), start=0 * comms[0]
+        )
+        fraction = sector_leakage_fraction(ham, k, sigma, n_body, comm=lk, sp=basis.sp)
         if fraction > SECTOR_LEAKAGE_WARNING:
             warnings.warn(
                 f"At t={t}, a fraction {fraction:.2f} of [H, K] lies outside the "
@@ -582,7 +588,7 @@ def adaptive_maxent_evolution(
         # restarted at t with the same basis, so phi and m stay continuous.
         if auto and not segment["tau_estimated"] and rate > 1e-8:
             tau, leak_norm, _ = estimate_memory_time(
-                segment["basis"], k_t, fallback=current_tau[0]
+                segment["basis"], k_t, fallback=current_tau[0], phi=np.real(phi)
             )
             if leak_norm > 1e-10:
                 current_tau[0] = tau

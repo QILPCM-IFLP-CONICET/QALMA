@@ -89,6 +89,7 @@ class DenseTermCache:
         self._terms: Dict[int, Tuple[object, object]] = {}
         self._means: Dict[int, complex] = {}
         self._reduced: Dict[Tuple[int, Tuple[str, ...]], NDArray] = {}
+        self._blocks: Dict[Tuple[str, ...], NDArray] = {}
 
     def clear(self):
         """Drop all the cached data."""
@@ -197,10 +198,19 @@ class DenseTermCache:
         return tensor.reshape(dim, dim)
 
     def sigma_block(self, overlap: Tuple[str, ...]) -> NDArray:
-        """Return the reference state on the sites of ``overlap`` (kron order)."""
+        """Return the reference state on the sites of ``overlap`` (kron order).
+
+        The blocks are cached: the overlaps of the terms of local operators
+        are a few pairs and triples of sites, shared by many pairs of terms.
+        """
+        try:
+            return self._blocks[overlap]
+        except KeyError:
+            pass
         matrix = np.ones((1, 1))
         for site in overlap:
             matrix = np.kron(matrix, self.sigma(site))
+        self._blocks[overlap] = matrix
         return matrix
 
 

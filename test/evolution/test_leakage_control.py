@@ -11,12 +11,20 @@ from scipy.optimize import minimize
 from qalma import build_system
 from qalma.evolution import (
     adaptive_maxent_evolution,
+    estimate_memory_time,
     leakage_gram,
     leakage_integrals,
     leakage_rate,
     local_mean_field_drift,
     qutip_me_solve,
+    sector_leakage_fraction,
     update_basis,
+)
+from qalma.evolution.leakage_control import (
+    _norm,
+    _residual,
+    basis_commutators,
+    leaked_operator,
 )
 from qalma.operators.functions import commutator
 from qalma.operators.states import GibbsProductDensityOperator
@@ -317,3 +325,73 @@ def test_rebuild_reasons_follow_thresholds():
     )
     assert "drift" in by_drift.stats["update reasons"]
     assert "leakage" not in by_drift.stats["update reasons"]
+
+
+# ───────────────────── reuse of the cached commutators ─────────────────────
+
+
+@pytest.fixture(scope="module")
+def evolved_basis_case():
+    """A basis built from a generator with leakage (after some evolution)."""
+    system, sites, ham, sx = spin_chain(4)
+    k0 = 0.5 * sx[1]
+    sim = adaptive_maxent_evolution(
+        ham, k0, [0.0, 0.6], 3, 2, memory_time=None, store_states=True
+    )
+    k_t = sim.states[-1].simplify()
+    basis, sigma, _ = update_basis(
+        k_t, GibbsProductDensityOperator({}, system), ham, 3, 2, ()
+    )
+    phi = np.real(basis.coefficient_expansion(k_t))
+    return system, sites, ham, k_t, basis, sigma, phi
+
+
+def test_commutators_are_cached(evolved_basis_case):
+    """The commutators of the basis elements are computed once."""
+    *_, basis, _, _ = evolved_basis_case
+    assert basis_commutators(basis) is basis_commutators(basis)
+    assert len(basis_commutators(basis)) == len(basis.operator_basis)
+
+
+def test_leaked_operator_matches_direct_residual(evolved_basis_case):
+    """(1 - pi) L K from the cached commutators equals the direct residual."""
+    system, sites, ham, k_t, basis, sigma, phi = evolved_basis_case
+    direct = _residual(basis, commutator(k_t, basis.generator))
+    combined = leaked_operator(basis, phi)
+    diff = (direct - combined).to_qutip(sites).full()
+    assert np.abs(diff).max() < 1e-8
+    assert _norm(basis, combined) == pytest.approx(
+        leakage_rate(leakage_gram(basis), phi), rel=1e-6
+    )
+
+
+def test_memory_time_with_coefficients(evolved_basis_case):
+    """Passing the coefficients of K gives the same memory time."""
+    system, sites, ham, k_t, basis, sigma, phi = evolved_basis_case
+    with_phi = estimate_memory_time(basis, k_t, phi=phi)
+    without_phi = estimate_memory_time(basis, k_t)
+    assert with_phi[1] > 0
+    assert np.allclose(with_phi, without_phi, rtol=1e-6)
+
+
+def test_memory_time_without_leakage_uses_relative_threshold():
+    """For a one-body K with no leakage, round-off in E does not count as leakage."""
+    system, sites, ham, sx = spin_chain(4)
+    k0 = 0.5 * sx[1]
+    basis, _, _ = update_basis(
+        k0.simplify(), GibbsProductDensityOperator({}, system), ham, 3, 2, ()
+    )
+    phi = np.real(basis.coefficient_expansion(k0))
+    tau, leak_norm, _ = estimate_memory_time(basis, k0, fallback=0.321, phi=phi)
+    assert tau == 0.321
+    assert leak_norm == 0.0
+
+
+def test_sector_fraction_with_precomputed_commutator(evolved_basis_case):
+    """The sector fraction does not depend on how [H, K] is supplied."""
+    system, sites, ham, k_t, basis, sigma, phi = evolved_basis_case
+    comms = basis_commutators(basis)
+    lk = sum(c * comm for c, comm in zip(phi, comms))
+    default = sector_leakage_fraction(ham, k_t, sigma, 2)
+    reused = sector_leakage_fraction(ham, k_t, sigma, 2, comm=lk, sp=basis.sp)
+    assert reused == pytest.approx(default, rel=1e-8, abs=1e-12)
