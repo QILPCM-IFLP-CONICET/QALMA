@@ -1,6 +1,7 @@
 """Module that implements a meanfield approximation of a Gibbsian state."""
 
 import logging
+import math
 from functools import reduce
 from itertools import combinations
 from typing import Callable, Dict, List, Optional, Tuple, Union, cast
@@ -448,9 +449,91 @@ def _project_qutip_operator_combinatorial(
     num_ops = len(site_names)
     if num_ops <= n_max:
         return full_operator
+    if sigma_ref is None or isinstance(sigma_ref, ProductDensityOperator):
+        return _project_dense_block(full_operator, n_max, sigma_ref)
     return project_to_n_body_operator(
         full_operator.as_sum_of_products(), n_max, sigma_ref
     )
+
+
+def _project_dense_block(
+    full_operator: QutipOperator,
+    n_max: int,
+    sigma_ref: Optional[ProductDensityOperator],
+) -> Operator:
+    r"""Project a dense block onto the n-body sector relative to a product state.
+
+    With :math:`P_i(A)=\mathrm{Tr}(\sigma_i A)\,1` and :math:`Q_i = 1-P_i`, the
+    projection is :math:`\pi^{(n)}=\sum_{|T|\le n}Q_T\otimes P_{S\setminus T}`
+    over the subsets :math:`T` of the support :math:`S` (:math:`|S|=k`). By
+    inclusion-exclusion it is a combination of reductions,
+
+    .. math::
+
+        \pi^{(n)}X = \sum_{|U|\le n} c_{|U|}\,
+        \mathrm{Tr}_{S\setminus U}[\sigma_{S\setminus U}X]\otimes 1,
+        \qquad
+        c_u = \sum_{t=u}^{n}\binom{k-u}{t-u}(-1)^{t-u},
+
+    which avoids expanding the block into products of local operators.
+    """
+    system = full_operator.system
+    names = full_operator.site_names
+    support = sorted(names, key=lambda name: names[name])
+    k = len(support)
+    dims = list(full_operator.operator.dims[0])
+    tensor = np.asarray(full_operator.operator.full()) * full_operator.prefactor
+    tensor = tensor.reshape(dims + dims)
+    factors = sigma_ref.site_factors_qutip if sigma_ref is not None else {}
+    local = [
+        (
+            np.asarray(factors[site].full())
+            if site in factors
+            else np.eye(dims[pos]) / dims[pos]
+        )
+        for pos, site in enumerate(support)
+    ]
+    coefficients = [
+        sum(
+            float(math.comb(k - u, t - u)) * (-1) ** (t - u)
+            for t in range(u, n_max + 1)
+        )
+        for u in range(n_max + 1)
+    ]
+    terms: List[Operator] = []
+    for size in range(n_max + 1):
+        coefficient = coefficients[size]
+        if coefficient == 0:
+            continue
+        for kept in combinations(range(k), size):
+            reduced = tensor
+            current = list(range(k))
+            for pos in reversed(range(k)):
+                if pos in kept:
+                    continue
+                axis = current.index(pos)
+                n_sites = len(current)
+                reduced = np.tensordot(
+                    reduced, local[pos].T, axes=([axis, n_sites + axis], [0, 1])
+                )
+                current.pop(axis)
+            if size == 0:
+                terms.append(ScalarOperator(coefficient * complex(reduced), system))
+                continue
+            dim = int(np.prod([dims[pos] for pos in kept]))
+            matrix = coefficient * reduced.reshape(dim, dim)
+            if size == 1:
+                terms.append(LocalOperator(support[kept[0]], matrix, system))
+                continue
+            sub_dims = [dims[pos] for pos in kept]
+            terms.append(
+                QutipOperator(
+                    _Qobj(matrix, dims=[sub_dims, sub_dims]),
+                    system,
+                    names={support[pos]: idx for idx, pos in enumerate(kept)},
+                )
+            )
+    return iterable_to_operator(terms, system).simplify()
 
 
 def n_body_qutip_projection(full_operator: QutipOperator, n_max=2, sigma_ref=None):

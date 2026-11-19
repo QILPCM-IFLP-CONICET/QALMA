@@ -32,7 +32,7 @@ the n-body sector (:func:`sector_leakage_fraction`).
 from __future__ import annotations
 
 import logging
-from typing import Tuple
+from typing import Optional, Tuple
 
 import numpy as np
 import qutip
@@ -48,7 +48,9 @@ from qalma.scalarprod import OperatorBasis, fetch_covar_scalar_product
 logger = logging.getLogger(__name__)
 
 __all__ = [
+    "basis_commutators",
     "estimate_memory_time",
+    "leaked_operator",
     "leakage_gram",
     "leakage_integrals",
     "leakage_rate",
@@ -76,15 +78,25 @@ def leakage_gram(basis: OperatorBasis) -> NDArray:
     if basis.generator is None:
         raise ValueError("The basis has no generator.")
     sp = basis.sp
-    ops = list(basis.operator_basis)
-    comms = [commutator(op, basis.generator).simplify() for op in ops]
+    ops = tuple(basis.operator_basis)
+    comms = basis_commutators(basis)
     size = len(ops)
-    comm_gram = np.array(
-        [[np.real(sp(comms[a], comms[b])) for b in range(size)] for a in range(size)]
-    )
-    h_mat = np.array(
-        [[np.real(sp(ops[a], comms[b])) for b in range(size)] for a in range(size)]
-    )
+    if hasattr(sp, "compute_gram_matrix"):
+        # Upper triangle only; each operator is flattened once.
+        comm_gram = np.real(sp.compute_gram_matrix(comms))
+    else:
+        comm_gram = np.array(
+            [
+                [np.real(sp(comms[a], comms[b])) for b in range(size)]
+                for a in range(size)
+            ]
+        )
+    h_mat = getattr(basis, "_hij", None)
+    if h_mat is None or np.shape(h_mat) != (size, size):
+        h_mat = np.array(
+            [[np.real(sp(ops[a], comms[b])) for b in range(size)] for a in range(size)]
+        )
+    h_mat = np.real(np.asarray(h_mat))
     gram_pinv = np.linalg.pinv(basis.gram, rcond=1e-10, hermitian=True)
     e_mat = comm_gram - h_mat.T @ gram_pinv @ h_mat
     e_mat = 0.5 * (e_mat + e_mat.T)
@@ -92,6 +104,7 @@ def leakage_gram(basis: OperatorBasis) -> NDArray:
     evals, evecs = np.linalg.eigh(e_mat)
     e_mat = (evecs * np.clip(evals, 0.0, None)) @ evecs.T
     basis._leakage_gram = e_mat  # type: ignore[attr-defined]
+    basis._leakage_comm_gram = comm_gram  # type: ignore[attr-defined]
     return e_mat
 
 
@@ -196,6 +209,38 @@ def local_mean_field_drift(k: Operator, sigma) -> Tuple[float, float]:
 # ─────────────────────────── memory and sector diagnostics ──────────────────
 
 
+def basis_commutators(basis: OperatorBasis) -> Tuple[Operator, ...]:
+    """Return the commutators ``[Q_a, G]`` of the basis elements with its generator.
+
+    They are computed once and cached on the basis.
+    """
+    cached = getattr(basis, "_leakage_commutators", None)
+    if cached is not None:
+        return cached
+    if basis.generator is None:
+        raise ValueError("The basis has no generator.")
+    comms = tuple(
+        commutator(op, basis.generator).simplify() for op in basis.operator_basis
+    )
+    basis._leakage_commutators = comms  # type: ignore[attr-defined]
+    return comms
+
+
+def leaked_operator(basis: OperatorBasis, phi: NDArray) -> Operator:
+    """Return ``(1 - pi) L K`` for ``K = sum_a phi_a Q_a``.
+
+    ``L K = sum_a phi_a [Q_a, G]`` is a combination of the cached commutators,
+    and its projection onto the basis is ``sum_a (A phi)_a Q_a``, with ``A``
+    the generator matrix: no new commutator or scalar product is needed.
+    """
+    phi = np.real(np.asarray(phi))
+    comms = basis_commutators(basis)
+    gen = np.real(np.asarray(basis.gen_matrix))
+    lk = sum((c * comm for c, comm in zip(phi, comms) if c != 0), start=0 * comms[0])
+    parallel = basis.operator_from_coefficients(gen @ phi)
+    return (lk - parallel).simplify()
+
+
 def _norm(basis: OperatorBasis, operator: Operator) -> float:
     """Return the norm of ``operator`` in the scalar product of ``basis``."""
     return float(np.sqrt(max(np.real(basis.sp(operator, operator)), 0.0)))
@@ -209,7 +254,11 @@ def _residual(basis: OperatorBasis, operator: Operator) -> Operator:
 
 
 def estimate_memory_time(
-    basis: OperatorBasis, k: Operator, fallback: float = 0.5, tiny: float = 1e-10
+    basis: OperatorBasis,
+    k: Operator,
+    fallback: float = 0.5,
+    tiny: float = 1e-10,
+    phi: Optional[NDArray] = None,
 ) -> Tuple[float, float, float]:
     r"""Estimate the lifetime of the memory kernel for the generator ``k``.
 
@@ -229,6 +278,10 @@ def estimate_memory_time(
         Value returned when there is no leakage.
     tiny : float
         Threshold below which a norm is considered zero.
+    phi : NDArray, optional
+        Coefficients of ``k`` in the basis, if ``k`` lies in its span. Then the
+        leaked part and its norm are obtained from the cached commutators and
+        the leakage Gram matrix, without a new commutator.
 
     Returns
     -------
@@ -239,8 +292,20 @@ def estimate_memory_time(
     second_norm : float
         :math:`\|QLR\|`.
     """
-    leak = _residual(basis, commutator(k.simplify(), basis.generator))
-    leak_norm = _norm(basis, leak)
+    if phi is not None:
+        phi = np.real(np.asarray(phi))
+        leak_sq = float(phi @ leakage_gram(basis) @ phi)
+        # E = C - h^T G^+ h suffers cancellations of relative size ~1e-12 of
+        # ||L k||^2 = phi^T C phi: below that, there is no leakage.
+        comm_gram = getattr(basis, "_leakage_comm_gram")
+        total_sq = float(phi @ comm_gram @ phi)
+        if leak_sq <= max(tiny**2, 1e-10 * total_sq):
+            return fallback, 0.0, 0.0
+        leak_norm = float(np.sqrt(leak_sq))
+        leak = leaked_operator(basis, phi)
+    else:
+        leak = _residual(basis, commutator(k.simplify(), basis.generator))
+        leak_norm = _norm(basis, leak)
     if leak_norm < tiny:
         return fallback, leak_norm, 0.0
     second = _residual(basis, commutator(leak, basis.generator))
@@ -251,7 +316,14 @@ def estimate_memory_time(
 
 
 def sector_leakage_fraction(
-    ham: Operator, k: Operator, sigma, n_body: int, tiny: float = 1e-12
+    ham: Operator,
+    k: Operator,
+    sigma,
+    n_body: int,
+    tiny: float = 1e-12,
+    *,
+    comm: Optional[Operator] = None,
+    sp=None,
 ) -> float:
     r"""Fraction of :math:`[H, k]` outside the ``n_body`` sector.
 
@@ -259,11 +331,17 @@ def sector_leakage_fraction(
     geometry of the product state ``sigma``. A value close to one means that
     the dynamics leaves the n-body sector entirely, so that no n-body basis
     can represent it and ``n_body`` should be increased.
+
+    ``comm`` (any multiple of ``[H, k]``, the ratio does not depend on it) and
+    ``sp`` (the covariance product of ``sigma``) can be passed to reuse them.
     """
     if hasattr(sigma, "to_product_state"):
         sigma = sigma.to_product_state()
-    sp = fetch_covar_scalar_product(sigma)
-    comm = commutator(ham, k.simplify()).simplify()
+    if sp is None:
+        sp = fetch_covar_scalar_product(sigma)
+    if comm is None:
+        comm = commutator(ham, k.simplify())
+    comm = comm.simplify()
     total = np.real(sp(comm, comm))
     if total < tiny:
         return 0.0
