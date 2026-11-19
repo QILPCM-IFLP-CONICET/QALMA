@@ -186,6 +186,21 @@ Max-Ent evolution
   duplicated :class:`~qalma.scalarprod.HierarchicalOperatorBasis` or were
   only used by that program.
 
+Bug fixes
++++++++++
+
+* ``remove_under_tolerance_terms`` (used by
+  :func:`~qalma.scalarprod.trim_terms_by_tolerance`) always removed the
+  smallest term, whatever its norm. Since the hierarchical bases of
+  :func:`~qalma.evolution.update_basis` trim every level, each element lost
+  a term, and the generator matrix of the restricted evolution differed from
+  the Galerkin one by 10-30 % whenever the n-body projection acted.
+* :func:`~qalma.evolution.update_basis` appended the mean-field reference
+  generator to the basis even when it was already in its span (always the
+  case for one-body generators). The Gram matrix became singular, and for
+  deep bases the evolved coefficients were corrupted. The reference is now
+  appended only if it is linearly independent.
+
 Behaviour changes
 +++++++++++++++++
 
