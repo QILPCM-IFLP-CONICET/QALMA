@@ -87,9 +87,12 @@ The :meth:`~qalma.operators.states.basic.DensityOperatorProtocol.partial_trace` 
 For :class:`~qalma.operators.states.gibbs.GibbsDensityOperator`, the partial
 trace of a large system uses the self-consistent mean-field Gibbs
 approximation (:doc:`/api/meanfield`), and returns a state that can be
-evaluated with ``expect``. Small systems are reduced exactly (``exact=True``).
-The reduction can be improved with the options ``rpa``, ``dynamic`` and
-``hybrid`` (see :doc:`rpa`).
+evaluated with ``expect``. Reductions that involve at most
+``max_exact_sites`` sites (by default
+``qalma.settings.MAXIMUM_GIBBS_EXACT_PARTIAL_TRACE``) are computed exactly;
+``max_exact_sites=0`` always uses the approximation. Reductions beyond mean
+field are provided by :class:`~qalma.meanfield.rpa.RPAGibbsDensityOperator`
+(see :doc:`rpa`).
 
 The ``reduce`` method computes the effective operator on a subsystem
 weighted by a reference state:

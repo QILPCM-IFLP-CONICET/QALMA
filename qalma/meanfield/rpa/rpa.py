@@ -11,34 +11,37 @@ from typing import Optional
 import numpy as np
 
 from qalma.meanfield.gibbs_partial_trace import (
-    gibbs_meanfield_partial_trace,
+    gibbs_exact_partial_trace,
+    gibbs_meanfield_generator,
 )
 from qalma.meanfield.variational import variational_quadratic_mfa
 from qalma.model import SystemDescriptor
 from qalma.operators import Operator
 from qalma.operators.basic import LocalOperator
 from qalma.operators.quadratic import QuadraticFormOperator
+from qalma.operators.states.basic import DensityOperatorProtocol
 from qalma.operators.states.gibbs import GibbsDensityOperator
+from qalma.operators.states.qutip import QutipDensityOperator
 from qalma.operators.states.register_ops._gibbs import _inherit_gibbs_arithmetic
 
 from .dynamic import _dynamic_correction
 from .environment import rpa_zero_modes
 from .functions import rpa_entanglement_entropy, rpa_negativity
+from .hybrid import rpa_hybrid_state
 from .rpa_structure import RPAStructure, build_rpa_structure, rpa_coupling_kernel
 from .utils import _STATIC_GAP, _ZERO_MODE_RTOL
+
+__all__ = ["RPAGibbsDensityOperator", "rpa_generator_correction"]
 
 LOGGER = logging.getLogger(__name__)
 
 
 def rpa_generator_correction(
-    generator: Operator,
+    structure: RPAStructure,
     k_mf: Operator,
     sites: frozenset,
-    sigma_mf,
     dynamic: bool = False,
     n_tau: int = 32,
-    static_gap: float = _STATIC_GAP,
-    structure: Optional[RPAStructure] = None,
 ) -> Optional[Operator]:
     r"""RPA correction :math:`K_{A,RPA}` to the mean-field reduced generator.
 
@@ -46,16 +49,15 @@ def rpa_generator_correction(
 
     Parameters
     ----------
-    generator : Operator
-        Generator ``K`` of the whole Gibbs state.
+    structure : RPAStructure
+        Subsystem-independent data of the RPA of the Gibbs state (see
+        :func:`~qalma.meanfield.rpa.build_rpa_structure`).
     k_mf : Operator
         Mean-field reduced generator :math:`K_{A,MF}` of the subsystem
         (the terms of ``K`` inside ``sites`` plus the projected boundary
         terms). It is only used by the dynamical correction.
     sites : frozenset
         Sites of the subsystem ``A``.
-    sigma_mf : ProductDensityOperator
-        Mean-field reference state.
     dynamic : bool, optional
         If ``True``, use the full imaginary-time kernel (dynamical
         correction, computed with the bosonized RPA) instead of the static
@@ -63,11 +65,6 @@ def rpa_generator_correction(
         space of ``A``. The default is False.
     n_tau : int, optional
         Number of imaginary-time quadrature nodes (dynamic only).
-    static_gap : float, optional
-        Frequency of the static bosons. Ignored if ``structure`` is given.
-    structure : RPAStructure, optional
-        Precomputed subsystem-independent data. If ``None``, it is built
-        from ``generator`` and ``sigma_mf``.
 
     Returns
     -------
@@ -80,8 +77,6 @@ def rpa_generator_correction(
     ValueError
         If the RPA is unstable.
     """
-    if structure is None:
-        structure = build_rpa_structure(generator, sigma_mf, static_gap)
     system = structure.system
     if dynamic:
         return _dynamic_correction(k_mf, structure, sites, n_tau)
@@ -154,7 +149,7 @@ class RPAGibbsDensityOperator(GibbsDensityOperator):
         Options of :func:`rpa_hybrid_state`.
     zero_rtol : float, optional
         Relative tolerance to identify the zero modes of the bosonic RPA
-        problems, which are removed (see ``_bogoliubov_reduced``). The
+        problems, which are removed (see :func:`qalma.gaussian.bogoliubov_reduced`). The
         broken symmetry associated with them must be restored with the
         ``symmetry_projections`` of the state. The default is 1e-5.
     """
@@ -206,31 +201,83 @@ class RPAGibbsDensityOperator(GibbsDensityOperator):
             )
         return self._rpa_structure
 
+    def reduced_generator(
+        self, sites: frozenset, rpa: bool = True, dynamic: Optional[bool] = None
+    ) -> Operator:
+        r"""Approximate generator :math:`K_A'` of the reduced state of ``sites``.
+
+        It is the mean-field generator :math:`K_{A,MF}` plus, if ``rpa``, the
+        RPA correction :math:`K_{A,RPA}`. No exact shortcut is taken.
+
+        Parameters
+        ----------
+        sites : frozenset
+            Sites of the subsystem ``A``.
+        rpa : bool, optional
+            Add the RPA correction. The default is True.
+        dynamic : bool, optional
+            Use the dynamical correction. If ``None`` (default), use the value
+            given when the state was built.
+
+        Returns
+        -------
+        Operator
+            The generator, acting on ``sites``.
+        """
+        sites = frozenset(sites)
+        k_mf, has_boundary = gibbs_meanfield_generator(self, sites)
+        if rpa and has_boundary:
+            return self._add_rpa_correction(k_mf, sites, dynamic)
+        return k_mf
+
+    def _add_rpa_correction(
+        self, k_mf: Operator, sites: frozenset, dynamic: Optional[bool]
+    ) -> Operator:
+        """Add the RPA correction to the mean-field generator ``k_mf``."""
+        correction = rpa_generator_correction(
+            self.rpa_structure,
+            k_mf,
+            sites,
+            dynamic=self.dynamic if dynamic is None else dynamic,
+            n_tau=self.n_tau,
+        )
+        if correction is None:
+            return k_mf
+        return (k_mf + correction).simplify()
+
     def partial_trace(
         self,
         sites: frozenset | SystemDescriptor,
+        max_exact_sites: Optional[int] = None,
         rpa: bool = True,
         dynamic: Optional[bool] = None,
-        exact: bool = True,
         hybrid: Optional[bool] = None,
         hybrid_options: Optional[dict] = None,
-    ):
+    ) -> DensityOperatorProtocol:
         """Compute the partial trace over the complement of ``sites``.
+
+        Reductions involving at most ``max_exact_sites`` sites are computed
+        exactly, as in
+        :meth:`~qalma.operators.states.gibbs.GibbsDensityOperator.partial_trace`,
+        and the RPA options are then irrelevant. Otherwise, the reduced state
+        is the mean-field approximation plus the RPA correction selected by
+        ``rpa``, ``dynamic`` and ``hybrid``.
 
         Parameters
         ----------
         sites : frozenset[str] or SystemDescriptor
             Sites to *keep*. All other sites are traced out.
+        max_exact_sites : int, optional
+            Maximum number of sites of an exact reduction. If ``None``
+            (default), use ``qalma.settings.MAXIMUM_GIBBS_EXACT_PARTIAL_TRACE``.
+            ``0`` always uses the approximation, which is needed to evaluate
+            the RPA in small systems.
         rpa : bool, optional
-            If ``True`` (default), add the RPA correction to the mean-field
-            generator of the reduced state.
+            If ``True`` (default), include the RPA. If ``False``, return the
+            mean-field reduction.
         dynamic : bool, optional
             Use the dynamical RPA correction. If ``None`` (default), use
             the value given when the state was built.
-        exact : bool, optional
-            If ``True`` (default), small systems are reduced exactly, as in
-            :class:`~qalma.operators.states.gibbs.GibbsDensityOperator`.
-            If ``False``, the mean-field plus RPA reduction is always used.
         hybrid : bool, optional
             Use the non perturbative hybrid reduction. If ``None``
             (default), use the value given when the state was built.
@@ -240,23 +287,48 @@ class RPAGibbsDensityOperator(GibbsDensityOperator):
 
         Returns
         -------
-        Operator
+        DensityOperatorProtocol
             The reduced density operator.
         """
         if isinstance(sites, SystemDescriptor):
             sites = frozenset(sites.sites)
-        return gibbs_meanfield_partial_trace(
-            self,
-            sites,
-            rpa=rpa,
-            dynamic=self.dynamic if dynamic is None else dynamic,
-            n_tau=self.n_tau,
-            exact=exact,
-            hybrid=self.hybrid if hybrid is None else hybrid,
-            hybrid_options=(
-                self.hybrid_options if hybrid_options is None else hybrid_options
-            ),
-        )
+        sites = frozenset(sites)
+        result = gibbs_exact_partial_trace(self, sites, max_exact_sites)
+        if result is not None:
+            if rpa:
+                LOGGER.debug(
+                    "Exact reduction of %s: the RPA options are not used.",
+                    sorted(sites),
+                )
+            return result
+
+        hybrid = self.hybrid if hybrid is None else hybrid
+        subsystem = self.system.subsystem(sites)
+        k_mf, has_boundary = gibbs_meanfield_generator(self, sites)
+        if not (rpa and has_boundary):
+            result = GibbsDensityOperator(
+                k_mf, subsystem, prefactor=self.prefactor
+            ).to_qutip_operator()
+        elif hybrid:
+            options = self.hybrid_options if hybrid_options is None else hybrid_options
+            rho = rpa_hybrid_state(self.rpa_structure, sites, k_mf, **(options or {}))
+            block = tuple(sorted(sites))
+            result = QutipDensityOperator(
+                rho,
+                names={name: pos for pos, name in enumerate(block)},
+                system=subsystem,
+                prefactor=self.prefactor,
+            )
+        else:
+            k_reduced = self._add_rpa_correction(k_mf, sites, dynamic)
+            result = GibbsDensityOperator(
+                k_reduced, subsystem, prefactor=self.prefactor
+            ).to_qutip_operator()
+        # If there were non-trivial terms in the boundary, restore symmetries.
+        if has_boundary:
+            for symm in self.symmetry_projections:
+                result = symm(result)
+        return result
 
     def reduce(self, sites, state=None, **kwargs):
         """Alias of :meth:`partial_trace`. ``state`` is ignored."""

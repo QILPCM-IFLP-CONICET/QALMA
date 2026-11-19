@@ -42,9 +42,7 @@ qalma.meanfield.rpa
 --------------------
 
 The RPA reduction adds to the mean-field generator of a reduced Gibbs state
-the contribution of the Gaussian fluctuations of the environment. It can be
-requested with the ``rpa`` (and ``dynamic``) options of
-:meth:`~qalma.operators.states.gibbs.GibbsDensityOperator.partial_trace`.
+the contribution of the Gaussian fluctuations of the environment.
 
 The class :class:`~qalma.meanfield.rpa.RPAGibbsDensityOperator` is a Gibbs
 state whose partial traces (and therefore the expectation values computed

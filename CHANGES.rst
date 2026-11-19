@@ -74,18 +74,37 @@ Mean-field and RPA
 * New module ``qalma.meanfield.rpa``: RPA reduction of Gibbs states. The
   reduced generator is the mean-field one plus the contribution of the
   Gaussian fluctuations of the environment, with a static or a dynamical
-  (bosonization) correction. It is requested with the ``rpa`` and
-  ``dynamic`` options of ``GibbsDensityOperator.partial_trace``.
-* ``partial_trace(..., rpa=True, hybrid=True)`` keeps the subsystem exact and
-  treats only the environment in the RPA (non perturbative in the coupling;
-  see ``hybrid_options``).
+  (bosonization) correction.
 * ``RPAGibbsDensityOperator`` is a Gibbs state whose reductions include the
   RPA and which stores the subsystem-independent data of the RPA
-  (``rpa_structure``). It also gives the entropies and negativities of the
+  (``rpa_structure``). The options ``rpa``, ``dynamic`` and ``hybrid`` of its
+  ``partial_trace`` select the reduction; ``hybrid=True`` keeps the
+  subsystem exact and treats only the environment in the RPA (non
+  perturbative in the coupling; see ``hybrid_options``).
+  ``reduced_generator`` returns the approximate reduced generator.
+  ``GibbsDensityOperator.partial_trace`` only provides the mean-field
+  reduction.
+* ``partial_trace`` of Gibbs states takes ``max_exact_sites``: reductions
+  that involve at most that number of sites are computed exactly. Its
+  default, ``qalma.settings.MAXIMUM_GIBBS_EXACT_PARTIAL_TRACE``, is read when
+  the reduction is computed; ``0`` always uses the approximation. It also gives the entropies and negativities of the
   bosonic RPA state (``rpa_entropy``, ``rpa_negativity``) and handles zero
   modes (``rpa_zero_modes``).
 * Only the Gaussian truncation is implemented; see :ref:`rpa` for its
   limitations.
+
+Gaussian bosonic states
++++++++++++++++++++++++
+
+* New module ``qalma.gaussian``. ``BosonicGaussianSystem`` represents a
+  Gaussian state of bosonic modes through its matrix of contractions, and
+  gives covariance matrices, entropies and negativities of subsets of modes.
+  It is built from a quadratic generator
+  (``build_boson_system_from_quadratic_form``, the thermal state, with the
+  removal of zero modes) or from the contractions
+  (``build_boson_system_from_correlations``, which checks the commutation and
+  uncertainty relations). The full bosonization of the RPA
+  (``build_rpa_boson_system``) uses it.
 
 HDF5 files
 ++++++++++

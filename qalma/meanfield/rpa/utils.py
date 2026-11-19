@@ -1,9 +1,7 @@
-"""
-Utils for RPA-based approximations.
+"""Single-site quantities of the RPA.
 
-Functions used to build Bogoliubov's decompositions, find quadratures
-and determine the RPA-efective local modes.
-
+Kubo-Mori susceptibilities and bosonic modes of the local mean-field states.
+The Bogoliubov transformations are in :mod:`qalma.gaussian`.
 """
 
 import logging
@@ -11,65 +9,19 @@ from typing import List, Optional, Tuple
 
 import numpy as np
 
+from qalma.gaussian.bogoliubov import ZERO_MODE_RTOL
+
 _DEGENERACY_TOL = 1e-12
 _STATIC_GAP = 1e-6
 # The mean-field state is only self-consistent up to the tolerance of its
 # solver, so the zero modes of the RPA have eigenvalues of the order 1e-9-1e-7
 # (relative to the norm), with random sign. The first non-zero eigenvalues are
-# orders of magnitude larger.
-_ZERO_MODE_RTOL = 1e-5
+# orders of magnitude larger, so the generic default is adequate.
+_ZERO_MODE_RTOL = ZERO_MODE_RTOL
+
+__all__ = ["kubo_mori_susceptibility", "local_boson_modes"]
 
 LOGGER = logging.getLogger(__name__)
-
-
-def _bogoliubov(h_mat: np.ndarray) -> Tuple[np.ndarray, np.ndarray]:
-    r"""Diagonalize a bosonic quadratic Hamiltonian.
-
-    Given :math:`H = \frac12\Phi^\dagger \mathcal{H}\Phi` with
-    :math:`\Phi = (a, a^\dagger)^T` and :math:`\mathcal{H}` positive
-    definite, find :math:`T` such that :math:`\Phi = T\tilde\Psi`, with
-    :math:`[\tilde\Psi, \tilde\Psi^\dagger] = \tilde\eta` and
-    :math:`H = \frac12 \tilde\Psi^\dagger |\Lambda| \tilde\Psi`
-    (Colpa's algorithm).
-
-    Parameters
-    ----------
-    h_mat : numpy.ndarray
-        Hermitian positive definite matrix :math:`\mathcal{H}`.
-
-    Returns
-    -------
-    lam : numpy.ndarray
-        Signed mode frequencies :math:`\lambda_m`; the sign is the
-        commutator sign :math:`\tilde\eta_m` of the mode.
-    t_mat : numpy.ndarray
-        Transformation :math:`T`.
-
-    Raises
-    ------
-    ValueError
-        If ``h_mat`` is not positive definite (unstable RPA).
-    """
-    n_half = h_mat.shape[0] // 2
-    try:
-        chol = np.linalg.cholesky(h_mat)
-    except np.linalg.LinAlgError as err:
-        raise ValueError(
-            "Unstable RPA: the bosonic Hamiltonian of the environment is not "
-            "positive definite (the environment is at or beyond its "
-            "critical point)."
-        ) from err
-    k_mat = chol.conj().T
-    eta = np.diag(np.concatenate([np.ones(n_half), -np.ones(n_half)]))
-    lam, vecs = np.linalg.eigh(k_mat @ eta @ k_mat.conj().T)
-    t_mat = np.linalg.solve(k_mat, vecs) * np.sqrt(np.abs(lam))[None, :]
-    return lam, t_mat
-
-
-def _quadrature_map(n_modes: int) -> np.ndarray:
-    """Matrix ``W`` such that ``(b, b^dag) = W (x, p)``, with unit commutator."""
-    eye = np.eye(n_modes)
-    return np.block([[eye, 1j * eye], [eye, -1j * eye]]) / np.sqrt(2.0)
 
 
 # ### Local (single-site) quantities ###
@@ -93,17 +45,6 @@ def _spectral_data(
     p = np.clip(p, 1e-300, None)
     ops = np.array([vecs.conj().T @ np.asarray(e) @ vecs for e in basis])
     return p, -np.log(p), ops
-
-
-def _symplectic_spectrum(sigma: np.ndarray) -> np.ndarray:
-    """Symplectic eigenvalues :math:`\\nu_\\alpha` of a covariance matrix."""
-    n_sub = sigma.shape[0] // 2
-    if n_sub == 0:
-        return np.zeros(0)
-    eye, zero = np.eye(n_sub), np.zeros((n_sub, n_sub))
-    omega = np.block([[zero, eye], [-eye, zero]])
-    values = np.sort(np.abs(np.linalg.eigvals(1j * omega @ sigma)))
-    return values[::2]
 
 
 def kubo_mori_susceptibility(

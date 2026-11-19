@@ -311,7 +311,7 @@ def test_symmetry_projections_are_dropped_with_a_warning(tmp_path):
 
 def test_meanfield_cache_is_stored(tmp_path):
     state = GibbsDensityOperator(HAMILTONIAN, SYSTEM)
-    state.partial_trace(frozenset(SITES[:1]), exact=False)
+    state.partial_trace(frozenset(SITES[:1]), max_exact_sites=0)
     assert state._meanfield is not None
     loaded = roundtrip(state, tmp_path)
     assert type(loaded._meanfield) is type(state._meanfield)

@@ -254,37 +254,26 @@ class GibbsDensityOperator(DensityOperatorMixin, Operator):
     def partial_trace(
         self,
         sites: Union[frozenset, SystemDescriptor],
-        rpa: bool = False,
-        dynamic: bool = False,
-        exact: bool = True,
-        hybrid: bool = False,
-        hybrid_options: Optional[dict] = None,
+        max_exact_sites: Optional[int] = None,
     ):
         """Compute the partial trace over the complement of ``sites``.
 
-        Uses the mean-field Gibbs partial trace, which approximates the
-        reduced state as a product of local Gibbs states.
+        Reductions involving at most ``max_exact_sites`` sites are computed
+        exactly, building the dense state of the system (or of the block on
+        which the generator acts). Otherwise, the boundary terms of the
+        generator are projected with the self-consistent mean-field state
+        (see :func:`~qalma.meanfield.gibbs_partial_trace.gibbs_meanfield_partial_trace`).
+        Corrections beyond mean field are provided by
+        :class:`~qalma.meanfield.rpa.RPAGibbsDensityOperator`.
 
         Parameters
         ----------
         sites : frozenset[str] or SystemDescriptor
             Sites to *keep*. All other sites are traced out.
-        rpa : bool, optional
-            If ``True``, add the RPA correction of the Gaussian fluctuations
-            of the environment to the mean-field generator of the reduced
-            state (see :mod:`qalma.meanfield.rpa`). The default is False.
-        dynamic : bool, optional
-            If ``True`` (and ``rpa``), use the dynamical RPA correction.
-            The default is False.
-        exact : bool, optional
-            If ``True`` (default), small systems are reduced exactly. If
-            ``False``, the mean-field branch is always used.
-        hybrid : bool, optional
-            If ``True`` (and ``rpa``), keep the subsystem exact and treat
-            only the environment in the RPA (non perturbative). See
-            :func:`qalma.meanfield.rpa.rpa_hybrid_state`.
-        hybrid_options : dict, optional
-            Options of :func:`qalma.meanfield.rpa.rpa_hybrid_state`.
+        max_exact_sites : int, optional
+            Maximum number of sites of an exact reduction. If ``None``
+            (default), use ``qalma.settings.MAXIMUM_GIBBS_EXACT_PARTIAL_TRACE``.
+            ``0`` always uses the mean-field approximation.
 
         Returns
         -------
@@ -301,13 +290,7 @@ class GibbsDensityOperator(DensityOperatorMixin, Operator):
         if isinstance(sites, SystemDescriptor):
             sites = frozenset(sites.sites)
         return gibbs_meanfield_partial_trace(
-            self,
-            sites,
-            rpa=rpa,
-            dynamic=dynamic,
-            exact=exact,
-            hybrid=hybrid,
-            hybrid_options=hybrid_options,
+            self, sites, max_exact_sites=max_exact_sites
         )
 
     def reduce(self, sites, state=None, **kwargs):
@@ -322,7 +305,7 @@ class GibbsDensityOperator(DensityOperatorMixin, Operator):
         **kwargs
             Options passed to
             :meth:`~qalma.operators.states.gibbs.GibbsDensityOperator.partial_trace`
-            (``rpa``, ``dynamic``).
+            (``max_exact_sites``).
 
         Returns
         -------

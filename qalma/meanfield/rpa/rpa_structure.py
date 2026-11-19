@@ -12,6 +12,10 @@ from typing import Any, Dict, List, Optional, Tuple
 import numpy as np
 from qutip import Qobj
 
+from qalma.gaussian import (
+    BosonicGaussianSystem,
+    build_boson_system_from_quadratic_form,
+)
 from qalma.meanfield.gibbs_partial_trace import (
     project_boundary_term,
 )
@@ -25,14 +29,19 @@ from qalma.operators.quadratic.build import (
     zero_expectation_value_basis,
 )
 
-from .boson import BosonicGaussianSystem
 from .utils import (
     _STATIC_GAP,
     _ZERO_MODE_RTOL,
     kubo_mori_susceptibility,
     local_boson_modes,
 )
-from .zeromodes import _bogoliubov_reduced
+
+__all__ = [
+    "RPAStructure",
+    "build_rpa_boson_system",
+    "build_rpa_structure",
+    "rpa_coupling_kernel",
+]
 
 LOGGER = logging.getLogger(__name__)
 
@@ -101,7 +110,7 @@ class RPAStructure:
         Index of the first element of each site in ``m_full``.
     zero_rtol : float
         Relative tolerance to identify the zero modes of the bosonic RPA
-        problems (see ``_bogoliubov_reduced``).
+        problems (see :func:`qalma.gaussian.bogoliubov_reduced`).
     """
 
     generator: Operator
@@ -169,12 +178,19 @@ class RPAStructure:
     def boson_system(self) -> BosonicGaussianSystem:
         """Return the bosonic system of the whole state (computed on demand)."""
         if self._boson_system is None:
-            self._boson_system = build_boson_system(self)
+            self._boson_system = build_rpa_boson_system(self)
         return self._boson_system
 
 
-def build_boson_system(structure: RPAStructure) -> BosonicGaussianSystem:
+def build_rpa_boson_system(structure: RPAStructure) -> BosonicGaussianSystem:
     """Build the bosonized RPA of the whole system.
+
+    Every site is bosonized (see
+    :func:`~qalma.meanfield.rpa.utils.local_boson_modes`) and the thermal
+    state of the resulting quadratic bosonic generator is built with
+    :func:`~qalma.gaussian.build_boson_system_from_quadratic_form`. Only the
+    bosons with a non-vanishing frequency are included: the static modes are
+    classical fluctuations. The label of each mode is its site.
 
     Parameters
     ----------
@@ -184,7 +200,7 @@ def build_boson_system(structure: RPAStructure) -> BosonicGaussianSystem:
     Returns
     -------
     BosonicGaussianSystem
-        The bosonic system, with the contractions of its thermal state.
+        The bosonic Gaussian state.
 
     Raises
     ------
@@ -215,21 +231,12 @@ def build_boson_system(structure: RPAStructure) -> BosonicGaussianSystem:
     a_mat = 0.5 * (a_mat + a_mat.conj().T)
     b_mat = 0.5 * (b_mat + b_mat.T)
     h_mat = np.block([[a_mat, b_mat], [b_mat.conj(), a_mat.conj()]])
-    lam, t_mat, n_zero, _ = _bogoliubov_reduced(h_mat, structure.zero_rtol)
-    omega = np.abs(lam)
-    expo = np.where(lam > 0, 0.0, -omega)  # equal-time occupations
-    occupation = np.exp(expo) / (-np.expm1(-omega))
-    contractions = (t_mat * occupation[None, :]) @ t_mat.conj().T
-    return BosonicGaussianSystem(
-        sites=sites,
-        mode_site=mode_site,
-        freqs=freqs_all,
-        couplings=g_mat,
-        lam=lam,
-        t_mat=t_mat,
-        contractions=contractions,
-        n_zero_modes=n_zero,
-    )
+    try:
+        return build_boson_system_from_quadratic_form(
+            h_mat, labels=mode_site, zero_rtol=structure.zero_rtol
+        )
+    except ValueError as err:
+        raise ValueError(f"RPA of the whole system: {err}") from err
 
 
 def build_rpa_structure(

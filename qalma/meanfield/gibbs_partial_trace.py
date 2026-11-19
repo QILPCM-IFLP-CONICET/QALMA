@@ -9,10 +9,10 @@ from typing import List, Optional
 
 from qutip import tensor as qutip_tensor
 
+from qalma import settings
 from qalma.meanfield import (
     variational_quadratic_mfa,
 )
-from qalma.model import SystemDescriptor
 from qalma.operators import (
     Operator,
     ProductOperator,
@@ -28,11 +28,16 @@ from qalma.operators.states.gibbs import GibbsDensityOperator
 from qalma.operators.states.product import (
     ProductDensityOperator,
 )
-from qalma.settings import MAXIMUM_GIBBS_EXACT_PARTIAL_TRACE
 
 logger = logging.getLogger(__name__)
 
-__all__ = ["gibbs_meanfield_generator", "gibbs_meanfield_partial_trace"]
+__all__ = [
+    "gibbs_exact_partial_trace",
+    "gibbs_meanfield_generator",
+    "gibbs_meanfield_partial_trace",
+    "project_boundary_term",
+    "resolve_max_exact_sites",
+]
 
 
 def project_boundary_term(term, sigma: ProductDensityOperator, sites: frozenset):
@@ -94,48 +99,136 @@ def project_boundary_term(term, sigma: ProductDensityOperator, sites: frozenset)
     return project_boundary_term(term.to_qutip_operator(), sigma, sites)
 
 
-def gibbs_meanfield_generator(
+def resolve_max_exact_sites(max_exact_sites: Optional[int] = None) -> int:
+    """Return the number of sites up to which Gibbs states are reduced exactly.
+
+    Parameters
+    ----------
+    max_exact_sites : int, optional
+        Explicit value. If ``None``, the current value of
+        ``qalma.settings.MAXIMUM_GIBBS_EXACT_PARTIAL_TRACE`` is used.
+
+    Returns
+    -------
+    int
+        The threshold. ``0`` disables the exact reductions.
+
+    Raises
+    ------
+    ValueError
+        If ``max_exact_sites`` is negative.
+    """
+    if max_exact_sites is None:
+        return int(settings.MAXIMUM_GIBBS_EXACT_PARTIAL_TRACE)
+    if max_exact_sites < 0:
+        raise ValueError(f"max_exact_sites must be >= 0, got {max_exact_sites}.")
+    return int(max_exact_sites)
+
+
+def gibbs_exact_partial_trace(
     state: GibbsDensityOperator,
     sites: frozenset,
-    rpa: bool = False,
-    dynamic: bool = False,
-    n_tau: int = 32,
-):
-    r"""Build the approximate generator of the reduced state of a Gibbs state.
+    max_exact_sites: Optional[int] = None,
+) -> Optional[DensityOperatorProtocol]:
+    """Reduce a Gibbs state exactly, if it is small or the reduction is trivial.
 
-    The generator :math:`K` of the state is split into the terms inside the
-    subsystem :math:`A`, the terms in the environment and the boundary terms.
-    The boundary terms are projected over the algebra of :math:`A` using the
-    self-consistent mean-field state, giving :math:`K_{A,MF}`. Optionally,
-    the RPA correction :math:`K_{A,RPA}` of the Gaussian fluctuations of the
-    environment is added (see :mod:`qalma.meanfield.rpa`).
+    The reduction is exact in three cases:
+
+    * the whole system has at most ``max_exact_sites`` sites: the dense state
+      is built and traced;
+    * the generator acts on at most ``max_exact_sites`` sites: the dense
+      state of that block is built and traced, and the result is returned as
+      a :class:`~qalma.operators.states.gibbs.GibbsDensityOperator`;
+    * the generator acts only inside ``sites`` or only outside them
+      (regardless of ``max_exact_sites``).
 
     Parameters
     ----------
     state : GibbsDensityOperator
         The Gibbs state to reduce.
     sites : frozenset
+        Sites of the subsystem to keep.
+    max_exact_sites : int, optional
+        Maximum number of sites of the exact reductions. If ``None``, use
+        ``qalma.settings.MAXIMUM_GIBBS_EXACT_PARTIAL_TRACE``. ``0`` leaves only
+        the trivial cases.
+
+    Returns
+    -------
+    DensityOperatorProtocol or None
+        The reduced state, or ``None`` if none of the cases applies and the
+        reduction must be approximated.
+    """
+    max_exact_sites = resolve_max_exact_sites(max_exact_sites)
+    if len(state.system.sites) <= max_exact_sites:
+        return state.to_qutip_operator().partial_trace(sites)
+
+    prefactor = state.prefactor
+    generator = state.k
+    full_acts_over = generator.acts_over()
+    environment = frozenset(site for site in full_acts_over if site not in sites)
+    system = state.k.system
+    subsystem = system.subsystem(sites)
+    # pylint: disable=protected-access
+    sigma_mf = state._meanfield
+
+    if len(environment) == 0:
+        return GibbsDensityOperator(
+            generator, system=subsystem, prefactor=prefactor, meanfield=sigma_mf
+        )
+    if len(full_acts_over) == len(environment):
+        return GibbsDensityOperator(
+            ScalarOperator(0.0, system), system=subsystem, prefactor=prefactor
+        )
+    # The generator acts on a small block: build the state of the block,
+    # compute the partial trace, and get back the generator.
+    if len(full_acts_over) <= max_exact_sites:
+        sites_in_superblock = frozenset(
+            site for site in full_acts_over if site in sites
+        )
+        sigma_superblock = (
+            GibbsDensityOperator(
+                generator,
+                system=system.subsystem(full_acts_over),
+                prefactor=1,
+                meanfield=sigma_mf,
+            )
+            .to_qutip_operator()
+            .partial_trace(sites_in_superblock)
+        )
+        k_reduced = -sigma_superblock.logm()
+        # k_reduced is associated to the state of the subsystem.
+        # We need to reset it to the global system:
+        k_reduced._set_system_(system)
+        # The subsystem can still be large, so a GibbsDensityOperator is returned.
+        return GibbsDensityOperator(k_reduced, system=subsystem, prefactor=prefactor)
+    return None
+
+
+def gibbs_meanfield_generator(state: GibbsDensityOperator, sites: frozenset):
+    r"""Build the mean-field generator of the reduced state of a Gibbs state.
+
+    The generator :math:`K` of the state is split into the terms inside the
+    subsystem :math:`A`, the terms in the environment and the boundary terms.
+    The boundary terms are projected over the algebra of :math:`A` using the
+    self-consistent mean-field state, giving :math:`K_{A,MF}`. The RPA
+    corrections to it are added by
+    :class:`~qalma.meanfield.rpa.RPAGibbsDensityOperator`.
+
+    Parameters
+    ----------
+    state : GibbsDensityOperator
+        The Gibbs state to reduce. If it has no mean-field state yet, it is
+        computed and stored in the state.
+    sites : frozenset
         Sites of the subsystem ``A``.
-    rpa : bool, optional
-        If ``True``, add the RPA correction. The default is False.
-    dynamic : bool, optional
-        If ``True`` (and ``rpa``), use the dynamical RPA correction instead
-        of the static one. The default is False.
-    n_tau : int, optional
-        Number of imaginary-time quadrature nodes of the dynamical
-        correction. The default is 32.
 
     Returns
     -------
     k_reduced : Operator
-        The approximate generator of the reduced state.
+        The mean-field generator :math:`K_{A,MF}` of the reduced state.
     has_boundary : bool
         Whether there were terms coupling ``A`` with the environment.
-
-    Raises
-    ------
-    ValueError
-        If ``rpa`` is requested and the RPA is unstable.
     """
     generator = state.k.flat()
     system = state.k.system
@@ -172,38 +265,15 @@ def gibbs_meanfield_generator(
         terms_in.extend(terms_boundary)
 
     k_in = iterable_to_operator(terms_in, system, isherm=True)
-    has_boundary = bool(terms_boundary)
-    if rpa and has_boundary:
-        # pylint: disable=import-outside-toplevel
-        from qalma.meanfield.rpa import rpa_generator_correction
-
-        # States that store the RPA data (see RPAGibbsDensityOperator)
-        # provide it through the ``rpa_structure`` attribute.
-        correction = rpa_generator_correction(
-            generator,
-            k_in,
-            sites,
-            sigma_mf,
-            dynamic=dynamic,
-            n_tau=n_tau,
-            structure=getattr(state, "rpa_structure", None),
-        )
-        if correction is not None:
-            k_in = (k_in + correction).simplify()
-    return k_in, has_boundary
+    return k_in, bool(terms_boundary)
 
 
 def gibbs_meanfield_partial_trace(
     state: GibbsDensityOperator,
     sites: frozenset,
-    rpa: bool = False,
-    dynamic: bool = False,
-    n_tau: int = 32,
-    exact: bool = True,
-    hybrid: bool = False,
-    hybrid_options: Optional[dict] = None,
+    max_exact_sites: Optional[int] = None,
 ) -> DensityOperatorProtocol:
-    """Build a self-consistent Mean Field approximation to the local state.
+    """Reduce a Gibbs state, exactly if it is small and in mean field otherwise.
 
     Parameters
     ----------
@@ -211,117 +281,26 @@ def gibbs_meanfield_partial_trace(
         The Gibbs state to reduce.
     sites : frozenset
         Sites of the subsystem to keep.
-    rpa : bool, optional
-        If ``True``, add to the mean-field generator the RPA correction
-        (see :func:`gibbs_meanfield_generator`). It only applies to the
-        mean-field branch: reductions that are computed exactly (small
-        systems) ignore it. The default is False.
-    dynamic : bool, optional
-        If ``True`` (and ``rpa``), use the dynamical RPA correction.
-    n_tau : int, optional
-        Number of imaginary-time quadrature nodes of the dynamical
-        correction.
-    exact : bool, optional
-        If ``True`` (default), reductions of small systems or of operators
-        acting on a small block are computed exactly. If ``False``, the
-        mean-field branch is always used.
-    hybrid : bool, optional
-        If ``True`` (and ``rpa``), the subsystem is kept exact and only the
-        environment is treated in the RPA, solving a non perturbative hybrid
-        problem (see :func:`qalma.meanfield.rpa.rpa_hybrid_state`), instead
-        of adding a correction to the generator. The default is False.
-    hybrid_options : dict, optional
-        Options of :func:`qalma.meanfield.rpa.rpa_hybrid_state`.
+    max_exact_sites : int, optional
+        Reductions involving at most this number of sites are computed
+        exactly (see :func:`gibbs_exact_partial_trace`). If ``None``, use
+        ``qalma.settings.MAXIMUM_GIBBS_EXACT_PARTIAL_TRACE``; ``0`` always
+        uses the mean-field approximation.
 
     Returns
     -------
     DensityOperatorProtocol
         The reduced density operator.
     """
-    prefactor: complex
-    generator: Operator
-    full_acts_over: frozenset
-    environment: frozenset
-    system: SystemDescriptor
-    subsystem: SystemDescriptor
-
-    # For states in small subsystems, just compute the partial trace
-    # *exactly* by exponentiating the state.
-    if exact and len(state.system.sites) <= MAXIMUM_GIBBS_EXACT_PARTIAL_TRACE:
-        result = state.to_qutip_operator().partial_trace(sites)
+    result = gibbs_exact_partial_trace(state, sites, max_exact_sites)
+    if result is not None:
         return result
-
-    prefactor = state.prefactor
-    generator = state.k
-    full_acts_over = generator.acts_over()
-    environment = frozenset(site for site in full_acts_over if site not in sites)
-    system = state.k.system
-    subsystem = system.subsystem(sites)
-    # pylint: disable=protected-access
-    sigma_mf = state._meanfield
-
-    # Trivial cases:
-    if len(environment) == 0:
-        return GibbsDensityOperator(
-            generator, system=subsystem, prefactor=prefactor, meanfield=sigma_mf
-        )
-    if len(full_acts_over) == len(environment):
-        return GibbsDensityOperator(
-            ScalarOperator(0.0, system), system=subsystem, prefactor=prefactor
-        )
-    # Shortcut for density operators acting on a small subblock:
-    # construct the state of the subblock, compute the partial trace,
-    # and get back the generator:
-    if exact and len(full_acts_over) <= MAXIMUM_GIBBS_EXACT_PARTIAL_TRACE:
-        sites_in_superblock = frozenset(
-            site for site in full_acts_over if site in sites
-        )
-        sigma_superblock = (
-            GibbsDensityOperator(
-                generator,
-                system=system.subsystem(full_acts_over),
-                prefactor=1,
-                meanfield=sigma_mf,
-            )
-            .to_qutip_operator()
-            .partial_trace(sites_in_superblock)
-        )
-        k_reduced = -sigma_superblock.logm()
-        # k_reduced is associated to the state of the subsystem.
-        # We need to reset it to the global system:
-        # pylint: disable=protected-access
-        k_reduced._set_system_(system)
-        # Notice that subsystem can still be "large", so we return a GibbsDensityOperator:
-        return GibbsDensityOperator(k_reduced, system=subsystem, prefactor=prefactor)
-
-    k_in, has_boundary = gibbs_meanfield_generator(
-        state, sites, rpa=rpa and not hybrid, dynamic=dynamic, n_tau=n_tau
-    )
-    if rpa and hybrid and has_boundary:
-        # pylint: disable=import-outside-toplevel
-        from qalma.meanfield.rpa import build_rpa_structure, rpa_hybrid_state
-        from qalma.operators.states import QutipDensityOperator
-
-        structure = getattr(state, "rpa_structure", None)
-        if structure is None:
-            structure = build_rpa_structure(
-                state.k, state._meanfield  # pylint: disable=protected-access
-            )
-        rho = rpa_hybrid_state(structure, sites, k_in, **(hybrid_options or {}))
-        block = tuple(sorted(sites))
-        result = QutipDensityOperator(
-            rho,
-            names={name: pos for pos, name in enumerate(block)},
-            system=subsystem,
-            prefactor=prefactor,
-        )
-    else:
-        result = GibbsDensityOperator(
-            k_in, subsystem, prefactor=prefactor
-        ).to_qutip_operator()
-
-    # If there were non-trivial terms in the boundary,
-    # restore symmetries:
+    k_in, has_boundary = gibbs_meanfield_generator(state, sites)
+    subsystem = state.k.system.subsystem(sites)
+    result = GibbsDensityOperator(
+        k_in, subsystem, prefactor=state.prefactor
+    ).to_qutip_operator()
+    # If there were non-trivial terms in the boundary, restore symmetries.
     if has_boundary:
         for symm in state.symmetry_projections:
             result = symm(result)

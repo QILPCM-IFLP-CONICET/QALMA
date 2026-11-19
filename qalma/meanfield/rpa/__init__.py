@@ -116,7 +116,7 @@ for the parity is the mixture of the two broken-symmetry branches.
 bosonic Hamiltonian has zero modes (Goldstone modes): the Hamiltonian does
 not depend on a collective coordinate :math:`Q` (the orientation of the
 order parameter), and the conjugate charge :math:`P` is conserved. They are
-detected and removed (see ``_bogoliubov_reduced``): the orientation is
+detected and removed (see :func:`qalma.gaussian.bogoliubov_reduced`): the orientation is
 fixed, and the symmetry has to be restored averaging over its orbit, with the
 ``symmetry_projections`` of the state (for instance,
 ``project_conserved_quantity`` for a U(1) symmetry). The thermal fluctuations
@@ -129,7 +129,9 @@ environment, so that in many cases the environment has only a soft mode.
 :func:`~qalma.meanfield.rpa.environment.rpa_zero_modes` counts the zero modes.
 
 **Full bosonization.** If the subsystem is also bosonized, the whole system
-is a quadratic bosonic Hamiltonian whose thermal state is Gaussian. The
+is a quadratic bosonic Hamiltonian whose thermal state is Gaussian
+(a :class:`~qalma.gaussian.BosonicGaussianSystem`, see
+:func:`~qalma.meanfield.rpa.rpa_structure.build_rpa_boson_system`). The
 reduced covariance matrix of any subset of sites gives the entropy and the
 negativity of the bosonic RPA state (see :func:`~qalma.meanfield.rpa.functions.rpa_entanglement_entropy`
 and :func:`~qalma.meanfield.rpa.functions.rpa_negativity`), as in the RPA of Matera, Rossignoli and Canosa
@@ -156,12 +158,17 @@ Hamiltonian is not positive definite, the RPA is unstable and a
 from .dynamic import rpa_dynamic_kernel
 from .functions import rpa_entanglement_entropy, rpa_negativity
 from .hybrid import effective_bath_modes, rpa_hybrid_state
-from .rpa import RPAGibbsDensityOperator, rpa_coupling_kernel, rpa_generator_correction
-from .rpa_structure import build_rpa_structure
+from .rpa import RPAGibbsDensityOperator, rpa_generator_correction
+from .rpa_structure import (
+    build_rpa_boson_system,
+    build_rpa_structure,
+    rpa_coupling_kernel,
+)
 from .utils import kubo_mori_susceptibility, local_boson_modes
 
 __all__ = [
     "RPAGibbsDensityOperator",
+    "build_rpa_boson_system",
     "build_rpa_structure",
     "effective_bath_modes",
     "kubo_mori_susceptibility",

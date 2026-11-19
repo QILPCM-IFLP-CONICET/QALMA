@@ -32,6 +32,7 @@ Subpackage reference
    io
    scalarprod
    meanfield
+   gaussian
    projections
    utils
 

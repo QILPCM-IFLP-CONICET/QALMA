@@ -39,7 +39,7 @@ documentation of :mod:`qalma.meanfield.rpa`.
 Three reductions are available:
 
 ``dynamic=False``
-   *Static* correction of the generator (the default of ``rpa=True``).
+   *Static* correction of the generator (the default).
    It is the cheapest one.
 
 ``dynamic=True``
@@ -55,13 +55,16 @@ Three reductions are available:
 Basic usage
 -----------
 
-The reductions are requested through the options of
-:meth:`~qalma.operators.states.gibbs.GibbsDensityOperator.partial_trace`:
+The reductions are computed by
+:class:`~qalma.meanfield.rpa.RPAGibbsDensityOperator`, a Gibbs state whose
+:meth:`~qalma.meanfield.rpa.RPAGibbsDensityOperator.partial_trace` includes
+the RPA. A plain :class:`~qalma.operators.states.gibbs.GibbsDensityOperator`
+only provides the mean-field reduction.
 
 .. code-block:: python
 
    from qalma import build_system
-   from qalma.operators.states.gibbs import GibbsDensityOperator
+   from qalma.meanfield.rpa import RPAGibbsDensityOperator
 
    system = build_system("chain lattice", "spin", L=8)
    H = system.global_operator("Hamiltonian")
@@ -69,24 +72,29 @@ The reductions are requested through the options of
 
    beta = 0.8
    k = (beta * (H - 0.5 * Sz)).simplify()
-   state = GibbsDensityOperator(k)
+   state = RPAGibbsDensityOperator(k)
 
    sites = frozenset({"1[0]", "1[1]"})
    corr = (system.site_operator("Sz", "1[0]")
            * system.site_operator("Sz", "1[1]")).simplify()
 
-   rho_mf = state.partial_trace(sites, exact=False)
-   rho_static = state.partial_trace(sites, rpa=True, exact=False)
-   rho_dynamic = state.partial_trace(sites, rpa=True, dynamic=True, exact=False)
+   rho_mf = state.partial_trace(sites, rpa=False, max_exact_sites=0)
+   rho_static = state.partial_trace(sites, max_exact_sites=0)
+   rho_dynamic = state.partial_trace(sites, dynamic=True, max_exact_sites=0)
 
    print(rho_dynamic.expect(corr))
 
 .. note::
 
-   By default (``exact=True``) the reduction of a small system is computed
-   exactly and the RPA is not used. This is the case of the chain of 8
-   sites above, so ``exact=False`` is needed to see the effect of the
-   approximation.
+   Reductions that involve at most ``max_exact_sites`` sites are computed
+   exactly, and then the RPA is not used. The default is
+   ``qalma.settings.MAXIMUM_GIBBS_EXACT_PARTIAL_TRACE`` (8 sites), which
+   includes the chain above, so ``max_exact_sites=0`` is needed to see the
+   effect of the approximation. The same option is available in
+   :meth:`~qalma.operators.states.gibbs.GibbsDensityOperator.partial_trace`.
+
+The approximate generator :math:`K_A'` itself is returned by
+:meth:`~qalma.meanfield.rpa.RPAGibbsDensityOperator.reduced_generator`.
 
 For this chain (:math:`\beta = 0.8`) the nearest-neighbour correlation
 :math:`\langle S^z_0 S^z_1\rangle` is:
@@ -110,19 +118,17 @@ Reusing the RPA data
 
 The part of the RPA that does not depend on the subsystem (the mean-field
 state, the coupling matrix, the local bases and bosonic modes) is stored by
-:class:`~qalma.meanfield.rpa.RPAGibbsDensityOperator`, so it is computed once
-when several subsystems are reduced:
+:class:`~qalma.meanfield.rpa.RPAGibbsDensityOperator` in ``rpa_structure``,
+so it is computed once when several subsystems are reduced:
 
 .. code-block:: python
 
-   from qalma.meanfield.rpa import RPAGibbsDensityOperator
-
    state = RPAGibbsDensityOperator(k, dynamic=True)
-   rho_a = state.partial_trace(frozenset({"1[0]", "1[1]"}), exact=False)
-   rho_b = state.partial_trace(frozenset({"1[4]", "1[5]"}), exact=False)  # reuses state.rpa_structure
+   rho_a = state.partial_trace(frozenset({"1[0]", "1[1]"}), max_exact_sites=0)
+   rho_b = state.partial_trace(frozenset({"1[4]", "1[5]"}), max_exact_sites=0)  # reuses state.rpa_structure
 
-In an ``RPAGibbsDensityOperator`` the options ``rpa=True`` and the default
-values of ``dynamic`` and ``hybrid`` are those given to the constructor.
+The default values of ``dynamic``, ``hybrid`` and ``hybrid_options`` are
+those given to the constructor, and can be overridden in each call.
 
 Hybrid reduction
 ----------------
@@ -136,7 +142,7 @@ of Fock states. The options are passed in ``hybrid_options`` (see
 .. code-block:: python
 
    rho = state.partial_trace(
-       sites, rpa=True, hybrid=True, exact=False,
+       sites, hybrid=True, max_exact_sites=0,
        hybrid_options={"n_gauss": 3, "n_fock": 4},
    )
 
@@ -162,6 +168,12 @@ bosonic RPA state:
 These are quantities of the bosonic RPA state, not of the spin state, and
 they are not defined when the mean-field state breaks a continuous symmetry
 (zero modes).
+
+The bosonic state is a :class:`~qalma.gaussian.BosonicGaussianSystem`
+(``state.rpa_structure.boson_system()``), whose modes are labelled by their
+sites. The same class represents any Gaussian bosonic state, built from a
+quadratic generator or from its matrix of contractions (see
+:mod:`qalma.gaussian`).
 
 Limitations
 -----------

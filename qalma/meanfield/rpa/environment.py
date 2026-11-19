@@ -10,11 +10,37 @@ from typing import Dict, List, Optional, Tuple
 import numpy as np
 from qutip import Qobj
 
+from qalma.gaussian.bogoliubov import bogoliubov_reduced, quadrature_map
+
 from .rpa_structure import RPAStructure, _split_sites
-from .utils import _quadrature_map
-from .zeromodes import _bogoliubov_reduced, _ZeroModes
+
+__all__ = ["environment_modes", "rpa_zero_modes"]
 
 LOGGER = logging.getLogger(__name__)
+
+
+@dataclass
+class _ZeroModes:
+    """Charges conjugate to the zero modes of the environment.
+
+    Attributes
+    ----------
+    e_coupling : numpy.ndarray
+        ``(nA, m)``: coupling ``B_mu = ... + e_coupling[mu, a] P_a`` of the
+        boundary operators to the charges.
+    c_drive : numpy.ndarray
+        ``(m, 2 n_reduced)``: coefficients of the drive of the charges on the
+        normal modes, as ``c_mat`` for the boundary operators.
+    kappa_eff : numpy.ndarray
+        Inverse covariance of the charges.
+    kappa : numpy.ndarray
+        Bare inverse covariance of the charges.
+    """
+
+    e_coupling: np.ndarray
+    c_drive: np.ndarray
+    kappa_eff: np.ndarray
+    kappa: np.ndarray
 
 
 @dataclass
@@ -75,15 +101,18 @@ def _environment_bogoliubov(
     static_modes = np.concatenate(
         [freqs <= structure.static_gap * (1.0 + 1e-6) for freqs in freqs_list]
     )
-    lam, t_mat, n_zero, zero_data = _bogoliubov_reduced(
-        h_mat, structure.zero_rtol, static_modes
-    )
+    try:
+        lam, t_mat, n_zero, zero_data = bogoliubov_reduced(
+            h_mat, structure.zero_rtol, static_modes
+        )
+    except ValueError as err:
+        raise ValueError(f"RPA of the environment: {err}") from err
     g_b = m_ae @ g_mat
     s_phi = np.hstack([g_b, g_b.conj()])
     c_mat = s_phi @ t_mat
     zero = None
     if zero_data is not None:
-        w_map = _quadrature_map(n_modes)
+        w_map = quadrature_map(n_modes)
         s_hat = s_phi @ w_map  # real rows of the operators in the quadratures
         zero = _ZeroModes(
             e_coupling=s_hat.real @ zero_data.s0p,
