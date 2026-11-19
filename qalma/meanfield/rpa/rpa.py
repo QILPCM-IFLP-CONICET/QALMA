@@ -335,7 +335,7 @@ class RPAGibbsDensityOperator(GibbsDensityOperator):
         return self.partial_trace(sites, **kwargs)
 
     def rpa_zero_modes(self, sites: Optional[frozenset] = None) -> int:
-        """Number of zero modes removed from the bosonic RPA problem.
+        """Return the number of zero modes removed from the bosonic RPA problem.
 
         See :func:`~qalma.meanfield.rpa.environment.rpa_zero_modes`.
         """

@@ -145,11 +145,11 @@ def bogoliubov_reduced(
     h_mat : numpy.ndarray
         Hermitian positive semidefinite matrix :math:`\mathcal{H}`.
     zero_rtol : float, optional
-        Eigenvalues of :math:`\\mathcal{H}` with absolute value below
-        ``zero_rtol`` times its norm are considered zero. Since the
-        mean-field state is self-consistent only up to the precision of its
-        solver, a soft mode below this threshold cannot be distinguished
-        from a zero mode. The default is 1e-5.
+        Eigenvalues of :math:`\mathcal{H}` with absolute value below
+        ``zero_rtol`` times its norm are considered zero. If ``h_mat``
+        comes from an approximate self-consistent solution (as the RPA
+        around a mean-field state), a soft mode below this threshold cannot
+        be distinguished from a zero mode. The default is 1e-5.
     static : numpy.ndarray, optional
         Boolean array with the bosons that are static (classical) modes.
         Their frequencies are tiny by construction, so the eigenvectors of

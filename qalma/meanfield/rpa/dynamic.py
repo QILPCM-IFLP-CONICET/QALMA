@@ -1,7 +1,4 @@
-"""
-Dynamic RPA.
-
-"""
+"""Dynamical RPA: imaginary-time kernel and generator correction."""
 
 import logging
 from typing import Dict, List, Optional, Tuple
@@ -15,6 +12,8 @@ from qalma.operators.basic import LocalOperator
 from .environment import _environment_bogoliubov
 from .rpa_structure import RPAStructure, _split_sites
 from .utils import _DEGENERACY_TOL
+
+__all__ = ["dynamic_generator_correction", "rpa_dynamic_kernel"]
 
 LOGGER = logging.getLogger(__name__)
 

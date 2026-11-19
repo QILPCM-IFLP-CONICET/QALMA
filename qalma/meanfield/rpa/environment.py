@@ -1,11 +1,8 @@
-"""
-Normal mode approximation of the environment.
-
-"""
+"""Bosonized environment of a subsystem in the RPA."""
 
 import logging
 from dataclasses import dataclass
-from typing import Dict, List, Optional, Tuple
+from typing import Dict, List, Optional
 
 import numpy as np
 from qutip import Qobj
@@ -14,7 +11,7 @@ from qalma.gaussian.bogoliubov import bogoliubov_reduced, quadrature_map
 
 from .rpa_structure import RPAStructure, _split_sites
 
-__all__ = ["environment_modes", "rpa_zero_modes"]
+__all__ = ["rpa_zero_modes"]
 
 LOGGER = logging.getLogger(__name__)
 
@@ -124,7 +121,7 @@ def _environment_bogoliubov(
 
 
 def rpa_zero_modes(structure: RPAStructure, sites: Optional[frozenset] = None) -> int:
-    """Number of zero modes removed from the bosonic RPA problem.
+    """Return the number of zero modes removed from the bosonic RPA problem.
 
     Parameters
     ----------
@@ -144,50 +141,3 @@ def rpa_zero_modes(structure: RPAStructure, sites: Optional[frozenset] = None) -
         return structure.boson_system().n_zero_modes
     environment = _environment_bogoliubov(structure, frozenset(sites))
     return 0 if environment is None else environment.n_zero
-
-
-def environment_modes(
-    structure: RPAStructure, sites: frozenset
-) -> Optional[Tuple[np.ndarray, np.ndarray, List[str], Dict[str, List[Qobj]]]]:
-    r"""Normal modes of the bosonized environment, coupled to ``sites``.
-
-    With the subsystem removed, the bosonized environment is a set of
-    independent normal modes of frequencies :math:`\omega_m>0` (in the
-    units of the generator), and the boundary operators of the subsystem are
-    :math:`B_\mu = \sum_m (C_{\mu m} b_m + C^*_{\mu m} b_m^\dagger)`.
-
-    Parameters
-    ----------
-    structure : RPAStructure
-        Subsystem-independent data of the RPA.
-    sites : frozenset
-        Sites of the subsystem ``A``.
-
-    Returns
-    -------
-    omega : numpy.ndarray
-        Frequencies :math:`\omega_m` of the normal modes.
-    coupling : numpy.ndarray
-        Complex matrix :math:`C_{\mu m}` of shape ``(nA, n_modes)``.
-    sites_a : list of str
-        Sites of ``A`` in the order used to index ``mu``.
-    local_basis : dict
-        Centred local basis of each site.
-
-    ``None`` is returned if ``A`` is not coupled to the environment.
-
-    Raises
-    ------
-    ValueError
-        If the RPA is unstable.
-    """
-    environment = _environment_bogoliubov(structure, sites)
-    if environment is None:
-        return None
-    positive = environment.lam > 0
-    return (
-        environment.lam[positive],
-        environment.c_mat[:, positive],
-        environment.sites_a,
-        environment.local_basis,
-    )

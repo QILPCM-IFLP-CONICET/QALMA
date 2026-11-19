@@ -76,8 +76,6 @@ system gives the entropies and negativities of the bosonic RPA state
    :members:
    :exclude-members: generator, sigma_mf, static_gap, m_full, local_basis, positions, zero_rtol
 
-.. autofunction:: qalma.meanfield.rpa.environment.environment_modes
-
 .. autofunction:: qalma.meanfield.rpa.environment.rpa_zero_modes
 
 .. autofunction:: qalma.meanfield.rpa.functions.rpa_entanglement_entropy
