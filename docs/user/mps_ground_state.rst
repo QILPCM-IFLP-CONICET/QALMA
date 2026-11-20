@@ -265,6 +265,32 @@ maximum around :math:`\beta = 4` and then decreases towards the
 ground-state value, so a comparison at a single moderate :math:`\beta` can be
 misleading.
 
+Saving and loading
+------------------
+
+The state can be stored in HDF5 files, alone or inside mixtures and
+containers, with :func:`~qalma.io.save_operators`:
+
+.. code-block:: python
+
+   from qalma.io import load_operators, save_operators
+
+   save_operators("ground_state.h5", {"rho": rho, "H": H})
+   loaded = load_operators("ground_state.h5")["rho"]
+
+The file holds the tensors of the MPS, the order of the sites, the
+Hamiltonian and the diagnostics of the DMRG, so the loaded state is
+identical to the stored one, and no dense matrix is written: a state of 24
+spins with ``chi_max=16`` takes about 240 kB. Nothing is stored as a
+Python pickle, so the file can be opened without ``allow_pickle``.
+
+A state whose DMRG did not run yet is stored with the Hamiltonian only, and the
+DMRG runs when the loaded state is needed. Give a ``seed`` in
+``dmrg_options`` if you want the same initial state, since otherwise it is
+random. The option ``mps0`` is not stored: ``save_operators`` warns about it
+with an ``IncompleteStateWarning``. The layout is described in
+:doc:`hdf5_format`.
+
 Limitations
 -----------
 
@@ -278,7 +304,6 @@ Limitations
 * Periodic boundary conditions are legitimate but expensive for an MPS, since
   they double the entanglement across every cut and add a long-range term
   to the MPO. Prefer open boundaries when you can.
-* The state cannot be stored in HDF5 files yet. It can be pickled.
 * ``to_qutip`` and ``to_qutip_operator`` return dense matrices and refuse to
   work with more than ``MPSGSOperator.MAX_DENSE_SITES`` sites (10 by default).
   Products of the state with operators, and sums with states of other types,

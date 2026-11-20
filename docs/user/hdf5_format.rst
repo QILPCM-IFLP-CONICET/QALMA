@@ -188,6 +188,9 @@ the positions of the sites of the subsystem.
    * - ``rpa_gibbs``
      - ``RPAGibbsDensityOperator``
      - as ``gibbs``, plus the attrs ``dynamic``, ``n_tau``, ``static_gap``, ``hybrid``, ``hybrid_options`` (JSON)
+   * - ``mps_gs``
+     - ``MPSGSOperator``
+     - attrs ``prefactor``, ``chi_max``, ``energy``, ``dmrg_options`` (JSON), ``converged``, ``sweeps``, ``max_truncation``, ``dropped`` (all but the first two optional); dataset ``order``; groups ``mps`` and ``hamiltonian`` (optional); dataset ``energies``
    * - ``gibbs_product``
      - ``GibbsProductDensityOperator``
      - attr ``prefactor``; factors (the local generators); dataset ``free_energies``
@@ -261,6 +264,31 @@ the string is the identity.
 the group ``k``; if ``normalized`` is true, :math:`\mathrm{Tr}\,e^{-K}=1`.
 Functions cannot be stored: a Gibbs state with symmetry projections is
 stored without them, and the attribute ``dropped`` lists what is missing.
+
+An ``mps_gs`` state is the pure state :math:`|\psi\rangle\langle\psi|`, with
+:math:`|\psi\rangle` a matrix product state, weighted by ``prefactor``.
+``order (n_sites,)`` is the position in the table of sites of the site at each
+position of the chain. The group ``mps`` holds the tensors
+:math:`A_p` of shape ``(chi_left, d, chi_right)``, with ``chi_left = 1`` for
+the first and ``chi_right = 1`` for the last:
+
+``shapes (n_sites, 3)``
+    The shape of each tensor.
+``tensors (N,)``
+    The entries of all the tensors, of type ``complex128``, one after the other
+    (C order), with :math:`N = \sum_p \prod \mathtt{shapes}[p]`.
+attr ``center``
+    Position of the orthogonality center of the MPS, or -1 if there is none.
+
+The group ``hamiltonian`` is the Hamiltonian the state is the ground state of.
+A state that was not computed yet (see :doc:`mps_ground_state`) is stored without
+the group ``mps``, and then the group ``hamiltonian`` is required: the
+state is computed, with ``dmrg_options`` and ``chi_max``, when it is needed.
+``converged``, ``sweeps``, ``max_truncation`` and ``energies`` (the energy at
+the end of every sweep) are the diagnostics of the DMRG, and ``energy`` is the
+ground state energy. The initial state of the DMRG (the option ``mps0``) is not
+stored, and ``dropped`` says so. Versions of QALMA that do not know this type
+refuse to load the file with an ``HDF5FormatError``.
 
 Dictionaries
 ------------
