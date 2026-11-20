@@ -189,7 +189,11 @@ def build_rpa_boson_system(structure: RPAStructure) -> BosonicGaussianSystem:
     state of the resulting quadratic bosonic generator is built with
     :func:`~qalma.gaussian.build_boson_system_from_quadratic_form`. Only the
     bosons with a non-vanishing frequency are included: the static modes are
-    classical fluctuations. The label of each mode is its site.
+    classical fluctuations, whose entropy as bosons of vanishing frequency
+    would diverge, so the state describes only the quantum (interband)
+    fluctuations. The zero modes, if any, are removed (see
+    :func:`~qalma.gaussian.bogoliubov_reduced`). The label of each mode is
+    its site.
 
     Parameters
     ----------

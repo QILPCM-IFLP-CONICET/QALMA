@@ -13,9 +13,11 @@ def _rpa_boson_system(structure: RPAStructure):
     if bosons.n_zero_modes:
         raise ValueError(
             f"The bosonic RPA of the whole system has {bosons.n_zero_modes} zero "
-            "mode(s) (a broken continuous symmetry): the covariance matrix of a "
-            "subsystem is not defined without restoring the symmetry. Use the "
-            "hybrid reduction instead."
+            "mode(s) (a broken continuous symmetry). Without them the Gaussian "
+            "state is not a physical state of the local modes, so its entropies "
+            "and negativities are not defined. Compute the entanglement from the "
+            "hybrid reduced states of a state with symmetry_projections instead "
+            "(see the section 'Zero modes' of the RPA user guide)."
         )
     return bosons
 
@@ -24,7 +26,7 @@ def rpa_entanglement_entropy(structure: RPAStructure, sites: frozenset) -> float
     r"""Bosonic RPA entropy of a subsystem, in bits.
 
     It is the von Neumann entropy of the reduced Gaussian state of the
-    bosons of ``sites`` (see
+    quantum (non-static) bosons of ``sites`` (see
     :meth:`~qalma.gaussian.BosonicGaussianSystem.entropy`). For a pure state
     (zero temperature) it is the entanglement entropy of the bipartition
     (``sites``, complement); otherwise it also includes the thermal entropy.
@@ -40,6 +42,11 @@ def rpa_entanglement_entropy(structure: RPAStructure, sites: frozenset) -> float
     -------
     float
         The entropy in bits.
+
+    Raises
+    ------
+    ValueError
+        If the bosonic RPA has zero modes.
     """
     bosons = _rpa_boson_system(structure)
     return bosons.entropy(bosons.modes_of(sites))
@@ -64,6 +71,11 @@ def rpa_negativity(
     -------
     float
         The negativity.
+
+    Raises
+    ------
+    ValueError
+        If the bosonic RPA has zero modes.
     """
     bosons = _rpa_boson_system(structure)
     if sites_c is None:
