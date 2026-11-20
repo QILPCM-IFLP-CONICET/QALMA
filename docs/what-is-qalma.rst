@@ -7,7 +7,7 @@ QALMA is a library that tries to connect two very popular and useful tools used 
 
   - **Algorithms**: Implementations of advanced algorithms like Quantum Monte Carlo (QMC), exact diagonalization, and density matrix renormalization group (DMRG).
   - **Libraries**: Modular libraries providing essential building blocks for developing new algorithms and simulation tools.
-  - **Frameworks**: Tools for setting up and managing large-scale simulations with support for parallel computing.
+  - **Frameworks**: Tools for setting up, running and storing simulations (HDF5 files with checkpoints).
   - **Interfaces**: User-friendly interfaces for configuring simulations and analyzing results.
 
 For more information, visit the ALPSCore website: https://alpscore.org

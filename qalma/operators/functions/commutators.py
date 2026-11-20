@@ -16,7 +16,6 @@ from qalma.operators.pauli import (
     is_pauli_sum,
 )
 from qalma.operators.simplify import _commutator_term_pairs, collect_nbody_terms
-from qalma.parallel import USE_PARALLEL, commutator_qalma_parallel
 
 # from qalma.operators.simplify import simplify_sum_operator
 
@@ -134,9 +133,7 @@ def commutator_qalma_serial(op_1: Operator, op_2: Operator) -> Operator:
     return iterable_to_operator(terms, system).simplify()
 
 
-_commutator_qalma_generic = (
-    commutator_qalma_parallel if USE_PARALLEL else commutator_qalma_serial
-)
+_commutator_qalma_generic = commutator_qalma_serial
 
 
 def commutator_qalma(op_1: Operator, op_2: Operator) -> Operator:
@@ -144,7 +141,7 @@ def commutator_qalma(op_1: Operator, op_2: Operator) -> Operator:
 
     Sums of Pauli strings are handled symbolically by
     :func:`qalma.operators.pauli.commutator_pauli`; any other combination
-    goes through the generic (serial or parallel) implementation.
+    goes through the generic implementation.
     """
     if is_pauli_sum(op_1) and is_pauli_sum(op_2):
         return commutator_pauli(op_1, op_2)
