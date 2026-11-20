@@ -316,7 +316,7 @@ class MPS:
 def _truncation_rank(
     s_vals: np.ndarray, chi_max: Optional[int] = None, cutoff: float = 0.0
 ) -> int:
-    """Number of Schmidt values to keep.
+    """Return the number of Schmidt values to keep.
 
     Keeps at most ``chi_max`` values, discarding the tail whose squared weight
     (relative to the total) is at most ``cutoff``. At least one value is kept.

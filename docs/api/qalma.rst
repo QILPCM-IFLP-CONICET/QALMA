@@ -33,6 +33,7 @@ Subpackage reference
    scalarprod
    meanfield
    gaussian
+   mps
    projections
    utils
 

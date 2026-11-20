@@ -14,6 +14,11 @@ that demonstrate QALMA's main features:
 * :doc:`../examples/example_chiral_variational_mf`: quadratic variational
   mean field for the chiral spin model (see also
   :doc:`meanfield_variational`).
+* :doc:`../examples/example_mps_ground_state`: ground states stored as matrix
+  product states: correlations in chains beyond exact diagonalization, the
+  order of the sites along the chain, two-dimensional lattices, and the
+  comparison with Gibbs states at low temperature (see also
+  :doc:`mps_ground_state`).
 
 .. note::
 
@@ -29,6 +34,7 @@ that demonstrate QALMA's main features:
    ../examples/example_heisenberg_evolution
    ../examples/example_maxent_evolution
    ../examples/example_chiral_variational_mf
+   ../examples/example_mps_ground_state
 
 Running the examples locally
 ----------------------------

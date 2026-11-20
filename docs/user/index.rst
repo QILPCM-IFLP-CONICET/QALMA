@@ -16,5 +16,6 @@ to build and simulate many-body quantum systems.
    hdf5_format
    meanfield_variational
    rpa
+   mps_ground_state
    configuration
    examples
