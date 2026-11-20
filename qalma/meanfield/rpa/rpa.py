@@ -64,7 +64,8 @@ def rpa_generator_correction(
         approximation. This builds dense matrices of the size of the Hilbert
         space of ``A``. The default is False.
     n_tau : int, optional
-        Number of imaginary-time quadrature nodes (dynamic only).
+        Initial number of imaginary-time quadrature nodes (dynamic only).
+        They are doubled until the correction converges.
 
     Returns
     -------
@@ -137,8 +138,8 @@ class RPAGibbsDensityOperator(GibbsDensityOperator):
         Use by default the dynamical RPA correction instead of the static
         one. The default is False.
     n_tau : int, optional
-        Number of imaginary-time quadrature nodes of the dynamical
-        correction. The default is 32.
+        Initial number of imaginary-time quadrature nodes of the dynamical
+        correction, which are doubled until it converges. The default is 32.
     static_gap : float, optional
         Frequency of the static bosons. The default is 1e-6.
     hybrid : bool, optional

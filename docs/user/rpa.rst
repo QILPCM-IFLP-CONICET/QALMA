@@ -105,7 +105,7 @@ Method                           Value
 Exact (QuTiP)                    -0.04906
 Mean field                       -0.05177
 RPA, static                      -0.05222
-RPA, dynamic                     -0.04940
+RPA, dynamic                     -0.04951
 RPA, hybrid (``n_gauss=3``)      -0.04977
 ===============================  ========
 
@@ -279,12 +279,44 @@ reduced state is
     Y = \int_{0<s'<s<1} ds\,ds'\; \Sigma_{\mu\nu}(s-s')\,
         e^{-K_{A,MF}}\,\delta e_\mu(s)\,\delta e_\nu(s') ,
 
-and the generator correction follows from inverting the derivative of the
-matrix exponential (Kubo-Mori) at first order in :math:`Y`:
-:math:`\delta K_{mn} = -Y_{mn}/w_{mn}`, with :math:`w_{mn} =
-(e^{-\epsilon_n}-e^{-\epsilon_m})/(\epsilon_m-\epsilon_n)` in the
-eigenbasis of :math:`K_{A,MF}`. In the limit where :math:`\delta e_\mu`
+so that :math:`e^{-K_A'} \simeq e^{-K_{A,MF}} + Y` at second order in the
+coupling. In the eigenbasis of :math:`K_{A,MF}` (eigenvalues
+:math:`\epsilon_m`), each term of :math:`Y_{ij}` goes through an
+intermediate level :math:`k`, and the terms are of two kinds:
+
+* *Secular* terms, with :math:`\epsilon_k \ge \min(\epsilon_i,
+  \epsilon_j)`. They contain the shifts of the levels, which grow with
+  :math:`\beta`, and must be exponentiated. They give a correction of the
+  generator, inverting the derivative of the matrix exponential
+  (Kubo-Mori): :math:`\delta K_{ij} = -Y^{\rm sec}_{ij}/w_{ij}`, with
+  :math:`w_{ij} = (e^{-\epsilon_j}-e^{-\epsilon_i})/(\epsilon_i-\epsilon_j)`.
+* *Admixture* terms, with :math:`\epsilon_k < \min(\epsilon_i,
+  \epsilon_j)`. They are the populations that the coupling to the
+  environment transfers from the level :math:`k` to higher levels. At low
+  temperature they are not small compared with :math:`e^{-\epsilon_i}`, so
+  they cannot be written as a small correction of the generator; they are
+  added to the density, with the weight of :math:`k` dressed by its
+  secular shift.
+
+The reduced generator is then
+:math:`K_A' = -\log[e^{-(K_{A,MF}+\delta K)} + \sum_k e^{-\epsilon'_k}
+R_k]`, with :math:`R_k = e^{\epsilon_k} Y^{\rm adm, k}` and
+:math:`\epsilon'_k = \epsilon_k + \delta K_{kk}`. Both forms coincide at
+second order. At high temperature the admixture is negligible and the
+correction is the first-order (Kubo-Mori) correction of the generator; at
+low temperature the admixture gives the populations of the excited states
+of :math:`A` due to its entanglement with the environment, so that the
+zero-temperature limit is reached. Correcting the generator at first order
+in all the terms instead makes :math:`\delta K` diverge as
+:math:`e^{\epsilon_m}` at low temperature, while resumming all of them in
+the logarithm compresses the level shifts and drives the result back to
+mean field as :math:`T \to 0`. In the limit where :math:`\delta e_\mu`
 commutes with :math:`K_{A,MF}` the static expression is recovered.
+
+The integral over :math:`u` is computed with a Gauss-Legendre quadrature of
+``n_tau`` nodes, which are doubled until the correction converges: at low
+temperature :math:`\Sigma(\tau)` varies on scales :math:`1/\omega` much
+shorter than the imaginary-time interval.
 
 Hybrid reduction
 ^^^^^^^^^^^^^^^^
@@ -380,10 +412,13 @@ Limitations
   and the bosons explore regions of the Fock space that have no counterpart
   in the local Hilbert space, so the results should be regarded as
   qualitative.
-* The generator corrections (``dynamic=False`` and ``True``) are
-  perturbative and are not reliable at low temperatures. In the chain above
-  at :math:`\beta = 3` both give worse values than the mean field, and the
-  hybrid reduction is the one intended for that regime.
+* The static correction is perturbative and is not reliable at low
+  temperatures. The dynamical correction reaches the zero-temperature limit
+  (in the fully connected models with :math:`n = 6` sites it reproduces the
+  pair entanglement of the ground state, provided the broken symmetries are
+  restored), but, as any Gaussian approximation, it fails close to the
+  critical temperature of the mean field, where it can predict spurious
+  entanglement.
 * If the bosonic Hamiltonian is not positive definite, the RPA is unstable
   and a ``ValueError`` is raised.
 * If the mean-field state breaks a continuous symmetry, the zero modes are

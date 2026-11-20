@@ -90,6 +90,12 @@ Mean-field and RPA
   the reduction is computed; ``0`` always uses the approximation. It also gives the entropies and negativities of the
   bosonic RPA state (``rpa_entropy``, ``rpa_negativity``) and handles zero
   modes (``rpa_zero_modes``).
+* The dynamical RPA correction separates the secular terms (level shifts,
+  exponentiated as a correction of the generator) from the admixture terms
+  (populations transferred to excited levels, added to the density). The
+  previous first-order correction of the generator diverged at low
+  temperature; the correction now reaches the zero-temperature limit. The
+  imaginary-time quadrature is adaptive (``n_tau`` is its initial size).
 * The entropies and negativities of the bosonized RPA (``rpa_entropy``,
   ``rpa_negativity``) describe the quantum fluctuations: the static
   (classical) modes are left out. With zero modes they raise a

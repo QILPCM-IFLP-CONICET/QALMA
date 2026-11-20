@@ -228,6 +228,83 @@ def test_dynamic_equals_static_for_commuting_generator():
     assert np.linalg.norm((k_static - k_dynamic).full()) < 1e-6
 
 
+def _lipkin_state(field, temperature, names=("Sx", "Sy"), n_sites=6, **kwargs):
+    """Fully connected (Lipkin) spin-1/2 model with couplings scaled as 1/n.
+
+    ``H = b S_z - (v/n) sum_{i != j} sum_a s^a_i s^a_j`` with ``v = 1`` and
+    ``a`` in ``names``. Returns the RPA state, its pair of sites and the
+    exact reduced state of the pair.
+    """
+    system = build_system("chain lattice", "spin", L=n_sites, J=1, local_S=0.5)
+    sites = list(system.sites)
+
+    def op(name, site):
+        return system.site_operator(f"{name}@{site}")
+
+    hamiltonian = field * sum(op("Sz", site) for site in sites)
+    for i, site_i in enumerate(sites):
+        for site_j in sites[i + 1 :]:
+            for name in names:
+                hamiltonian = hamiltonian - (2.0 / n_sites) * (
+                    op(name, site_i) * op(name, site_j)
+                )
+    k_op = (hamiltonian / temperature).simplify()
+    state = RPAGibbsDensityOperator(
+        k_op, system, meanfield=variational_quadratic_mfa(k_op.flat()), **kwargs
+    )
+    pair = frozenset(sites[:2])
+    exact = state.to_qutip_operator().partial_trace(pair).to_qutip(tuple(sorted(pair)))
+    return state, pair, exact / exact.tr()
+
+
+def _pair_distance(state, pair, exact, **options):
+    """Trace distance between the approximate and exact states of ``pair``."""
+    rho = state.partial_trace(pair, max_exact_sites=0, **options)
+    rho = rho.to_qutip(tuple(sorted(pair)))
+    return 0.5 * (rho / rho.tr() - exact).norm("tr")
+
+
+def test_dynamic_rpa_at_low_temperature():
+    """In the normal phase of the x-coupled Lipkin model the RPA correlations
+    do not vanish at T = 0. The dynamical correction stays finite, and close
+    to the exact state, down to the ground state."""
+    for temperature in (0.05, 0.005):
+        state, pair, exact = _lipkin_state(1.5, temperature, names=("Sx",))
+        mean_field = _pair_distance(state, pair, exact, rpa=False)
+        dynamic = _pair_distance(state, pair, exact, dynamic=True)
+        assert np.isfinite(dynamic)
+        assert dynamic < 1e-3
+        assert dynamic < 0.1 * mean_field
+
+
+def test_dynamic_rpa_vanishes_in_the_saturated_xx_phase():
+    """In the normal phase of the XX Lipkin model the ground state is the
+    saturated mean-field state, and the RPA corrections vanish at T -> 0."""
+    state, pair, exact = _lipkin_state(1.5, 0.005)
+    assert _pair_distance(state, pair, exact, dynamic=True) < 1e-8
+
+
+def test_dynamic_rpa_at_high_temperature():
+    """At high temperature the dynamical correction is the best reduction."""
+    for field in (0.5, 1.5):
+        state, pair, exact = _lipkin_state(field, 1.0)
+        mean_field = _pair_distance(state, pair, exact, rpa=False)
+        static = _pair_distance(state, pair, exact)
+        dynamic = _pair_distance(state, pair, exact, dynamic=True)
+        assert dynamic < 0.25 * static
+        assert static < 0.6 * mean_field
+
+
+def test_dynamic_rpa_quadrature_is_adaptive():
+    """At low temperature the quadrature is refined from any starting size."""
+    results = []
+    for n_tau in (4, 128):
+        state, pair, exact = _lipkin_state(1.5, 0.002, names=("Sx",), n_tau=n_tau)
+        rho = state.partial_trace(pair, max_exact_sites=0, dynamic=True)
+        results.append(rho.to_qutip(tuple(sorted(pair))))
+    assert (results[0] - results[1]).norm("tr") < 1e-4
+
+
 def test_dynamic_corrects_adjacent_bond():
     """The dynamical term renormalizes the coupling between adjacent sites."""
     system = build_spin_chain(10, field=0.3)
