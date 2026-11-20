@@ -165,9 +165,22 @@ bosonic RPA state:
    neg = state.rpa_negativity(frozenset({"1[0]"}), frozenset({"1[1]"}))
    state.rpa_zero_modes(sites)      # number of zero modes
 
-These are quantities of the bosonic RPA state, not of the spin state, and
-they are not defined when the mean-field state breaks a continuous symmetry
-(zero modes).
+These are quantities of the bosonic RPA state, not of the spin state. Two
+kinds of modes are left out of it:
+
+* The *static* modes (the diagonal operators of each site, and the pairs of
+  degenerate local levels) are classical fluctuations: as bosons of vanishing
+  frequency their entropy would diverge. They are always excluded, so that
+  the entropy and the negativity describe only the quantum (interband)
+  fluctuations around the mean-field state. The static modes are included
+  in the reductions of a subsystem, which only need their static response.
+* The *zero modes* (Goldstone modes of a broken continuous symmetry) are
+  removed from the bosonic problem. Without them the Gaussian state is not
+  a physical state of the local modes (its reduced covariance matrices
+  violate the uncertainty relations), so the bosonic entropy and negativity
+  raise a ``ValueError`` when there are zero modes. In that case the
+  entanglement is computed from the reduced states of the spins, as
+  described in :ref:`rpa-zero-modes`.
 
 The bosonic state is a :class:`~qalma.gaussian.BosonicGaussianSystem`
 (``state.rpa_structure.boson_system()``), whose modes are labelled by their
@@ -289,6 +302,8 @@ the generator corrections fail. The symmetry restoration is the one of the
 Gibbs state (``symmetry_projections``), which for the parity is the mixture
 of the two broken-symmetry branches.
 
+.. _rpa-zero-modes:
+
 Zero modes
 ^^^^^^^^^^
 
@@ -302,12 +317,39 @@ orbit, with the ``symmetry_projections`` of the state (for instance,
 ``project_conserved_quantity`` for a U(1) symmetry). The thermal
 fluctuations of the charge :math:`P` are included in the hybrid reduction as
 a static Gaussian field that couples to the subsystem and drives the bath.
-The entropies and negativities of the full bosonization are not defined with
-zero modes, since the covariance of a subsystem is not finite. A mean-field
-state that breaks the symmetry in the subsystem pins the orientation of the
-environment, so that in many cases the environment has only a soft mode.
-:func:`~qalma.meanfield.rpa.environment.rpa_zero_modes` counts the zero
-modes.
+A mean-field state that breaks the symmetry in the subsystem pins the
+orientation of the environment, so that in many cases the environment has
+only a soft mode. :func:`~qalma.meanfield.rpa.environment.rpa_zero_modes`
+counts the zero modes.
+
+This is the treatment of the mean field plus RPA of Canosa, Matera and
+Rossignoli (Phys. Rev. A 76, 022310; arXiv:1012.4762) for a broken continuous
+symmetry: the Gaussian (RPA) approximation is applied only to the intrinsic
+variables, the orientation is integrated exactly, and the conserved charge
+has Gaussian thermal fluctuations. The RPA correction stays finite when the
+frequency of the zero mode vanishes. The three ingredients are combined in
+the hybrid reduction with the ``symmetry_projections`` of the state, whose
+reduced states of the spins give the entanglement measures:
+
+.. code-block:: python
+
+   from functools import partial
+
+   from qalma.projections.symmetries import project_conserved_quantity
+
+   state = RPAGibbsDensityOperator(
+       k, symmetry_projections=[partial(project_conserved_quantity, op_name="Sz")]
+   )
+   rho = state.partial_trace(
+       sites, hybrid=True, max_exact_sites=0, hybrid_options={"n_gauss": 3}
+   )
+
+On a subsystem, the average over the orbit of the symmetry is the average
+over the rotations of the subsystem, which is what the projection computes.
+The full bosonization has no orientation integral: removing the zero mode
+fixes the orientation sharply, and the resulting Gaussian state is not a
+physical state of the local modes. Its entropies and negativities are
+therefore not defined with zero modes.
 
 Full bosonization
 ^^^^^^^^^^^^^^^^^
@@ -321,6 +363,9 @@ negativity of the bosonic RPA state (see
 :func:`~qalma.meanfield.rpa.functions.rpa_entanglement_entropy` and
 :func:`~qalma.meanfield.rpa.functions.rpa_negativity`), as in the RPA of
 Matera, Rossignoli and Canosa (Phys. Rev. A 82, 052332; arXiv:1009.1750).
+Only the bosons with a non-vanishing frequency are included: the static
+modes are classical fluctuations and are left out, so these quantities
+describe the quantum fluctuations around the mean-field state.
 The populations of the local mean-field states are obtained from the local
 mean-field generators, so that the zero temperature limit can be reached.
 
@@ -344,7 +389,12 @@ Limitations
 * If the mean-field state breaks a continuous symmetry, the zero modes are
   removed and the symmetry has to be restored with the
   ``symmetry_projections`` of the state (for instance
-  ``project_conserved_quantity`` for a U(1) symmetry).
+  ``project_conserved_quantity`` for a U(1) symmetry). The entropies and
+  negativities of the full bosonization are then not defined; the
+  entanglement is computed from the hybrid reduced states (see
+  :ref:`rpa-zero-modes`).
+* The entropies and negativities of the full bosonization leave out the
+  static (classical) modes.
 
 See also :doc:`meanfield_variational` and the API reference
 :doc:`/api/meanfield`.

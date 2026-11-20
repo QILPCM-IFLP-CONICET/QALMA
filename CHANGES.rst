@@ -90,6 +90,13 @@ Mean-field and RPA
   the reduction is computed; ``0`` always uses the approximation. It also gives the entropies and negativities of the
   bosonic RPA state (``rpa_entropy``, ``rpa_negativity``) and handles zero
   modes (``rpa_zero_modes``).
+* The entropies and negativities of the bosonized RPA (``rpa_entropy``,
+  ``rpa_negativity``) describe the quantum fluctuations: the static
+  (classical) modes are left out. With zero modes they raise a
+  ``ValueError``; the entanglement is then computed from the hybrid reduced
+  states with ``symmetry_projections``, as in the mean field plus RPA
+  treatment of a broken continuous symmetry (orientation integrated exactly,
+  Gaussian intrinsic variables).
 * Only the Gaussian truncation is implemented; see :ref:`rpa` for its
   limitations.
 

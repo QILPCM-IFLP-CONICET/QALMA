@@ -66,7 +66,9 @@ class BosonicGaussianSystem:
         from a quadratic form.
     n_zero_modes : int
         Number of zero modes removed from the generator. If it is not zero,
-        the contractions describe the sector with fixed zero modes, and the
+        the contractions describe the sector with fixed zero modes, which in
+        general is not a physical state of the original modes (its reduced
+        covariance matrices may violate the uncertainty relations), and the
         entropies and negativities are not defined.
     """
 
@@ -129,8 +131,9 @@ class BosonicGaussianSystem:
         """Raise if the generator had zero modes."""
         if self.n_zero_modes:
             raise ValueError(
-                f"The generator has {self.n_zero_modes} zero mode(s): the "
-                "covariance matrix of a subset of modes is not finite."
+                f"The generator has {self.n_zero_modes} zero mode(s): without "
+                "them the contractions are not those of a physical state of the "
+                "modes."
             )
 
     def entropy(self, modes: Optional[Sequence[int]] = None) -> float:

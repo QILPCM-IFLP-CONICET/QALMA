@@ -17,9 +17,12 @@ The reductions are computed by :class:`RPAGibbsDensityOperator`:
 
 The bosonization of the whole system (:func:`build_rpa_boson_system`) gives
 the entropies and negativities of the bosonic RPA state
-(:func:`rpa_entanglement_entropy`, :func:`rpa_negativity`). The formulation,
-the treatment of zero modes and the limitations of the method are described
-in the user guide (:ref:`rpa-formulation`).
+(:func:`rpa_entanglement_entropy`, :func:`rpa_negativity`), which describe
+the quantum fluctuations (the static modes are left out) and are not defined
+with zero modes. With a broken continuous symmetry, the entanglement is
+computed from the hybrid reduced states with the ``symmetry_projections`` of
+the state. The formulation, the treatment of zero modes and the limitations of
+the method are described in the user guide (:ref:`rpa-formulation`).
 """
 
 from .dynamic import rpa_dynamic_kernel

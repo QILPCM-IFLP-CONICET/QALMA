@@ -1,5 +1,7 @@
 """Tests for the RPA reduction of Gibbs states."""
 
+from functools import partial
+
 import numpy as np
 import pytest
 import qutip
@@ -18,6 +20,7 @@ from qalma.meanfield.rpa import (
 from qalma.meanfield.rpa.rpa_structure import _split_sites
 from qalma.model import build_spin_chain, build_system
 from qalma.operators.states.gibbs import GibbsDensityOperator
+from qalma.projections.symmetries import project_conserved_quantity
 
 PAULI = {
     "0": qutip.qeye(2),
@@ -648,6 +651,49 @@ def test_zero_modes_of_the_xxz_pair():
     state, site_a, site_b = _pair_state(0.5, 1.5, 40.0, jy=1.0)
     assert state.rpa_zero_modes() == 0
     assert abs(state.rpa_entropy(frozenset([site_a]))) < 1e-6
+
+
+def test_unphysical_gaussian_state_without_zero_modes():
+    """Removing the zero mode leaves contractions that violate the uncertainty
+    relations on a single site, which is why the Gaussian measures are rejected."""
+    state, site_a, _ = _pair_state(0.5, 0.5, 40.0, jy=1.0)
+    bosons = state.rpa_structure.boson_system()
+    assert bosons.n_zero_modes == 1
+    sigma = bosons.covariance_matrix(bosons.modes_of([site_a]))
+    assert np.sqrt(np.linalg.det(sigma)) < 0.5 - 1e-3
+    with pytest.raises(ValueError, match="zero mode"):
+        bosons.entropy(bosons.modes_of([site_a]))
+    with pytest.raises(ValueError, match="symmetry_projections"):
+        state.rpa_negativity(frozenset([site_a]))
+
+
+def test_hybrid_with_symmetry_projection_restores_the_xxz_pair():
+    """With a broken U(1) symmetry, the entanglement follows from the hybrid
+    reduced state with the symmetry projection (orientation integrated)."""
+    state, site_a, _ = _pair_state(0.5, 0.5, 40.0, jy=1.0)
+    projection = partial(project_conserved_quantity, op_name="Sz")
+    state = RPAGibbsDensityOperator(
+        state.k,
+        state.system,
+        meanfield=state.meanfield,
+        symmetry_projections=[projection],
+    )
+    sites_a = frozenset([site_a])
+    block = (site_a,)
+    exact = state.to_qutip_operator().partial_trace(sites_a).to_qutip(block)
+    exact = exact / exact.tr()
+
+    def reduced(**options):
+        rho = state.partial_trace(sites_a, max_exact_sites=0, **options)
+        rho = rho.to_qutip(block)
+        return rho / rho.tr()
+
+    hybrid, mean_field = reduced(hybrid=True), reduced(rpa=False)
+    assert abs(_entropy_bits(exact.full()) - 1.0) < 1e-6
+    assert abs(_entropy_bits(hybrid.full()) - 1.0) < 0.1
+    assert 0.5 * (hybrid - exact).norm("tr") < 0.6 * (
+        0.5 * (mean_field - exact).norm("tr")
+    )
 
 
 def test_static_modes_are_not_zero_modes():
