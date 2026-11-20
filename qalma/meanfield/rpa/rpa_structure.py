@@ -128,6 +128,7 @@ class RPAStructure:
         default_factory=dict, repr=False
     )
     _boson_system: Optional[BosonicGaussianSystem] = field(default=None, repr=False)
+    _global_modes: Optional[Any] = field(default=None, repr=False)
     _spectra: Optional[Dict[str, Tuple[np.ndarray, np.ndarray]]] = field(
         default=None, repr=False
     )

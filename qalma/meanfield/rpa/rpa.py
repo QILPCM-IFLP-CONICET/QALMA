@@ -26,7 +26,7 @@ from qalma.operators.states.register_ops._gibbs import _inherit_gibbs_arithmetic
 
 from .bosonized import rpa_bosonized_state
 from .dynamic import _dynamic_correction
-from .environment import rpa_zero_modes
+from .environment import ENVIRONMENTS, environment_modes, rpa_zero_modes, static_kernel
 from .functions import rpa_entanglement_entropy, rpa_negativity
 from .hybrid import rpa_hybrid_state
 from .rpa_structure import RPAStructure, build_rpa_structure, rpa_coupling_kernel
@@ -43,6 +43,7 @@ def rpa_generator_correction(
     sites: frozenset,
     dynamic: bool = False,
     n_tau: int = 32,
+    environment: str = "isolated",
 ) -> Optional[Operator]:
     r"""RPA correction :math:`K_{A,RPA}` to the mean-field reduced generator.
 
@@ -67,6 +68,10 @@ def rpa_generator_correction(
     n_tau : int, optional
         Initial number of imaginary-time quadrature nodes (dynamic only).
         They are doubled until the correction converges.
+    environment : str, optional
+        Origin of the correlations of the environment: ``"isolated"``
+        (default) or ``"global"`` (see
+        :func:`~qalma.meanfield.rpa.environment.environment_modes`).
 
     Returns
     -------
@@ -81,9 +86,16 @@ def rpa_generator_correction(
     """
     system = structure.system
     if dynamic:
-        return _dynamic_correction(k_mf, structure, sites, n_tau)
+        return _dynamic_correction(k_mf, structure, sites, n_tau, environment)
 
-    sigma, local_basis, sites_a = rpa_coupling_kernel(structure, sites)
+    if environment == "isolated":
+        sigma, local_basis, sites_a = rpa_coupling_kernel(structure, sites)
+    else:
+        modes = environment_modes(structure, sites, environment)
+        if modes is None:
+            return None
+        sigma = static_kernel(modes)
+        local_basis, sites_a = modes.local_basis, modes.sites_a
     if sigma.size == 0 or not np.any(np.abs(sigma) > 1e-14):
         return None
     d_ops = [
@@ -154,6 +166,15 @@ class RPAGibbsDensityOperator(GibbsDensityOperator):
         problems, which are removed (see :func:`qalma.gaussian.bogoliubov_reduced`). The
         broken symmetry associated with them must be restored with the
         ``symmetry_projections`` of the state. The default is 1e-5.
+    environment : str, optional
+        Origin of the correlations of the environment in the static and
+        dynamical corrections. ``"isolated"`` (default) bosonizes, for each
+        subsystem, the environment with the subsystem removed. ``"global"``
+        takes them from the bosonization of the whole system (J. M. Matera's
+        thesis, chapter 6), which is computed once and shared by all the
+        subsystems: it is cheaper for large systems, but it includes the
+        fluctuations of the subsystem itself fed back through the
+        environment, which makes it less accurate close to instabilities.
     """
 
     def __init__(
@@ -170,6 +191,7 @@ class RPAGibbsDensityOperator(GibbsDensityOperator):
         hybrid: bool = False,
         hybrid_options: Optional[dict] = None,
         zero_rtol: float = _ZERO_MODE_RTOL,
+        environment: str = "isolated",
     ):
         super().__init__(
             k,
@@ -185,6 +207,11 @@ class RPAGibbsDensityOperator(GibbsDensityOperator):
         self.hybrid = hybrid
         self.hybrid_options = hybrid_options
         self.zero_rtol = zero_rtol
+        if environment not in ENVIRONMENTS:
+            raise ValueError(
+                f"environment must be one of {ENVIRONMENTS}, not {environment!r}."
+            )
+        self.environment = environment
         self._rpa_structure: Optional[RPAStructure] = None
 
     @property
@@ -204,7 +231,11 @@ class RPAGibbsDensityOperator(GibbsDensityOperator):
         return self._rpa_structure
 
     def reduced_generator(
-        self, sites: frozenset, rpa: bool = True, dynamic: Optional[bool] = None
+        self,
+        sites: frozenset,
+        rpa: bool = True,
+        dynamic: Optional[bool] = None,
+        environment: Optional[str] = None,
     ) -> Operator:
         r"""Approximate generator :math:`K_A'` of the reduced state of ``sites``.
 
@@ -220,6 +251,10 @@ class RPAGibbsDensityOperator(GibbsDensityOperator):
         dynamic : bool, optional
             Use the dynamical correction. If ``None`` (default), use the value
             given when the state was built.
+        environment : str, optional
+            Origin of the correlations of the environment (``"isolated"`` or
+            ``"global"``). If ``None`` (default), use the value given when
+            the state was built.
 
         Returns
         -------
@@ -229,11 +264,15 @@ class RPAGibbsDensityOperator(GibbsDensityOperator):
         sites = frozenset(sites)
         k_mf, has_boundary = gibbs_meanfield_generator(self, sites)
         if rpa and has_boundary:
-            return self._add_rpa_correction(k_mf, sites, dynamic)
+            return self._add_rpa_correction(k_mf, sites, dynamic, environment)
         return k_mf
 
     def _add_rpa_correction(
-        self, k_mf: Operator, sites: frozenset, dynamic: Optional[bool]
+        self,
+        k_mf: Operator,
+        sites: frozenset,
+        dynamic: Optional[bool],
+        environment: Optional[str] = None,
     ) -> Operator:
         """Add the RPA correction to the mean-field generator ``k_mf``."""
         correction = rpa_generator_correction(
@@ -242,6 +281,7 @@ class RPAGibbsDensityOperator(GibbsDensityOperator):
             sites,
             dynamic=self.dynamic if dynamic is None else dynamic,
             n_tau=self.n_tau,
+            environment=self.environment if environment is None else environment,
         )
         if correction is None:
             return k_mf
@@ -255,6 +295,7 @@ class RPAGibbsDensityOperator(GibbsDensityOperator):
         dynamic: Optional[bool] = None,
         hybrid: Optional[bool] = None,
         hybrid_options: Optional[dict] = None,
+        environment: Optional[str] = None,
     ) -> DensityOperatorProtocol:
         """Compute the partial trace over the complement of ``sites``.
 
@@ -286,11 +327,23 @@ class RPAGibbsDensityOperator(GibbsDensityOperator):
         hybrid_options : dict, optional
             Options of :func:`rpa_hybrid_state`. If ``None``, use the ones
             given when the state was built.
+        environment : str, optional
+            Origin of the correlations of the environment in the static and
+            dynamical corrections: ``"isolated"`` (the environment with the
+            subsystem removed, one Bogoliubov transformation per subsystem)
+            or ``"global"`` (the bosonization of the whole system, computed
+            once). If ``None`` (default), use the value given when the state
+            was built. The hybrid reduction always uses ``"isolated"``.
 
         Returns
         -------
         DensityOperatorProtocol
             The reduced density operator.
+
+        Raises
+        ------
+        ValueError
+            If the hybrid reduction is requested with ``environment="global"``.
         """
         if isinstance(sites, SystemDescriptor):
             sites = frozenset(sites.sites)
@@ -305,6 +358,12 @@ class RPAGibbsDensityOperator(GibbsDensityOperator):
             return result
 
         hybrid = self.hybrid if hybrid is None else hybrid
+        environment = self.environment if environment is None else environment
+        if rpa and hybrid and environment != "isolated":
+            raise ValueError(
+                "The hybrid reduction needs the environment with the subsystem "
+                'removed: use environment="isolated".'
+            )
         subsystem = self.system.subsystem(sites)
         k_mf, has_boundary = gibbs_meanfield_generator(self, sites)
         if not (rpa and has_boundary):
@@ -322,7 +381,7 @@ class RPAGibbsDensityOperator(GibbsDensityOperator):
                 prefactor=self.prefactor,
             )
         else:
-            k_reduced = self._add_rpa_correction(k_mf, sites, dynamic)
+            k_reduced = self._add_rpa_correction(k_mf, sites, dynamic, environment)
             result = GibbsDensityOperator(
                 k_reduced, subsystem, prefactor=self.prefactor
             ).to_qutip_operator()
@@ -417,6 +476,7 @@ class RPAGibbsDensityOperator(GibbsDensityOperator):
             hybrid=self.hybrid,
             hybrid_options=self.hybrid_options,
             zero_rtol=self.zero_rtol,
+            environment=self.environment,
         )
         new_state._rpa_structure = self._rpa_structure
         return new_state

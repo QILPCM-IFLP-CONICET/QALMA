@@ -551,3 +551,13 @@ def test_low_level_functions(tmp_path):
         context = HDF5Context.open(h5file)
         loaded = read_operator(h5file["my/own/layout/h"], context)
     assert check_operator_equality(as_qutip(loaded), as_qutip(HAMILTONIAN))
+
+
+def test_rpa_environment_is_stored(tmp_path):
+    state = RPAGibbsDensityOperator(HAMILTONIAN, SYSTEM, environment="global")
+    assert roundtrip(state, tmp_path).environment == "global"
+    # files without the attribute use the default
+    filename = tmp_path / "operator.h5"
+    with h5py.File(filename, "a") as h5file:
+        del h5file["operators/op"].attrs["environment"]
+    assert load_operators(filename)["op"].environment == "isolated"

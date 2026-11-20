@@ -188,6 +188,42 @@ sites. The same class represents any Gaussian bosonic state, built from a
 quadratic generator or from its matrix of contractions (see
 :mod:`qalma.gaussian`).
 
+Correlations of the environment
+-------------------------------
+
+The static and dynamical corrections couple the operators of the subsystem
+to the correlations of the environment,
+:math:`K_{A,RPA} \sim \sum_{\mu\nu} \langle Q^E_\mu Q^E_\nu\rangle P^A_\mu
+P^A_\nu`. The option ``environment`` selects where these correlations come
+from:
+
+* ``"isolated"`` (default): the environment is bosonized with the subsystem
+  removed. This needs a Bogoliubov transformation for each subsystem.
+* ``"global"``: the correlations are those of the Gaussian state of the
+  bosonization of the whole system, as in chapter 6 of J. M. Matera's thesis.
+  The Bogoliubov transformation is computed once, stored in
+  ``state.rpa_structure``, and shared by all the subsystems.
+
+.. code-block:: python
+
+   state = RPAGibbsDensityOperator(k, dynamic=True, environment="global")
+   rho = state.partial_trace(sites, max_exact_sites=0)
+
+In both cases :math:`K_{A,RPA}` is Hermitian, so the reduced state
+:math:`e^{-K_{A,MF}-K_{A,RPA}}` is positive. The global correlations include
+the fluctuations of the subsystem itself fed back through the environment,
+so they are somewhat less accurate. In the normal phase of the fully
+connected models with :math:`n = 6`, the trace distance of the dynamical
+pair state to the exact one is :math:`\sim 2\times 10^{-3}` with the
+global environment and :math:`\sim 10^{-4}` with the isolated one, and the
+difference grows close to an instability (:math:`1.4\times 10^{-2}` against
+:math:`9\times 10^{-4}`); the concurrences differ by a few percent at most.
+In return, the cost per subsystem grows much more slowly with the size of the
+system: for the dynamical reduction of a pair in a fully connected chain,
+about 20 ms (global) against 40 ms (isolated) with 80 spins, and 50 ms against
+200 ms with 160 spins. The hybrid reduction always uses the isolated
+environment.
+
 Bosonized reduced states
 ------------------------
 

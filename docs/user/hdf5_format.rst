@@ -187,7 +187,7 @@ the positions of the sites of the subsystem.
      - attrs ``prefactor``, ``normalized``, ``free_energy``, ``dropped``; groups ``k`` and ``meanfield`` (optional)
    * - ``rpa_gibbs``
      - ``RPAGibbsDensityOperator``
-     - as ``gibbs``, plus the attrs ``dynamic``, ``n_tau``, ``static_gap``, ``hybrid``, ``hybrid_options`` (JSON)
+     - as ``gibbs``, plus the attrs ``dynamic``, ``n_tau``, ``static_gap``, ``hybrid``, ``hybrid_options`` (JSON), ``environment`` (``isolated`` if absent)
    * - ``mps_gs``
      - ``MPSGSOperator``
      - attrs ``prefactor``, ``chi_max``, ``energy``, ``dmrg_options`` (JSON), ``converged``, ``sweeps``, ``max_truncation``, ``dropped`` (all but the first two optional); dataset ``order``; groups ``mps`` and ``hamiltonian`` (optional); dataset ``energies``

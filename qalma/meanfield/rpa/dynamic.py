@@ -9,7 +9,7 @@ from qutip import Qobj
 from qalma.operators import Operator, QutipOperator
 from qalma.operators.basic import LocalOperator
 
-from .environment import _environment_bogoliubov
+from .environment import environment_modes
 from .rpa_structure import RPAStructure, _split_sites
 from .utils import _DEGENERACY_TOL
 
@@ -42,6 +42,7 @@ def _dynamic_correction(
     structure: RPAStructure,
     sites: frozenset,
     n_tau: int,
+    environment: str = "isolated",
 ) -> Optional[Operator]:
     r"""Dynamical RPA correction to the mean-field generator.
 
@@ -51,22 +52,22 @@ def _dynamic_correction(
     :math:`1/\omega` much shorter than the imaginary-time interval.
     """
     system = structure.system
-    environment = _environment_bogoliubov(structure, sites)
-    if environment is None:
+    modes = environment_modes(structure, sites, environment)
+    if modes is None:
         return None
     block = tuple(sorted(sites))
     k0_qobj: Qobj = k_mf.to_qutip(block)
     k0 = k0_qobj.full()
     d_ops = [
         LocalOperator(site, e, system).to_qutip(block).full()
-        for site in environment.sites_a
-        for e in environment.local_basis[site]
+        for site in modes.sites_a
+        for e in modes.local_basis[site]
     ]
 
     def correction(n_nodes: int) -> Optional[np.ndarray]:
         """Return the correction computed with ``n_nodes`` nodes, if any."""
         nodes, weights = _gauss_legendre(n_nodes)
-        sigma_tau = _kernel_at(environment, nodes)
+        sigma_tau = _kernel_at(modes, nodes)
         if not np.any(np.abs(sigma_tau) > 1e-14):
             return None
         return dynamic_generator_correction(k0, d_ops, sigma_tau, nodes, weights)
@@ -121,6 +122,7 @@ def rpa_dynamic_kernel(
     structure: RPAStructure,
     sites: frozenset,
     n_tau: int = 32,
+    environment: str = "isolated",
 ) -> Tuple[np.ndarray, np.ndarray, np.ndarray, Dict[str, List], List[str]]:
     r"""Compute the imaginary-time kernel :math:`\Sigma_{\mu\nu}(\tau)`.
 
@@ -140,6 +142,11 @@ def rpa_dynamic_kernel(
         Sites of the subsystem ``A``.
     n_tau : int, optional
         Number of Gauss-Legendre nodes in :math:`(0, 1)`. The default is 32.
+    environment : str, optional
+        Origin of the correlations of the environment: ``"isolated"``
+        (default, the environment with ``A`` removed) or ``"global"`` (the
+        bosonization of the whole system). See
+        :func:`~qalma.meanfield.rpa.environment.environment_modes`.
 
     Returns
     -------
@@ -158,14 +165,14 @@ def rpa_dynamic_kernel(
         If the RPA is unstable.
     """
     nodes, weights = _gauss_legendre(n_tau)
-    environment = _environment_bogoliubov(structure, sites)
-    if environment is None:
+    modes = environment_modes(structure, sites, environment)
+    if modes is None:
         _, _, sites_a, _ = _split_sites(structure, sites)
         n_a = sum(len(structure.local_basis[site]) for site in sites_a)
         empty = np.zeros((n_tau, n_a, n_a), dtype=complex)
         return empty, nodes, weights, structure.local_basis, sites_a
-    sigma_tau = _kernel_at(environment, nodes)
-    return sigma_tau, nodes, weights, environment.local_basis, environment.sites_a
+    sigma_tau = _kernel_at(modes, nodes)
+    return sigma_tau, nodes, weights, modes.local_basis, modes.sites_a
 
 
 # ### Dynamical correction of the generator ###

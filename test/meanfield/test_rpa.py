@@ -17,6 +17,7 @@ from qalma.meanfield.rpa import (
     rpa_coupling_kernel,
     rpa_dynamic_kernel,
 )
+from qalma.meanfield.rpa.environment import environment_modes, static_kernel
 from qalma.meanfield.rpa.rpa_structure import _split_sites
 from qalma.model import build_spin_chain, build_system
 from qalma.operators.states.gibbs import GibbsDensityOperator
@@ -409,6 +410,57 @@ def test_bosonized_state_limits():
     state = RPAGibbsDensityOperator(k_op, system)
     with pytest.raises(NotImplementedError):
         state.bosonized_state(frozenset(list(system.sites)[:3]))
+
+
+def test_static_kernel_of_the_isolated_environment():
+    """The static kernel of the normal modes is the RPA susceptibility."""
+    system = build_system("chain lattice", "spin", L=6, J=1, local_S=0.5)
+    sites = list(system.sites)
+    for temperature in (0.05, 0.5):
+        k_op = (
+            _lipkin_operator(system, 1.5, {"Sx": 1.0, "Sy": 0.5}) / temperature
+        ).simplify()
+        structure = RPAGibbsDensityOperator(k_op, system).rpa_structure
+        pair = frozenset(sites[:2])
+        expected = rpa_coupling_kernel(structure, pair)[0]
+        isolated = static_kernel(environment_modes(structure, pair, "isolated"))
+        assert np.abs(isolated - expected).max() < 1e-10 * np.abs(expected).max()
+        # the global modes include the feedback of the subsystem
+        global_ = static_kernel(environment_modes(structure, pair, "global"))
+        assert np.abs(global_ - expected).max() > 1e-3 * np.abs(expected).max()
+
+
+def test_global_environment():
+    """Correlations of the environment from the bosonization of the whole
+    system (thesis of J. M. Matera, chapter 6): the dynamical reduction stays
+    close to the exact one, and the global modes are computed once."""
+    for temperature in (0.05, 1.0):
+        state, pair, exact = _lipkin_state(
+            1.5, temperature, names=("Sx",), environment="global"
+        )
+        mean_field = _pair_distance(state, pair, exact, rpa=False)
+        dynamic = _pair_distance(state, pair, exact, dynamic=True)
+        assert dynamic < 0.2 * mean_field
+        isolated = _pair_distance(
+            state, pair, exact, dynamic=True, environment="isolated"
+        )
+        assert isolated < dynamic
+    structure = state.rpa_structure
+    modes = structure._global_modes  # pylint: disable=protected-access
+    assert modes is not None
+    other = frozenset(list(state.system.sites)[2:4])
+    state.partial_trace(other, max_exact_sites=0, dynamic=True)
+    assert structure._global_modes is modes  # pylint: disable=protected-access
+
+
+def test_environment_options_are_checked():
+    """Unknown environments, and the hybrid reduction with the global
+    environment, are rejected."""
+    state, pair, _ = _lipkin_state(1.5, 0.5, names=("Sx",))
+    with pytest.raises(ValueError, match="environment"):
+        RPAGibbsDensityOperator(state.k, state.system, environment="bath")
+    with pytest.raises(ValueError, match="isolated"):
+        state.partial_trace(pair, max_exact_sites=0, hybrid=True, environment="global")
 
 
 def test_dynamic_corrects_adjacent_bond():
