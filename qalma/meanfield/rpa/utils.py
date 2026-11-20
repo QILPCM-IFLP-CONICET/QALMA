@@ -157,9 +157,10 @@ def local_boson_modes(
     couplings : numpy.ndarray
         Complex couplings :math:`g_{\mu k}`, shape ``(len(basis), K)``.
     """
-    p, vecs = _ordered_spectrum(
-        np.linalg.eigh(sigma_loc) if spectrum is None else spectrum
-    )
+    if spectrum is None:
+        populations, eigenvectors = np.linalg.eigh(sigma_loc)
+        spectrum = (populations, eigenvectors)
+    p, vecs = _ordered_spectrum(spectrum)
     ops = np.array([vecs.conj().T @ np.asarray(e) @ vecs for e in basis])
     freqs: List[float] = []
     couplings: List[np.ndarray] = []
