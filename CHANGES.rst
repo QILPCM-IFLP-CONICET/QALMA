@@ -121,8 +121,11 @@ Matrix product states (experimental)
 * The argument ``permutation`` sets the order of the sites along the chain
   (the lexicographic order of the names is rarely a good one).
 * ``MPS``, ``build_mpo`` (an MPO from a sum of few-body terms of any range)
-  and ``dmrg`` are also available. States cannot be saved to HDF5 files
-  yet.
+  and ``dmrg`` are also available.
+* ``MPSGSOperator`` can be stored in HDF5 files (type ``mps_gs``), without
+  pickles: the tensors of the MPS, the order of the sites and the
+  Hamiltonian are saved. A state that was not computed yet is stored with
+  its Hamiltonian only.
 
 HDF5 files
 ++++++++++
