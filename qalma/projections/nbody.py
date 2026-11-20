@@ -34,11 +34,6 @@ from qalma.operators.states.utils import (
     acts_over_order,
     compute_operator_expectation_value,
 )
-from qalma.parallel import (
-    DISPATCH_PROJECTION_METHOD_PARALLEL,
-    USE_PARALLEL,
-    parallel_process_non_dispatched_terms,
-)
 from qalma.qutip_tools.tools import schmidt_dec_rest_last_qutip_operator
 from qalma.settings import QALMA_TOLERANCE
 
@@ -896,15 +891,9 @@ def project_sum_operator(
         return full_operator
 
     # Process all the terms
-    non_dispatched_length = len(non_dispatched_terms)
-    if USE_PARALLEL and non_dispatched_length > 10:
-        non_dispatched_terms = parallel_process_non_dispatched_terms(
-            non_dispatched_terms, n_max, sigma
-        )
-    else:
-        non_dispatched_terms = tuple(
-            _project_monomial(term, n_max, sigma) for term in non_dispatched_terms
-        )
+    non_dispatched_terms = tuple(
+        _project_monomial(term, n_max, sigma) for term in non_dispatched_terms
+    )
 
     terms = list(block_terms.values())
 
@@ -1055,5 +1044,3 @@ DISPATCH_PROJECTION_METHOD: Dict[type, Callable] = {
     QutipOperator: _project_qutip_operator_combinatorial,
     QuadraticFormOperator: project_quadraticform_operator_as_n_body_operator,
 }
-
-DISPATCH_PROJECTION_METHOD_PARALLEL.update(DISPATCH_PROJECTION_METHOD)

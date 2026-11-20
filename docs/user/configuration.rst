@@ -18,20 +18,15 @@ imported**, so they have to be set before ``import qalma``:
      - ``1.0e-14``
      - Numerical tolerance used to decide when coefficients and operators
        are zero or equal (:data:`qalma.settings.QALMA_TOLERANCE`).
-   * - ``QALMA_USE_PARALLEL``
-     - off
-     - Enable the parallel routines for large operators. Empty values,
-       ``0``, ``false``, ``no`` and ``off`` disable it; any other value
-       enables it. The unprefixed name ``USE_PARALLEL`` is also accepted.
-   * - ``QALMA_MAX_WORKERS``
-     - ``8``
-     - Maximum number of workers used by the parallel routines.
 
 For example:
 
 .. code-block:: bash
 
-   QALMA_USE_PARALLEL=1 QALMA_MAX_WORKERS=4 python my_simulation.py
+   QALMA_TOLERANCE=1e-12 python my_simulation.py
+
+QALMA itself runs serially. To use several cores, run independent
+simulations (different models, sizes or parameters) as separate processes.
 
 The test suite uses two more variables: ``QALMA_ALLTESTS=1`` enables the
 slower tests, and ``BENCHMARKS=1`` the performance benchmarks.

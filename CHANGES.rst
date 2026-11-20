@@ -263,9 +263,15 @@ Behaviour changes
   split can be forced or disabled with ``build_system(..., qubit_split=...)``;
   when it is disabled, or not possible, building the system emits a
   ``qalma.FermionicSignWarning``.
-* The ``USE_PARALLEL`` environment variable is now parsed as a boolean:
-  ``USE_PARALLEL=0`` used to *enable* the parallel routines. The preferred
-  name is ``QALMA_USE_PARALLEL``.
+* Removed the parallel routines (``qalma.parallel``, the parallel Gram
+  matrix, and the ``QALMA_USE_PARALLEL`` and ``QALMA_MAX_WORKERS``
+  settings). They never ran in parallel, because their number of workers was
+  always 1; once fixed, benchmarks of the restricted Max-Ent evolution with
+  up to 100 sites showed no speed-up: they parallelized tasks that are now
+  cheap, while most of the time is spent in covariance products. With the
+  option enabled, the Gram matrices of the covariance product were also
+  computed without the caches of the fast kernel, about 40 % slower. To use
+  several cores, run independent simulations as separate processes.
 * ``qalma.settings.FIGURES_DIR`` was removed; it pointed outside the
   installed package.
 * The code paths for QuTiP 4 were removed (QuTiP >= 5.1 is required).

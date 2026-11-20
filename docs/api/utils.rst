@@ -19,14 +19,6 @@ qalma.qutip\_tools
    :undoc-members:
    :show-inheritance:
 
-qalma.parallel
-==============
-
-.. automodule:: qalma.parallel
-   :members:
-   :undoc-members:
-   :show-inheritance:
-
 qalma.settings
 ==============
 
