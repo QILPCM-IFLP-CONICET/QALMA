@@ -25,6 +25,7 @@ the state. The formulation, the treatment of zero modes and the limitations of
 the method are described in the user guide (:ref:`rpa-formulation`).
 """
 
+from .bosonized import rpa_bosonized_state
 from .dynamic import rpa_dynamic_kernel
 from .functions import rpa_entanglement_entropy, rpa_negativity
 from .hybrid import effective_bath_modes, rpa_hybrid_state
@@ -39,6 +40,7 @@ from .utils import kubo_mori_susceptibility, local_boson_modes
 __all__ = [
     "RPAGibbsDensityOperator",
     "build_rpa_boson_system",
+    "rpa_bosonized_state",
     "build_rpa_structure",
     "effective_bath_modes",
     "kubo_mori_susceptibility",

@@ -31,6 +31,7 @@ from qalma.operators.quadratic.build import (
 from .utils import (
     _STATIC_GAP,
     _ZERO_MODE_RTOL,
+    _is_dynamic,
     kubo_mori_susceptibility,
     local_boson_modes,
 )
@@ -216,7 +217,7 @@ def build_rpa_boson_system(structure: RPAStructure) -> BosonicGaussianSystem:
     for site in sites:
         size = len(structure.local_basis[site])
         freqs, coup = structure.boson_modes(site)
-        dynamic = freqs > structure.static_gap * (1.0 + 1e-6)
+        dynamic = _is_dynamic(freqs, structure.static_gap)
         freqs_list.append(freqs[dynamic])
         mode_site.extend([site] * int(np.sum(dynamic)))
         blocks.append((row, size, coup[:, dynamic]))

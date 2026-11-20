@@ -90,6 +90,18 @@ Mean-field and RPA
   the reduction is computed; ``0`` always uses the approximation. It also gives the entropies and negativities of the
   bosonic RPA state (``rpa_entropy``, ``rpa_negativity``) and handles zero
   modes (``rpa_zero_modes``).
+* The dynamical RPA correction separates the secular terms (level shifts,
+  exponentiated as a correction of the generator) from the admixture terms
+  (populations transferred to excited levels, added to the density). The
+  previous first-order correction of the generator diverged at low
+  temperature; the correction now reaches the zero-temperature limit. The
+  imaginary-time quadrature is adaptive (``n_tau`` is its initial size).
+* ``RPAGibbsDensityOperator.bosonized_state`` (``rpa_bosonized_state``) gives
+  the reduced states of one or two sites from the Gaussian state of the full
+  bosonization, mapping the local operators with their quadratic
+  (population) terms and using Wick's theorem (the bosonization of chapter 6
+  of J. M. Matera's thesis). It reproduces the mean field plus RPA
+  correlations, and it is much cheaper than a dynamical or hybrid reduction.
 * The entropies and negativities of the bosonized RPA (``rpa_entropy``,
   ``rpa_negativity``) describe the quantum fluctuations: the static
   (classical) modes are left out. With zero modes they raise a
