@@ -228,6 +228,189 @@ def test_dynamic_equals_static_for_commuting_generator():
     assert np.linalg.norm((k_static - k_dynamic).full()) < 1e-6
 
 
+def _lipkin_state(field, temperature, names=("Sx", "Sy"), n_sites=6, **kwargs):
+    """Fully connected (Lipkin) spin-1/2 model with couplings scaled as 1/n.
+
+    ``H = b S_z - (v/n) sum_{i != j} sum_a s^a_i s^a_j`` with ``v = 1`` and
+    ``a`` in ``names``. Returns the RPA state, its pair of sites and the
+    exact reduced state of the pair.
+    """
+    system = build_system("chain lattice", "spin", L=n_sites, J=1, local_S=0.5)
+    sites = list(system.sites)
+
+    def op(name, site):
+        return system.site_operator(f"{name}@{site}")
+
+    hamiltonian = field * sum(op("Sz", site) for site in sites)
+    for i, site_i in enumerate(sites):
+        for site_j in sites[i + 1 :]:
+            for name in names:
+                hamiltonian = hamiltonian - (2.0 / n_sites) * (
+                    op(name, site_i) * op(name, site_j)
+                )
+    k_op = (hamiltonian / temperature).simplify()
+    state = RPAGibbsDensityOperator(
+        k_op, system, meanfield=variational_quadratic_mfa(k_op.flat()), **kwargs
+    )
+    pair = frozenset(sites[:2])
+    exact = state.to_qutip_operator().partial_trace(pair).to_qutip(tuple(sorted(pair)))
+    return state, pair, exact / exact.tr()
+
+
+def _pair_distance(state, pair, exact, **options):
+    """Trace distance between the approximate and exact states of ``pair``."""
+    rho = state.partial_trace(pair, max_exact_sites=0, **options)
+    rho = rho.to_qutip(tuple(sorted(pair)))
+    return 0.5 * (rho / rho.tr() - exact).norm("tr")
+
+
+def test_dynamic_rpa_at_low_temperature():
+    """In the normal phase of the x-coupled Lipkin model the RPA correlations
+    do not vanish at T = 0. The dynamical correction stays finite, and close
+    to the exact state, down to the ground state."""
+    for temperature in (0.05, 0.005):
+        state, pair, exact = _lipkin_state(1.5, temperature, names=("Sx",))
+        mean_field = _pair_distance(state, pair, exact, rpa=False)
+        dynamic = _pair_distance(state, pair, exact, dynamic=True)
+        assert np.isfinite(dynamic)
+        assert dynamic < 1e-3
+        assert dynamic < 0.1 * mean_field
+
+
+def test_dynamic_rpa_vanishes_in_the_saturated_xx_phase():
+    """In the normal phase of the XX Lipkin model the ground state is the
+    saturated mean-field state, and the RPA corrections vanish at T -> 0."""
+    state, pair, exact = _lipkin_state(1.5, 0.005)
+    # The residual (~1e-8) is the precision of the mean-field solver, whose
+    # random initial point changes from run to run.
+    assert _pair_distance(state, pair, exact, dynamic=True) < 1e-6
+
+
+def test_dynamic_rpa_at_high_temperature():
+    """At high temperature the dynamical correction is the best reduction."""
+    for field in (0.5, 1.5):
+        state, pair, exact = _lipkin_state(field, 1.0)
+        mean_field = _pair_distance(state, pair, exact, rpa=False)
+        static = _pair_distance(state, pair, exact)
+        dynamic = _pair_distance(state, pair, exact, dynamic=True)
+        assert dynamic < 0.25 * static
+        assert static < 0.6 * mean_field
+
+
+def test_dynamic_rpa_quadrature_is_adaptive():
+    """At low temperature the quadrature is refined from any starting size."""
+    results = []
+    for n_tau in (4, 128):
+        state, pair, exact = _lipkin_state(1.5, 0.002, names=("Sx",), n_tau=n_tau)
+        rho = state.partial_trace(pair, max_exact_sites=0, dynamic=True)
+        results.append(rho.to_qutip(tuple(sorted(pair))))
+    assert (results[0] - results[1]).norm("tr") < 1e-4
+
+
+def _lipkin_operator(system, field, couplings):
+    """Generator-independent Hamiltonian of the fully connected model."""
+    sites = list(system.sites)
+
+    def op(name, site):
+        return system.site_operator(f"{name}@{site}")
+
+    n_sites = len(sites)
+    hamiltonian = field * sum(op("Sz", site) for site in sites)
+    for i, site_i in enumerate(sites):
+        for site_j in sites[i + 1 :]:
+            for name, value in couplings.items():
+                hamiltonian = hamiltonian - (2.0 * value / n_sites) * (
+                    op(name, site_i) * op(name, site_j)
+                )
+    return hamiltonian.simplify()
+
+
+def _rpa_log_partition(k_op):
+    """``ln Z`` of the mean field plus RPA (no static fluctuations)."""
+    k_flat = k_op.flat()
+    sigma = variational_quadratic_mfa(k_flat)
+    structure = build_rpa_structure(k_flat, sigma)
+    entropy = 0.0
+    local = []
+    for site in structure.positions:
+        populations, _ = structure.local_spectrum(site)
+        populations = populations[populations > 1e-300]
+        entropy -= np.sum(populations * np.log(populations))
+        freqs = structure.boson_modes(site)[0]
+        local.extend(freqs[freqs > structure.static_gap * (1 + 1e-6)])
+    bosons = structure.boson_system()
+    omega = bosons.lam[bosons.lam > 0]
+    return (
+        entropy
+        - np.real(sigma.expect(k_flat))
+        + np.sum(np.log(np.sinh(np.array(local) / 2)))
+        - np.sum(np.log(np.sinh(omega / 2)))
+    )
+
+
+def test_bosonized_state_reproduces_the_rpa_partition_function():
+    """The bosonized pair state gives the correlations obtained deriving the
+    RPA partition function (mean field plus RPA) with respect to the
+    couplings (thesis of J. M. Matera, chapter 6)."""
+    system = build_system("chain lattice", "spin", L=6, J=1, local_S=0.5)
+    sites = list(system.sites)
+    k_op = (_lipkin_operator(system, 1.5, {"Sx": 1.0, "Sy": 0.5}) / 0.05).simplify()
+    state = RPAGibbsDensityOperator(k_op, system)
+    pair = (sites[0], sites[1])
+    rho = state.bosonized_state(frozenset(pair)).to_qutip(pair)
+    step = 1e-4
+    for name in ("Sx", "Sy", "Sz"):
+        local = [system.site_operator(f"{name}@{site}") for site in pair]
+        product = (local[0] * local[1]).simplify()
+        for perturbation, observable in ((product, product), (local[0], local[0])):
+            expected = -(
+                _rpa_log_partition((k_op + step * perturbation).simplify())
+                - _rpa_log_partition((k_op - step * perturbation).simplify())
+            ) / (2 * step)
+            value = (rho * observable.to_qutip(pair)).tr().real
+            if name == "Sz" and observable is product:
+                # the Gaussian state adds O(1/n^2) terms to <sz sz>
+                assert abs(value - expected) < 5e-3
+            else:
+                assert abs(value - expected) < 1e-6
+
+
+def test_bosonized_state_improves_mean_field():
+    """Bosonized states of pairs of spin 1/2 and spin 1 in the normal phase."""
+    for local_spin, field, temperature in ((0.5, 1.5, 0.05), (1.0, 4.0, 0.5)):
+        system = build_system("chain lattice", "spin", L=5, J=1, local_S=local_spin)
+        sites = list(system.sites)
+        k_op = (_lipkin_operator(system, field, {"Sx": 1.0}) / temperature).simplify()
+        state = RPAGibbsDensityOperator(k_op, system)
+        pair = frozenset(sites[:2])
+        block = tuple(sorted(pair))
+        exact = state.to_qutip_operator().partial_trace(pair).to_qutip(block)
+        exact = exact / exact.tr()
+        rho = state.bosonized_state(pair).to_qutip(block)
+        mean_field = state.partial_trace(pair, max_exact_sites=0, rpa=False)
+        mean_field = mean_field.to_qutip(block)
+        mean_field = mean_field / mean_field.tr()
+        assert abs(rho.tr() - 1) < 1e-12
+        assert (rho - rho.dag()).norm() < 1e-12
+        assert np.linalg.eigvalsh(rho.full()).min() > -2e-3
+        assert (rho - exact).norm("tr") < 0.6 * (mean_field - exact).norm("tr")
+        # the state of one site is the marginal of the pair
+        single = state.bosonized_state(frozenset([block[0]])).to_qutip((block[0],))
+        assert (single - rho.ptrace(0)).norm() < 1e-12
+
+
+def test_bosonized_state_limits():
+    """More than two sites, and zero modes, are rejected."""
+    state, site_a, site_b = _pair_state(0.5, 0.5, 40.0, jy=1.0)
+    with pytest.raises(ValueError, match="zero mode"):
+        state.bosonized_state(frozenset([site_a, site_b]))
+    system = build_system("chain lattice", "spin", L=4, J=1, local_S=0.5)
+    k_op = (_lipkin_operator(system, 1.5, {"Sx": 1.0}) / 0.5).simplify()
+    state = RPAGibbsDensityOperator(k_op, system)
+    with pytest.raises(NotImplementedError):
+        state.bosonized_state(frozenset(list(system.sites)[:3]))
+
+
 def test_dynamic_corrects_adjacent_bond():
     """The dynamical term renormalizes the coupling between adjacent sites."""
     system = build_spin_chain(10, field=0.3)

@@ -24,6 +24,7 @@ from qalma.operators.states.gibbs import GibbsDensityOperator
 from qalma.operators.states.qutip import QutipDensityOperator
 from qalma.operators.states.register_ops._gibbs import _inherit_gibbs_arithmetic
 
+from .bosonized import rpa_bosonized_state
 from .dynamic import _dynamic_correction
 from .environment import rpa_zero_modes
 from .functions import rpa_entanglement_entropy, rpa_negativity
@@ -64,7 +65,8 @@ def rpa_generator_correction(
         approximation. This builds dense matrices of the size of the Hilbert
         space of ``A``. The default is False.
     n_tau : int, optional
-        Number of imaginary-time quadrature nodes (dynamic only).
+        Initial number of imaginary-time quadrature nodes (dynamic only).
+        They are doubled until the correction converges.
 
     Returns
     -------
@@ -137,8 +139,8 @@ class RPAGibbsDensityOperator(GibbsDensityOperator):
         Use by default the dynamical RPA correction instead of the static
         one. The default is False.
     n_tau : int, optional
-        Number of imaginary-time quadrature nodes of the dynamical
-        correction. The default is 32.
+        Initial number of imaginary-time quadrature nodes of the dynamical
+        correction, which are doubled until it converges. The default is 32.
     static_gap : float, optional
         Frequency of the static bosons. The default is 1e-6.
     hybrid : bool, optional
@@ -328,6 +330,42 @@ class RPAGibbsDensityOperator(GibbsDensityOperator):
         if has_boundary:
             for symm in self.symmetry_projections:
                 result = symm(result)
+        return result
+
+    def bosonized_state(
+        self, sites: frozenset | SystemDescriptor
+    ) -> DensityOperatorProtocol:
+        """Reduced state of one or two sites from the bosonized RPA.
+
+        It is computed from the Gaussian state of the bosonization of the
+        whole system, which is stored in ``rpa_structure`` and shared by all
+        the subsystems, so it is much cheaper than :meth:`partial_trace`
+        with ``dynamic`` or ``hybrid``. See
+        :func:`~qalma.meanfield.rpa.bosonized.rpa_bosonized_state`. The
+        ``symmetry_projections`` of the state are applied to the result.
+
+        Parameters
+        ----------
+        sites : frozenset[str] or SystemDescriptor
+            One or two sites.
+
+        Returns
+        -------
+        DensityOperatorProtocol
+            The reduced density operator. It is Hermitian and normalized,
+            but not necessarily positive.
+        """
+        if isinstance(sites, SystemDescriptor):
+            sites = frozenset(sites.sites)
+        block = tuple(sorted(sites))
+        result: DensityOperatorProtocol = QutipDensityOperator(
+            rpa_bosonized_state(self.rpa_structure, frozenset(block)),
+            names={name: pos for pos, name in enumerate(block)},
+            system=self.system.subsystem(frozenset(block)),
+            prefactor=self.prefactor,
+        )
+        for symm in self.symmetry_projections:
+            result = symm(result)
         return result
 
     def reduce(self, sites, state=None, **kwargs):
