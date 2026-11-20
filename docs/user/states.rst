@@ -103,6 +103,20 @@ weighted by a reference state:
 
 where :math:`\bar{S}` is the complement of the kept sites.
 
+Ground states
+-------------
+
+The ground state of a Hamiltonian is a pure state, which has no finite
+generator :math:`K`. :class:`~qalma.mps.gs_operator.MPSGSOperator` stores it
+as a matrix product state computed with a DMRG, and provides ``expect`` and
+``partial_trace`` for systems that are too large for exact diagonalization
+(see :doc:`mps_ground_state`)::
+
+   from qalma.mps import MPSGSOperator
+
+   rho = MPSGSOperator(H, permutation=order, chi_max=32)
+   rho.expect(observable)
+
 .. seealso::
 
-   :doc:`/api/states`, :doc:`/api/meanfield`
+   :doc:`/api/states`, :doc:`/api/meanfield`, :doc:`mps_ground_state`

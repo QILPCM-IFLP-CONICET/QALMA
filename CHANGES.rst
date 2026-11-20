@@ -106,6 +106,24 @@ Gaussian bosonic states
   uncertainty relations). The full bosonization of the RPA
   (``build_rpa_boson_system``) uses it.
 
+Matrix product states (experimental)
+++++++++++++++++++++++++++++++++++++
+
+* New package ``qalma.mps`` with ``MPSGSOperator``, a density operator that
+  stores the ground state of a Hamiltonian as a matrix product state. The
+  state is computed with a two-site DMRG written with numpy and SciPy only,
+  or provided with ``MPSGSOperator.from_mps``. ``expect`` and
+  ``partial_trace`` contract the MPS, so they work for systems beyond exact
+  diagonalization; the reduced states are ``QutipDensityOperator`` objects.
+  The ground state is assumed to be non-degenerate. The class is a sibling
+  of ``GibbsDensityOperator`` (a pure state has no generator ``k``), with
+  the same arithmetic for scalars and mixtures.
+* The argument ``permutation`` sets the order of the sites along the chain
+  (the lexicographic order of the names is rarely a good one).
+* ``MPS``, ``build_mpo`` (an MPO from a sum of few-body terms of any range)
+  and ``dmrg`` are also available. States cannot be saved to HDF5 files
+  yet.
+
 HDF5 files
 ++++++++++
 

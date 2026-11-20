@@ -72,6 +72,7 @@ def _lowest_state(
     dim = theta.size
 
     def matvec(vec):
+        """Apply the effective Hamiltonian to a flat vector."""
         return _apply_heff(vec.reshape(shape), left, w_1, w_2, right).reshape(-1)
 
     if dim <= dense_threshold:
@@ -178,6 +179,7 @@ def dmrg(
         right[pos] = _update_right(right[pos + 1], tensors[pos], mpo[pos])
 
     def two_site(pos: int, direction: int) -> Tuple[float, float]:
+        """Optimize sites ``pos, pos+1``; return (energy, discarded weight)."""
         theta = np.tensordot(tensors[pos], tensors[pos + 1], axes=(2, 0))
         energy, theta = _lowest_state(
             theta,

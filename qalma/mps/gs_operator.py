@@ -142,11 +142,12 @@ class MPSGSOperator(DensityOperatorMixin, Operator):
     ----------
     order : tuple of str
         Names of the sites in the order they have in the MPS.
-    energy : float or None
-        Ground state energy found by the DMRG (computed on demand; ``None``
-        when the state was provided).
-    dmrg_info : dict or None
-        Diagnostics of the DMRG run.
+
+    Notes
+    -----
+    The properties :attr:`energy` and :attr:`dmrg_info` hold the energy and
+    the diagnostics of the DMRG, which runs the first time the state is
+    needed.
     """
 
     #: Largest number of sites for which the dense matrix can be requested.
@@ -305,7 +306,7 @@ class MPSGSOperator(DensityOperatorMixin, Operator):
         return self
 
     def logm(self) -> Operator:
-        """Not available: :math:`\\log\\rho` is unbounded for a pure state."""
+        r"""Not available: :math:`\log\rho` is unbounded for a pure state."""
         raise NotImplementedError("The logarithm of a pure state is not defined.")
 
     def variational_free_energy(self, ham: Operator) -> float:
@@ -437,6 +438,7 @@ def _register_arithmetic() -> None:
     add_fallback = add_table[(cls, cls)]
 
     def add_same(x_op, y_op):
+        """Add two MPS states, keeping the type if they are the same object."""
         if x_op is y_op:
             return x_op._with_prefactor(2 * x_op.prefactor)  # pylint: disable=W0212
         return add_fallback(x_op, y_op)
@@ -444,7 +446,10 @@ def _register_arithmetic() -> None:
     add_table[(cls, cls)] = add_same
 
     def scaled(fallback):
+        """Wrap a product handler so positive real factors rescale the prefactor."""
+
         def handler(x_op, y_op):
+            """Multiply a state by a scalar."""
             state, factor = (x_op, y_op) if isinstance(x_op, cls) else (y_op, x_op)
             value = complex(factor)
             if value.imag == 0 and value.real > 0:
