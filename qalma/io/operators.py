@@ -288,6 +288,7 @@ def _registry_ready() -> None:
             static_gap=float(attrs["static_gap"]),
             hybrid=bool(attrs["hybrid"]),
             hybrid_options=hybrid_options,
+            environment=str(attrs.get("environment", "isolated")),
         )
 
     def write_rpa_gibbs(group, operator, context):
@@ -296,6 +297,7 @@ def _registry_ready() -> None:
         group.attrs["n_tau"] = int(operator.n_tau)
         group.attrs["static_gap"] = float(operator.static_gap)
         group.attrs["hybrid"] = bool(operator.hybrid)
+        group.attrs["environment"] = str(operator.environment)
         if operator.hybrid_options is not None:
             group.attrs["hybrid_options"] = json_dumps(
                 to_jsonable(operator.hybrid_options)

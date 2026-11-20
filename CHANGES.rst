@@ -96,6 +96,12 @@ Mean-field and RPA
   previous first-order correction of the generator diverged at low
   temperature; the correction now reaches the zero-temperature limit. The
   imaginary-time quadrature is adaptive (``n_tau`` is its initial size).
+* The option ``environment`` of ``RPAGibbsDensityOperator`` (and of its
+  ``partial_trace``) selects the origin of the correlations of the
+  environment in the static and dynamical corrections: ``"isolated"``
+  (default, the environment with the subsystem removed) or ``"global"`` (the
+  bosonization of the whole system, computed once and shared by all the
+  subsystems, as in chapter 6 of J. M. Matera's thesis).
 * ``RPAGibbsDensityOperator.bosonized_state`` (``rpa_bosonized_state``) gives
   the reduced states of one or two sites from the Gaussian state of the full
   bosonization, mapping the local operators with their quadratic
