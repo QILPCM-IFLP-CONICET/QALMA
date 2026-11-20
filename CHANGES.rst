@@ -96,6 +96,12 @@ Mean-field and RPA
   previous first-order correction of the generator diverged at low
   temperature; the correction now reaches the zero-temperature limit. The
   imaginary-time quadrature is adaptive (``n_tau`` is its initial size).
+* ``RPAGibbsDensityOperator.bosonized_state`` (``rpa_bosonized_state``) gives
+  the reduced states of one or two sites from the Gaussian state of the full
+  bosonization, mapping the local operators with their quadratic
+  (population) terms and using Wick's theorem (the bosonization of chapter 6
+  of J. M. Matera's thesis). It reproduces the mean field plus RPA
+  correlations, and it is much cheaper than a dynamical or hybrid reduction.
 * The entropies and negativities of the bosonized RPA (``rpa_entropy``,
   ``rpa_negativity``) describe the quantum fluctuations: the static
   (classical) modes are left out. With zero modes they raise a
@@ -134,8 +140,11 @@ Matrix product states (experimental)
 * The argument ``permutation`` sets the order of the sites along the chain
   (the lexicographic order of the names is rarely a good one).
 * ``MPS``, ``build_mpo`` (an MPO from a sum of few-body terms of any range)
-  and ``dmrg`` are also available. States cannot be saved to HDF5 files
-  yet.
+  and ``dmrg`` are also available.
+* ``MPSGSOperator`` can be stored in HDF5 files (type ``mps_gs``), without
+  pickles: the tensors of the MPS, the order of the sites and the
+  Hamiltonian are saved. A state that was not computed yet is stored with
+  its Hamiltonian only.
 
 HDF5 files
 ++++++++++
@@ -254,6 +263,13 @@ Bug fixes
 Performance
 +++++++++++
 
+* Operator bases store the commutators of their elements with the
+  generator, which they compute while being built. Appending elements to a
+  basis (as :func:`~qalma.evolution.update_basis` does with the mean-field
+  reference and the velocity) and :func:`~qalma.evolution.leakage_gram` reuse
+  them, instead of computing each commutator up to three times. The
+  restricted Max-Ent evolution of an XXZ chain with twelve sites is about
+  30 % faster, with the same results.
 * The n-body projection of dense blocks relative to a product state is
   computed directly, as a combination of partial reductions
   (inclusion-exclusion over the subsets of the support), instead of expanding

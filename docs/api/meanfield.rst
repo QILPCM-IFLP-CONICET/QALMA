@@ -82,6 +82,9 @@ system gives the entropies and negativities of the bosonic RPA state
 
 .. autofunction:: qalma.meanfield.rpa.functions.rpa_negativity
 
+.. automodule:: qalma.meanfield.rpa.bosonized
+   :no-members:
+
 If the mean-field state breaks a continuous symmetry, the bosonic problem has
 zero modes. They are detected and removed (their number is given by
 :meth:`~qalma.meanfield.rpa.RPAGibbsDensityOperator.rpa_zero_modes`), the

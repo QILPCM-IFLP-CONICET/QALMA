@@ -1,7 +1,7 @@
 """Basis of Operator metric sub-spaces."""
 
 import logging
-from typing import Callable, Iterable, Optional, Tuple, cast
+from typing import Callable, Iterable, List, Optional, Tuple, cast
 
 import numpy as np
 from numpy.linalg import LinAlgError, cholesky, inv
@@ -193,8 +193,11 @@ class OperatorBasis:
         )
         errors = np.zeros((size,))
 
+        commutators: List[Operator] = []
+
         def build_j_coefficients(op_2: Operator) -> Tuple[np.ndarray, np.float64]:
-            comm = commutator(op_2, generator)
+            comm = commutator(op_2, generator).simplify()
+            commutators.append(comm)
             error_sq = np.real(sp(comm, comm))
             hj = np.array([np.real(sp(op_1, comm)) for op_1 in operator_basis])
             # |Pi_{\parallel} A|^2 = h^*_{ji}g^{-1}_{ik} h_{kj}
@@ -213,6 +216,8 @@ class OperatorBasis:
         self._hij = hij
         self.gen_matrix = self.gram_inv @ hij
         self.errors = errors
+        # [Q_j, G] for each element, reused by append_basis and leakage_gram.
+        self._commutators = tuple(commutators)
 
     def coefficient_expansion(self, operator: Operator) -> NDArray:
         """Get the coefficients a_i s.t.
@@ -339,21 +344,23 @@ class HierarchicalOperatorBasis(OperatorBasis):
 
     def __add__(self, other):
         """Add two basis."""
-        return (
-            OperatorBasis(
-                self.operator_basis,
-                self.generator,
-                self.sp,
-                precomputed_tensors={
-                    "gram": self.gram,
-                    "gram_inv": self.gram_inv,
-                    "errors": self.errors,
-                    "gen_matrix": self.gen_matrix,
-                    "hij": self._hij,
-                },
-            )
-            + other
+        as_generic = OperatorBasis(
+            self.operator_basis,
+            self.generator,
+            self.sp,
+            precomputed_tensors={
+                "gram": self.gram,
+                "gram_inv": self.gram_inv,
+                "errors": self.errors,
+                "gen_matrix": self.gen_matrix,
+                "hij": self._hij,
+            },
         )
+        # Keep the commutators computed while building the basis.
+        commutators = getattr(self, "_commutators", None)
+        if commutators is not None:
+            as_generic._commutators = commutators
+        return as_generic + other
 
     def _build_basis(self, seed, deep, projection_function=None):
         sp = self.sp
@@ -367,6 +374,7 @@ class HierarchicalOperatorBasis(OperatorBasis):
         errors = np.zeros((dimension,))
         closed = False
         tol_sq = QALMA_TOLERANCE**2
+        commutators: List[Operator] = []
         for i in range(dimension):
             # commutator of the previous element
             new_elem = commutator(elements[-1], generator)
@@ -393,6 +401,9 @@ class HierarchicalOperatorBasis(OperatorBasis):
             assert (
                 new_elem.isherm
             ), f"hermiticity lost {type(old_elem)}->{type(new_elem)}"
+            # [b_i, G] before the projection, stored for reuse.
+            new_elem = new_elem.simplify()
+            commutators.append(new_elem)
             # square norm of the commutator of the previous element
             comm_norm = np.abs(sp(new_elem, new_elem))
             # Initially, self.errors stores the squared norms of the
@@ -440,6 +451,8 @@ class HierarchicalOperatorBasis(OperatorBasis):
                 dimension,
             )
         )
+        # One commutator per element of the basis, in the same order.
+        self._commutators = tuple(commutators[: len(elements)])
         if closed:
             self.operator_basis = tuple(elements)
             self.gram = gram
@@ -448,6 +461,7 @@ class HierarchicalOperatorBasis(OperatorBasis):
                 hij[:, j] *= norms[j + 1]
         else:
             self.operator_basis = tuple(elements[:dimension])
+            self._commutators = tuple(commutators[:dimension])
             self.gram = gram[:dimension, :dimension]
             hij[:, :] = gram[:dimension, 1:]
             for j in range(dimension):
@@ -520,6 +534,18 @@ class HierarchicalOperatorBasis(OperatorBasis):
         self.errors = errors
 
         self.gen_matrix = self.gram_inv @ hij
+
+
+def _cached_commutators(basis, generator) -> Optional[Tuple[Operator, ...]]:
+    """Return the stored commutators ``[Q_j, generator]`` of ``basis``, if valid."""
+    if not isinstance(basis, OperatorBasis) or generator is None:
+        return None
+    comms = getattr(basis, "_commutators", None)
+    if comms is None or basis.generator is not generator:
+        return None
+    if len(comms) != len(basis.operator_basis):
+        return None
+    return comms
 
 
 def append_basis(basis_1: OperatorBasis, basis_2: OperatorBasis | Iterable[Operator]):
@@ -672,8 +698,12 @@ def append_basis(basis_1: OperatorBasis, basis_2: OperatorBasis | Iterable[Opera
             ops,
         )
 
-    def fill_h_blocks(b_1, b_2, h_diag, error_sq, reuse):
-        """Compute h12, err_1_sq and h11 if needed."""
+    def fill_h_blocks(b_1, b_2, h_diag, error_sq, reuse, comms_1, used):
+        """Compute h12, err_1_sq and h11 if needed.
+
+        ``comms_1`` holds the commutators of ``b_1`` when they are known; the
+        commutators used are appended to ``used``.
+        """
         hij_off = np.empty(
             (
                 len(b_2),
@@ -682,7 +712,11 @@ def append_basis(basis_1: OperatorBasis, basis_2: OperatorBasis | Iterable[Opera
             dtype=g11.dtype,
         )
         for j_idx, op_j in enumerate(b_1):
-            comm = commutator(op_j, generator)
+            if comms_1 is not None:
+                comm = comms_1[j_idx]
+            else:
+                comm = commutator(op_j, generator).simplify()
+            used.append(comm)
             # TODO: check if we gain something using
             # compute_cross_gram_matrix
             if not reuse:
@@ -699,6 +733,14 @@ def append_basis(basis_1: OperatorBasis, basis_2: OperatorBasis | Iterable[Opera
 
     reuse_h11 = generator is basis_1_generator
     reuse_h22 = same_sp and generator is basis_2_generator
+
+    n1_input = len(ops1)
+    rows_1 = [idx for idx in li_indices if idx < n1_input]
+    rows_2 = [idx - n1_input for idx in li_indices if idx >= n1_input]
+    cached_1 = _cached_commutators(basis_1, generator)
+    cached_2 = _cached_commutators(basis_2, generator)
+    comms_1 = None if cached_1 is None else tuple(cached_1[idx] for idx in rows_1)
+    comms_2 = None if cached_2 is None else tuple(cached_2[idx] for idx in rows_2)
 
     hij11, errors_1_sq, ops1 = prepare_blocks(
         basis_1_hij,
@@ -721,8 +763,10 @@ def append_basis(basis_1: OperatorBasis, basis_2: OperatorBasis | Iterable[Opera
     )
     operators = ops1 + ops2
 
-    hij21 = fill_h_blocks(ops1, ops2, hij11, errors_1_sq, reuse_h11)
-    hij12 = fill_h_blocks(ops2, ops1, hij22, errors_2_sq, reuse_h22)
+    used_1: List[Operator] = []
+    used_2: List[Operator] = []
+    hij21 = fill_h_blocks(ops1, ops2, hij11, errors_1_sq, reuse_h11, comms_1, used_1)
+    hij12 = fill_h_blocks(ops2, ops1, hij22, errors_2_sq, reuse_h22, comms_2, used_2)
 
     hij = np.block([[hij11, hij12], [hij21, hij22]])
     genij = gram_inv @ hij
@@ -734,7 +778,7 @@ def append_basis(basis_1: OperatorBasis, basis_2: OperatorBasis | Iterable[Opera
         )
         ** 0.5
     )
-    return OperatorBasis(
+    result = OperatorBasis(
         operators,
         generator,
         sp,
@@ -746,6 +790,8 @@ def append_basis(basis_1: OperatorBasis, basis_2: OperatorBasis | Iterable[Opera
             "hij": hij,
         },
     )
+    result._commutators = tuple(used_1 + used_2)
+    return result
 
 
 def prepend_basis(

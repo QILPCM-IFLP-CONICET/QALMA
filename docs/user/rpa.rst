@@ -188,6 +188,48 @@ sites. The same class represents any Gaussian bosonic state, built from a
 quadratic generator or from its matrix of contractions (see
 :mod:`qalma.gaussian`).
 
+Bosonized reduced states
+------------------------
+
+The Gaussian state of the full bosonization also gives the reduced states of
+one or two sites, mapping the local operators to the bosons with their
+quadratic (population) terms: creating a boson in the pair of local levels
+:math:`(i, j)` moves population from :math:`i` to :math:`j`. The averages of
+products of operators of two sites then follow from Wick's theorem:
+
+.. code-block:: python
+
+   rho_pair = state.bosonized_state(frozenset({"1[0]", "1[1]"}))
+
+This is the bosonization of chapter 6 of J. M. Matera's doctoral thesis. Its
+one-body averages and the correlations of the linear parts coincide with
+those obtained deriving the RPA partition function with respect to the
+couplings, as in the mean field plus RPA of Canosa, Matera and Rossignoli;
+the Gaussian state adds terms of higher order in :math:`1/n` (the products of
+the population corrections and the Wick contraction of the quadratic parts),
+which in the fully connected models bring the correlations closer to the
+exact ones. Without the quadratic terms, the correlations of the diagonal
+operators would keep their mean-field values.
+
+The bosonization of the whole system is computed once (it is stored in
+``state.rpa_structure``), so each pair costs a few contractions: in a fully
+connected chain of 20 spins, about 0.5 ms per pair, against about 10 ms for
+a dynamical reduction. In return, the subsystem is also treated in the
+Gaussian approximation, so the dynamical reduction, which keeps it exact, is
+more accurate (in the normal phase of the fully connected models with
+:math:`n = 6`, the trace distance to the exact pair state is
+:math:`\sim 5\times 10^{-3}` for the bosonized state and
+:math:`\sim 10^{-4}` for the dynamical one). Other limitations:
+
+* The matrices are Hermitian and normalized, but not necessarily positive:
+  the truncation leaves negative eigenvalues of the order of the neglected
+  terms (:math:`O(1/n^2)` in the fully connected models).
+* Close to an instability, the occupation of the soft modes becomes of
+  order one and the population corrections exceed the populations
+  themselves; the result is then meaningless.
+* As in the entropies and negativities, the static modes are left out, and
+  states with zero modes raise a ``ValueError``.
+
 .. _rpa-formulation:
 
 Formulation

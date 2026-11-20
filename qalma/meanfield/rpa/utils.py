@@ -88,6 +88,32 @@ def kubo_mori_susceptibility(
     return chi - np.outer(avg, avg)
 
 
+def _ordered_spectrum(
+    spectrum: Tuple[np.ndarray, np.ndarray],
+) -> Tuple[np.ndarray, np.ndarray]:
+    """Sort populations (decreasing) and eigenvectors of a local state."""
+    p, vecs = spectrum
+    order = np.argsort(-p)
+    return np.clip(p[order], 1e-300, None), vecs[:, order]
+
+
+def _boson_pairs(p: np.ndarray) -> List[Tuple[int, int, float]]:
+    """Pairs ``(i, j, ln(p_i/p_j))``, ``i < j``, of the local bosons.
+
+    This is the order of the modes of :func:`local_boson_modes`.
+    """
+    return [
+        (i, j, float(np.log(p[i] / p[j])))
+        for i in range(len(p))
+        for j in range(i + 1, len(p))
+    ]
+
+
+def _is_dynamic(freqs, static_gap: float):
+    """Whether bosons of frequency ``freqs`` are dynamic (not static)."""
+    return np.asarray(freqs) > static_gap * (1.0 + 1e-6)
+
+
 def local_boson_modes(
     sigma_loc: np.ndarray,
     basis: List[np.ndarray],
@@ -131,26 +157,20 @@ def local_boson_modes(
     couplings : numpy.ndarray
         Complex couplings :math:`g_{\mu k}`, shape ``(len(basis), K)``.
     """
-    if spectrum is None:
-        p, vecs = np.linalg.eigh(sigma_loc)
-    else:
-        p, vecs = spectrum
-    order = np.argsort(-p)
-    p = np.clip(p[order], 1e-300, None)
-    vecs = vecs[:, order]
+    p, vecs = _ordered_spectrum(
+        np.linalg.eigh(sigma_loc) if spectrum is None else spectrum
+    )
     ops = np.array([vecs.conj().T @ np.asarray(e) @ vecs for e in basis])
     freqs: List[float] = []
     couplings: List[np.ndarray] = []
-    for i in range(len(p)):
-        for j in range(i + 1, len(p)):
-            gap = np.log(p[i] / p[j])
-            if gap >= static_gap:
-                weight = p[i] - p[j]
-            else:
-                gap = static_gap
-                weight = 0.5 * (p[i] + p[j]) * static_gap
-            freqs.append(gap)
-            couplings.append(np.sqrt(weight) * ops[:, i, j])
+    for i, j, gap in _boson_pairs(p):
+        if gap >= static_gap:
+            weight = p[i] - p[j]
+        else:
+            gap = static_gap
+            weight = 0.5 * (p[i] + p[j]) * static_gap
+        freqs.append(gap)
+        couplings.append(np.sqrt(weight) * ops[:, i, j])
     diag = np.real(np.array([np.diag(o) for o in ops]))
     mean = diag @ p
     cov = (diag * p[None, :]) @ diag.T - np.outer(mean, mean)

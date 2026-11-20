@@ -267,10 +267,11 @@ def _register(label: str, cls: type, writer: _Writer, reader: _Reader) -> None:
 
 def _registry_ready() -> None:
     """Register the classes defined in modules that depend on this one."""
-    if "rpa_gibbs" in _READERS:
+    if "rpa_gibbs" in _READERS and "mps_gs" in _READERS:
         return
     # pylint: disable=import-outside-toplevel
     from qalma.meanfield.rpa import RPAGibbsDensityOperator
+    from qalma.mps import MPSGSOperator
 
     def read_rpa_gibbs(group, system, context):
         attrs = group.attrs
@@ -301,6 +302,7 @@ def _registry_ready() -> None:
             )
 
     _register("rpa_gibbs", RPAGibbsDensityOperator, write_rpa_gibbs, read_rpa_gibbs)
+    _register("mps_gs", MPSGSOperator, _write_mps_gs, _read_mps_gs)
 
 
 def _json_attr(group: h5py.Group, name: str):
@@ -1070,6 +1072,130 @@ def _read_qutip_state(group, system, context) -> QutipDensityOperator:
     return QutipDensityOperator(
         qobj, system, names, _real(prefactor), normalized=normalized
     )
+
+
+def _write_mps_gs(group, operator, context) -> None:
+    """Store a ``qalma.mps.MPSGSOperator``.
+
+    The group has the sites of the chain (``order``), the Hamiltonian if the
+    state has one, and the MPS if it was already computed. A state that was
+    not solved is stored without the MPS, and the DMRG runs again when the
+    loaded state is needed.
+    """
+    # pylint: disable=protected-access
+    solution = operator._solution
+    group.attrs["prefactor"] = _real(operator.prefactor)
+    group.attrs["chi_max"] = int(operator.chi_max)
+    group.create_dataset(
+        "order",
+        data=np.array([context.site(site) for site in operator.order], dtype=np.int32),
+    )
+    if solution["energy"] is not None:
+        group.attrs["energy"] = _real(solution["energy"])
+    options = dict(operator.dmrg_options)
+    if options.pop("mps0", None) is not None:
+        # The initial state of the DMRG is not part of the state.
+        dropped = ["dmrg_options.mps0"]
+        group.attrs["dropped"] = dropped
+        _warn_dropped(group, dropped, stacklevel=4)
+    if options:
+        group.attrs["dmrg_options"] = json_dumps(to_jsonable(options))
+    if operator.hamiltonian is not None:
+        write_operator(group, "hamiltonian", operator.hamiltonian, context)
+    mps = solution["mps"]
+    if mps is not None:
+        mps_group = group.create_group("mps")
+        mps_group.attrs["center"] = -1 if mps.center is None else int(mps.center)
+        mps_group.create_dataset(
+            "shapes", data=np.array([t.shape for t in mps.tensors], dtype=np.int64)
+        )
+        create_dataset(
+            mps_group,
+            "tensors",
+            np.concatenate([t.reshape(-1) for t in mps.tensors]).astype(np.complex128),
+        )
+    info = solution["info"]
+    if info is not None:
+        group.attrs["converged"] = bool(info["converged"])
+        group.attrs["sweeps"] = int(info["sweeps"])
+        group.attrs["max_truncation"] = float(info["max_truncation"])
+        group.create_dataset(
+            "energies", data=np.array(info["energies"], dtype=np.float64)
+        )
+
+
+def _read_mps_tensors(group: h5py.Group) -> list:
+    """Load the tensors of the MPS stored in ``group``."""
+    shapes = np.asarray(group["shapes"][()], dtype=np.int64)
+    data = np.asarray(group["tensors"][()], dtype=np.complex128)
+    if shapes.ndim != 2 or shapes.shape[1] != 3 or np.any(shapes < 1):
+        raise HDF5FormatError(f"{group.name}: the shapes of the tensors are invalid.")
+    sizes = np.prod(shapes, axis=1)
+    if data.ndim != 1 or data.size != int(sizes.sum()):
+        raise HDF5FormatError(
+            f"{group.name}: the tensors do not have the number of entries "
+            "given by their shapes."
+        )
+    bounds = np.concatenate([[0], np.cumsum(sizes)])
+    return [
+        data[start:stop].reshape(tuple(int(d) for d in shape))
+        for start, stop, shape in zip(bounds[:-1], bounds[1:], shapes)
+    ]
+
+
+def _read_mps_gs(group, system, context):
+    # pylint: disable=import-outside-toplevel,protected-access
+    from qalma.mps import MPS, MPSGSOperator
+
+    attrs = group.attrs
+    order = [context.site_name(int(index), group.name) for index in group["order"][()]]
+    hamiltonian = None
+    if "hamiltonian" in group:
+        hamiltonian = read_operator(group["hamiltonian"], context)
+    options = {}
+    if "dmrg_options" in attrs:
+        options = from_jsonable(_json_attr(group, "dmrg_options"))
+    try:
+        mps = None
+        if "mps" in group:
+            mps_group = group["mps"]
+            center = int(mps_group.attrs["center"])
+            mps = MPS(
+                _read_mps_tensors(mps_group), center=None if center < 0 else center
+            )
+        if mps is None and hamiltonian is None:
+            raise HDF5FormatError(
+                f"{group.name}: the state has neither an MPS nor a Hamiltonian."
+            )
+        state = MPSGSOperator(
+            hamiltonian,
+            system,
+            order,
+            mps=mps,
+            chi_max=int(attrs["chi_max"]),
+            prefactor=float(attrs["prefactor"]),
+            dmrg_options=options,
+            energy=float(attrs["energy"]) if "energy" in attrs else None,
+        )
+    except HDF5FormatError:
+        raise
+    except (ValueError, AssertionError) as exc:
+        raise HDF5FormatError(
+            f"{group.name} in {group.file.filename} is not a valid MPS state: {exc}"
+        ) from exc
+    if "converged" in attrs and mps is not None:
+        state._solution["info"] = {
+            "energy": state._solution["energy"],
+            "energies": [float(e) for e in group["energies"][()]],
+            "converged": bool(attrs["converged"]),
+            "sweeps": int(attrs["sweeps"]),
+            "max_truncation": float(attrs["max_truncation"]),
+            "bond_dims": mps.bond_dims,
+        }
+    if "dropped" in attrs:
+        dropped = [as_str(name) for name in np.atleast_1d(attrs["dropped"])]
+        _warn_dropped(group, dropped, stacklevel=4)
+    return state
 
 
 _register("scalar", ScalarOperator, _write_scalar, _read_scalar)

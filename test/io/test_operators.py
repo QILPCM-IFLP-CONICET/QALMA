@@ -22,6 +22,7 @@ from qalma.io import (
 )
 from qalma.meanfield.rpa import RPAGibbsDensityOperator
 from qalma.model import build_system_from_dims
+from qalma.mps import MPSGSOperator
 from qalma.operators import (
     LocalOperator,
     OneBodyOperator,
@@ -70,6 +71,12 @@ CASES["sum of products"] = PACKED_SUM
 CASES["rpa gibbs"] = RPAGibbsDensityOperator(
     HAMILTONIAN, SYSTEM, n_tau=8, hybrid_options={"n_modes": 2}
 )
+CASES["mps ground state"] = MPSGSOperator(
+    HAMILTONIAN, SYSTEM, chi_max=16, prefactor=0.5, dmrg_options={"seed": 3}
+).solve()
+CASES["mps ground state, unsolved"] = MPSGSOperator(
+    HAMILTONIAN, SYSTEM, dmrg_options={"seed": 3}
+)
 CASES["gibbs, weight 0"] = GibbsDensityOperator(HAMILTONIAN, SYSTEM, prefactor=0)
 CASES["product state, weight 0"] = ProductDensityOperator({}, 0, system=SYSTEM)
 CASES["qutip state"] = TEST_CASES_STATES["gibbs_H"].to_qutip_operator() * 0.5
@@ -99,6 +106,7 @@ ALL_CLASSES = {
     GibbsProductDensityOperator,
     LocalOperator,
     MixtureDensityOperator,
+    MPSGSOperator,
     OneBodyOperator,
     PauliStringOperator,
     PauliSumOperator,
@@ -241,6 +249,7 @@ def test_file_has_no_pickle_and_fixed_labels(tmp_path):
         "gibbs_product",
         "local",
         "mixture",
+        "mps_gs",
         "one_body",
         "pauli_string",
         "pauli_sum",

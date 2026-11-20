@@ -212,13 +212,20 @@ def local_mean_field_drift(k: Operator, sigma) -> Tuple[float, float]:
 def basis_commutators(basis: OperatorBasis) -> Tuple[Operator, ...]:
     """Return the commutators ``[Q_a, G]`` of the basis elements with its generator.
 
-    They are computed once and cached on the basis.
+    They are taken from the basis when it stored them while being built, and
+    otherwise computed once and cached on the basis.
     """
     cached = getattr(basis, "_leakage_commutators", None)
     if cached is not None:
         return cached
     if basis.generator is None:
         raise ValueError("The basis has no generator.")
+    # Bases store the commutators they compute while they are built.
+    stored = getattr(basis, "_commutators", None)
+    if stored is not None and len(stored) == len(basis.operator_basis):
+        reused = tuple(stored)
+        basis._leakage_commutators = reused  # type: ignore[attr-defined]
+        return reused
     comms = tuple(
         commutator(op, basis.generator).simplify() for op in basis.operator_basis
     )
