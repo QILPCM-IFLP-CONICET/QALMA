@@ -241,6 +241,13 @@ Bug fixes
 Performance
 +++++++++++
 
+* Operator bases store the commutators of their elements with the
+  generator, which they compute while being built. Appending elements to a
+  basis (as :func:`~qalma.evolution.update_basis` does with the mean-field
+  reference and the velocity) and :func:`~qalma.evolution.leakage_gram` reuse
+  them, instead of computing each commutator up to three times. The
+  restricted Max-Ent evolution of an XXZ chain with twelve sites is about
+  30 % faster, with the same results.
 * The n-body projection of dense blocks relative to a product state is
   computed directly, as a combination of partial reductions
   (inclusion-exclusion over the subsets of the support), instead of expanding
