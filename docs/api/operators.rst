@@ -18,7 +18,7 @@ qalma.operators
    arithmetic.SumOperator
    arithmetic.OneBodyOperator
    quadratic.QuadraticFormOperator
-   qutip.BlockDensityOperator
+   qutip.BlockOperator
 
 qalma.operators.basic
 ---------------------

@@ -31,7 +31,7 @@ __all__ = ["BlockOperator"]
 
 
 class BlockOperator(Operator):
-    """Represents a Qutip operator that acts over a block of sites of a system.
+    """Represents an operator that acts over a block of sites of a system.
 
     If two BlockOperator are combined in an arithmetic
     operation, the result is BlockOperator acting on
