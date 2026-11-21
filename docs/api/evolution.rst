@@ -66,4 +66,4 @@ qalma.evolution.qutip\_solver
    :members:
    :undoc-members:
    :show-inheritance:
-   :exclude-members: Qobj, Operator, BlockDensityOperator, BlockDensityOperator, Simulation
+   :exclude-members: Qobj, Operator, BlockOperator, BlockDensityOperator, Simulation
