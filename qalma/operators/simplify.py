@@ -9,6 +9,7 @@ from qalma.operators.arithmetic import OneBodyOperator, SumOperator
 from qalma.operators.basic import (
     Operator,
 )
+from qalma.operators.block import BlockOperator
 from qalma.operators.pauli import (
     PauliStringOperator,
     collect_pauli_terms,
@@ -18,7 +19,6 @@ from qalma.operators.product import (
     ProductOperator,
     ScalarOperator,
 )
-from qalma.operators.qutip import BlockOperator
 from qalma.qutip_tools.tools import (
     is_empty_op,
 )
@@ -257,7 +257,7 @@ def simplify_qutip_sums(sum_operator: SumOperator) -> Operator:
     """Simplify terms that are qutip operators.
 
     Collects terms acting on the same block of sites and reduces them to a
-    single :class:`~qalma.operators.qutip.BlockOperator`.
+    single :class:`~qalma.operators.block.BlockOperator`.
 
     Parameters
     ----------

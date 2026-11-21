@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""Qutip representation of an operator."""
+"""Block representation of an operator."""
 
 import logging
 from functools import reduce
@@ -37,6 +37,8 @@ class BlockOperator(Operator):
     operation, the result is BlockOperator acting on
     the union of both blocks.
 
+    Internally, BlockOperators are represented as a qutip ``Qobj`` operator
+    acting over a list of sites.
 
     """
 

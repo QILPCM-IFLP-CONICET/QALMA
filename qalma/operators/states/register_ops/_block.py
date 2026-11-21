@@ -20,8 +20,8 @@ Registered operations:
 from qalma.operators.arithmetic import OneBodyOperator, SumOperator
 from qalma.operators.basic import Operator
 from qalma.operators.states.arithmetic import MixtureDensityOperator
+from qalma.operators.states.block import BlockDensityOperator
 from qalma.operators.states.product import ProductDensityOperator
-from qalma.operators.states.qutip import BlockDensityOperator
 
 from ._types import (
     ANY_OPERATOR_TYPES,

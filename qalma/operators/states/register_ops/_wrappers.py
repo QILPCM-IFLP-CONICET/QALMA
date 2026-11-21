@@ -4,15 +4,15 @@ from typing import Any, Callable, Dict
 
 from qalma.operators.arithmetic import SumOperator
 from qalma.operators.basic import Operator
+from qalma.operators.block import BlockOperator
 from qalma.operators.product import ProductOperator
-from qalma.operators.qutip import BlockOperator
 from qalma.operators.states.arithmetic import MixtureDensityOperator
+from qalma.operators.states.block import BlockDensityOperator
 from qalma.operators.states.gibbs import (
     GibbsDensityOperator,
     GibbsProductDensityOperator,
 )
 from qalma.operators.states.product import ProductDensityOperator
-from qalma.operators.states.qutip import BlockDensityOperator
 
 WRAPPERS_BY_TYPE: Dict[Any, Callable] = {}
 

@@ -34,7 +34,7 @@ from functools import reduce
 import numpy as np
 
 from qalma.operators import ScalarOperator
-from qalma.operators.states.qutip import BlockDensityOperator
+from qalma.operators.states.block import BlockDensityOperator
 from qalma.qutip_tools.tools import reduce_to_proper_spaces
 
 __all__ = ["project_parity_like", "project_conserved_quantity", "project_time_reversal"]

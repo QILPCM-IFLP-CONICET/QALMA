@@ -20,8 +20,8 @@ from qalma.operators import Operator
 from qalma.operators.basic import LocalOperator
 from qalma.operators.quadratic import QuadraticFormOperator
 from qalma.operators.states.basic import DensityOperatorProtocol
+from qalma.operators.states.block import BlockDensityOperator
 from qalma.operators.states.gibbs import GibbsDensityOperator
-from qalma.operators.states.qutip import BlockDensityOperator
 from qalma.operators.states.register_ops._gibbs import _inherit_gibbs_arithmetic
 
 from .bosonized import rpa_bosonized_state

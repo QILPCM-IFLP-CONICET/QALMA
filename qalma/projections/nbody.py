@@ -19,8 +19,8 @@ from qalma.operators import (
     SumOperator,
 )
 from qalma.operators.arithmetic import iterable_to_operator
+from qalma.operators.block import BlockOperator
 from qalma.operators.quadratic import QuadraticFormOperator
-from qalma.operators.qutip import BlockOperator
 from qalma.operators.states.basic import (
     DensityOperatorProtocol,
 )
@@ -143,7 +143,7 @@ def one_body_qutip_projection(
     """
     Project qutip operators onto one-body operators.
 
-    Project a :class:`~qalma.operators.qutip.BlockOperator` onto the one-
+    Project a :class:`~qalma.operators.block.BlockOperator` onto the one-
     body operator subspace relative to ``state_ref``.
 
     Delegates to :func:`_project_qutip_operator_to_one_body`.
@@ -535,7 +535,7 @@ def n_body_qutip_projection(full_operator: BlockOperator, n_max=2, sigma_ref=Non
     """
     Project qutip operators onto the n-body operator space.
 
-    Project a :class:`~qalma.operators.qutip.BlockOperator` onto the n-body
+    Project a :class:`~qalma.operators.block.BlockOperator` onto the n-body
     operator subspace relative to ``sigma_ref``.
 
     Delegates to :func:`_project_qutip_operator_recursive`.

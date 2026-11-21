@@ -1,5 +1,5 @@
 """
-Qutip representation for density operators.
+Block representation for density operators.
 
 Be careful: just use this class for states of small systems.
 """
@@ -12,8 +12,8 @@ import numpy as np
 from qutip import Qobj as _Qobj, tensor as _tensor_qutip  # type: ignore[import-untyped]
 
 from qalma.model import SystemDescriptor
+from qalma.operators.block import BlockOperator
 from qalma.operators.product import ScalarOperator
-from qalma.operators.qutip import BlockOperator
 from qalma.operators.states.basic import (
     DensityOperatorMixin,
     DensityOperatorProtocol,
@@ -25,7 +25,12 @@ __all__ = ["BlockDensityOperator"]
 
 
 class BlockDensityOperator(DensityOperatorMixin, BlockOperator):
-    """Qutip representation of a density operator."""
+    """
+    Block representation of a density operator.
+
+    Internally, BlockOperators are represented as a qutip ``Qobj`` operator
+    acting over a list of sites.
+    """
 
     def __init__(
         self,
@@ -124,7 +129,7 @@ class BlockDensityOperator(DensityOperatorMixin, BlockOperator):
         Returns
         -------
         BlockOperator
-            The matrix logarithm as a :class:`~qalma.operators.qutip.BlockOperator`.
+            The matrix logarithm as a :class:`~qalma.operators.block.BlockOperator`.
         """
         self.normalize()
         operator = self.operator
@@ -151,7 +156,7 @@ class BlockDensityOperator(DensityOperatorMixin, BlockOperator):
         """Compute the partial trace over the complement of ``sites``.
 
         Normalizes first, delegates to the parent
-        :class:`~qalma.operators.qutip.BlockOperator` partial trace, and
+        :class:`~qalma.operators.block.BlockOperator` partial trace, and
         wraps the result back as a :class:`BlockDensityOperator`.
 
         Parameters
@@ -183,7 +188,7 @@ class BlockDensityOperator(DensityOperatorMixin, BlockOperator):
         """Return the normalized QuTiP density matrix over ``block``.
 
         Normalizes first, then delegates to
-        :meth:`~qalma.operators.qutip.BlockOperator.to_qutip` with the
+        :meth:`~qalma.operators.block.BlockOperator.to_qutip` with the
         prefactor temporarily set to ``1`` so that the state sums to unit
         trace (the prefactor is a mixture weight, not part of the matrix).
 

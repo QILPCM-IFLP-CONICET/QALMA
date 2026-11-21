@@ -26,8 +26,8 @@ from qalma.mps.mps import MPS
 from qalma.operators.arithmetic import SumOperator
 from qalma.operators.basic import Operator
 from qalma.operators.states.basic import DensityOperatorMixin
+from qalma.operators.states.block import BlockDensityOperator
 from qalma.operators.states.product import ProductDensityOperator
-from qalma.operators.states.qutip import BlockDensityOperator
 from qalma.operators.states.register_ops._gibbs import _inherit_gibbs_arithmetic
 from qalma.operators.states.register_ops._types import COMPLEX_NUMERIC_TYPES
 

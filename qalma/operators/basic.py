@@ -291,8 +291,8 @@ class Operator:  # pylint: disable=too-many-public-methods
         # type: ignore[import-untyped]
         from scipy.sparse.linalg import ArpackError
 
+        from qalma.operators.block import BlockOperator
         from qalma.operators.functions import eigenvalues
-        from qalma.operators.qutip import BlockOperator
 
         op_qutip = self.to_qutip()
         try:
@@ -380,7 +380,7 @@ class Operator:  # pylint: disable=too-many-public-methods
         site_names = {site: i for i, site in enumerate(block)}
         qobj = self.to_qutip(block)
         if isinstance(qobj, Qobj):
-            from .qutip import BlockOperator
+            from .block import BlockOperator
 
             assert qobj.type != "scalar"
             return BlockOperator(qobj, system=self.system, names=site_names)

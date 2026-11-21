@@ -11,9 +11,9 @@ Covers:
 
 from qalma.operators.arithmetic import OneBodyOperator, SumOperator
 from qalma.operators.basic import LocalOperator, Operator
+from qalma.operators.block import BlockOperator
 from qalma.operators.product import ProductOperator, ScalarOperator
 from qalma.operators.quadratic import QuadraticFormOperator
-from qalma.operators.qutip import BlockOperator
 
 from ._common import NUMERIC_TYPES
 

@@ -50,11 +50,11 @@ from qalma.operators.basic import (
     LocalOperator,
     Operator,
 )
+from qalma.operators.block import BlockOperator
 from qalma.operators.product import (
     ProductOperator,
     ScalarOperator,
 )
-from qalma.operators.qutip import BlockOperator
 from qalma.settings import QALMA_TOLERANCE
 
 from .quadratic import QuadraticFormOperator

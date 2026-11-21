@@ -6,12 +6,13 @@ import numpy as np
 
 from qalma.operators.arithmetic import OneBodyOperator, SumOperator
 from qalma.operators.basic import LocalOperator, Operator
+from qalma.operators.block import BlockOperator
 from qalma.operators.product import ProductOperator, ScalarOperator
 from qalma.operators.quadratic import QuadraticFormOperator
-from qalma.operators.qutip import BlockOperator
 from qalma.operators.states.basic import (
     DensityOperatorMixin,
 )
+from qalma.operators.states.block import BlockDensityOperator
 from qalma.operators.states.gibbs import (
     GibbsDensityOperator,
     GibbsProductDensityOperator,
@@ -19,7 +20,6 @@ from qalma.operators.states.gibbs import (
 from qalma.operators.states.product import (
     ProductDensityOperator,
 )
-from qalma.operators.states.qutip import BlockDensityOperator
 
 BASIC_OPERATOR_TYPES = (
     Operator,

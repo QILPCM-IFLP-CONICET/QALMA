@@ -36,10 +36,10 @@ qalma.operators.states.arithmetic
    :undoc-members:
    :show-inheritance:
 
-qalma.operators.states.qutip
+qalma.operators.states.block
 -----------------------------
 
-.. automodule:: qalma.operators.states.qutip
+.. automodule:: qalma.operators.states.block
    :members:
    :undoc-members:
    :show-inheritance:

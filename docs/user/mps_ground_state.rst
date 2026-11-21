@@ -27,7 +27,7 @@ It behaves like the other states of QALMA:
 :meth:`~qalma.mps.gs_operator.MPSGSOperator.expect` and
 :meth:`~qalma.mps.gs_operator.MPSGSOperator.partial_trace` work with any
 operator, the arithmetic of density operators is available, and the reduced
-states are :class:`~qalma.operators.states.qutip.BlockDensityOperator`
+states are :class:`~qalma.operators.states.block.BlockDensityOperator`
 objects, so they can be used everywhere a reduced state is needed (for
 instance, as a reference for the reductions of Gibbs states in :doc:`rpa`).
 
@@ -77,7 +77,7 @@ Expectation values of operators of any support are computed from the MPS:
    rho.expect(H)                 # -5.14209063
 
 Reduced states of a few sites are
-:class:`~qalma.operators.states.qutip.BlockDensityOperator` objects:
+:class:`~qalma.operators.states.block.BlockDensityOperator` objects:
 
 .. code-block:: python
 

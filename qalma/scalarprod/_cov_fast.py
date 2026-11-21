@@ -46,8 +46,8 @@ import numpy as np
 from numpy.typing import NDArray
 
 from qalma.operators.basic import LocalOperator
+from qalma.operators.block import BlockOperator
 from qalma.operators.product import ProductOperator
-from qalma.operators.qutip import BlockOperator
 from qalma.operators.states import ProductDensityOperator
 
 #: Largest support (number of sites) of a dense term handled by the kernel.
