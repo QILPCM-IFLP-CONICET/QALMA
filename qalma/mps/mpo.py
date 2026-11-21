@@ -75,10 +75,14 @@ def build_mpo(
 
     Parameters
     ----------
-    terms : sequence of (positions, matrix)
+    terms : sequence of (positions, matrix) or (positions, factors)
         Every term is given by the **ascending** positions along the chain
-        where it acts and its dense matrix, written in the tensor-product
-        order of those positions.
+        where it acts and either its dense matrix, written in the
+        tensor-product order of those positions, or, if the term is a product
+        of local operators, the list of those operators (one matrix of shape
+        ``(d, d)`` per position). The second form never builds a dense
+        matrix, so the terms can cover as many sites as needed, as the ones
+        that come from the Jordan-Wigner transformation of fermions.
     dims : sequence of int
         Local dimension at every position.
     zero_tol : float, optional
@@ -103,12 +107,23 @@ def build_mpo(
 
     for t_idx, (positions, matrix) in enumerate(terms):
         positions = tuple(int(p) for p in positions)
-        matrix = np.asarray(matrix, dtype=complex)
-        if np.max(np.abs(matrix), initial=0.0) < zero_tol:
-            continue
         if list(positions) != sorted(set(positions)):
             raise ValueError("term positions must be strictly ascending")
-        factors = term_to_factors(matrix, [dims[p] for p in positions])
+        if isinstance(matrix, (list, tuple)):
+            local_ops = [np.asarray(op, dtype=complex) for op in matrix]
+            if len(local_ops) != len(positions):
+                raise ValueError("a factor is needed for every position")
+            for pos, op_mat in zip(positions, local_ops):
+                if op_mat.shape != (dims[pos], dims[pos]):
+                    raise ValueError(f"the factor at position {pos} has a wrong shape")
+            if any(np.max(np.abs(op), initial=0.0) < zero_tol for op in local_ops):
+                continue
+            factors = [op.reshape(1, *op.shape, 1) for op in local_ops]
+        else:
+            matrix = np.asarray(matrix, dtype=complex)
+            if np.max(np.abs(matrix), initial=0.0) < zero_tol:
+                continue
+            factors = term_to_factors(matrix, [dims[p] for p in positions])
         decomposed.append((t_idx, positions, factors))
         for j in range(len(positions) - 1):
             rank = factors[j].shape[3]

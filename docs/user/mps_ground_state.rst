@@ -87,14 +87,20 @@ Reduced states of a few sites are
 How the observables are evaluated
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-``expect`` splits the observable into terms and asks the state for the
-reduced state of the sites each term acts on. The cost of a reduced state
+``expect`` splits the observable into terms. A term that is a product of local
+operators (a scalar, a local operator, a product of operators on different
+sites, or a Pauli string) is contracted with the MPS directly, site by site.
+Its cost grows linearly with the distance along the chain between the first and
+the last site where it acts, and does not depend on how many operators it has:
+a correlation between two distant sites, or a string over fifty sites, costs the
+same as a local observable.
+
+Any other term (for instance, an operator given as a matrix over several sites)
+uses the reduced state of the sites it acts on. The cost of a reduced state
 grows exponentially with the number of sites kept (a dense
-:math:`d^{|A|}\times d^{|A|}` matrix is built) and linearly with the distance
-along the chain between the first and the last of them. Terms acting on a few
-sites are therefore cheap, even if the sites are far apart, while terms acting
-on many sites are not. There is no shortcut for products of many operators:
-reduce the problem to few-body terms.
+:math:`d^{|A|}\times d^{|A|}` matrix is built), and linearly with the distance
+along the chain between the first and the last of them. For those terms, reduce
+the problem to few-body observables.
 
 Order of the sites along the chain
 ----------------------------------
@@ -215,6 +221,76 @@ the same ``permutation`` as before:
 tests on small systems. The local dimensions of the MPS are checked against
 the system.
 
+.. _mps_fermions:
+
+Fermions
+--------
+
+The fermionic models whose sites are products of two-level modes (spinless
+fermions, the Hubbard model, Kondo lattices) are mapped to qubits with the
+Jordan-Wigner transformation when the system is built, and their operators are
+sums of Pauli strings (see :doc:`models`). ``MPSGSOperator`` works with them as
+with any other spin system, since the MPS lives on those qubits: the ground state of
+the qubit Hamiltonian is the ground state of the fermions. A lattice site of the
+Hubbard model, for example, becomes two sites, ``"1[0]:Nup"`` and
+``"1[0]:Ndown"``, and the argument ``permutation`` orders them along the chain
+like any other site.
+
+.. code-block:: python
+
+   from qalma.operators.pauli import fermion_annihilation, fermion_creation
+
+   system = build_system("open chain lattice", "spinless fermions",
+                         L=32, t=1, V=0, mu=0.3)
+   H = system.global_operator("Hamiltonian")
+   order = [f"1[{i}]" for i in range(32)]
+
+   rho = MPSGSOperator(H, permutation=order, chi_max=32)
+   rho.energy        # -25.0365941   (free fermions, exact: -25.0365944)
+
+   c_dag = fermion_creation(system, "1[2]")
+   c = fermion_annihilation(system, "1[27]")
+   rho.expect(c_dag * c)    # 0.014918   (exact: 0.014907)
+
+The expectation value of :math:`c^\dagger_2 c_{27}` is a Pauli string with a string
+of :math:`\sigma^z` over the 24 sites in between, and the evaluation takes about
+0.01 s. For free fermions the exact solution is the filling of the
+single-particle levels with negative energy, which is what the numbers in
+parentheses are. The notebook :doc:`../examples/example_mps_ground_state` shows
+the comparison, and also a Hubbard chain checked against exact diagonalization.
+
+Some points to keep in mind:
+
+* **Long strings are not a problem for the evaluation, but they cost bond
+  dimension.** Terms that are products of local operators are never written as
+  dense matrices over their support: the MPO is built from their local
+  factors and the expectation values are contracted with the MPS. But every
+  string that crosses a cut adds a channel to the MPO. The hopping between the
+  ends of a periodic ring is a string over the whole ring, and in two
+  dimensions the bonds between sites that are not neighbours in the
+  Jordan-Wigner order are strings as long as their distance in that order.
+  This is one more reason to prefer open boundaries.
+* **The order of the sites does not change the result.** The signs of the
+  fermions are in the operators, and the qubits commute. The argument
+  ``permutation`` changes only the cost, not the state. For a Hubbard chain of
+  4 sites, three different orders give the same energy to :math:`10^{-14}`.
+  The order used by the Jordan-Wigner transformation is fixed when the system
+  is built, and it is not the order of the MPS.
+* **The number of particles is not fixed.** The DMRG looks for the ground
+  state in the whole Fock space, and the sector is selected by the chemical
+  potential ``mu`` of the Hamiltonian.
+* **The ground state must be non-degenerate.** In fermionic models this
+  fails more often than in spin models: free fermions have a zero mode on an
+  open chain with an odd number of sites and ``mu = 0``, and the Hubbard model
+  away from half filling has degenerate spin multiplets. The DMRG then
+  converges to some state of the manifold, or to a superposition of
+  them. Check the gap with exact diagonalization on a small instance.
+* **Models that are not mapped to qubits.** If the sites are not products of
+  two-level modes (the constrained basis of the t-J model, for instance),
+  QALMA builds the operators as if they commuted and emits a
+  ``FermionicSignWarning``. ``MPSGSOperator`` uses the Hamiltonian as it
+  receives it, so the approximation is inherited.
+
 Relation with Gibbs states
 --------------------------
 
@@ -310,8 +386,9 @@ Limitations
   fall back to this dense representation, so they are meant for small
   systems. Scaling by a positive number, ``rho / 2`` and ``rho + rho`` keep
   the MPS.
-* Only Hamiltonians written with spins have been tested. Fermionic models
-  require care, since the sites are reordered along the chain.
+* Fermionic models are supported when QALMA maps them to qubits (see
+  :ref:`above <mps_fermions>`); the models that it builds without fermionic signs
+  keep that approximation.
 
 .. seealso::
 

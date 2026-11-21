@@ -147,6 +147,15 @@ Matrix product states (experimental)
   (the lexicographic order of the names is rarely a good one).
 * ``MPS``, ``build_mpo`` (an MPO from a sum of few-body terms of any range)
   and ``dmrg`` are also available.
+* Terms and observables that are products of local operators (scalars, local
+  operators, products and Pauli strings) are handled site by site: the MPO is
+  built from their local factors and their expectation values are contracted
+  directly with the MPS, without dense matrices over their support
+  (``MPS.expectation_product``; ``build_mpo`` accepts the list of local
+  factors of a term). This makes ``MPSGSOperator`` work with the fermionic
+  models that QALMA maps to qubits with the Jordan-Wigner transformation
+  (spinless fermions, Hubbard, Kondo), including the strings that cover many
+  sites, and it also makes the string operators of spin models cheap.
 * ``MPSGSOperator`` can be stored in HDF5 files (type ``mps_gs``), without
   pickles: the tensors of the MPS, the order of the sites and the
   Hamiltonian are saved. A state that was not computed yet is stored with

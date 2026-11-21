@@ -24,7 +24,9 @@ from qalma.mps.dmrg import dmrg
 from qalma.mps.mpo import build_mpo
 from qalma.mps.mps import MPS
 from qalma.operators.arithmetic import SumOperator
-from qalma.operators.basic import Operator
+from qalma.operators.basic import LocalOperator, Operator
+from qalma.operators.product import ProductOperator
+from qalma.operators.quadratic import QuadraticFormOperator
 from qalma.operators.states.basic import DensityOperatorMixin
 from qalma.operators.states.product import ProductDensityOperator
 from qalma.operators.states.qutip import QutipDensityOperator
@@ -64,31 +66,82 @@ def _resolve_order(
     return tuple(lexicographic[int(i)] for i in permutation)
 
 
+def _dense_local(matrix) -> np.ndarray:
+    """Return a local operator as a dense numpy matrix."""
+    if hasattr(matrix, "full"):
+        return np.asarray(matrix.full())
+    if hasattr(matrix, "toarray"):
+        return np.asarray(matrix.toarray())
+    return np.asarray(matrix)
+
+
+def product_factors(
+    operator: Operator,
+) -> Optional[Tuple[complex, Dict[str, np.ndarray]]]:
+    """Return the factors of an operator that is a product of local operators.
+
+    Scalars, local operators, products and Pauli strings are products of local
+    operators. They are the terms for which the MPO and the expectation values
+    can be built site by site, without dense matrices over their support.
+
+    Returns
+    -------
+    (prefactor, factors) or None
+        The prefactor and the dense matrix on every site where the operator is
+        not the identity, or ``None`` if the operator is of another kind.
+    """
+    if isinstance(operator, LocalOperator):
+        return 1.0, {operator.site: _dense_local(operator.operator)}
+    if isinstance(operator, ProductOperator):
+        return operator.prefactor, {
+            site: _dense_local(matrix) for site, matrix in operator.site_factors.items()
+        }
+    return None
+
+
 def hamiltonian_terms(
     hamiltonian: Operator, order: Sequence[str]
 ) -> Tuple[list, complex]:
-    """Split a Hamiltonian into dense few-body terms along a chain.
+    """Split a Hamiltonian into terms along a chain.
+
+    Terms that are products of local operators (including Pauli strings, as
+    the ones that fermions give after the Jordan-Wigner transformation) are
+    kept as a list of local matrices, so they can cover any number of sites.
+    The others are written as dense matrices over the sites they act on.
 
     Parameters
     ----------
     hamiltonian : Operator
-        The Hamiltonian.
+        The Hamiltonian, which must be Hermitian.
     order : sequence of str
         Site names, in the order they have along the chain.
 
     Returns
     -------
-    terms : list of (positions, matrix)
-        Ascending positions and Hermitian dense matrix of every term.
+    terms : list of (positions, matrix or factors)
+        Ascending positions along the chain and, for every term, either its
+        dense (Hermitian) matrix or the list of its local matrices, as
+        :func:`qalma.mps.mpo.build_mpo` expects.
     offset : complex
         Sum of the terms that act on no site.
     """
     position = {site: pos for pos, site in enumerate(order)}
     flat = hamiltonian.flat()
     pieces = flat.terms if isinstance(flat, SumOperator) else (flat,)
-    terms = []
+    terms: list = []
     offset: complex = 0.0
     for piece in pieces:
+        factors = product_factors(piece)
+        if factors is not None:
+            prefactor, local = factors
+            if not local:
+                offset += prefactor
+                continue
+            by_position = sorted((position[site], mat) for site, mat in local.items())
+            mats = [mat for _, mat in by_position]
+            mats[0] = prefactor * mats[0]
+            terms.append((tuple(pos for pos, _ in by_position), mats))
+            continue
         acts_over = piece.acts_over()
         if not acts_over:
             value = piece.to_qutip(tuple())
@@ -318,6 +371,40 @@ class MPSGSOperator(DensityOperatorMixin, Operator):
         if isinstance(value, dict):
             raise TypeError("`ham` must be a single operator.")
         return float(np.real(np.asarray(value).item()))
+
+    def expect(self, obs_objs, _local_states=None):
+        """Compute expectation values of one or several observables.
+
+        Terms that are products of local operators (scalars, local operators,
+        products and Pauli strings, such as the Jordan-Wigner images of
+        fermionic operators) are contracted with the MPS directly, at a cost
+        that does not depend on how many sites they cover. The other terms use
+        the reduced state of the sites they act on, as for any other state.
+        The prefactor of the state does not enter.
+        """
+        if isinstance(obs_objs, dict):
+            return {
+                name: self.expect(obs, _local_states) for name, obs in obs_objs.items()
+            }
+        if isinstance(obs_objs, (tuple, list)):
+            return np.array([self.expect(obs, _local_states) for obs in obs_objs])
+        if isinstance(obs_objs, QuadraticFormOperator):
+            obs_objs = obs_objs.as_sum_of_products()
+        if isinstance(obs_objs, SumOperator):
+            return sum(self.expect(term, _local_states) for term in obs_objs.terms)
+        factors = product_factors(obs_objs)
+        if factors is None:
+            return super().expect(obs_objs, _local_states)
+        prefactor, local = factors
+        if not local:
+            return prefactor
+        unknown = set(local).difference(self._position)
+        if unknown:
+            raise ValueError(f"sites {sorted(unknown)} are not in the system.")
+        value = self.mps.expectation_product(
+            {self._position[site]: matrix for site, matrix in local.items()}
+        )
+        return prefactor * value
 
     def partial_trace(self, sites: Union[frozenset, SystemDescriptor], **_kwargs):
         """Reduced state of ``sites`` as a :class:`QutipDensityOperator`.
