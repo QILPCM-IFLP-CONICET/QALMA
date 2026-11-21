@@ -4,7 +4,7 @@ import numpy as np
 import pytest
 from qutip import Qobj, create, jmat, qeye, sigmax, sigmay, sigmaz, tensor
 
-from qalma.operators import Operator, ProductOperator, QutipOperator, ScalarOperator
+from qalma.operators import BlockOperator, Operator, ProductOperator, ScalarOperator
 from qalma.qutip_tools.tools import (
     data_element_iterator,
     data_get_type,
@@ -454,7 +454,7 @@ def test_qutip_operators(
 @pytest.mark.parametrize(["name", "operator_case"], list(OPERATOR_TYPE_CASES.items()))
 def test_as_sum_of_products(name, operator_case):
     """Convert qutip operators into product operators back and forward."""
-    print("testing QutipOperator.as_sum_of_products")
+    print("testing BlockOperator.as_sum_of_products")
     print("   operator", name, "of type", type(operator_case))
     qutip_op = 3 * (operator_case.to_qutip_operator())
 
@@ -473,7 +473,7 @@ def test_as_sum_of_products(name, operator_case):
 
 def test_detached_operators():
     """Check operators not coming from a system."""
-    # Tests for QutipOperators defined without a system
+    # Tests for BlockOperators defined without a system
     test_op = SX_A_SY_B_TIMES_2
     system = test_op.system
     test_op_tr = test_op.tr()
@@ -483,12 +483,12 @@ def test_detached_operators():
     assert test_op_sq_tr == (qutip_repr * qutip_repr).tr()
 
     # Now, build a detached operator
-    detached_qutip_operator = QutipOperator(qutip_repr)
+    detached_qutip_operator = BlockOperator(qutip_repr)
     assert test_op_tr == detached_qutip_operator.tr()
     assert test_op_sq_tr == (detached_qutip_operator * detached_qutip_operator).tr()
 
     # sites with names
-    detached_qutip_operator = QutipOperator(
+    detached_qutip_operator = BlockOperator(
         qutip_repr, names={s: i for i, s in enumerate(SITES)}
     )
     assert test_op_tr == detached_qutip_operator.tr()
@@ -536,7 +536,7 @@ def test_to_qutip_operator():
         "product, 2": ScalarOperator,
     }
     for name, op_case in OPERATOR_TYPE_CASES.items():
-        expected_type = expected_types_to_qutip.get(name, QutipOperator)
+        expected_type = expected_types_to_qutip.get(name, BlockOperator)
         op_tqo = op_case.to_qutip_operator()
         assert isinstance(
             op_tqo, expected_type
@@ -577,10 +577,10 @@ def test_reduce_to_proper_spaces():
     ), f"{reduced_state.eigenenergies()}"
 
 
-def test_trivial_QutipOperator():
-    b = QutipOperator(sigmax(), prefactor=0.5)
+def test_trivial_BlockOperator():
+    b = BlockOperator(sigmax(), prefactor=0.5)
     system = b.system
-    a = QutipOperator(1, prefactor=2, system=system)
+    a = BlockOperator(1, prefactor=2, system=system)
     ab = a * b
     print("a:", a)
     print("b:", b)

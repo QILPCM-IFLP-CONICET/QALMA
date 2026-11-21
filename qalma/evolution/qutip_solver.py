@@ -9,8 +9,8 @@ import qutip
 from numpy.typing import ArrayLike
 from qutip import Qobj
 
-from qalma.operators import Operator, QutipOperator
-from qalma.operators.states import QutipDensityOperator
+from qalma.operators import BlockOperator, Operator
+from qalma.operators.states import BlockDensityOperator
 
 from .simulation import Simulation
 
@@ -114,7 +114,7 @@ def qutip_me_solve(
 
     if isinstance(rho0, Operator):
         state_operator_class = (
-            QutipDensityOperator if hasattr(rho0, "expect") else QutipOperator
+            BlockDensityOperator if hasattr(rho0, "expect") else BlockOperator
         )
         if system is None:
             system = rho0.system

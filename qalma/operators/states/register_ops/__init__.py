@@ -11,7 +11,7 @@ are organised by the density operator type that drives each group of handlers:
   _product.py      ProductDensityOperator
   _gibbs_product.py        GibbsProductDensityOperator
   _gibbs.py        GibbsDensityOperator
-  _qutip.py        QutipDensityOperator
+  _qutip.py        BlockDensityOperator
 """
 
 import qalma.operators.basic  # noqa: F401

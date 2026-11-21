@@ -18,7 +18,7 @@ from qalma.operators.product import (
     ProductOperator,
     ScalarOperator,
 )
-from qalma.operators.qutip import QutipOperator
+from qalma.operators.qutip import BlockOperator
 from qalma.qutip_tools.tools import (
     is_empty_op,
 )
@@ -149,7 +149,7 @@ def group_terms_by_blocks(operator: Operator, fn: Optional[Callable] = None):
         changed = True
     terms_dict = collect_nbody_terms(operator_flat)
 
-    if any(isinstance(t, QutipOperator) for t in terms_dict.get(acts_over, [])):
+    if any(isinstance(t, BlockOperator) for t in terms_dict.get(acts_over, [])):
         return operator.to_qutip_operator()
 
     new_terms = []
@@ -257,7 +257,7 @@ def simplify_qutip_sums(sum_operator: SumOperator) -> Operator:
     """Simplify terms that are qutip operators.
 
     Collects terms acting on the same block of sites and reduces them to a
-    single :class:`~qalma.operators.qutip.QutipOperator`.
+    single :class:`~qalma.operators.qutip.BlockOperator`.
 
     Parameters
     ----------
@@ -277,7 +277,7 @@ def simplify_qutip_sums(sum_operator: SumOperator) -> Operator:
     isherm = sum_operator._isherm
     system = sum_operator.system
     terms: List[Operator] = []
-    qutip_terms: Dict[frozenset, List[QutipOperator]] = {}
+    qutip_terms: Dict[frozenset, List[BlockOperator]] = {}
     product_terms: Dict[frozenset, List[ProductOperator]] = {}
 
     pauli_strings: List[PauliStringOperator] = []
@@ -286,7 +286,7 @@ def simplify_qutip_sums(sum_operator: SumOperator) -> Operator:
             pauli_strings.append(term)
         elif isinstance(term, ProductOperator):
             product_terms.setdefault(term.acts_over(), []).append(term)
-        elif isinstance(term, QutipOperator):
+        elif isinstance(term, BlockOperator):
             qutip_terms.setdefault(term.acts_over(), []).append(term)
         else:
             terms.append(term)
@@ -315,7 +315,7 @@ def simplify_qutip_sums(sum_operator: SumOperator) -> Operator:
             )
             if not is_empty_op(sum_qutip_op):
                 qutip_terms.setdefault(block, []).append(
-                    QutipOperator(
+                    BlockOperator(
                         sum_qutip_op,
                         names={site: idx for idx, site in enumerate(block_tuple)},
                         system=system,
@@ -339,7 +339,7 @@ def simplify_qutip_sums(sum_operator: SumOperator) -> Operator:
 
         if not is_empty_op(new_qterm):
             terms.append(
-                QutipOperator(
+                BlockOperator(
                     new_qterm,
                     names={site: pos for pos, site in enumerate(block_tuple)},
                     system=system,

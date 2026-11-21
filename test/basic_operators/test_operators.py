@@ -18,10 +18,10 @@ import numpy as np
 import pytest
 
 from qalma.operators import (
+    BlockOperator,
     LocalOperator,
     OneBodyOperator,
     ProductOperator,
-    QutipOperator,
     SumOperator,
 )
 from qalma.operators.states import DensityOperatorMixin
@@ -210,7 +210,7 @@ def test_inv_operator():
 
     sx_obl = SX_A + SY_B + SZ_C
     sx_obl_inv = sx_obl.inv()
-    assert isinstance(sx_obl_inv, QutipOperator)
+    assert isinstance(sx_obl_inv, BlockOperator)
     assert check_operator_equality(sx_obl_inv.to_qutip(), sx_obl.to_qutip().inv())
 
     s_prod = SX_A * SY_B * SZ_C
@@ -220,7 +220,7 @@ def test_inv_operator():
 
     OP_GLOBAL_offset = OP_GLOBAL + 1.3821
     OP_GLOBAL_offset_inv = OP_GLOBAL_offset.inv()
-    assert isinstance(OP_GLOBAL_offset_inv, QutipOperator)
+    assert isinstance(OP_GLOBAL_offset_inv, BlockOperator)
     assert check_operator_equality(
         OP_GLOBAL_offset_inv.to_qutip(), OP_GLOBAL_offset.to_qutip().inv()
     )
@@ -246,7 +246,7 @@ def test_exp_operator():
     assert check_operator_equality(sx_obl_exp.to_qutip(), sx_obl.to_qutip().expm())
 
     OP_GLOBAL_exp = OP_GLOBAL.expm()
-    assert isinstance(OP_GLOBAL_exp, QutipOperator)
+    assert isinstance(OP_GLOBAL_exp, BlockOperator)
     assert check_operator_equality(
         OP_GLOBAL_exp.to_qutip(), OP_GLOBAL.to_qutip().expm()
     )

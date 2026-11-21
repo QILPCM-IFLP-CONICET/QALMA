@@ -16,7 +16,7 @@ from qalma.operators.product import (
     ProductOperator,
     ScalarOperator,
 )
-from qalma.operators.qutip import QutipOperator
+from qalma.operators.qutip import BlockOperator
 from qalma.settings import QALMA_TOLERANCE
 
 __all__ = ["SumOperator", "OneBodyOperator", "iterable_to_operator", "NBodyOperator"]
@@ -719,7 +719,7 @@ class OneBodyOperator(SumOperator):
 
         Scalar terms are summed into a single :class:`ScalarOperator`.
         :class:`LocalOperator` terms on the same site are added together.
-        :class:`QutipOperator` terms are converted to :class:`LocalOperator`
+        :class:`BlockOperator` terms are converted to :class:`LocalOperator`
         before grouping.
 
         Parameters
@@ -757,7 +757,7 @@ class OneBodyOperator(SumOperator):
                 # e.g. a single-site PauliStringOperator
                 ((site, factor),) = term.site_factors.items()
                 terms.append(LocalOperator(site, factor * term.prefactor, term.system))
-            elif isinstance(term, QutipOperator):
+            elif isinstance(term, BlockOperator):
                 terms.append(
                     LocalOperator(
                         tuple(term.acts_over())[0],

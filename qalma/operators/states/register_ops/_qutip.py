@@ -1,27 +1,27 @@
-"""Arithmetic handlers for QutipDensityOperators.
+"""Arithmetic handlers for BlockDensityOperators.
 
 Arithmetic handlers involving non-product density operators:
-QutipDensityOperator.
+BlockDensityOperator.
 
 The common strategy for all handlers here is to unwrap the density operator
 into a plain operator via `.to_qutip_operator()`, then delegate to the
 corresponding operator arithmetic.
 
 Registered operations:
-  - QutipDensityOperator   + QutipDensityOperator   -> (mixture)
-  - QutipDensityOperator   * real                   -> (QutipDensityOperator)
-  - QutipDensityOperator   * complex                -> (QutipOperator)
-  - QutipDensityOperator   * QutipDensityOperator   -> (cast, then mul)
-  - QutipDensityOperator   * QutipOperator          -> (cast, then mul)
-  - QutipOperator          * QutipDensityOperator   -> (cast, then mul)
-  - ProductDensity         * QutipDensityOperator   -> (cast, then mul)
+  - BlockDensityOperator   + BlockDensityOperator   -> (mixture)
+  - BlockDensityOperator   * real                   -> (BlockDensityOperator)
+  - BlockDensityOperator   * complex                -> (BlockOperator)
+  - BlockDensityOperator   * BlockDensityOperator   -> (cast, then mul)
+  - BlockDensityOperator   * BlockOperator          -> (cast, then mul)
+  - BlockOperator          * BlockDensityOperator   -> (cast, then mul)
+  - ProductDensity         * BlockDensityOperator   -> (cast, then mul)
 """
 
 from qalma.operators.arithmetic import OneBodyOperator, SumOperator
 from qalma.operators.basic import Operator
 from qalma.operators.states.arithmetic import MixtureDensityOperator
 from qalma.operators.states.product import ProductDensityOperator
-from qalma.operators.states.qutip import QutipDensityOperator
+from qalma.operators.states.qutip import BlockDensityOperator
 
 from ._types import (
     ANY_OPERATOR_TYPES,
@@ -35,13 +35,13 @@ from ._wrappers import _wrapper_qutip as _wrapper
 @Operator.register_add_handler(
     [
         (
-            QutipDensityOperator,
+            BlockDensityOperator,
             type_num,
         )
         for type_num in REAL_NUMERIC_TYPES
     ]
 )
-def _(x_op: QutipDensityOperator, y_op: float):
+def _(x_op: BlockDensityOperator, y_op: float):
     """Add a qutip densityoperator with a real number."""
     if y_op == 0:
         return x_op
@@ -65,14 +65,14 @@ def _(x_op: QutipDensityOperator, y_op: float):
     [
         (
             type_num,
-            QutipDensityOperator,
+            BlockDensityOperator,
         )
         for type_num in REAL_NUMERIC_TYPES
     ]
 )
 def _(
     y_op: float,
-    x_op: QutipDensityOperator,
+    x_op: BlockDensityOperator,
 ):
     """Add a qutip densityoperator with a real number."""
     if y_op == 0:
@@ -96,13 +96,13 @@ def _(
 @Operator.register_add_handler(
     [
         (
-            QutipDensityOperator,
+            BlockDensityOperator,
             type_num,
         )
         for type_num in COMPLEX_NUMERIC_TYPES
     ]
 )
-def _(x_op: QutipDensityOperator, y_op: complex):
+def _(x_op: BlockDensityOperator, y_op: complex):
     """Add a qutip densityoperator with a complex number."""
     if y_op.imag == 0:
         return x_op + y_op.real
@@ -113,14 +113,14 @@ def _(x_op: QutipDensityOperator, y_op: complex):
     [
         (
             type_num,
-            QutipDensityOperator,
+            BlockDensityOperator,
         )
         for type_num in COMPLEX_NUMERIC_TYPES
     ]
 )
 def _(
     y_op: complex,
-    x_op: QutipDensityOperator,
+    x_op: BlockDensityOperator,
 ):
     """Add a qutip densityoperator with a complex number."""
     if y_op.imag == 0:
@@ -130,11 +130,11 @@ def _(
 
 @Operator.register_add_handler(
     (
-        QutipDensityOperator,
-        QutipDensityOperator,
+        BlockDensityOperator,
+        BlockDensityOperator,
     )
 )
-def _(x_op: QutipDensityOperator, y_op: QutipDensityOperator):
+def _(x_op: BlockDensityOperator, y_op: BlockDensityOperator):
     """Add a qutip densityoperator with a mixture density operator."""
     return MixtureDensityOperator(
         (
@@ -146,11 +146,11 @@ def _(x_op: QutipDensityOperator, y_op: QutipDensityOperator):
 
 
 @Operator.register_add_handler(
-    [(QutipDensityOperator, type_op) for type_op in BASIC_OPERATOR_TYPES]
+    [(BlockDensityOperator, type_op) for type_op in BASIC_OPERATOR_TYPES]
 )
-@Operator.register_add_handler((QutipDensityOperator, SumOperator))
-@Operator.register_add_handler((QutipDensityOperator, OneBodyOperator))
-def add_qdo_sum(x_op: QutipDensityOperator, y_op: Operator):
+@Operator.register_add_handler((BlockDensityOperator, SumOperator))
+@Operator.register_add_handler((BlockDensityOperator, OneBodyOperator))
+def add_qdo_sum(x_op: BlockDensityOperator, y_op: Operator):
     """Add a qutip densityoperator with a general density operator."""
     return _wrapper(x_op) + y_op
 
@@ -162,17 +162,17 @@ def add_qdo_sum(x_op: QutipDensityOperator, y_op: Operator):
     [
         (
             num_type,
-            QutipDensityOperator,
+            BlockDensityOperator,
         )
         for num_type in REAL_NUMERIC_TYPES
     ]
 )
-def _(x_op: float, y_op: QutipDensityOperator):
+def _(x_op: float, y_op: BlockDensityOperator):
     """Multiply a qutip densityoperator with a real number."""
     if x_op == 0:
         return ProductDensityOperator({}, system=y_op.system, weight=0.0)
     if x_op > 0:
-        return QutipDensityOperator(
+        return BlockDensityOperator(
             y_op.operator,
             y_op.system,
             y_op.site_names,
@@ -185,18 +185,18 @@ def _(x_op: float, y_op: QutipDensityOperator):
 @Operator.register_mul_handler(
     [
         (
-            QutipDensityOperator,
+            BlockDensityOperator,
             num_type,
         )
         for num_type in REAL_NUMERIC_TYPES
     ]
 )
-def _(x_op: QutipDensityOperator, y_op: float):
+def _(x_op: BlockDensityOperator, y_op: float):
     """Multiply a qutip densityoperator with a real number."""
     if y_op == 0:
         return ProductDensityOperator({}, system=x_op.system, weight=0.0)
     if y_op > 0:
-        return QutipDensityOperator(
+        return BlockDensityOperator(
             x_op.operator,
             x_op.system,
             x_op.site_names,
@@ -210,12 +210,12 @@ def _(x_op: QutipDensityOperator, y_op: float):
     [
         (
             num_type,
-            QutipDensityOperator,
+            BlockDensityOperator,
         )
         for num_type in COMPLEX_NUMERIC_TYPES
     ]
 )
-def _(x_op: complex, y_op: QutipDensityOperator):
+def _(x_op: complex, y_op: BlockDensityOperator):
     """Multiply a qutip densityoperator with a complex number."""
     if x_op.imag == 0:
         return y_op * x_op.real
@@ -226,13 +226,13 @@ def _(x_op: complex, y_op: QutipDensityOperator):
 @Operator.register_mul_handler(
     [
         (
-            QutipDensityOperator,
+            BlockDensityOperator,
             num_type,
         )
         for num_type in COMPLEX_NUMERIC_TYPES
     ]
 )
-def _(x_op: QutipDensityOperator, y_op: complex):
+def _(x_op: BlockDensityOperator, y_op: complex):
     """Multiply a qutip densityoperator with a complex number."""
     if y_op.imag == 0:
         return x_op * y_op.real
@@ -240,16 +240,16 @@ def _(x_op: QutipDensityOperator, y_op: complex):
     return _wrapper(x_op, y_op)
 
 
-# QutipDensityOperator * QutipOperator
+# BlockDensityOperator * BlockOperator
 
 
 @Operator.register_mul_handler(
     (
-        QutipDensityOperator,
-        QutipDensityOperator,
+        BlockDensityOperator,
+        BlockDensityOperator,
     )
 )
-def _(x_op: QutipDensityOperator, y_op: QutipDensityOperator):
+def _(x_op: BlockDensityOperator, y_op: BlockDensityOperator):
     """Multiply two qutip densityoperators."""
     if x_op is y_op:
         x_op_qutip = _wrapper(x_op)
@@ -260,14 +260,14 @@ def _(x_op: QutipDensityOperator, y_op: QutipDensityOperator):
 @Operator.register_mul_handler(
     [
         (
-            QutipDensityOperator,
+            BlockDensityOperator,
             type_op,
         )
         for type_op in ANY_OPERATOR_TYPES
-        if type_op is not QutipDensityOperator
+        if type_op is not BlockDensityOperator
     ]
 )
-def _(x_op: QutipDensityOperator, y_op: Operator):
+def _(x_op: BlockDensityOperator, y_op: Operator):
     """Multiply a qutip densityoperator with general operators."""
     return _wrapper(x_op) * y_op
 
@@ -276,15 +276,15 @@ def _(x_op: QutipDensityOperator, y_op: Operator):
     [
         (
             type_op,
-            QutipDensityOperator,
+            BlockDensityOperator,
         )
         for type_op in ANY_OPERATOR_TYPES
-        if type_op is not QutipDensityOperator
+        if type_op is not BlockDensityOperator
     ]
 )
 def _(
     x_op: Operator,
-    y_op: QutipDensityOperator,
+    y_op: BlockDensityOperator,
 ):
     """Multiply a qutip densityoperator with general operators."""
     return x_op * _wrapper(y_op)

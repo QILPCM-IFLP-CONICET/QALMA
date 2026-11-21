@@ -15,17 +15,17 @@ import pytest
 
 from qalma.model import build_system
 from qalma.operators import (
+    BlockOperator,
     LocalOperator,
     ProductOperator,
-    QutipOperator,
     ScalarOperator,
     SumOperator,
 )
 from qalma.operators.states import (
+    BlockDensityOperator,
     DensityOperatorMixin,
     GibbsDensityOperator,
     GibbsProductDensityOperator,
-    QutipDensityOperator,
 )
 from qalma.operators.states.utils import safe_exp_and_normalize
 from qalma.settings import QALMA_TOLERANCE
@@ -84,7 +84,7 @@ def do_test_instance(rho) -> None:
     print("rho_0", type(rho_0))
     assert isinstance(rho_0, DensityOperatorMixin)
     check_equality(rho_0.to_qutip(), rho_qutip.ptrace([0]), QALMA_TOLERANCE)
-    assert isinstance(rho.to_qutip_operator(), QutipDensityOperator)
+    assert isinstance(rho.to_qutip_operator(), BlockDensityOperator)
     rhosq = rho * rho
     rhosq_tr = rhosq.tr()
     assert (
@@ -93,7 +93,7 @@ def do_test_instance(rho) -> None:
     assert (
         np.real(rhosq_tr) <= 1
     ), f"{rhosq_tr} is not a positive number between 0 and 1."
-    assert isinstance(rhosq, (QutipOperator, ProductOperator))
+    assert isinstance(rhosq, (BlockOperator, ProductOperator))
     assert not isinstance(rhosq, DensityOperatorMixin)
 
     rho_ps = None
@@ -155,7 +155,7 @@ def test_product_gibbs_with_dict(key, k_gen):
         if len(k_gen.site_factors) != 0:
             site, op = k_gen.site_factors_qutip.items()
             local_gen_dic[site] = op
-    elif isinstance(k_gen, QutipOperator):
+    elif isinstance(k_gen, BlockOperator):
         (site,) = k_gen.site_names
         local_gen_dic[site] = k_gen.operator
 
@@ -166,7 +166,7 @@ def test_product_gibbs_with_dict(key, k_gen):
             elif isinstance(term, ProductOperator):
                 site, op = term.sites_op.items()
                 local_gen_dic[site] = op
-            elif isinstance(term, QutipOperator):
+            elif isinstance(term, BlockOperator):
                 (site,) = term.site_names
                 local_gen_dic[site] = term.operator
 

@@ -12,7 +12,7 @@ Import order:
   3. product   — ProductOperator (built from LocalOperators)
   4. onebody   — OneBodyOperator (sum of LocalOperators)
   5. sum       — SumOperator (most general sum type)
-  6. qutip_op  — QutipOperator (QuTiP-backed fallback)
+  6. qutip_op  — BlockOperator (QuTiP-backed fallback)
   7. quadratic — QuadraticFormOperator (highest-level composite)
   8. pauli     — PauliStringOperator (symbolic Pauli algebra)
   9. tensor_product — Pauli strings times local operators

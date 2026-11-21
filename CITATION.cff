@@ -11,9 +11,15 @@ abstract: >-
   many-body operators and states, mean-field approximations, and Max-Ent
   projected evolution for lattice systems.
 authors:
+  - name: "QILPCM-IFLP-CONICET"
+    affiliation: "Laboratorio de Simulación y Modelado de Procesos. Instituto de Física La Plata (IFLP), CONICET-UNLP"
+  # (optional) Contributors
   - family-names: Matera
     given-names: Juan Mauricio
     email: matera@fisica.unlp.edu.ar
+  - family-names: Pérez
+    given-names: Federico Tomás Benito
+    email: federico.perez@uni-ulm.de
 repository-code: "https://github.com/QILPCM-IFLP-CONICET/QALMA"
 url: "https://github.com/QILPCM-IFLP-CONICET/QALMA"
 license: LGPL-3.0-only

@@ -22,6 +22,7 @@ import qutip  # type: ignore[import-untyped]
 
 from qalma.model import SystemDescriptor
 from qalma.operators import (
+    BlockOperator,
     LocalOperator,
     OneBodyOperator,
     Operator,
@@ -29,7 +30,6 @@ from qalma.operators import (
     PauliSumOperator,
     ProductOperator,
     QuadraticFormOperator,
-    QutipOperator,
     ScalarOperator,
     SumOperator,
     TensorProductOperator,
@@ -37,11 +37,11 @@ from qalma.operators import (
 from qalma.operators.pauli import _site_index
 from qalma.operators.pauli_sum import permute_codes, words_for
 from qalma.operators.states import (
+    BlockDensityOperator,
     GibbsDensityOperator,
     GibbsProductDensityOperator,
     MixtureDensityOperator,
     ProductDensityOperator,
-    QutipDensityOperator,
 )
 
 from ._common import (
@@ -73,7 +73,7 @@ __all__ = [
 KIND_PRODUCT = 0  # ProductOperator, stored in the packed arrays
 KIND_LOCAL = 1  # LocalOperator, stored in the packed arrays
 KIND_SCALAR = 2  # ScalarOperator, stored in the packed arrays
-KIND_QUTIP = 3  # QutipOperator, stored in blocks/
+KIND_QUTIP = 3  # BlockOperator, stored in blocks/
 KIND_GROUP = 4  # any other operator, stored in terms/
 
 
@@ -614,7 +614,7 @@ def _write_terms(group: h5py.Group, terms: Sequence[Any], context) -> None:
     per term (``kind``, ``prefactors``, ``offsets``) or per local factor
     (``site``, ``matrix``): a group per term would be much slower and
     larger. The other terms are stored as groups, in ``blocks`` (the
-    QutipOperator terms) or in ``terms``.
+    BlockOperator terms) or in ``terms``.
     """
     factors = _FactorWriter(context)
     kinds = np.empty(len(terms), dtype=np.uint8)
@@ -636,7 +636,7 @@ def _write_terms(group: h5py.Group, terms: Sequence[Any], context) -> None:
         elif term_type is ScalarOperator:
             kinds[pos] = KIND_SCALAR
             prefactors[pos] = term.prefactor
-        elif term_type is QutipOperator:
+        elif term_type is BlockOperator:
             kinds[pos] = KIND_QUTIP
             blocks.append(term)
         else:
@@ -859,7 +859,7 @@ def _read_tensor_product(group, system, context) -> TensorProductOperator:
 # ---------------------------------------------------------------------------
 
 
-def _write_qutip(group, operator: QutipOperator, context) -> None:
+def _write_qutip(group, operator: BlockOperator, context) -> None:
     group.attrs["prefactor"] = complex(operator.prefactor)
     if operator.operator is None:
         # A multiple of the identity.
@@ -868,7 +868,7 @@ def _write_qutip(group, operator: QutipOperator, context) -> None:
     block = sorted(names, key=lambda site: names[site])
     if [names[site] for site in block] != list(range(len(block))):
         raise ValueError(
-            f"The positions of the sites of the QutipOperator ({names}) "
+            f"The positions of the sites of the BlockOperator ({names}) "
             "are not consecutive."
         )
     group.create_dataset(
@@ -878,7 +878,7 @@ def _write_qutip(group, operator: QutipOperator, context) -> None:
 
 
 def _read_qutip_args(group, system, context):
-    """Arguments to build a QutipOperator or a QutipDensityOperator."""
+    """Arguments to build a BlockOperator or a BlockDensityOperator."""
     prefactor = as_number(group.attrs["prefactor"])
     if "data" not in group:
         return 1, {}, prefactor
@@ -898,9 +898,9 @@ def _read_qutip_args(group, system, context):
     return qobj, {name: pos for pos, name in enumerate(block)}, prefactor
 
 
-def _read_qutip(group, system, context) -> QutipOperator:
+def _read_qutip(group, system, context) -> BlockOperator:
     qobj, names, prefactor = _read_qutip_args(group, system, context)
-    return QutipOperator(qobj, system, names, prefactor)
+    return BlockOperator(qobj, system, names, prefactor)
 
 
 # ---------------------------------------------------------------------------
@@ -1061,17 +1061,17 @@ def _read_mixture(group, system, context) -> MixtureDensityOperator:
     return MixtureDensityOperator(_read_terms(group, system, context), system)
 
 
-def _write_qutip_state(group, operator: QutipDensityOperator, context) -> None:
+def _write_qutip_state(group, operator: BlockDensityOperator, context) -> None:
     # pylint: disable=protected-access
     _write_qutip(group, operator, context)
     group.attrs["prefactor"] = _real(operator.prefactor)
     group.attrs["normalized"] = bool(operator._normalized)
 
 
-def _read_qutip_state(group, system, context) -> QutipDensityOperator:
+def _read_qutip_state(group, system, context) -> BlockDensityOperator:
     qobj, names, prefactor = _read_qutip_args(group, system, context)
     normalized = bool(group.attrs["normalized"]) or not isinstance(qobj, qutip.Qobj)
-    return QutipDensityOperator(
+    return BlockDensityOperator(
         qobj, system, names, _real(prefactor), normalized=normalized
     )
 
@@ -1205,7 +1205,7 @@ _register("local", LocalOperator, _write_local, _read_local)
 _register("product", ProductOperator, _write_product, _read_product)
 _register("sum", SumOperator, _write_sum, _read_sum)
 _register("one_body", OneBodyOperator, _write_sum, _read_one_body)
-_register("qutip", QutipOperator, _write_qutip, _read_qutip)
+_register("qutip", BlockOperator, _write_qutip, _read_qutip)
 _register("pauli_string", PauliStringOperator, _write_pauli_string, _read_pauli_string)
 _register("pauli_sum", PauliSumOperator, _write_pauli_sum, _read_pauli_sum)
 _register(
@@ -1223,4 +1223,4 @@ _register(
     "product_state", ProductDensityOperator, _write_product_state, _read_product_state
 )
 _register("mixture", MixtureDensityOperator, _write_mixture, _read_mixture)
-_register("qutip_state", QutipDensityOperator, _write_qutip_state, _read_qutip_state)
+_register("qutip_state", BlockDensityOperator, _write_qutip_state, _read_qutip_state)

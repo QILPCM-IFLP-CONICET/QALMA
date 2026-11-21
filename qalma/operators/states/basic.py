@@ -197,17 +197,17 @@ class DensityOperatorMixin:
         return self
 
     def to_qutip_operator(self):
-        """Convert to the QutipOperator representation."""
-        from qalma.operators.states import QutipDensityOperator
+        """Convert to the BlockOperator representation."""
+        from qalma.operators.states import BlockDensityOperator
 
         prefactor = getattr(self, "prefactor", 1.0)
         block = tuple(sorted(self.system.sites))
         if not block:
-            return QutipDensityOperator(1, system=self.system, prefactor=prefactor)
+            return BlockDensityOperator(1, system=self.system, prefactor=prefactor)
 
         names = {name: pos for pos, name in enumerate(block)}
         rho_qutip = self.to_qutip(block)
-        return QutipDensityOperator(
+        return BlockDensityOperator(
             rho_qutip, names=names, system=self.system, prefactor=prefactor
         )
 
@@ -302,4 +302,4 @@ class DensityOperatorProtocol(Protocol):
         """Return a Qobj representation acting over block."""
 
     def to_qutip_operator(self):
-        """Convert to QutipOperator representation."""
+        """Convert to BlockOperator representation."""

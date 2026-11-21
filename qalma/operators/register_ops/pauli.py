@@ -7,7 +7,7 @@ Covers:
   - PauliStringOperator + Number / ScalarOperator  (and reversed)
 
 Any other combination (with LocalOperator, ProductOperator, SumOperator,
-QutipOperator, states, ...) uses the handlers registered for
+BlockOperator, states, ...) uses the handlers registered for
 ProductOperator, which work on the dense ``site_factors``.
 """
 

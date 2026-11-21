@@ -5,11 +5,11 @@ from functools import reduce
 import pytest
 
 from qalma.operators import (
+    BlockOperator,
     LocalOperator,
     OneBodyOperator,
     Operator,
     ProductOperator,
-    QutipOperator,
     ScalarOperator,
     SumOperator,
 )
@@ -37,7 +37,7 @@ def compute_size(operator: Operator):
         return len(operator.site_factors)
     if isinstance(operator, SumOperator):
         return sum(compute_size(term) for term in operator.terms)
-    if isinstance(operator, QutipOperator):
+    if isinstance(operator, BlockOperator):
         return 1
     if isinstance(operator, QuadraticFormOperator):
         return sum(compute_size(term) for term in operator.basis)
@@ -117,7 +117,7 @@ def test_simplify(key, operator):
                         ScalarOperator,
                         LocalOperator,
                         ProductOperator,
-                        QutipOperator,
+                        BlockOperator,
                     ),
                 ):
                     print("   resulting type is not valid ", f"({type(simplify1)})")

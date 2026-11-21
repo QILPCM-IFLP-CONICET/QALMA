@@ -34,7 +34,7 @@ from functools import reduce
 import numpy as np
 
 from qalma.operators import ScalarOperator
-from qalma.operators.states.qutip import QutipDensityOperator
+from qalma.operators.states.qutip import BlockDensityOperator
 from qalma.qutip_tools.tools import reduce_to_proper_spaces
 
 __all__ = ["project_parity_like", "project_conserved_quantity", "project_time_reversal"]
@@ -60,7 +60,7 @@ def project_parity_like(state, op_name: str):
         lambda x, y: x * y, [system.site_operator(op_name, site) for site in block]
     ).to_qutip(block)
     rho = (u_gen * rho * u_gen.dag() + rho) * 0.5
-    return QutipDensityOperator(
+    return BlockDensityOperator(
         rho,
         system,
         names=site_names,
@@ -93,7 +93,7 @@ def project_conserved_quantity(state, op_name: str):
             f"{op_name} is not a valid local operator name for some sites."
         ) from exc
 
-    return QutipDensityOperator(
+    return BlockDensityOperator(
         reduce_to_proper_spaces(rho_qutip.operator, conserved.to_qutip(block)),
         rho_qutip.system,
         names=site_names,
@@ -156,12 +156,12 @@ def project_time_reversal(state):
 
     Parameters
     ----------
-    state : ProductDensityOperator or QutipDensityOperator
+    state : ProductDensityOperator or BlockDensityOperator
         The (possibly :math:`\mathcal{T}`-broken) variational state.
 
     Returns
     -------
-    QutipDensityOperator
+    BlockDensityOperator
         The :math:`\mathcal{T}`-projected state :math:`\operatorname{Re}(\rho)`,
         normalised to unit trace.
 
@@ -200,7 +200,7 @@ def project_time_reversal(state):
 
     # Normalise: Re(rho) has the same trace as rho (since rho is Hermitian
     # and its diagonal is real), but we call normalized=True to be safe.
-    return QutipDensityOperator(
+    return BlockDensityOperator(
         rho_real,
         rho_qutip.system,
         names=site_names,

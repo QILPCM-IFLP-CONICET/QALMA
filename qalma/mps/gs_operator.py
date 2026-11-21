@@ -27,7 +27,7 @@ from qalma.operators.arithmetic import SumOperator
 from qalma.operators.basic import Operator
 from qalma.operators.states.basic import DensityOperatorMixin
 from qalma.operators.states.product import ProductDensityOperator
-from qalma.operators.states.qutip import QutipDensityOperator
+from qalma.operators.states.qutip import BlockDensityOperator
 from qalma.operators.states.register_ops._gibbs import _inherit_gibbs_arithmetic
 from qalma.operators.states.register_ops._types import COMPLEX_NUMERIC_TYPES
 
@@ -320,7 +320,7 @@ class MPSGSOperator(DensityOperatorMixin, Operator):
         return float(np.real(np.asarray(value).item()))
 
     def partial_trace(self, sites: Union[frozenset, SystemDescriptor], **_kwargs):
-        """Reduced state of ``sites`` as a :class:`QutipDensityOperator`.
+        """Reduced state of ``sites`` as a :class:`BlockDensityOperator`.
 
         Extra keyword arguments (``rpa``, ``dynamic``, ``exact``, ...) of the
         interface of :class:`GibbsDensityOperator` are accepted and ignored.
@@ -350,7 +350,7 @@ class MPSGSOperator(DensityOperatorMixin, Operator):
         dims = [self.system.dimensions[site] for site in block]
         rho_qobj = Qobj(rho, dims=[dims, dims])
         names = {site: pos for pos, site in enumerate(block)}
-        return QutipDensityOperator(
+        return BlockDensityOperator(
             rho_qobj, names=names, system=subsystem, prefactor=self.prefactor
         )
 

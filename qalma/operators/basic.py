@@ -292,7 +292,7 @@ class Operator:  # pylint: disable=too-many-public-methods
         from scipy.sparse.linalg import ArpackError
 
         from qalma.operators.functions import eigenvalues
-        from qalma.operators.qutip import QutipOperator
+        from qalma.operators.qutip import BlockOperator
 
         op_qutip = self.to_qutip()
         try:
@@ -301,7 +301,7 @@ class Operator:  # pylint: disable=too-many-public-methods
             max_eval = max(op_qutip.diag())
 
         op_qutip = (op_qutip - max_eval).expm()
-        return QutipOperator(op_qutip, self.system, prefactor=np.exp(max_eval))
+        return BlockOperator(op_qutip, self.system, prefactor=np.exp(max_eval))
 
     def inv(self) -> "Operator":
         """Return the inverse of the operator."""
@@ -380,10 +380,10 @@ class Operator:  # pylint: disable=too-many-public-methods
         site_names = {site: i for i, site in enumerate(block)}
         qobj = self.to_qutip(block)
         if isinstance(qobj, Qobj):
-            from .qutip import QutipOperator
+            from .qutip import BlockOperator
 
             assert qobj.type != "scalar"
-            return QutipOperator(qobj, system=self.system, names=site_names)
+            return BlockOperator(qobj, system=self.system, names=site_names)
 
         from .product import ScalarOperator
 

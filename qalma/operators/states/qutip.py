@@ -13,7 +13,7 @@ from qutip import Qobj as _Qobj, tensor as _tensor_qutip  # type: ignore[import-
 
 from qalma.model import SystemDescriptor
 from qalma.operators.product import ScalarOperator
-from qalma.operators.qutip import QutipOperator
+from qalma.operators.qutip import BlockOperator
 from qalma.operators.states.basic import (
     DensityOperatorMixin,
     DensityOperatorProtocol,
@@ -21,10 +21,10 @@ from qalma.operators.states.basic import (
 
 logger = logging.getLogger(__name__)
 
-__all__ = ["QutipDensityOperator"]
+__all__ = ["BlockDensityOperator"]
 
 
-class QutipDensityOperator(DensityOperatorMixin, QutipOperator):
+class BlockDensityOperator(DensityOperatorMixin, BlockOperator):
     """Qutip representation of a density operator."""
 
     def __init__(
@@ -36,7 +36,7 @@ class QutipDensityOperator(DensityOperatorMixin, QutipOperator):
         normalized=False,
     ):
         r"""
-        Initialize a QutipDensityOperator.
+        Initialize a BlockDensityOperator.
 
         Parameters
         ----------
@@ -61,7 +61,7 @@ class QutipDensityOperator(DensityOperatorMixin, QutipOperator):
         """Multiply by -1."""
         logger.warning("Negate a DensityOperator leads to a regular operator.")
         self.normalize()
-        return QutipOperator(self.operator, self.system, self.site_names, -1)
+        return BlockOperator(self.operator, self.system, self.site_names, -1)
 
     def join_states(self, other: DensityOperatorProtocol | complex):
         """Combine states of two systems.
@@ -72,7 +72,7 @@ class QutipDensityOperator(DensityOperatorMixin, QutipOperator):
         if isinstance(other, Real):
             if other < 0:
                 raise ValueError
-            return QutipDensityOperator(
+            return BlockDensityOperator(
                 self.operator,
                 system=self.system,
                 names=self.site_names,
@@ -84,7 +84,7 @@ class QutipDensityOperator(DensityOperatorMixin, QutipOperator):
         if not hasattr(rho, "expect"):
             raise ValueError
         if not rho.prefactor:
-            return QutipDensityOperator(
+            return BlockDensityOperator(
                 self.operator, system=self.system, names=self.site_names, prefactor=0
             )
         system_a = self.system
@@ -95,7 +95,7 @@ class QutipDensityOperator(DensityOperatorMixin, QutipOperator):
         system = system_a.union(system_b)
         acts_over_b = rho.acts_over()
         if len(acts_over_b) == 0:
-            return QutipDensityOperator(
+            return BlockDensityOperator(
                 self.operator,
                 system=self.system,
                 names=self.site_names,
@@ -110,7 +110,7 @@ class QutipDensityOperator(DensityOperatorMixin, QutipOperator):
         names = {site: pos for pos, site in enumerate(block_a + block_b)}
         qutip_block = _tensor_qutip(self.to_qutip(block_a), rho.to_qutip(block_b))
         prefactor = self.prefactor * rho.prefactor
-        return QutipDensityOperator(
+        return BlockDensityOperator(
             qutip_block, names=names, system=system, prefactor=prefactor
         )
 
@@ -123,8 +123,8 @@ class QutipDensityOperator(DensityOperatorMixin, QutipOperator):
 
         Returns
         -------
-        QutipOperator
-            The matrix logarithm as a :class:`~qalma.operators.qutip.QutipOperator`.
+        BlockOperator
+            The matrix logarithm as a :class:`~qalma.operators.qutip.BlockOperator`.
         """
         self.normalize()
         operator = self.operator
@@ -133,7 +133,7 @@ class QutipDensityOperator(DensityOperatorMixin, QutipOperator):
         log_op = sum(
             np.log(e_val) * e_vec * e_vec.dag() for e_val, e_vec in zip(evals, evecs)
         )
-        return QutipOperator(log_op, self.system, self.site_names)
+        return BlockOperator(log_op, self.system, self.site_names)
 
     def normalize(self):
         """Normalize the operator."""
@@ -151,8 +151,8 @@ class QutipDensityOperator(DensityOperatorMixin, QutipOperator):
         """Compute the partial trace over the complement of ``sites``.
 
         Normalizes first, delegates to the parent
-        :class:`~qalma.operators.qutip.QutipOperator` partial trace, and
-        wraps the result back as a :class:`QutipDensityOperator`.
+        :class:`~qalma.operators.qutip.BlockOperator` partial trace, and
+        wraps the result back as a :class:`BlockDensityOperator`.
 
         Parameters
         ----------
@@ -161,7 +161,7 @@ class QutipDensityOperator(DensityOperatorMixin, QutipOperator):
 
         Returns
         -------
-        QutipDensityOperator or ScalarOperator
+        BlockDensityOperator or ScalarOperator
             The reduced density operator on the subsystem defined by
             ``sites``, or a :class:`~qalma.operators.product.ScalarOperator`
             if all sites are traced out.
@@ -172,7 +172,7 @@ class QutipDensityOperator(DensityOperatorMixin, QutipOperator):
         if isinstance(self_pt, ScalarOperator):
             return self_pt
 
-        return QutipDensityOperator(
+        return BlockDensityOperator(
             self_pt.operator,
             names=self_pt.site_names,
             system=self_pt.system,
@@ -183,7 +183,7 @@ class QutipDensityOperator(DensityOperatorMixin, QutipOperator):
         """Return the normalized QuTiP density matrix over ``block``.
 
         Normalizes first, then delegates to
-        :meth:`~qalma.operators.qutip.QutipOperator.to_qutip` with the
+        :meth:`~qalma.operators.qutip.BlockOperator.to_qutip` with the
         prefactor temporarily set to ``1`` so that the state sums to unit
         trace (the prefactor is a mixture weight, not part of the matrix).
 

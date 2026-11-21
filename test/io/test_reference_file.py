@@ -24,9 +24,9 @@ STATE_CLASSES = [
     "GibbsProductDensityOperator",
     "ProductDensityOperator",
     "MixtureDensityOperator",
-    "QutipDensityOperator",
+    "BlockDensityOperator",
     "RPAGibbsDensityOperator",
-    "QutipDensityOperator",
+    "BlockDensityOperator",
     "SumOperator",
 ]
 OPERATOR_CLASSES = {
@@ -35,7 +35,7 @@ OPERATOR_CLASSES = {
     "product": "ProductOperator",
     "sum": "SumOperator",
     "one_body": "OneBodyOperator",
-    "qutip": "QutipOperator",
+    "qutip": "BlockOperator",
     "quadratic": "QuadraticFormOperator",
 }
 # Some of the values stored in the file, to detect errors that affect in
@@ -86,7 +86,7 @@ def test_load_reference_file():
     assert operators["product"].prefactor == 2 - 1j
     assert operators["qutip"].site_names == {"1[2]": 0, "1[0]": 1}
     assert [type(term).__name__ for term in operators["sum"].terms].count(
-        "QutipOperator"
+        "BlockOperator"
     ) >= 1
 
     # The operators stored in the file agree with the ones that the system

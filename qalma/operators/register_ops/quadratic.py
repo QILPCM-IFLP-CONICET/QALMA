@@ -3,7 +3,7 @@
 Covers:
   - QuadraticFormOperator + Number
   - QuadraticFormOperator + OneBodyOperator / ScalarOperator / LocalOperator
-  - QuadraticFormOperator + ProductOperator / QutipOperator
+  - QuadraticFormOperator + ProductOperator / BlockOperator
   - QuadraticFormOperator * Number  (and reversed)
   - QuadraticFormOperator * ScalarOperator  (and reversed)
   - QuadraticFormOperator * any Operator  (and reversed, via as_sum_of_products)
@@ -13,7 +13,7 @@ from qalma.operators.arithmetic import OneBodyOperator, SumOperator
 from qalma.operators.basic import LocalOperator, Operator
 from qalma.operators.product import ProductOperator, ScalarOperator
 from qalma.operators.quadratic import QuadraticFormOperator
-from qalma.operators.qutip import QutipOperator
+from qalma.operators.qutip import BlockOperator
 
 from ._common import NUMERIC_TYPES
 
@@ -43,7 +43,7 @@ def _(qf_operator: QuadraticFormOperator, op_other: Operator):
 
 
 @Operator.register_add_handler(
-    [(QuadraticFormOperator, op_type) for op_type in (ProductOperator, QutipOperator)]
+    [(QuadraticFormOperator, op_type) for op_type in (ProductOperator, BlockOperator)]
 )
 def _(qf_operator: QuadraticFormOperator, op_other: Operator):
     offset = qf_operator.offset
@@ -134,7 +134,7 @@ def _(sc_operator: ScalarOperator, qf_operator: QuadraticFormOperator):
             ProductOperator,
             SumOperator,
             OneBodyOperator,
-            QutipOperator,
+            BlockOperator,
         )
     ]
 )
@@ -151,7 +151,7 @@ def _(op1: Operator, op2: QuadraticFormOperator):
             ProductOperator,
             SumOperator,
             OneBodyOperator,
-            QutipOperator,
+            BlockOperator,
         )
     ]
 )

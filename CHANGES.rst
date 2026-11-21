@@ -33,6 +33,8 @@ Packaging
 Operators
 +++++++++
 
+* classes ``QutipOperator`` and ``QutipDensityOperator`` were renamed
+  as ``BlockOperator`` and ``BlockDensityOperator``.  
 * New classes ``PauliStringOperator`` (a product of Pauli matrices, stored
   as a bit string), ``PauliSumOperator`` (linear combinations of them,
   stored as arrays) and ``TensorProductOperator`` (a Pauli string times
@@ -139,7 +141,7 @@ Matrix product states (experimental)
   state is computed with a two-site DMRG written with numpy and SciPy only,
   or provided with ``MPSGSOperator.from_mps``. ``expect`` and
   ``partial_trace`` contract the MPS, so they work for systems beyond exact
-  diagonalization; the reduced states are ``QutipDensityOperator`` objects.
+  diagonalization; the reduced states are ``BlockDensityOperator`` objects.
   The ground state is assumed to be non-degenerate. The class is a sibling
   of ``GibbsDensityOperator`` (a pure state has no generator ``k``), with
   the same arithmetic for scalars and mixtures.

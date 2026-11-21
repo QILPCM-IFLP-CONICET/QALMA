@@ -25,7 +25,7 @@ written as :math:`\lambda\, P(c) \otimes \bigotimes_{s\in L} A_s`, and
   Pauli part, so that the terms that remain are linearly independent
   (except for products on several sites that cannot be merged).
 
-Any other term (e.g. a :class:`QutipOperator`) is simplified by the
+Any other term (e.g. a :class:`BlockOperator`) is simplified by the
 generic method and kept beside the others.
 """
 
