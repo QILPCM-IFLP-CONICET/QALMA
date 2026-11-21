@@ -18,7 +18,7 @@ qalma.operators
    arithmetic.SumOperator
    arithmetic.OneBodyOperator
    quadratic.QuadraticFormOperator
-   qutip.QutipOperator
+   block.BlockOperator
 
 qalma.operators.basic
 ---------------------
@@ -58,10 +58,10 @@ qalma.operators.quadratic
    :no-index:
 
 
-qalma.operators.qutip
+qalma.operators.block
 ---------------------
 
-.. automodule:: qalma.operators.qutip
+.. automodule:: qalma.operators.block
    :members:
    :undoc-members:
    :show-inheritance:

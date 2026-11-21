@@ -167,7 +167,7 @@ the positions of the sites of the subsystem.
      - ``OneBodyOperator``
      - as ``sum``
    * - ``qutip``
-     - ``QutipOperator``
+     - ``BlockOperator``
      - attr ``prefactor``; dataset ``sites``; matrix in CSR
    * - ``pauli_string``
      - ``PauliStringOperator``
@@ -201,7 +201,7 @@ the positions of the sites of the subsystem.
      - ``MixtureDensityOperator``
      - terms
    * - ``qutip_state``
-     - ``QutipDensityOperator``
+     - ``BlockDensityOperator``
      - as ``qutip``, plus the attr ``normalized``
 
 **Factors.** The local factors of an operator are stored in two aligned 1D
@@ -218,7 +218,7 @@ datasets and a pool of matrices:
 terms, so the terms of a sum are packed:
 
 ``kind (n_terms,)``
-    0: product; 1: local operator; 2: scalar; 3: ``QutipOperator``; 4: any
+    0: product; 1: local operator; 2: scalar; 3: ``BlockOperator``; 4: any
     other operator.
 ``prefactors (n_terms,)``
     Coefficient of the terms of kind 0 and 2 (1 for the others).

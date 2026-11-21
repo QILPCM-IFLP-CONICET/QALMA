@@ -5,7 +5,7 @@ import pytest
 import qutip
 
 from qalma import build_system
-from qalma.operators import QutipOperator
+from qalma.operators import BlockOperator
 from qalma.operators.states import GibbsProductDensityOperator
 from qalma.projections import n_body_projection
 from qalma.projections.nbody import _project_dense_block, project_to_n_body_operator
@@ -28,7 +28,7 @@ def random_block(system, sites, rng, size):
     matrix = rng.normal(size=(dim, dim)) + 1j * rng.normal(size=(dim, dim))
     qobj = qutip.Qobj(matrix, dims=[[2] * size, [2] * size])
     names = {site: pos for pos, site in enumerate(chosen)}
-    return QutipOperator(qobj, system, names=names) * (0.7 + 0.2j)
+    return BlockOperator(qobj, system, names=names) * (0.7 + 0.2j)
 
 
 @pytest.mark.parametrize("size,n_max", [(3, 2), (4, 2), (4, 3)])

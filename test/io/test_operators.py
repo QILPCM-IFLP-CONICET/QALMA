@@ -24,24 +24,24 @@ from qalma.meanfield.rpa import RPAGibbsDensityOperator
 from qalma.model import build_system_from_dims
 from qalma.mps import MPSGSOperator
 from qalma.operators import (
+    BlockOperator,
     LocalOperator,
     OneBodyOperator,
     PauliStringOperator,
     PauliSumOperator,
     ProductOperator,
     QuadraticFormOperator,
-    QutipOperator,
     ScalarOperator,
     SumOperator,
     TensorProductOperator,
     to_pauli_sum,
 )
 from qalma.operators.states import (
+    BlockDensityOperator,
     GibbsDensityOperator,
     GibbsProductDensityOperator,
     MixtureDensityOperator,
     ProductDensityOperator,
-    QutipDensityOperator,
 )
 
 from ..helper import (
@@ -80,8 +80,8 @@ CASES["mps ground state, unsolved"] = MPSGSOperator(
 CASES["gibbs, weight 0"] = GibbsDensityOperator(HAMILTONIAN, SYSTEM, prefactor=0)
 CASES["product state, weight 0"] = ProductDensityOperator({}, 0, system=SYSTEM)
 CASES["qutip state"] = TEST_CASES_STATES["gibbs_H"].to_qutip_operator() * 0.5
-CASES["qutip, scalar"] = QutipOperator(3.0, SYSTEM)
-CASES["qutip, permuted sites"] = QutipOperator(
+CASES["qutip, scalar"] = BlockOperator(3.0, SYSTEM)
+CASES["qutip, permuted sites"] = BlockOperator(
     qutip.tensor(qutip.sigmax(), qutip.sigmaz()),
     SYSTEM,
     names={SITES[2]: 0, SITES[0]: 1},
@@ -113,8 +113,8 @@ ALL_CLASSES = {
     ProductDensityOperator,
     ProductOperator,
     QuadraticFormOperator,
-    QutipDensityOperator,
-    QutipOperator,
+    BlockDensityOperator,
+    BlockOperator,
     RPAGibbsDensityOperator,
     ScalarOperator,
     SumOperator,
@@ -159,7 +159,7 @@ def assert_same_structure(original, loaded):
         assert list(loaded.site_factors) == list(original.site_factors)
         for site, factor in original.site_factors.items():
             assert np.array_equal(loaded.site_factors[site], factor)
-    if isinstance(original, QutipOperator):
+    if isinstance(original, BlockOperator):
         assert loaded.site_names == original.site_names
         assert loaded.operator == original.operator
         if original.operator is not None:
@@ -180,7 +180,7 @@ def test_operator_roundtrip(name, tmp_path):
     loaded = roundtrip(original, tmp_path)
     assert_same_structure(original, loaded)
     if getattr(original, "operator", "") is None:
-        # A QutipOperator built from a number has no matrix to compare.
+        # A BlockOperator built from a number has no matrix to compare.
         return
     if isinstance(as_qutip(original), qutip.Qobj):
         assert check_operator_equality(as_qutip(original), as_qutip(loaded), 1e-12)

@@ -4,15 +4,15 @@ from typing import Any, Callable, Dict
 
 from qalma.operators.arithmetic import SumOperator
 from qalma.operators.basic import Operator
+from qalma.operators.block import BlockOperator
 from qalma.operators.product import ProductOperator
-from qalma.operators.qutip import QutipOperator
 from qalma.operators.states.arithmetic import MixtureDensityOperator
+from qalma.operators.states.block import BlockDensityOperator
 from qalma.operators.states.gibbs import (
     GibbsDensityOperator,
     GibbsProductDensityOperator,
 )
 from qalma.operators.states.product import ProductDensityOperator
-from qalma.operators.states.qutip import QutipDensityOperator
 
 WRAPPERS_BY_TYPE: Dict[Any, Callable] = {}
 
@@ -41,10 +41,10 @@ def _wrapper_sum(op, prefactor: complex = 1) -> SumOperator:
 
 
 def _wrapper_qutip(
-    qutip_density: QutipDensityOperator, prefactor: complex = 1
-) -> QutipOperator:
+    qutip_density: BlockDensityOperator, prefactor: complex = 1
+) -> BlockOperator:
     """Discard the prefactor and build a new qutip operator."""
-    result = QutipOperator(
+    result = BlockOperator(
         qutip_density.operator,
         qutip_density.system,
         qutip_density.site_names,
@@ -66,7 +66,7 @@ def _wrapper_product(
 
 def _wrapper_gibbs(
     operator: GibbsDensityOperator, prefactor: complex = 1
-) -> QutipOperator:
+) -> BlockOperator:
     """Convert a GibbsOperator into a basic QutioOperator."""
     return _wrapper_qutip(operator.to_qutip_operator(), prefactor)
 
@@ -80,7 +80,7 @@ def _wrapper_gibbs_product(
 
 WRAPPERS_BY_TYPE.update(
     {
-        QutipDensityOperator: _wrapper_qutip,
+        BlockDensityOperator: _wrapper_qutip,
         MixtureDensityOperator: _wrapper_sum,
         GibbsProductDensityOperator: _wrapper_gibbs_product,
         GibbsDensityOperator: _wrapper_gibbs,

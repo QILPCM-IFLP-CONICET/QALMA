@@ -19,8 +19,8 @@ from qalma.operators import (
     SumOperator,
 )
 from qalma.operators.arithmetic import iterable_to_operator
+from qalma.operators.block import BlockOperator
 from qalma.operators.quadratic import QuadraticFormOperator
-from qalma.operators.qutip import QutipOperator
 from qalma.operators.states.basic import (
     DensityOperatorProtocol,
 )
@@ -137,20 +137,20 @@ def _project_product_operator_to_one_body(
 
 
 def one_body_qutip_projection(
-    full_operator: QutipOperator,
+    full_operator: BlockOperator,
     state_ref: Optional[ProductDensityOperator] = None,
 ):
     """
     Project qutip operators onto one-body operators.
 
-    Project a :class:`~qalma.operators.qutip.QutipOperator` onto the one-
+    Project a :class:`~qalma.operators.block.BlockOperator` onto the one-
     body operator subspace relative to ``state_ref``.
 
     Delegates to :func:`_project_qutip_operator_to_one_body`.
 
     Parameters
     ----------
-    full_operator : QutipOperator
+    full_operator : BlockOperator
         The many-body QuTiP operator to project.
     state_ref : ProductDensityOperator or None, optional
         Reference product state defining the projection. If ``None``,
@@ -166,7 +166,7 @@ def one_body_qutip_projection(
 
 
 def _project_qutip_operator_to_one_body(
-    full_operator: QutipOperator,
+    full_operator: BlockOperator,
     state_ref: Optional[ProductDensityOperator] = None,
 ):
     r"""
@@ -452,7 +452,7 @@ def _project_qutip_operator_combinatorial(
 
 
 def _project_dense_block(
-    full_operator: QutipOperator,
+    full_operator: BlockOperator,
     n_max: int,
     sigma_ref: Optional[ProductDensityOperator],
 ) -> Operator:
@@ -522,7 +522,7 @@ def _project_dense_block(
                 continue
             sub_dims = [dims[pos] for pos in kept]
             terms.append(
-                QutipOperator(
+                BlockOperator(
                     _Qobj(matrix, dims=[sub_dims, sub_dims]),
                     system,
                     names={support[pos]: idx for idx, pos in enumerate(kept)},
@@ -531,18 +531,18 @@ def _project_dense_block(
     return iterable_to_operator(terms, system).simplify()
 
 
-def n_body_qutip_projection(full_operator: QutipOperator, n_max=2, sigma_ref=None):
+def n_body_qutip_projection(full_operator: BlockOperator, n_max=2, sigma_ref=None):
     """
     Project qutip operators onto the n-body operator space.
 
-    Project a :class:`~qalma.operators.qutip.QutipOperator` onto the n-body
+    Project a :class:`~qalma.operators.block.BlockOperator` onto the n-body
     operator subspace relative to ``sigma_ref``.
 
     Delegates to :func:`_project_qutip_operator_recursive`.
 
     Parameters
     ----------
-    full_operator : QutipOperator
+    full_operator : BlockOperator
         The many-body QuTiP operator to project.
     n_max : int, optional
         Maximum number of sites in each term of the projected operator.
@@ -561,13 +561,13 @@ def n_body_qutip_projection(full_operator: QutipOperator, n_max=2, sigma_ref=Non
 
 
 def _project_qutip_operator_recursive(
-    full_operator: QutipOperator, n_max=2, sigma_ref=None
+    full_operator: BlockOperator, n_max=2, sigma_ref=None
 ) -> Operator:
     """
     Project qutip operators onto the n-body operator space (recursive implementation).
 
     Recursive implementation for the n-body Projection over
-    QutipOperators.
+    BlockOperators.
     """
     if n_max == 0:
         return ScalarOperator(
@@ -610,7 +610,7 @@ def _project_qutip_operator_recursive(
         sigma_firsts = sigma_ref.partial_trace(frozenset(rest_sitenames))
 
     firsts_ops = [
-        QutipOperator(op_c.tidyup(), names=rest_sitenames, system=system)
+        BlockOperator(op_c.tidyup(), names=rest_sitenames, system=system)
         for op_c in qutip_ops_firsts
     ]
     delta_ops = [
@@ -689,7 +689,7 @@ def one_body_from_qutip_operator(
     -------
     SumOperator
         A sum of a Scalar Operator (the expectation value of `operator`
-       w.r.t `sigma0`), a LocalOperator and a QutipOperator.
+       w.r.t `sigma0`), a LocalOperator and a BlockOperator.
 
     """
     if isinstance(operator, (ScalarOperator, OneBodyOperator, LocalOperator)):
@@ -697,11 +697,11 @@ def one_body_from_qutip_operator(
 
     if isinstance(operator, _Qobj):
         if sigma0 is None:
-            operator = QutipOperator(operator)
+            operator = BlockOperator(operator)
             system = operator.system
         else:
             system = sigma0.system
-            operator = QutipOperator(operator, system=system)
+            operator = BlockOperator(operator, system=system)
     else:
         system = operator.system
 
@@ -811,7 +811,7 @@ def project_operator_to_n_body(
     if isinstance(full_operator, ProductOperator):
         return _project_product_operator_recursive(full_operator, n_max, sigma_ref)
 
-    if isinstance(full_operator, QutipOperator):
+    if isinstance(full_operator, BlockOperator):
         return _project_qutip_operator_recursive(full_operator, n_max, sigma_ref)
 
     return _project_qutip_operator_recursive(
@@ -1041,6 +1041,6 @@ def project_k_to_sep(K: _Qobj, maxit: int = 200) -> list:
 DISPATCH_PROJECTION_METHOD: Dict[type, Callable] = {
     ScalarOperator: lambda x, y, z: x,
     ProductOperator: _project_product_operator_recursive,
-    QutipOperator: _project_qutip_operator_combinatorial,
+    BlockOperator: _project_qutip_operator_combinatorial,
     QuadraticFormOperator: project_quadraticform_operator_as_n_body_operator,
 }

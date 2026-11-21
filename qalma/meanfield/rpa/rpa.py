@@ -20,8 +20,8 @@ from qalma.operators import Operator
 from qalma.operators.basic import LocalOperator
 from qalma.operators.quadratic import QuadraticFormOperator
 from qalma.operators.states.basic import DensityOperatorProtocol
+from qalma.operators.states.block import BlockDensityOperator
 from qalma.operators.states.gibbs import GibbsDensityOperator
-from qalma.operators.states.qutip import QutipDensityOperator
 from qalma.operators.states.register_ops._gibbs import _inherit_gibbs_arithmetic
 
 from .bosonized import rpa_bosonized_state
@@ -374,7 +374,7 @@ class RPAGibbsDensityOperator(GibbsDensityOperator):
             options = self.hybrid_options if hybrid_options is None else hybrid_options
             rho = rpa_hybrid_state(self.rpa_structure, sites, k_mf, **(options or {}))
             block = tuple(sorted(sites))
-            result = QutipDensityOperator(
+            result = BlockDensityOperator(
                 rho,
                 names={name: pos for pos, name in enumerate(block)},
                 system=subsystem,
@@ -417,7 +417,7 @@ class RPAGibbsDensityOperator(GibbsDensityOperator):
         if isinstance(sites, SystemDescriptor):
             sites = frozenset(sites.sites)
         block = tuple(sorted(sites))
-        result: DensityOperatorProtocol = QutipDensityOperator(
+        result: DensityOperatorProtocol = BlockDensityOperator(
             rpa_bosonized_state(self.rpa_structure, frozenset(block)),
             names={name: pos for pos, name in enumerate(block)},
             system=self.system.subsystem(frozenset(block)),

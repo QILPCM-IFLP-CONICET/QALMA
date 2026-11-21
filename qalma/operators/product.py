@@ -679,13 +679,13 @@ class ProductOperator(Operator):
         return result
 
     def to_qutip_operator(self) -> Operator:
-        """Return a :class:`QutipOperator` representation of this operator.
+        """Return a :class:`BlockOperator` representation of this operator.
 
         Returns
         -------
         Operator
             A :class:`ScalarOperator` if the prefactor or site factors are
-            zero, otherwise a :class:`QutipOperator`.
+            zero, otherwise a :class:`BlockOperator`.
 
         """
         prefactor = self.prefactor

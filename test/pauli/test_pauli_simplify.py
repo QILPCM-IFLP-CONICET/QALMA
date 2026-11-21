@@ -8,11 +8,11 @@ import pytest
 from qalma import build_system
 from qalma.model import build_spin_chain, build_system_from_dims
 from qalma.operators import (
+    BlockOperator,
     LocalOperator,
     PauliStringOperator,
     PauliSumOperator,
     ProductOperator,
-    QutipOperator,
     ScalarOperator,
     SumOperator,
     TensorProductOperator,
@@ -60,7 +60,7 @@ def random_terms():
         LocalOperator("e", matrix(2), SYSTEM),
         ProductOperator({"b": matrix(3), "c": matrix(2)}, 1.5, SYSTEM),
         ScalarOperator(0.75, SYSTEM),
-        QutipOperator(
+        BlockOperator(
             ProductOperator({"b": matrix(3), "d": matrix(3)}, 1.0, SYSTEM).to_qutip(
                 ("b", "d")
             ),
@@ -163,7 +163,7 @@ def test_t_j_sums_keep_the_tensor_products():
     assert np.allclose(dense(doubled, block, system), 2 * dense(ham, block, system))
     c_up = system.site_operator("c_up", "1[0]")
     result = commutator(ham, c_up)
-    assert not any(isinstance(t, QutipOperator) for t in result.terms)
+    assert not any(isinstance(t, BlockOperator) for t in result.terms)
     d_h, d_c = dense(ham, block, system), dense(c_up, block, system)
     assert np.allclose(dense(result, block, system), d_h @ d_c - d_c @ d_h)
 

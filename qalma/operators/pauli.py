@@ -674,7 +674,7 @@ def to_pauli_sum(operator: Operator, atol: float = QALMA_TOLERANCE) -> Operator:
     Supports :class:`ScalarOperator`, :class:`LocalOperator`,
     :class:`ProductOperator` (including Pauli strings) and sums of them. A
     product acting nontrivially on ``k`` sites expands into at most
-    ``4**k`` strings. Other operators (e.g. :class:`QutipOperator`) are
+    ``4**k`` strings. Other operators (e.g. :class:`BlockOperator`) are
     converted first with ``as_sum_of_products``, if that yields a supported
     form.
     """

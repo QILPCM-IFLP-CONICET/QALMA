@@ -18,10 +18,10 @@ import pytest
 
 from qalma.meanfield import project_meanfield
 from qalma.operators import (
+    BlockOperator,
     LocalOperator,
     OneBodyOperator,
     ProductOperator,
-    QutipOperator,
     ScalarOperator,
     SumOperator,
 )
@@ -183,7 +183,7 @@ def test_compare_iterative_and_recursive_n_body_qutip_projections(op_name, op_te
     print("op_test:", op_test)
     print("op_test:", op_test.to_qutip_operator())
     op_test = op_test.to_qutip_operator()
-    assert isinstance(op_test, QutipOperator)
+    assert isinstance(op_test, BlockOperator)
 
     for state_name, sigma0 in TEST_STATES.items():
         if not isinstance(sigma0, ProductDensityOperator):
@@ -486,7 +486,7 @@ def test_one_body_from_qutip_operator_2():
                 OneBodyOperator,
             ),
         ), f"Type of the One-body term {type(one_body)} was not the expected.\n{one_body}"
-        assert isinstance(remainder, QutipOperator)
+        assert isinstance(remainder, BlockOperator)
         # Check that the remainder and the one body terms have
         # zero mean:
         if state is None:
@@ -524,7 +524,7 @@ def test_one_body_from_qutip_operator_2():
         print("      ->qutip_op", type(qutip_op), qutip_op.acts_over())
         for state_name, state in TEST_STATES.items():
             print(f"  - on state {state_name}")
-            print("      * as QutipOperator")
+            print("      * as BlockOperator")
             result = one_body_from_qutip_operator(qutip_op, state)
             check_result(qutip_op, result)
             print("      * as Qobj")

@@ -11,14 +11,14 @@ are organised by the density operator type that drives each group of handlers:
   _product.py      ProductDensityOperator
   _gibbs_product.py        GibbsProductDensityOperator
   _gibbs.py        GibbsDensityOperator
-  _qutip.py        QutipDensityOperator
+  _block.py        BlockDensityOperator
 """
 
 import qalma.operators.basic  # noqa: F401
 import qalma.operators.states.basic  # noqa: F401
 
+from . import _block  # noqa: F401
 from . import _gibbs  # noqa: F401
 from . import _gibbs_product  # noqa: F401
 from . import _mixture  # noqa: F401
 from . import _product  # noqa: F401
-from . import _qutip  # noqa: F401

@@ -4,18 +4,18 @@ import numpy as np
 
 from qalma.meanfield.gibbs_partial_trace import project_boundary_term
 from qalma.model import build_spin_chain
-from qalma.operators import QutipOperator
+from qalma.operators import BlockOperator
 from qalma.operators.states import ProductDensityOperator
 
 
 def test_project_boundary_term_qutip_operator_with_prefactor():
-    """The prefactor of a ``QutipOperator`` term is applied once."""
+    """The prefactor of a ``BlockOperator`` term is applied once."""
     system = build_spin_chain(2)
     site_a, site_b = list(system.sites)
     bond = (
         system.site_operator("Sx", site_a) * system.site_operator("Sx", site_b)
     ).to_qutip_operator()
-    assert isinstance(bond, QutipOperator)
+    assert isinstance(bond, BlockOperator)
     sx_a = system.site_operator("Sx", site_a).to_qutip((site_a,))
     sx_b = system.site_operator("Sx", site_b).to_qutip((site_b,))
     # local states with <Sx_a> = 0.4 and <Sx_b> = 0.3

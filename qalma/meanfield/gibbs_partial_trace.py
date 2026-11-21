@@ -14,9 +14,9 @@ from qalma.meanfield import (
     variational_quadratic_mfa,
 )
 from qalma.operators import (
+    BlockOperator,
     Operator,
     ProductOperator,
-    QutipOperator,
     ScalarOperator,
     SumOperator,
 )
@@ -75,7 +75,7 @@ def project_boundary_term(term, sigma: ProductDensityOperator, sites: frozenset)
             site: op for site, op in site_factors_qutip.items() if site in sites
         }
         return ProductOperator(site_factors_qutip, prefactor, system)
-    if isinstance(term, QutipOperator):
+    if isinstance(term, BlockOperator):
         block = tuple(sites) + tuple(environment)
         # ``to_qutip`` already includes the prefactor of the term.
         qutip_op = term.to_qutip(block)
@@ -87,13 +87,13 @@ def project_boundary_term(term, sigma: ProductDensityOperator, sites: frozenset)
         )
         qutip_op = qutip_op.ptrace(list(range(len(sites))))
         names = {site: pos for pos, site in enumerate(sites)}
-        return QutipOperator(qutip_op, system, names)
+        return BlockOperator(qutip_op, system, names)
     # QuadraticFormOperator
     if hasattr(term, "as_sum_of_products"):
         term = term.as_sum_of_products()
         return project_boundary_term(term, sigma, sites)
     logger.warning(
-        "boundary term is not Product or Qutip (%s). Converting to QutipOperator",
+        "boundary term is not Product or Qutip (%s). Converting to BlockOperator",
         type(term),
     )
     return project_boundary_term(term.to_qutip_operator(), sigma, sites)

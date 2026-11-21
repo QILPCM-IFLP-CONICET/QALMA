@@ -50,11 +50,11 @@ from qalma.operators.basic import (
     LocalOperator,
     Operator,
 )
+from qalma.operators.block import BlockOperator
 from qalma.operators.product import (
     ProductOperator,
     ScalarOperator,
 )
-from qalma.operators.qutip import QutipOperator
 from qalma.settings import QALMA_TOLERANCE
 
 from .quadratic import QuadraticFormOperator
@@ -95,7 +95,7 @@ def build_local_basis(
         assert len(sites) == 2, sites
         product_terms: List[ProductOperator] = []
         for term in terms_list:
-            # If a term is a QutipOperator, decompose
+            # If a term is a BlockOperator, decompose
             # it first as a sum of product operators
             if hasattr(term, "as_sum_of_products"):
                 term_ = term.as_sum_of_products()
@@ -344,7 +344,7 @@ def classify_terms(
         from qalma.projections import n_body_projection
 
         two_body_part = n_body_projection(operator, 2, sigma_ref)
-        if isinstance(operator, QutipOperator):
+        if isinstance(operator, BlockOperator):
             operator = (operator - two_body_part).to_qutip_operator()
         else:
             operator = (operator - two_body_part).simplify()
@@ -357,7 +357,7 @@ def classify_terms(
         return terms_by_block, [operator], offset_terms
 
     # operator acts exactly on two sites
-    if isinstance(operator, QutipOperator):
+    if isinstance(operator, BlockOperator):
         return classify_terms(operator.as_sum_of_products(), sigma_ref)
     if isinstance(operator, ProductOperator):
         operator, linear_term = decompose_two_body_product_operator(operator)

@@ -21,7 +21,7 @@ import qutip
 from qalma.evolution import Simulation
 from qalma.meanfield.rpa import RPAGibbsDensityOperator
 from qalma.model import build_system
-from qalma.operators import ProductOperator, QutipOperator, ScalarOperator
+from qalma.operators import BlockOperator, ProductOperator, ScalarOperator
 from qalma.operators.quadratic import build_quadratic_form_from_operator
 from qalma.operators.states import (
     GibbsDensityOperator,
@@ -44,7 +44,7 @@ def build_simulation() -> Simulation:
     product = ProductOperator(
         {sites[0]: sx[0].operator, sites[2]: sz[2].operator}, 2 - 1j, system
     )
-    block = QutipOperator(
+    block = BlockOperator(
         qutip.tensor(qutip.sigmay(), qutip.sigmax()),
         system,
         names={sites[2]: 0, sites[0]: 1},

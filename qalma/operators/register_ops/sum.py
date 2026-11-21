@@ -7,7 +7,7 @@ Covers:
   - SumOperator + any Operator
   - SumOperator + SumOperator
   - SumOperator * SumOperator  (and OneBodyOperator cross-products)
-  - SumOperator * Operator / ProductOperator / QutipOperator  (and reversed)
+  - SumOperator * Operator / ProductOperator / BlockOperator  (and reversed)
 """
 
 from typing import Dict
@@ -18,9 +18,9 @@ from qalma.operators.arithmetic import (
     iterable_to_operator,
 )
 from qalma.operators.basic import LocalOperator, Operator
+from qalma.operators.block import BlockOperator
 from qalma.operators.product import ProductOperator, ScalarOperator
 from qalma.operators.quadratic import QuadraticFormOperator
-from qalma.operators.qutip import QutipOperator
 
 from ._common import NUMERIC_TYPES
 
@@ -105,7 +105,7 @@ def _(y_op: LocalOperator, x_op: SumOperator):
             ScalarOperator,
             LocalOperator,
             ProductOperator,
-            QutipOperator,
+            BlockOperator,
             OneBodyOperator,
             QuadraticFormOperator,
         )
@@ -158,7 +158,7 @@ def _(x_op: SumOperator, y_op: SumOperator):
     [
         (sum_type, op_type)
         for sum_type in SUM_TYPES
-        for op_type in (Operator, ProductOperator, QutipOperator)
+        for op_type in (Operator, ProductOperator, BlockOperator)
     ]
 )
 def _(x_op: SumOperator, y_op: Operator):
@@ -173,7 +173,7 @@ def _(x_op: SumOperator, y_op: Operator):
     [
         (op_type, sum_type)
         for sum_type in SUM_TYPES
-        for op_type in (Operator, ProductOperator, QutipOperator)
+        for op_type in (Operator, ProductOperator, BlockOperator)
     ]
 )
 def _(y_op: Operator, x_op: SumOperator):

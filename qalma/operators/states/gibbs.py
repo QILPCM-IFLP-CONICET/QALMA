@@ -317,26 +317,26 @@ class GibbsDensityOperator(DensityOperatorMixin, Operator):
         return self.partial_trace(sites, **kwargs)
 
     def to_qutip_operator(self):
-        r"""Return a :class:`~qalma.operators.states.qutip.QutipDensityOperator` representation.
+        r"""Return a :class:`~qalma.operators.states.block.BlockDensityOperator` representation.
 
         Computes the full matrix :math:`\rho = e^{-K}/Z` as a
         ``qutip.Qobj`` and wraps it in a
-        :class:`~qalma.operators.states.qutip.QutipDensityOperator`.
+        :class:`~qalma.operators.states.block.BlockDensityOperator`.
 
         Returns
         -------
-        QutipDensityOperator
+        BlockDensityOperator
             The explicit matrix representation of the Gibbs state.
 
         """
         # pylint: disable=import-outside-toplevel
-        from qalma.operators.states import QutipDensityOperator
+        from qalma.operators.states import BlockDensityOperator
 
         block = tuple(sorted(self.system.sites))
         names = {name: pos for pos, name in enumerate(block)}
         rho_qutip = self.to_qutip(block) if block else 1
         prefactor = getattr(self, "prefactor", 1.0)
-        return QutipDensityOperator(
+        return BlockDensityOperator(
             rho_qutip, names=names, system=self.system, prefactor=prefactor
         )
 

@@ -10,19 +10,19 @@ from qalma.operators.basic import (
     LocalOperator,
     Operator,
 )
+from qalma.operators.block import BlockOperator
 from qalma.operators.product import (
     ProductOperator,
     ScalarOperator,
 )
 from qalma.operators.quadratic import QuadraticFormOperator
-from qalma.operators.qutip import QutipOperator
 from qalma.operators.states.basic import (
     DensityOperatorProtocol,
 )
+from qalma.operators.states.block import BlockDensityOperator
 from qalma.operators.states.product import (
     ProductDensityOperator,
 )
-from qalma.operators.states.qutip import QutipDensityOperator
 from qalma.qutip_tools.tools import (
     safe_exp_and_normalize as safe_exp_and_normalize_qobj,
 )
@@ -189,7 +189,7 @@ def k_by_site_from_operator(k: Operator) -> Dict[str, Operator]:
     Raises
     ------
         TypeError: If the operator type is not supported.
-        ValueError: If `QutipOperator` acts on multiple sites.
+        ValueError: If `BlockOperator` acts on multiple sites.
 
     """
     offset: float | complex
@@ -224,7 +224,7 @@ def k_by_site_from_operator(k: Operator) -> Dict[str, Operator]:
                 continue
             if isinstance(term, LocalOperator):
                 sub_terms = {term.site: term.operator_qutip}
-            elif isinstance(term, (SumOperator, ProductOperator, QutipOperator)):
+            elif isinstance(term, (SumOperator, ProductOperator, BlockOperator)):
                 # Includes single-site Pauli strings and dense blocks.
                 sub_terms = k_by_site_from_operator(term)
             else:
@@ -242,7 +242,7 @@ def k_by_site_from_operator(k: Operator) -> Dict[str, Operator]:
             else:
                 return k_by_site_from_operator(ScalarOperator(offset, k.system))
         return result
-    if isinstance(k, QutipOperator):
+    if isinstance(k, BlockOperator):
         acts_over = k.acts_over()
         if acts_over is not None:
             if len(acts_over) == 0:
@@ -251,7 +251,7 @@ def k_by_site_from_operator(k: Operator) -> Dict[str, Operator]:
                 (site,) = acts_over
                 return {site: k.to_qutip(tuple())}
         raise ValueError(
-            f"Invalid QutipOperator: acts_over={acts_over}. Expected a single act-over site."
+            f"Invalid BlockOperator: acts_over={acts_over}. Expected a single act-over site."
         )
     raise TypeError(f"Unsupported operator type: {type(k)}.")
 
@@ -399,7 +399,7 @@ def safe_exp_and_normalize_qutip_operator(
     )
     logz = logz + sum(np.log(system.dimensions[site]) for site in rest)
     return (
-        QutipDensityOperator(
+        BlockDensityOperator(
             operator,
             names={site: pos for pos, site in enumerate(block + rest)},
             system=system,
@@ -437,7 +437,7 @@ def safe_exp_and_normalize(operator):
         return safe_exp_and_normalize_sumop(operator)
     if isinstance(operator, Operator):
         operator = operator.to_qutip_operator()
-    if isinstance(operator, QutipOperator):
+    if isinstance(operator, BlockOperator):
         return safe_exp_and_normalize_qutip_operator(operator)
     if isinstance(operator, ScalarOperator):
         system = operator.system

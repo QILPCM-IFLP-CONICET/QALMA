@@ -25,7 +25,7 @@ Two kinds of terms are supported:
   :class:`ScalarOperator`): a pair of products is evaluated site by site,
   :math:`\prod_i \mathrm{Tr}[\sigma_i a_i b_i]`, without building any
   many-site matrix;
-* *dense* terms (:class:`QutipOperator` acting on at most
+* *dense* terms (:class:`BlockOperator` acting on at most
   :data:`MAX_DENSE_SITES` sites): they are reduced onto the overlap,
   :math:`\mathrm{Tr}_{S\setminus O}[\sigma\,A]`, with NumPy tensor
   contractions; the reductions are cached.
@@ -46,8 +46,8 @@ import numpy as np
 from numpy.typing import NDArray
 
 from qalma.operators.basic import LocalOperator
+from qalma.operators.block import BlockOperator
 from qalma.operators.product import ProductOperator
-from qalma.operators.qutip import QutipOperator
 from qalma.operators.states import ProductDensityOperator
 
 #: Largest support (number of sites) of a dense term handled by the kernel.
@@ -227,7 +227,7 @@ def _make_representation(term) -> Optional[object]:
             for site, factor in term.site_factors.items()
         }
         return _ProductTerm(complex(term.prefactor), factors)
-    if isinstance(term, QutipOperator):
+    if isinstance(term, BlockOperator):
         names = term.site_names
         if len(names) > MAX_DENSE_SITES:
             return None

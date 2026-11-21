@@ -7,7 +7,7 @@ import pytest
 import qutip
 
 from qalma import build_system
-from qalma.operators import ProductOperator, QutipOperator
+from qalma.operators import BlockOperator, ProductOperator
 from qalma.operators.states import GibbsProductDensityOperator
 from qalma.scalarprod import _cov_fast, covar, fetch_covar_scalar_product
 
@@ -51,7 +51,7 @@ def operator_cases(system, sites, ops, ham):
         "with_scalar": (ham + 1.5).simplify(),
         "three_body": (sx[0] * sz[1] * sx[2] + sz[2] * sz[3] * sz[4]).simplify(),
         "ham_squared": (ham * ham).simplify(),
-        "dense_block": QutipOperator(
+        "dense_block": BlockOperator(
             qutip.Qobj(
                 np.random.default_rng(3).normal(size=(8, 8))
                 + 1j * np.random.default_rng(4).normal(size=(8, 8)),

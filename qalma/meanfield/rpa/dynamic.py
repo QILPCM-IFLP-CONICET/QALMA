@@ -6,7 +6,7 @@ from typing import Dict, List, Optional, Tuple
 import numpy as np
 from qutip import Qobj
 
-from qalma.operators import Operator, QutipOperator
+from qalma.operators import BlockOperator, Operator
 from qalma.operators.basic import LocalOperator
 
 from .environment import environment_modes
@@ -91,7 +91,7 @@ def _dynamic_correction(
         d_k = d_k_new
         if change <= TAU_RTOL * max(float(np.linalg.norm(d_k)), 1.0):
             break
-    return QutipOperator(
+    return BlockOperator(
         Qobj(d_k, dims=k0_qobj.dims),
         system,
         {site: pos for pos, site in enumerate(block)},

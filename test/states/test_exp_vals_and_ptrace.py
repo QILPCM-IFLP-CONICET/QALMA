@@ -8,7 +8,7 @@ from test.helper import (
 
 import pytest
 
-from qalma.operators import QutipOperator
+from qalma.operators import BlockOperator
 
 # from qalma.settings import VERBOSITY_LEVEL
 
@@ -38,7 +38,7 @@ def test_pt_and_exp_vals(name_rho, rho, name_obs, obs):
     acts_over_tuple = tuple(acts_over)
     acts_over_subsystem = frozenset(acts_over)
     rho_pt = rho.partial_trace(acts_over_subsystem)
-    qutip_obs = obs if isinstance(obs, QutipOperator) else obs.to_qutip_operator()
+    qutip_obs = obs if isinstance(obs, BlockOperator) else obs.to_qutip_operator()
     print(f"rho {type(rho)}:\n", rho.to_qutip())
     print(f"rho_pt {type(rho_pt)}:\n", rho_pt.to_qutip())
 

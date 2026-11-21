@@ -11,7 +11,7 @@ functions
     spectral_norm, relative_entropy, eigenvalues, log_op, compute_dagger.
 states
     Density-operator classes: ProductDensityOperator, GibbsDensityOperator,
-    GibbsProductDensityOperator, QutipDensityOperator, MixtureDensityOperator.
+    GibbsProductDensityOperator, BlockDensityOperator, MixtureDensityOperator.
 """
 
 import importlib
@@ -25,6 +25,7 @@ from .basic import (
     LocalOperator,
     Operator,
 )
+from .block import BlockOperator
 from .pauli import PauliStringOperator, to_pauli_sum
 from .pauli_sum import PauliSumOperator
 from .product import (
@@ -32,7 +33,6 @@ from .product import (
     ScalarOperator,
 )
 from .quadratic import QuadraticFormOperator
-from .qutip import QutipOperator
 from .tensor_product import TensorProductOperator
 
 # register_ops wires arithmetic dispatch tables; must run before states/functions
@@ -52,7 +52,7 @@ __all__ = [
     "PauliSumOperator",
     "ProductOperator",
     "QuadraticFormOperator",
-    "QutipOperator",
+    "BlockOperator",
     "ScalarOperator",
     "SumOperator",
     "TensorProductOperator",

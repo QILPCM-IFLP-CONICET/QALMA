@@ -11,12 +11,12 @@ from .basic import (
     DensityOperatorMixin,
     DensityOperatorProtocol,
 )
+from .block import BlockDensityOperator
 from .gibbs import (
     GibbsDensityOperator,
     GibbsProductDensityOperator,
 )
 from .product import ProductDensityOperator
-from .qutip import QutipDensityOperator
 
 importlib.import_module(".register_ops", __name__)
 
@@ -28,6 +28,6 @@ __all__ = [
     "GibbsProductDensityOperator",
     "MixtureDensityOperator",
     "ProductDensityOperator",
-    "QutipDensityOperator",
+    "BlockDensityOperator",
     "register_ops",
 ]

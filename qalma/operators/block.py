@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""Qutip representation of an operator."""
+"""Block representation of an operator."""
 
 import logging
 from functools import reduce
@@ -27,16 +27,18 @@ from qalma.qutip_tools.tools import (
 
 logger = logging.getLogger(__name__)
 
-__all__ = ["QutipOperator"]
+__all__ = ["BlockOperator"]
 
 
-class QutipOperator(Operator):
-    """Represents a Qutip operator that acts over a block of sites of a system.
+class BlockOperator(Operator):
+    """Represents an operator that acts over a block of sites of a system.
 
-    If two QutipOperator are combined in an arithmetic
-    operation, the result is QutipOperator acting on
+    If two BlockOperator are combined in an arithmetic
+    operation, the result is BlockOperator acting on
     the union of both blocks.
 
+    Internally, BlockOperators are represented as a qutip ``Qobj`` operator
+    acting over a list of sites.
 
     """
 
@@ -82,7 +84,7 @@ class QutipOperator(Operator):
 
     def __neg__(self):
         """Multiply by -1."""
-        return QutipOperator(
+        return BlockOperator(
             self.operator,
             self.system,
             names=self.site_names,
@@ -96,7 +98,7 @@ class QutipOperator(Operator):
             operator = operator.inv()
             exponent = -exponent
 
-        return QutipOperator(
+        return BlockOperator(
             operator**exponent,
             system=self.system,
             names=self.site_names,
@@ -156,7 +158,7 @@ class QutipOperator(Operator):
         else:
             if operator.isherm:
                 return self
-        return QutipOperator(
+        return BlockOperator(
             operator.dag(),
             system=self.system,
             names=self.site_names,
@@ -184,12 +186,12 @@ class QutipOperator(Operator):
             qop = qop * (0.5 * prefactor)
             qop = qop + qop.dag()
             prefactor = 1.0
-        return QutipOperator(qop, self.system, self.site_names, prefactor)
+        return BlockOperator(qop, self.system, self.site_names, prefactor)
 
     def inv(self):
         """Compute the inverse of the operator."""
         operator = self.operator
-        return QutipOperator(
+        return BlockOperator(
             operator.inv(),
             system=self.system,
             names=self.site_names,
@@ -233,7 +235,7 @@ class QutipOperator(Operator):
         log_op = sum(
             np_log(e_val) * e_vec * e_vec.dag() for e_val, e_vec in zip(evals, evecs)
         )
-        return QutipOperator(log_op, self.system, self.site_names)
+        return BlockOperator(log_op, self.system, self.site_names)
 
     def partial_trace(self, sites: Union[frozenset, SystemDescriptor]):
         """Compute the partial trace of this operator over a subsystem.
@@ -294,7 +296,7 @@ class QutipOperator(Operator):
             if (site not in sites and site not in site_names)
         )
         new_prefactor = reduce(lambda x, y: x * y, other_dims, self.prefactor)
-        return QutipOperator(
+        return BlockOperator(
             new_qutip_op,
             subsystem,
             names=new_site_names,
@@ -352,7 +354,7 @@ class QutipOperator(Operator):
             for site in environment:
                 prefactor /= dims[site]
 
-            return QutipOperator(
+            return BlockOperator(
                 qop,
                 system,
                 names={site: i for i, site in enumerate(site_list)},
@@ -367,7 +369,7 @@ class QutipOperator(Operator):
             *(system.site_identity(site) for site in sites_tuple), state_qutip
         )
         qop = (qop * state_qutip).ptrace(list(range(len(sites_tuple))))
-        return QutipOperator(
+        return BlockOperator(
             qop,
             system,
             names={site: i for i, site in enumerate(sites_tuple)},
@@ -415,7 +417,7 @@ class QutipOperator(Operator):
             larger than the threshold.
 
         """
-        return QutipOperator(
+        return BlockOperator(
             self.operator.tidyup(atol),
             system=self.system,
             names=self.site_names,
