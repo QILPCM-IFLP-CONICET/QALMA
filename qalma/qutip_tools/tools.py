@@ -68,6 +68,7 @@ def data_element_iterator(data) -> Iterator:
     """Walk over data elements."""
 
     def do_dense():
+        """Yield the non-zero ``(i, j, value)`` entries of dense data."""
         arr = data.as_ndarray() if hasattr(data, "as_ndarray") else data.to_array()
         dim_i, dim_j = arr.shape
         for i in range(dim_i):
@@ -78,6 +79,7 @@ def data_element_iterator(data) -> Iterator:
 
     # Backward compatibility v5.0 and v5.1
     def do_dia_5_0(data_dia):
+        """Yield the non-zero entries of diagonal data (QuTiP 5.0 and 5.1)."""
         data = data_dia.as_scipy()
         dim_i, dim_j = data.shape
         for offset, diag_data in zip(data.offsets, data.data):
@@ -103,6 +105,7 @@ def data_element_iterator(data) -> Iterator:
                     )
 
     def do_dia_5_2(data_dia):
+        """Yield the non-zero entries of diagonal-format data (QuTiP 5.2 layout)."""
         data = data_dia.as_scipy()
         dim_i, _ = data.shape
         for offset, diag_data in zip(data.offsets, data.data):
@@ -813,6 +816,7 @@ def reduce_to_proper_spaces(operator: _Qobj, observable: _Qobj) -> _Qobj:
     assert observable.isherm
 
     def build_proj_data(old_data, spectrum):
+        """Keep the blocks of ``old_data`` within each eigenspace of ``spectrum``."""
         proj_data = np.zeros(operator.shape, dtype=full_operator.dtype)
         for sector in get_proper_spaces(spectrum):
             for i in sector:

@@ -37,6 +37,7 @@ def fetch_kubo_scalar_product(sigma: Operator, threshold=0) -> Callable:
             break
 
     def ksp(op1, op2):
+        """Spectral KMB scalar product of ``op1`` and ``op2``."""
         result = sum(
             (
                 np.conj((v2.dag() * op1 * v1).tr())
@@ -64,6 +65,7 @@ def fetch_kubo_integral_representation_scalar_product(sigma: Operator) -> Callab
     evals, evecs = sigma.eigenstates()
 
     def return_func(op1, op2):
+        """Integral-form KMB scalar product of ``op1`` and ``op2``."""
         return 0.01 * sum(
             (
                 np.conj((v2.dag() * op1 * v1).tr())

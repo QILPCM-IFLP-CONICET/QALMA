@@ -274,6 +274,7 @@ def _registry_ready() -> None:
     from qalma.mps import MPSGSOperator
 
     def read_rpa_gibbs(group, system, context):
+        """Read an :class:`RPAGibbsDensityOperator` from an HDF5 group."""
         attrs = group.attrs
         hybrid_options = None
         if "hybrid_options" in attrs:
@@ -292,6 +293,7 @@ def _registry_ready() -> None:
         )
 
     def write_rpa_gibbs(group, operator, context):
+        """Write an :class:`RPAGibbsDensityOperator` into an HDF5 group."""
         _write_gibbs(group, operator, context)
         group.attrs["dynamic"] = bool(operator.dynamic)
         group.attrs["n_tau"] = int(operator.n_tau)

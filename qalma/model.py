@@ -84,9 +84,11 @@ def _split_site(site_basis: dict, binary_as_qubits: bool) -> Optional[dict]:
     n_distinct = 1
 
     def count(positions):
+        """Number of distinct values taken by the quantum numbers at ``positions``."""
         return len({tuple(state[p] for p in positions) for state in states})
 
     def binary_values(position):
+        """Values at ``position`` if they are two consecutive numbers, else ``None``."""
         values = sorted({state[position] for state in states})
         if len(values) == 2 and abs(values[1] - values[0] - 1) < 1e-10:
             return values
@@ -755,6 +757,7 @@ class SystemDescriptor:
         others = []
 
         def visit(term):
+            """Sort ``term`` (recursively through sums) into Pauli parts and others."""
             if isinstance(term, (int, float, complex, np.number)):
                 if term:
                     pauli_parts.append(ScalarOperator(term, self))
@@ -1134,6 +1137,7 @@ class SystemDescriptor:
         from qalma.operators import ScalarOperator, SumOperator
 
         def process_edge(e_expr, bond, model, t_parm):
+            """Evaluate the bond expression ``e_expr`` on the edge ``bond``."""
             edge_type, src, dst = bond
             e_parms = {
                 replace_variable_type(key, edge_type): replace_variable_type(
@@ -1210,6 +1214,7 @@ class SystemDescriptor:
         from qalma.operators import ScalarOperator, SumOperator
 
         def process_loop(loop_expr, loop_type, vertices_map, _model, t_parm):
+            """Evaluate the loop expression ``loop_expr`` on the sites of a loop."""
             loop_parms = {
                 replace_variable_type(key, loop_type): replace_variable_type(
                     val, loop_type

@@ -196,6 +196,7 @@ class OperatorBasis:
         commutators: List[Operator] = []
 
         def build_j_coefficients(op_2: Operator) -> Tuple[np.ndarray, np.float64]:
+            """Return the scalar products with ``[op_2, generator]`` and its leakage."""
             comm = commutator(op_2, generator).simplify()
             commutators.append(comm)
             error_sq = np.real(sp(comm, comm))

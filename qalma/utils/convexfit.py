@@ -68,6 +68,7 @@ def convex_fit_derivative(
     x_eval_convexity = np.linspace(x.min(), x.max(), 100)  # Check at 100 points
 
     def convexity_constraint_func(coeffs, x_eval, knots, k):
+        """Second derivative of the spline at ``x_eval``, signed by ``convexity``."""
         spline_func = get_spline_from_coeffs(coeffs, knots, k)
         spline_deriv2_func = spline_func.derivative(nu=2)
         deriv2_values = spline_deriv2_func(x_eval)
