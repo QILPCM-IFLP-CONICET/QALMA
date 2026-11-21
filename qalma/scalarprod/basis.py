@@ -362,7 +362,9 @@ class HierarchicalOperatorBasis(OperatorBasis):
             as_generic._commutators = commutators
         return as_generic + other
 
-    def _build_basis(self, seed, deep, projection_function=None):
+    def _build_basis(
+        self, seed: Operator, deep: int, projection_function: Optional[Callable] = None
+    ):
         sp = self.sp
         seed = seed.simplify()
         seed_norm = np.abs(sp(seed, seed)) ** 0.5

@@ -48,6 +48,7 @@ from numpy.typing import NDArray
 from qalma.operators.basic import LocalOperator
 from qalma.operators.product import ProductOperator
 from qalma.operators.qutip import BlockOperator
+from qalma.operators.states import ProductDensityOperator
 
 #: Largest support (number of sites) of a dense term handled by the kernel.
 MAX_DENSE_SITES = 6
@@ -83,7 +84,7 @@ class DenseTermCache:
     term it stores, so that the ids remain unique while the entries exist.
     """
 
-    def __init__(self, rho):
+    def __init__(self, rho: ProductDensityOperator):
         self.rho = rho
         self._local: Dict[str, NDArray] = {}
         self._terms: Dict[int, Tuple[object, object]] = {}
