@@ -21,7 +21,7 @@ left-isometries, tensors to the right are right-isometries. ``None`` means
 that nothing is assumed.
 """
 
-from typing import List, Optional, Sequence, Tuple
+from typing import List, Mapping, Optional, Sequence, Tuple
 
 import numpy as np
 
@@ -258,6 +258,49 @@ class MPS:
             tmp = np.tensordot(env, ket, axes=([1], [0]))  # a s c
             env = np.tensordot(bra.conj(), tmp, axes=([0, 1], [0, 1]))  # b c
         return complex(env[0, 0])
+
+    def expectation_product(self, operators: Mapping[int, np.ndarray]) -> complex:
+        r"""Compute the expectation value of a product of local operators.
+
+        Computes :math:`\langle\psi|\prod_p O_p|\psi\rangle /
+        \langle\psi|\psi\rangle`, with the operator :math:`O_p` acting on
+        the position ``p``. Unlike :meth:`reduced_density_matrix`, the cost
+        does not grow with the number of operators: it is
+        ``O(L chi^3 d)``, with ``L`` the distance between the first and the
+        last position. This is the way to evaluate strings that cover many
+        sites, such as the ones of the Jordan-Wigner transformation.
+
+        Parameters
+        ----------
+        operators : mapping of int to ndarray
+            Local operators by position, as matrices ``<s|O|t>`` of shape
+            ``(d, d)``. The sites that are not listed carry the identity.
+
+        Returns
+        -------
+        complex
+            The expectation value.
+        """
+        if not operators:
+            return 1.0 + 0.0j
+        positions = sorted(int(p) for p in operators)
+        if positions[0] < 0 or positions[-1] >= self.n_sites:
+            raise IndexError("positions out of range")
+        work = self._shallow_copy()
+        work.move_center(positions[0])
+        first = work.tensors[positions[0]]
+        norm2 = float(np.vdot(first, first).real)
+        env = np.eye(first.shape[0], dtype=complex)  # env[ket_bond, bra_bond]
+        for pos in range(positions[0], positions[-1] + 1):
+            tensor = work.tensors[pos]
+            tmp = np.tensordot(env, tensor, axes=([0], [0]))  # a t y
+            if pos in operators:
+                op_mat = np.asarray(operators[pos], dtype=complex)
+                tmp = np.tensordot(op_mat, tmp, axes=([1], [1]))  # s a y
+                env = np.tensordot(tensor.conj(), tmp, axes=([0, 1], [1, 0])).T
+            else:
+                env = np.tensordot(tensor.conj(), tmp, axes=([0, 1], [0, 1])).T
+        return complex(np.trace(env) / norm2)
 
     def reduced_density_matrix(self, positions: Sequence[int]) -> np.ndarray:
         r"""Reduced density matrix of the sites at ``positions``.
