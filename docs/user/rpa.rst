@@ -509,5 +509,5 @@ Limitations
 * The entropies and negativities of the full bosonization leave out the
   static (classical) modes.
 
-See also :doc:`meanfield_variational` and the API reference
-:doc:`/api/meanfield`.
+See also the notebook :doc:`/examples/example_rpa`, :doc:`meanfield_variational`
+and the API reference :doc:`/api/meanfield`.
