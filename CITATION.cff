@@ -83,3 +83,14 @@ references:
     start: 022401
     year: 2024
     doi: "10.1103/PhysRevA.109.022401"
+  - type: article
+    authors:
+      - {family-names: Gaenko, given-names: A.}
+      - name: "others"
+    title: "Updated core libraries of the ALPS project"
+    journal: "Computer Physics Communications"
+    volume: 213
+    start: 235
+    end: 251
+    year: 2017
+    doi: "10.1016/j.cpc.2016.12.009"

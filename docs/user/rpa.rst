@@ -52,7 +52,8 @@ Three reductions are available:
 ``dynamic=True``
    *Dynamical* correction. The environment is bosonized in the eigenbasis
    of the local mean-field states, which is equivalent to summing all the
-   Matsubara frequencies of the Hubbard-Stratonovich fluctuations.
+   Matsubara frequencies of the Hubbard-Stratonovich fluctuations
+   :cite:p:`Stratonovich1957,Hubbard1959`.
 
 ``hybrid=True``
    The subsystem is kept exact and only the environment is treated in the
@@ -338,7 +339,8 @@ the environment becomes a quadratic bosonic Hamiltonian
 :math:`H_b = \sum_k \Delta_k a_k^\dagger a_k + \frac12\sum M_{\mu\nu}
 \delta e_\mu\delta e_\nu` with :math:`\Delta_k = \ln(p_i/p_j)`, which is
 diagonalized by a Bogoliubov transformation. This is equivalent to
-integrating the Hubbard-Stratonovich fields analytically and summing over
+integrating the Hubbard-Stratonovich fields :cite:p:`Stratonovich1957,Hubbard1959`
+analytically and summing over
 all Matsubara frequencies: with normal modes :math:`\Psi_m` of signed
 frequency :math:`\lambda_m` and :math:`B_\mu = \sum_m c_{\mu m}\Psi_m`,
 

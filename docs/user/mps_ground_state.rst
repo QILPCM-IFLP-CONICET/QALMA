@@ -228,7 +228,7 @@ Fermions
 
 The fermionic models whose sites are products of two-level modes (spinless
 fermions, the Hubbard model, Kondo lattices) are mapped to qubits with the
-Jordan-Wigner transformation :cite:p:`JordanWigner1928` when the system is built, and their operators are
+Jordan-Wigner transformation :cite:p:`JordanWigner1928,Lieb.1961` when the system is built, and their operators are
 sums of Pauli strings (see :doc:`models`). ``MPSGSOperator`` works with them as
 with any other spin system, since the MPS lives on those qubits: the ground state of
 the qubit Hamiltonian is the ground state of the fermions. A lattice site of the

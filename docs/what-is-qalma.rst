@@ -10,7 +10,7 @@ QALMA is a library that tries to connect two very popular and useful tools used 
   - **Frameworks**: Tools for setting up, running and storing simulations (HDF5 files with checkpoints).
   - **Interfaces**: User-friendly interfaces for configuring simulations and analyzing results.
 
-For more information, visit the ALPSCore website: https://alpscore.org
+For more information, visit the ALPSCore website: https://alpscore.org (see :cite:t:`GAENKO2017235`)
 
 
 * Qutip(Quantum Toolbox in Python):  is an open-source library designed for simulating the dynamics of open quantum systems. It is widely used in quantum mechanics and quantum computing research due to its comprehensive functionalities and ease of use :cite:p:`QuTiP2012,QuTiP2013,QuTiP5`. Among its features it can be mentioned
