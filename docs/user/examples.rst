@@ -19,6 +19,11 @@ that demonstrate QALMA's main features:
   order of the sites along the chain, two-dimensional lattices, and the
   comparison with Gibbs states at low temperature (see also
   :doc:`mps_ground_state`).
+* :doc:`../examples/example_rpa`: RPA reductions of Gibbs states. Static,
+  dynamical and hybrid reductions of a pair of spins, the dependence on the
+  temperature, the reuse of the RPA data, the global environment, bosonized
+  states, entropies and negativities, and broken continuous symmetries (see
+  also :doc:`rpa`).
 
 .. note::
 
@@ -35,6 +40,7 @@ that demonstrate QALMA's main features:
    ../examples/example_maxent_evolution
    ../examples/example_chiral_variational_mf
    ../examples/example_mps_ground_state
+   ../examples/example_rpa
 
 Running the examples locally
 ----------------------------
