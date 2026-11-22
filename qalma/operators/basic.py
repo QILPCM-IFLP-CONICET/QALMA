@@ -674,7 +674,6 @@ class LocalOperator(Operator):
             is proportional to the identity, otherwise ``self``.
 
         """
-        # TODO: reduce multiples of the identity to ScalarOperators
         # pylint: disable=import-outside-toplevel
         operator = self.operator
         if not is_scalar_op(operator):

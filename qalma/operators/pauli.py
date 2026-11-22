@@ -687,6 +687,7 @@ def to_pauli_sum(operator: Operator, atol: float = QALMA_TOLERANCE) -> Operator:
     coefficients: Dict[int, complex] = {}
 
     def add_product(site_factors: Mapping[str, np.ndarray], prefactor, sys_):
+        """Expand a product of local factors in Pauli strings and accumulate it."""
         index = _site_index(system)
         partial: Dict[int, complex] = {0: prefactor}
         for site, factor in site_factors.items():
@@ -701,6 +702,7 @@ def to_pauli_sum(operator: Operator, atol: float = QALMA_TOLERANCE) -> Operator:
             coefficients[code] = coefficients.get(code, 0) + coeff
 
     def visit(op: Operator):
+        """Accumulate the Pauli-string coefficients of ``op`` (through sums)."""
         if isinstance(op, (int, float, complex, np.number)):
             coefficients[0] = coefficients.get(0, 0) + op
         elif isinstance(op, PauliStringOperator):

@@ -32,10 +32,15 @@ Features
 
 - **ALPS integration** — load models and lattice geometries directly from ALPS
   XML libraries (spin models, Bose-Hubbard, Heisenberg, custom models, chain /
-  square / triangular lattices, and more).
+  square / triangular lattices, and more). Fermionic models (spinless
+  fermions, Hubbard, t-J, Kondo) are mapped to qubits with the Jordan-Wigner
+  transformation, so the signs are exact.
 - **Algebraic operator representation** — operators are stored as sums of
-  local and few-body terms, not as full matrices. Memory and computation scale
-  polynomially with system size instead of exponentially.
+  local and few-body terms (including Pauli strings and their sums), not as
+  full matrices. Memory and the cost of products, commutators and
+  expectation values grow with the number of terms, not exponentially with
+  the system size. Operations that need the full matrix (spectra, exact
+  exponentials) are limited to small systems.
 - **QuTiP interoperability** — any QALMA operator or state can be converted to
   a QuTiP ``Qobj`` with a single call, making the full QuTiP solver ecosystem
   immediately available.
@@ -44,10 +49,16 @@ Features
   diagonalization.
 - **Mean-field and RPA reductions** — self-consistent and variational
   mean-field approximations for Gibbs states of large systems, and reduced
-  states of small subsystems with an RPA correction. These modules are still
-  evolving and their interface may change in future releases.
+  states of small subsystems with an RPA correction, with Gaussian bosonic
+  states as a building block. These modules are still evolving and their
+  interface may change in future releases.
+- **Matrix product ground states (experimental)** — ground states of
+  lattice Hamiltonians stored as matrix product states and computed with a
+  built-in two-site DMRG, with the same state interface as Gibbs states.
 - **Symbolic algebra** — operators support addition, multiplication,
   commutators, exponentiation, traces, and partial traces out of the box.
+- **Safe HDF5 storage** — systems, operators, states and simulations are
+  saved in a documented HDF5 format that does not use Python pickles.
 
 
 Installation
@@ -74,22 +85,21 @@ Quick example
 
 .. code-block:: python
 
-    from qalma import build_system
     import numpy as np
+    import qutip
+    from qalma import build_system
 
-    # Spin-1/2 Heisenberg chain with 4 sites (periodic boundary conditions)
+    # Spin-1/2 Heisenberg chain; by default, 4 sites ("chain lattice", "spin")
     system = build_system()
 
-    H  = system.global_operator("Hamiltonian")
+    H = system.global_operator("Hamiltonian")
     Sz = system.global_operator("Sz")
 
-    # Algebraic manipulation — no explicit matrices needed
+    # Algebraic manipulation: no explicit matrices needed
     Htotal = (H - 2 * Sz).simplify()
+    print("Lowest levels:", Htotal.eigenenergies()[:4])
 
-    print("Spectrum:", Htotal.eigenenergies())
-
-    # Convert to QuTiP and evolve
-    import qutip, numpy as np
+    # Convert to QuTiP and evolve (exact methods: small systems only)
     rho0 = (-Htotal).expm()
     rho0 = rho0 / rho0.tr()
     result = qutip.mesolve(
@@ -113,6 +123,13 @@ to build them locally::
     pip install -e ".[docs]"
     cd docs
     make html
+
+
+Citing
+------
+
+If you use QALMA in your research, please cite it using the metadata in
+``CITATION.cff`` (GitHub shows it under "Cite this repository").
 
 
 License

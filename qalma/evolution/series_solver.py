@@ -58,6 +58,7 @@ def series_evolution(
     record = GeneratorRecorder(e_ops, store_states, states, expect_ops)
 
     def compute_inst_k(t, basis, prefactor):
+        """Generator at time ``t`` from the series coefficients of ``basis``."""
         norms = [row[pos] for pos, row in enumerate(basis.gen_matrix[1:])]
         t_coeffs = [
             reduce(

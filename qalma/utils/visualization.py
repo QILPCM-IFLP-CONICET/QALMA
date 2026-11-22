@@ -80,7 +80,7 @@ def draw_operator(op, axis: "_PLTAxes") -> "_PLTAxes":
 
     system = op.system
     g = system.spec["graph"]
-    g.complete_coordiantes()
+    g.complete_coordinates()
     op = op.flat()
     if isinstance(op, SumOperator):
         for term in op.terms:

@@ -69,6 +69,7 @@ def _inherit_gibbs_arithmetic(subclass: type) -> None:
         fallback = mul_table.get(fallback_key)
 
         def handler(x_op, y_op):
+            """Multiply a state by a positive number by rescaling its prefactor."""
             state, factor = (x_op, y_op) if isinstance(x_op, subclass) else (y_op, x_op)
             if isinstance(factor, (int, float)) and factor > 0:
                 return state._with_prefactor(  # pylint: disable=protected-access
@@ -83,9 +84,6 @@ def _inherit_gibbs_arithmetic(subclass: type) -> None:
         if other in (int, float, np.float64):
             new_key = (subclass, other) if key[0] is base else (other, subclass)
             mul_table[new_key] = _scaled(key)
-
-
-# TODO: consider a shortcut
 
 
 @Operator.register_add_handler(

@@ -120,9 +120,7 @@ def _(x_op: MixtureDensityOperator, y_op: MixtureDensityOperator):
 )
 def _(x_op: MixtureDensityOperator, y_op: Operator):
     """Convert the mixture into a SumOperator, and then add the other operator."""
-    # HACK to convert terms from a MixtureDensityOperator
-    # to terms in a sum.
-    #
+    # Convert the terms of the MixtureDensityOperator into terms of a sum.
     result = _mixture_to_sum(x_op) + y_op
     return result
 
@@ -147,9 +145,7 @@ def _(x_op: MixtureDensityOperator, y_op: Operator):
 )
 def _(x_op: Operator, y_op: MixtureDensityOperator):
     """Convert the mixture into a SumOperator, and then add the other operator."""
-    # HACK to convert terms from a MixtureDensityOperator
-    # to terms in a sum.
-    #
+    # Convert the terms of the MixtureDensityOperator into terms of a sum.
     return _mixture_to_sum(y_op) + x_op
 
 

@@ -445,6 +445,7 @@ def _compute_cov_prod_normsq(
         av_cache = {}
 
     def iterator():
+        """Yield the index pairs ``(i, j)`` with ``i < j``, from the last term backwards."""
         for j in range(len_terms - 1, -1, -1):
             for i in range(j - 1, -1, -1):
                 yield (

@@ -128,8 +128,8 @@ class DensityOperatorMixin:
         _local_states: Optional[Dict[frozenset, "DensityOperatorProtocol"]] = None,
     ) -> Union[NDArray, dict, complex]:
         """Compute the expectation value of an observable."""
-        # TODO: explode that expectation values of operators just requires the
-        # state where the operators acts.
+        # The expectation value of an operator only requires the reduced state
+        # on the sites where the operator acts.
         from qalma.operators.states.utils import (
             collect_local_states,
             reduced_state_by_block,

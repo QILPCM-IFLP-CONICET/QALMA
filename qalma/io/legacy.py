@@ -127,6 +127,7 @@ def state_keys(root: h5py.Group) -> List[str]:
         return []
 
     def number(key):
+        """Trailing integer of a dataset name (``-1`` if it has none)."""
         match = re.search(r"(\d+)$", key)
         return int(match.group(1)) if match else -1
 

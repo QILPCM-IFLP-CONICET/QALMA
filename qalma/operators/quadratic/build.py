@@ -286,6 +286,7 @@ def classify_terms(
     )
 
     def decompose_two_body_product_operator(prod_op) -> Tuple[Operator, Operator]:
+        """Split a two-site product into its fluctuation part and one-body terms."""
         prefactor = prod_op.prefactor
         system = prod_op.system
         assert isinstance(prod_op, ProductOperator)
@@ -639,6 +640,7 @@ def basis_and_weights(qf_basis_list: List[List[Operator]]):
     """
 
     def spectral_norm(ob_op: Operator) -> complex:
+        """Spectral norm of a scalar, local or one-body operator."""
         if isinstance(ob_op, ScalarOperator):
             return ob_op.prefactor
         if isinstance(ob_op, OneBodyOperator):

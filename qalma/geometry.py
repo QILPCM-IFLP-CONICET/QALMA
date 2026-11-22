@@ -553,7 +553,7 @@ class GraphDescriptor:
         self.loops = loops or {}
         self.lattice = lattice or None
         self.parms = parms or {}
-        self.complete_coordiantes()
+        self.complete_coordinates()
         self.subgraphs = {}
 
     def __getstate__(self):
@@ -586,7 +586,7 @@ class GraphDescriptor:
             return False
         return True
 
-    def complete_coordiantes(self):
+    def complete_coordinates(self):
         """Add coordinates to nodes without specified coordinates."""
         nodes = self.nodes
         lattice = self.lattice

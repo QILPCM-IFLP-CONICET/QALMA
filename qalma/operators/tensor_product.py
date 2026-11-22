@@ -300,6 +300,7 @@ def _dense_product(x_op: Operator, y_op: Operator, system) -> Operator:
     """Fallback: multiply as plain products of dense factors."""
 
     def as_product(op):
+        """Convert a local or product operator into a :class:`ProductOperator`."""
         if isinstance(op, LocalOperator):
             return ProductOperator({op.site: _to_array(op.operator)}, 1.0, system)
         return ProductOperator(dict(op.site_factors), op.prefactor, system)
