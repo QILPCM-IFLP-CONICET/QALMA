@@ -29,7 +29,13 @@ extensions = [
     "myst_parser",
     "sphinx.ext.extlinks",
     "sphinx.ext.imgconverter",  # Automatically handles image format conversions
+    "sphinxcontrib.bibtex",  # Bibliography, from docs/references.bib
 ]
+
+# Single bibliography shared with the companion paper.
+bibtex_bibfiles = ["references.bib"]
+bibtex_default_style = "unsrt"
+bibtex_reference_style = "author_year"
 
 extlinks = {
     "doi": ("https://doi.org", "DOI:%s"),

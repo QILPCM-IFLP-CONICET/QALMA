@@ -81,6 +81,7 @@ docs = [
     "sphinx-autodoc-typehints",
     "nbsphinx",          # para ejecutar notebooks como páginas
     "myst-parser",       # si se usan archivos .md además de .rst
+    "sphinxcontrib-bibtex>=2.6",  # referencias bibliográficas (docs/references.bib)
     "ipython",
     "ipykernel",
     "matplotlib>=3.8",
