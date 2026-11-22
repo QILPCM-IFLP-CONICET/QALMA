@@ -89,7 +89,9 @@ def anticommutator_qalma_serial(op_1: Operator, op_2: Operator) -> Operator:
             system,
         ).simplify()
 
-    # TODO: Handle fermions...
+    # Operators with disjoint supports are assumed to commute. This is exact
+    # for fermionic systems split into qubits (the Jordan-Wigner strings are
+    # part of the operators); see ``FermionicSignWarning`` otherwise.
     acts_over_1, acts_over_2 = op_1.acts_over(), op_2.acts_over()
     if acts_over_1 is not None:
         if len(acts_over_1) == 0:

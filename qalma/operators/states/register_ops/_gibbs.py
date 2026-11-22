@@ -86,9 +86,6 @@ def _inherit_gibbs_arithmetic(subclass: type) -> None:
             mul_table[new_key] = _scaled(key)
 
 
-# TODO: consider a shortcut
-
-
 @Operator.register_add_handler(
     [(GibbsDensityOperator, type_1) for type_1 in REAL_NUMERIC_TYPES]
 )
