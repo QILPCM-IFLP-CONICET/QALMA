@@ -1,4 +1,5 @@
-"""Symmetry-breaking wrapper for the variational mean-field approximation.
+"""Symmetry-breaking wrapper for the variational mean-field approximation
+(see :cite:t:`Bartolome2026`).
 
 When the exact Gibbs state breaks a symmetry of the Hamiltonian (e.g.
 magnetic order, chiral order), the self-consistent mean-field equations

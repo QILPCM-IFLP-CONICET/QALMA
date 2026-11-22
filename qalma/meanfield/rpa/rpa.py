@@ -170,8 +170,8 @@ class RPAGibbsDensityOperator(GibbsDensityOperator):
         Origin of the correlations of the environment in the static and
         dynamical corrections. ``"isolated"`` (default) bosonizes, for each
         subsystem, the environment with the subsystem removed. ``"global"``
-        takes them from the bosonization of the whole system (J. M. Matera's
-        thesis, chapter 6), which is computed once and shared by all the
+        takes them from the bosonization of the whole system (:cite:t:`MateraThesis`,
+        chapter 6), which is computed once and shared by all the
         subsystems: it is cheaper for large systems, but it includes the
         fluctuations of the subsystem itself fed back through the
         environment, which makes it less accurate close to instabilities.

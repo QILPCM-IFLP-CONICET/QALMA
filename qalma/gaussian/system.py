@@ -1,4 +1,5 @@
-r"""Gaussian states of bosonic modes.
+r"""Gaussian states of bosonic modes, as used in the RPA of
+:cite:t:`Matera2010RPA`.
 
 A Gaussian state of ``n`` bosonic modes is determined by its first and second
 moments. :class:`BosonicGaussianSystem` stores states with vanishing first

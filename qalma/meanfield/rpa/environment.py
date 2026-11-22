@@ -183,7 +183,7 @@ def _global_environment_bogoliubov(
     """Operators ``B_mu`` of ``sites`` on the normal modes of the whole system.
 
     The correlations of the environment are those of the bosonization of the
-    whole system (the subsystem included), as in J. M. Matera's thesis
+    whole system (the subsystem included), as in :cite:t:`MateraThesis`
     (chapter 6), instead of those of the environment with the subsystem
     removed. The Bogoliubov transformation is shared by all the subsystems.
     """

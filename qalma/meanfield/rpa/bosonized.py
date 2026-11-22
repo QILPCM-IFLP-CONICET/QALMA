@@ -25,11 +25,10 @@ that is, creating a boson in the pair :math:`(i, j)` moves population from
         + \sum_{i<j} (O_{jj} - O_{ii})(a^\dagger_{ij} a_{ij} - n^0_{ij}) .
 
 Expectation values of products of operators of two sites follow from Wick's
-theorem. This is the bosonization of J. M. Matera's thesis (chapter 6,
+theorem. This is the bosonization of :cite:t:`MateraThesis` (chapter 6,
 eq. 6.9): the one-body averages and the correlations of the linear parts
 coincide with those obtained deriving the RPA partition function with
-respect to the couplings (the mean field plus RPA of Canosa, Matera and
-Rossignoli), and the Gaussian state adds terms of higher order in
+respect to the couplings (the mean field plus RPA of :cite:t:`Canosa2010SPA`), and the Gaussian state adds terms of higher order in
 :math:`1/N` (the product of the population corrections and the Wick
 contraction of the quadratic parts).
 

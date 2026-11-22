@@ -36,6 +36,13 @@ positive operator. The method is meant for Hamiltonians with quasi-local
 couplings and small subsystems. The mathematical details are given in
 :ref:`rpa-formulation`.
 
+The RPA reductions follow the mean field plus RPA treatment of thermal and
+ground-state entanglement of
+:cite:t:`Matera2010RPA,Matera2011RPA,Canosa2010SPA`, which builds on the
+standard formulation of the RPA in :cite:t:`RingSchuck1980`; the
+bosonization of the whole system is the one of chapter 6 of
+:cite:t:`MateraThesis`.
+
 Three reductions are available:
 
 ``dynamic=False``
@@ -200,7 +207,7 @@ from:
 * ``"isolated"`` (default): the environment is bosonized with the subsystem
   removed. This needs a Bogoliubov transformation for each subsystem.
 * ``"global"``: the correlations are those of the Gaussian state of the
-  bosonization of the whole system, as in chapter 6 of J. M. Matera's thesis.
+  bosonization of the whole system, as in chapter 6 of :cite:p:`MateraThesis`.
   The Bogoliubov transformation is computed once, stored in
   ``state.rpa_structure``, and shared by all the subsystems.
 
@@ -237,10 +244,10 @@ products of operators of two sites then follow from Wick's theorem:
 
    rho_pair = state.bosonized_state(frozenset({"1[0]", "1[1]"}))
 
-This is the bosonization of chapter 6 of J. M. Matera's doctoral thesis. Its
+This is the bosonization of chapter 6 of :cite:t:`MateraThesis`. Its
 one-body averages and the correlations of the linear parts coincide with
 those obtained deriving the RPA partition function with respect to the
-couplings, as in the mean field plus RPA of Canosa, Matera and Rossignoli;
+couplings, as in the mean field plus RPA of :cite:t:`Canosa2010SPA`;
 the Gaussian state adds terms of higher order in :math:`1/n` (the products of
 the population corrections and the Wick contraction of the quadratic parts),
 which in the fully connected models bring the correlations closer to the
@@ -432,9 +439,8 @@ orientation of the environment, so that in many cases the environment has
 only a soft mode. :func:`~qalma.meanfield.rpa.environment.rpa_zero_modes`
 counts the zero modes.
 
-This is the treatment of the mean field plus RPA of Canosa, Matera and
-Rossignoli (Phys. Rev. A 76, 022310; arXiv:1012.4762) for a broken continuous
-symmetry: the Gaussian (RPA) approximation is applied only to the intrinsic
+This is the treatment of the mean field plus RPA of :cite:t:`Canosa2010SPA`
+for a broken continuous symmetry: the Gaussian (RPA) approximation is applied only to the intrinsic
 variables, the orientation is integrated exactly, and the conserved charge
 has Gaussian thermal fluctuations. The RPA correction stays finite when the
 frequency of the zero mode vanishes. The three ingredients are combined in
@@ -472,7 +478,7 @@ reduced covariance matrix of any subset of sites gives the entropy and the
 negativity of the bosonic RPA state (see
 :func:`~qalma.meanfield.rpa.functions.rpa_entanglement_entropy` and
 :func:`~qalma.meanfield.rpa.functions.rpa_negativity`), as in the RPA of
-Matera, Rossignoli and Canosa (Phys. Rev. A 82, 052332; arXiv:1009.1750).
+:cite:t:`Matera2010RPA`.
 Only the bosons with a non-vanishing frequency are included: the static
 modes are classical fluctuations and are left out, so these quantities
 describe the quantum fluctuations around the mean-field state.

@@ -24,8 +24,8 @@ def fetch_kubo_scalar_product(sigma: Operator, threshold=0) -> Callable:
     """
     Fetch a KMB scalar product callable. Spectral implementation.
 
-    Build a KMB scalar product function associated to the state
-    ``sigma``.
+    Build a Kubo-Mori-Bogoliubov (KMB) scalar product function associated
+    to the state ``sigma`` :cite:p:`Kubo1957,PetzToth1993`.
     """
     evals_evecs = sorted(zip(*sigma.eigenstates()), key=lambda x: -x[0])
     w = 1
@@ -59,8 +59,9 @@ def fetch_kubo_integral_representation_scalar_product(sigma: Operator) -> Callab
     """
     Fetch a KMB scalar product callable. Integral implementation.
 
-    Build a KMB scalar product function associated to the state ``sigma``,
-    from its integral form.
+    Build a Kubo-Mori-Bogoliubov (KMB) scalar product function associated
+    to the state ``sigma`` :cite:p:`Kubo1957,PetzToth1993`, from its integral
+    form.
     """
     evals, evecs = sigma.eigenstates()
 

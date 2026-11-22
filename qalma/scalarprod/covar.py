@@ -1,4 +1,8 @@
-"""Functions implementing the Covariance Scalar Product."""
+"""Functions implementing the Covariance Scalar Product.
+
+The covariance scalar product is the one introduced in
+:cite:t:`PerezMatera2024`.
+"""
 
 # from datetime import datetime
 from typing import Callable, Dict, Generator, List, Optional, Tuple, cast

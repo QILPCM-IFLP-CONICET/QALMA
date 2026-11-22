@@ -86,7 +86,7 @@ functions of those, a single subsite with the rest::
     system.site_qubits["1[0]"]  # ('1[0]:Nup', '1[0]:Ndown')
 
 The fermionic modes are mapped to Pauli strings through the Jordan-Wigner
-transformation, in the order of ``system.sites``, so they anticommute also
+transformation :cite:p:`JordanWigner1928`, in the order of ``system.sites``, so they anticommute also
 within a site. Site operators are still requested by the name of the node
 (``system.site_operator("c_up", "1[0]")``). Without a rest subsite they
 are, like the global operators, sums of Pauli strings
