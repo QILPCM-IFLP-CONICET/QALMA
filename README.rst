@@ -9,10 +9,11 @@ Quantum Algebra for Lattice Models and Applications (QALMA)
 |
 
 QALMA is a Python library for building and simulating many-body quantum
-systems on lattices. It bridges the `ALPS <https://alpscore.org>`_ XML model
-and lattice libraries with `QuTiP <https://qutip.org>`_, and provides its own
-efficient algebraic representation of operators that exploits the tensor-product
-structure of lattice Hamiltonians.
+systems on lattices. It provides an efficient algebraic representation of
+operators and states that exploits the tensor-product structure of lattice
+Hamiltonians, mean-field and Max-Ent projected-dynamics solvers, and a bridge
+between the `ALPS <https://alpscore.org>`_ XML model and lattice libraries and
+`QuTiP <https://qutip.org>`_.
 
 .. image:: https://github.com/QILPCM-IFLP-CONICET/QALMA/actions/workflows/ubuntu.yml/badge.svg
    :target: https://github.com/QILPCM-IFLP-CONICET/QALMA/actions/workflows/ubuntu.yml

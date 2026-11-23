@@ -5,10 +5,11 @@ QALMA Documentation
    :align: center
    :width: 4in
 
-QALMA is a Python library that bridges `ALPS <https://alpscore.org>`_ XML model
-definitions with `QuTiP <https://qutip.org>`_ quantum objects, providing tools
-to build lattice systems, manipulate many-body operators, and simulate quantum
-dynamics using MaxEnt projected evolution.
+QALMA is a Python library for representing and manipulating operators and
+states of quantum lattice systems. It provides an algebraic representation of
+lattice operators and states, mean-field and Max-Ent projected-dynamics
+solvers, and a bridge between the `ALPS <https://alpscore.org>`_ XML model
+libraries and `QuTiP <https://qutip.org>`_ quantum objects.
 
 .. toctree::
    :maxdepth: 1
