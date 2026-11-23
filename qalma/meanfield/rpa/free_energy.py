@@ -220,7 +220,9 @@ def rpa_free_energy(state) -> RPAFreeEnergy:
     Returns
     -------
     RPAFreeEnergy
-        The terms of the estimate; ``.total`` is the free energy.
+        The terms of the estimate; ``.total`` is the free energy. It refers
+        to the generator the state was built with, also after the state has
+        been normalized.
 
     Raises
     ------
@@ -239,6 +241,13 @@ def rpa_free_energy(state) -> RPAFreeEnergy:
     structure: RPAStructure = state.rpa_structure
     sigma_mf = structure.sigma_mf
     mean_field = float(np.real(compute_free_energy(sigma_mf, structure.generator)))
+    # Refer the estimate to the generator the state was built with: the
+    # normalization of the state shifts K by a constant (K -> K + ln Z, with
+    # ``_free_energy = -ln Z``), which only shifts the mean-field term.
+    original_k = state.k + getattr(state, "_free_energy", 0.0)
+    mean_field += float(
+        np.real(sigma_mf.expect(original_k) - sigma_mf.expect(structure.generator))
+    )
 
     h_mat, lam, _ = rpa_quadratic_form(structure)
     dynamic = 0.0
