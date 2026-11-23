@@ -246,17 +246,56 @@ the state was built with, also after the state has been normalized.
 The symmetries are those declared in ``symmetry_projections``. Whether the
 mean-field state breaks each of them is checked site by site: a parity-like
 symmetry (the local operator must be an involution) or time reversal adds
-:math:`\ln 2` when broken. If the mean field breaks a symmetry that is not
-declared, the estimate misses the corresponding :math:`-\ln g`. Projections
-that cannot be classified issue a warning, and the restoration of broken
-continuous symmetries (zero modes) is not implemented yet.
+:math:`-\ln 2` when broken. If the mean field breaks a symmetry that is not
+declared, the estimate misses the corresponding term. Projections that cannot
+be classified issue a warning.
+
+A broken continuous symmetry, declared with
+:func:`~qalma.projections.project_conserved_quantity` for a conserved
+quantity :math:`P=\sum_iq_i`, produces a zero mode of the RPA. The zero mode
+is removed from the dynamic and static terms, and replaced by the number of
+distinguishable mean-field states along the orbit :math:`e^{i\theta P}`,
+estimated by its length in the Bures metric:
+
+.. math::
+
+    \Delta F_\mathrm{sym} = -\ln\max\!\left(1,\sqrt{2\pi F_Q/4}\right),\qquad
+    F_Q=\sum_iF_Q(\sigma_i,q_i),
+
+where :math:`F_Q` is the quantum Fisher information of the mean-field state
+for :math:`P` (for pure local states :math:`F_Q/4` is the variance of
+:math:`P`, and it vanishes for a state that commutes with :math:`P`), for
+local charges with integer-spaced spectra (period :math:`2\pi`)::
+
+    from qalma.projections import project_conserved_quantity
+
+    u1 = (partial(project_conserved_quantity, op_name="Sz"),)
+    state = RPAGibbsDensityOperator(k, system, meanfield=meanfield,
+                                    symmetry_projections=u1)
+    state.free_energy
+
+The Fisher information makes the term robust: a mean field that breaks the
+symmetry only slightly (for instance, a spurious solution of the
+symmetry-breaking search) adds almost nothing. This classical estimate holds
+while many charge sectors are populated; in finite systems at low
+temperatures, where the charge sectors are resolved, it overestimates the
+correction. Zero modes without a declared broken continuous symmetry raise a
+``ValueError``.
+
+The result also reports the stability margin of the RPA, the smallest
+eigenvalue of :math:`1+\chi^0M` without the zero modes
+(``estimate.stability``). Close to an instability of the mean field the
+Gaussian fluctuations diverge and the estimate overcorrects; a warning is
+issued below ``STABILITY_WARNING = 0.25``. In the tests, margins above 0.4
+gave errors several times smaller than the mean field, and margins below 0.2
+gave large overcorrections, notably in one-dimensional chains near their
+mean-field transitions.
 
 On an Ising chain in a transverse field with :math:`L=8`, the error of the
 estimate is :math:`5\times10^{-4}` at high temperature, against
 :math:`3\times10^{-2}` for the mean field, and about 0.01 deep in the ordered
-phase, against 0.7. As any Gaussian approximation, it fails close to the
-instabilities of the mean field, where the fluctuations diverge, and it
-slightly overestimates the correlation energy at low temperatures.
+phase, against 0.7. As any Gaussian approximation, it slightly overestimates
+the correlation energy at low temperatures.
 
 Correlations of the environment
 -------------------------------
