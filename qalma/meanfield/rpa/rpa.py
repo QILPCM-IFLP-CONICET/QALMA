@@ -440,6 +440,20 @@ class RPAGibbsDensityOperator(GibbsDensityOperator):
             self.rpa_structure, None if sites is None else frozenset(sites)
         )
 
+    def rpa_free_energy(self):
+        r"""Estimate the free energy :math:`F=-\ln Z` in the RPA.
+
+        See :func:`~qalma.meanfield.rpa.rpa_free_energy`.
+
+        Returns
+        -------
+        RPAFreeEnergy
+            The terms of the estimate; ``.total`` is the free energy.
+        """
+        from .free_energy import rpa_free_energy
+
+        return rpa_free_energy(self)
+
     def rpa_entropy(self, sites: frozenset) -> float:
         """Bosonic RPA entropy of the subsystem ``sites``, in bits.
 

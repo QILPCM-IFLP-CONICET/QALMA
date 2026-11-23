@@ -27,6 +27,7 @@ the method are described in the user guide (:ref:`rpa-formulation`).
 
 from .bosonized import rpa_bosonized_state
 from .dynamic import rpa_dynamic_kernel
+from .free_energy import RPAFreeEnergy, broken_symmetries, rpa_free_energy
 from .functions import rpa_entanglement_entropy, rpa_negativity
 from .hybrid import effective_bath_modes, rpa_hybrid_state
 from .rpa import RPAGibbsDensityOperator, rpa_generator_correction
@@ -34,11 +35,14 @@ from .rpa_structure import (
     build_rpa_boson_system,
     build_rpa_structure,
     rpa_coupling_kernel,
+    rpa_quadratic_form,
 )
 from .utils import kubo_mori_susceptibility, local_boson_modes
 
 __all__ = [
+    "RPAFreeEnergy",
     "RPAGibbsDensityOperator",
+    "broken_symmetries",
     "build_rpa_boson_system",
     "rpa_bosonized_state",
     "build_rpa_structure",
@@ -48,7 +52,9 @@ __all__ = [
     "rpa_coupling_kernel",
     "rpa_entanglement_entropy",
     "rpa_negativity",
+    "rpa_quadratic_form",
     "rpa_dynamic_kernel",
+    "rpa_free_energy",
     "rpa_generator_correction",
     "rpa_hybrid_state",
 ]
