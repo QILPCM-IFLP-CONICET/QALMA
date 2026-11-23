@@ -30,3 +30,67 @@ keywords:
   - maximum entropy
   - QuTiP
   - ALPS
+references:
+  - type: article
+    authors:
+      - {family-names: Bauer, given-names: B.}
+      - name: "others"
+    title: "The ALPS project release 2.0: open source software for strongly correlated systems"
+    journal: "J. Stat. Mech."
+    pages: "P05001"
+    year: 2011
+  - type: article
+    authors:
+      - {family-names: Johansson, given-names: J. R.}
+      - {family-names: Nation, given-names: P. D.}
+      - {family-names: Nori, given-names: F.}
+    title: "QuTiP 2: A Python framework for the dynamics of open quantum systems"
+    journal: "Comput. Phys. Commun."
+    volume: 184
+    pages: "1234"
+    year: 2013
+  - type: article
+    authors:
+      - {family-names: Lambert, given-names: Neill}
+      - name: "others"
+    title: "QuTiP 5: The Quantum Toolbox in Python"
+    journal: "Physics Reports"
+    volume: 1153
+    start: 1
+    end: 62
+    year: 2026
+    doi: "10.1016/j.physrep.2025.10.001"
+  - type: article
+    authors:
+      - {family-names: Balian, given-names: Roger}
+      - {family-names: Alhassid, given-names: Yoram}
+      - {family-names: Reinhardt, given-names: Hugo}
+    title: "Dissipation in many-body systems: A geometric approach based on information theory"
+    journal: "Physics Reports"
+    volume: 131
+    issue: 1
+    start: 1
+    end: 146
+    year: 1986
+    doi: "10.1016/0370-1573(86)90005-0"
+  - type: article
+    authors:
+      - {family-names: Pérez, given-names: F. T. B.}
+      - {family-names: Matera, given-names: J. M.}
+    title: "Quantum covariance scalar products and efficient estimation of maximum-entropy projections"
+    journal: "Phys. Rev. A"
+    volume: 109
+    start: 022401
+    year: 2024
+    doi: "10.1103/PhysRevA.109.022401"
+  - type: article
+    authors:
+      - {family-names: Gaenko, given-names: A.}
+      - name: "others"
+    title: "Updated core libraries of the ALPS project"
+    journal: "Computer Physics Communications"
+    volume: 213
+    start: 235
+    end: 251
+    year: 2017
+    doi: "10.1016/j.cpc.2016.12.009"

@@ -8,7 +8,9 @@ Simulating Quantum Evolution
 Overview
 --------
 
-QALMA implements the restricted Max-Ent evolution: instead of evolving the
+QALMA implements the restricted Max-Ent evolution
+:cite:p:`Balian1986,PerezMatera2024`, based on the maximum-entropy
+principle :cite:p:`Jaynes1957a,Jaynes1957b`: instead of evolving the
 full density matrix :math:`\rho(t)\propto e^{-K(t)}`, it projects the equation
 of motion of the generator
 
@@ -25,7 +27,12 @@ of ODEs for the coefficients :math:`\phi_a(t)` in
 
 The basis is built from :math:`K` by iterated commutators with :math:`H`,
 projected onto the sector of operators of at most ``n_body`` sites, and is
-rebuilt along the evolution.
+rebuilt along the evolution. The hierarchical basis is a Krylov space on the
+operator side, analogous to the recursion method
+:cite:p:`ViswanathMuller1994,Parker2019`. The scalar product is the covariance
+product proposed in :cite:t:`PerezMatera2024` as a computable substitute for
+the Kubo-Mori-Bogoliubov one, evaluated here relative to an adaptively
+recomputed mean-field reference state.
 
 The restricted evolution approximates the instantaneous Max-Ent projection
 :math:`\Pi_n\rho(t)` of the exact state onto the states with ``n_body``
@@ -64,7 +71,9 @@ The first-order restricted evolution, :math:`\dot\phi = A\phi`, discards the
 feedback of the part of the dynamics that leaves the span of the basis. It is
 almost isentropic, and cannot follow the entropy production of
 :math:`\Pi_n\rho(t)`. By default the evolution includes that feedback as a
-memory term with an exponentially decaying kernel,
+memory term with an exponentially decaying kernel, in the spirit of the
+Mori-Zwanzig projection formalism
+:cite:p:`Nakajima1958,Zwanzig1961,Mori1965`,
 
 .. math::
 

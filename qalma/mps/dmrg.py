@@ -1,4 +1,5 @@
-r"""Two-site DMRG for a matrix-product operator, written with numpy/scipy.
+r"""Two-site DMRG :cite:p:`White1992,Schollwock2011` for a matrix-product
+operator, written with numpy/scipy.
 
 This is a deliberately plain implementation: finite system, open boundaries,
 no symmetries, no subspace expansion or noise. It is meant for moderate bond

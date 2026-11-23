@@ -34,6 +34,7 @@ dynamics using MaxEnt projected evolution.
    :caption: Development
 
    bugs
+   acknowledgements
    references
 
 Indices and tables

@@ -22,7 +22,8 @@ code   bits operator
 
 The position ``k`` of each site is its position in ``system.sites`` (the
 order of the nodes of the graph). That order is also the one used to build
-Jordan-Wigner strings in :func:`fermion_annihilation` and related helpers.
+Jordan-Wigner strings :cite:p:`JordanWigner1928,Lieb.1961` in
+:func:`fermion_annihilation` and related helpers.
 
 With this encoding the label of a product is the bitwise XOR of the labels
 of the factors, and the phase follows from population counts, so products

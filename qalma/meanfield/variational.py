@@ -1,6 +1,8 @@
 """Variational Mean-field.
 
-Build variational approximations to a Gibbsian state.
+Build variational approximations to a Gibbsian state, following the
+variational principle of :cite:t:`Bogoliubov1958` and the spectral field
+truncation of :cite:t:`Bartolome2026`.
 """
 
 import logging

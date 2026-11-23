@@ -19,7 +19,7 @@ Overview
 :math:`\rho = |\psi_0\rangle\langle\psi_0|`, where :math:`|\psi_0\rangle` is
 the ground state of a Hamiltonian :math:`H`. The state is never built as a
 dense matrix. It is stored as a matrix product state (MPS) computed with a
-two-site DMRG, so it can describe systems that are far beyond exact
+two-site DMRG :cite:p:`White1992,Schollwock2011`, so it can describe systems that are far beyond exact
 diagonalization, as long as their entanglement is moderate (typically
 one-dimensional or quasi-one-dimensional systems).
 
@@ -228,7 +228,7 @@ Fermions
 
 The fermionic models whose sites are products of two-level modes (spinless
 fermions, the Hubbard model, Kondo lattices) are mapped to qubits with the
-Jordan-Wigner transformation when the system is built, and their operators are
+Jordan-Wigner transformation :cite:p:`JordanWigner1928,Lieb.1961` when the system is built, and their operators are
 sums of Pauli strings (see :doc:`models`). ``MPSGSOperator`` works with them as
 with any other spin system, since the MPS lives on those qubits: the ground state of
 the qubit Hamiltonian is the ground state of the fermions. A lattice site of the

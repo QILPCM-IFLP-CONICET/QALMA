@@ -37,7 +37,8 @@ class FermionicSignWarning(UserWarning):
 
     When every site of the system is a single fermionic mode (a two-level
     site with a fermionic quantum number), the operators are built through
-    the Jordan-Wigner transformation and the signs are exact. Otherwise
+    the Jordan-Wigner transformation :cite:p:`JordanWigner1928,Lieb.1961`
+    and the signs are exact. Otherwise
     (e.g. sites with two spin species, or models that mix fermionic and
     non-fermionic sites), operators acting on different sites are assumed
     to commute: the signs coming from the anticommutation of fermionic

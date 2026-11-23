@@ -5,7 +5,9 @@ Functions that implement symmetry projections for states and operators.
 
 Each function takes a (possibly symmetry-broken) variational state and returns
 a new state that is invariant under the corresponding symmetry group, with a
-variational free energy that is guaranteed to be lower or equal.
+variational free energy that is guaranteed to be lower or equal
+(:cite:t:`Bartolome2026`; for the restoration of symmetries by projection
+see also :cite:t:`RingSchuck1980`).
 
 Available projections
 ---------------------

@@ -21,13 +21,17 @@ where :math:`S(\sigma) = -\mathrm{Tr}[\sigma\log\sigma]` is the von
 Neumann entropy.  By the Gibbs inequality,
 :math:`F[\sigma] \ge F_{\rm exact} = -\log Z` for all states
 :math:`\sigma`, with equality only for the exact Gibbs state
-:math:`\rho = e^{-\beta H}/Z`.
+:math:`\rho = e^{-\beta H}/Z`. This is the variational principle of
+:cite:t:`Bogoliubov1958` (see also :cite:t:`Kuzemsky2015`).
 
 QALMA implements the **quadratic variational mean-field** method
 (:func:`~qalma.meanfield.variational_quadratic_mfa`), which parametrises
 :math:`H` by a quadratic (two-body) generator and optimises over a family
 of auxiliary fields to improve the approximation beyond the plain
-self-consistent (SC) solution.
+self-consistent (SC) solution. The method is the spectral field truncation
+of :cite:t:`Bartolome2026`; the self-consistent equations are the fixed point
+of the projection onto one-body operators
+:cite:p:`PerezMatera2024,Bartolome2026`.
 
 Basic usage
 -----------

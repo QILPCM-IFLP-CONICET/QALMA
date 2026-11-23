@@ -1,4 +1,5 @@
-r"""Bogoliubov transformations of quadratic bosonic forms.
+r"""Bogoliubov transformations of quadratic bosonic forms
+:cite:p:`RingSchuck1980`.
 
 The ``n`` bosonic modes are collected in
 :math:`\Phi = (b_1,\dots,b_n,b_1^\dagger,\dots,b_n^\dagger)^T` and a quadratic
