@@ -183,6 +183,61 @@ class RPAStructure:
         return self._boson_system
 
 
+def rpa_quadratic_form(
+    structure: "RPAStructure",
+) -> Tuple[np.ndarray, np.ndarray, List[str]]:
+    r"""Return the quadratic bosonic form of the RPA of the whole system.
+
+    Every site is bosonized (see
+    :func:`~qalma.meanfield.rpa.utils.local_boson_modes`), keeping only the
+    bosons with a non-vanishing frequency :math:`\Lambda_k` (the static modes
+    are classical fluctuations). With :math:`G` the couplings of the bosons to
+    the centred local operators and :math:`M` the centred coupling matrix,
+    the form is :math:`\mathcal{H}=[[A,B],[B^*,A^*]]` with
+    :math:`A=\mathrm{diag}(\Lambda)+G^\dagger MG` and :math:`B=G^\dagger MG^*`.
+
+    Parameters
+    ----------
+    structure : RPAStructure
+        Subsystem-independent data of the RPA.
+
+    Returns
+    -------
+    h_mat : numpy.ndarray
+        The form :math:`\mathcal{H}`, shape ``(2 n, 2 n)``.
+    freqs : numpy.ndarray
+        The frequencies :math:`\Lambda_k` of the uncoupled bosons, shape
+        ``(n,)``.
+    mode_site : list of str
+        The site of each boson.
+    """
+    sites = list(structure.positions)
+    freqs_list, mode_site, blocks = [], [], []
+    row = 0
+    for site in sites:
+        size = len(structure.local_basis[site])
+        freqs, coup = structure.boson_modes(site)
+        dynamic = _is_dynamic(freqs, structure.static_gap)
+        freqs_list.append(freqs[dynamic])
+        mode_site.extend([site] * int(np.sum(dynamic)))
+        blocks.append((row, size, coup[:, dynamic]))
+        row += size
+    freqs_all = np.concatenate(freqs_list) if freqs_list else np.zeros(0)
+    n_modes = len(freqs_all)
+    g_mat = np.zeros((row, n_modes), dtype=complex)
+    col = 0
+    for r_0, size, coup in blocks:
+        g_mat[r_0 : r_0 + size, col : col + coup.shape[1]] = coup
+        col += coup.shape[1]
+    m_full = structure.m_full
+    a_mat = np.diag(freqs_all) + g_mat.conj().T @ m_full @ g_mat
+    b_mat = g_mat.conj().T @ m_full @ g_mat.conj()
+    a_mat = 0.5 * (a_mat + a_mat.conj().T)
+    b_mat = 0.5 * (b_mat + b_mat.T)
+    h_mat = np.block([[a_mat, b_mat], [b_mat.conj(), a_mat.conj()]])
+    return h_mat, freqs_all, mode_site
+
+
 def build_rpa_boson_system(structure: RPAStructure) -> BosonicGaussianSystem:
     """Build the bosonized RPA of the whole system.
 
@@ -212,30 +267,7 @@ def build_rpa_boson_system(structure: RPAStructure) -> BosonicGaussianSystem:
     ValueError
         If the RPA is unstable.
     """
-    sites = list(structure.positions)
-    freqs_list, mode_site, blocks = [], [], []
-    row = 0
-    for site in sites:
-        size = len(structure.local_basis[site])
-        freqs, coup = structure.boson_modes(site)
-        dynamic = _is_dynamic(freqs, structure.static_gap)
-        freqs_list.append(freqs[dynamic])
-        mode_site.extend([site] * int(np.sum(dynamic)))
-        blocks.append((row, size, coup[:, dynamic]))
-        row += size
-    freqs_all = np.concatenate(freqs_list) if freqs_list else np.zeros(0)
-    n_modes = len(freqs_all)
-    g_mat = np.zeros((row, n_modes), dtype=complex)
-    col = 0
-    for r_0, size, coup in blocks:
-        g_mat[r_0 : r_0 + size, col : col + coup.shape[1]] = coup
-        col += coup.shape[1]
-    m_full = structure.m_full
-    a_mat = np.diag(freqs_all) + g_mat.conj().T @ m_full @ g_mat
-    b_mat = g_mat.conj().T @ m_full @ g_mat.conj()
-    a_mat = 0.5 * (a_mat + a_mat.conj().T)
-    b_mat = 0.5 * (b_mat + b_mat.T)
-    h_mat = np.block([[a_mat, b_mat], [b_mat.conj(), a_mat.conj()]])
+    h_mat, _, mode_site = rpa_quadratic_form(structure)
     try:
         return build_boson_system_from_quadratic_form(
             h_mat, labels=mode_site, zero_rtol=structure.zero_rtol
