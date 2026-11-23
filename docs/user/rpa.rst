@@ -246,17 +246,44 @@ the state was built with, also after the state has been normalized.
 The symmetries are those declared in ``symmetry_projections``. Whether the
 mean-field state breaks each of them is checked site by site: a parity-like
 symmetry (the local operator must be an involution) or time reversal adds
-:math:`\ln 2` when broken. If the mean field breaks a symmetry that is not
-declared, the estimate misses the corresponding :math:`-\ln g`. Projections
-that cannot be classified issue a warning, and the restoration of broken
-continuous symmetries (zero modes) is not implemented yet.
+:math:`-\ln 2` when broken. If the mean field breaks a symmetry that is not
+declared, the estimate misses the corresponding term. Projections that cannot
+be classified issue a warning.
+
+A broken continuous symmetry, declared with
+:func:`~qalma.projections.symmetries.project_conserved_quantity`, produces a
+zero mode in the RPA. The zero mode is removed from the dynamic and static
+terms and replaced by the length of the orbit of the mean-field state under
+the rotations :math:`e^{i\theta P}`, :math:`P=\sum_iq_i`, measured with
+the variance of the charge in the mean-field state::
+
+    u1 = (partial(project_conserved_quantity, op_name="Sz"),)
+    state = RPAGibbsDensityOperator(k, system, meanfield=meanfield,
+                                    symmetry_projections=u1)
+    state.rpa_free_energy().symmetry   # -1/2 ln(2 pi <dP^2>_sigma)
+
+This classical estimate assumes local charges with integer-spaced spectra and
+holds while many charge sectors are populated. In a finite system at low
+temperature, where the charge sectors are resolved, it overestimates the
+correction: for the fully connected XX model with eight spins, the error is
+-0.05 at :math:`\beta=4` (1.49 for the mean field) and -0.27 at
+:math:`\beta=8`. Zero modes that do not correspond to a declared broken
+continuous symmetry raise an error.
+
+The result also reports the stability margin of the RPA, the smallest
+eigenvalue of :math:`1+\chi^0M` without the zero modes
+(``estimate.stability``). Close to an instability of the mean field the
+Gaussian fluctuations diverge and the estimate overcorrects; a warning is
+issued below ``STABILITY_WARNING = 0.25``. In the tests, margins above 0.4
+gave errors several times smaller than the mean field, and margins below 0.2
+gave large overcorrections, notably in one-dimensional chains near their
+mean-field transitions.
 
 On an Ising chain in a transverse field with :math:`L=8`, the error of the
 estimate is :math:`5\times10^{-4}` at high temperature, against
 :math:`3\times10^{-2}` for the mean field, and about 0.01 deep in the ordered
-phase, against 0.7. As any Gaussian approximation, it fails close to the
-instabilities of the mean field, where the fluctuations diverge, and it
-slightly overestimates the correlation energy at low temperatures.
+phase, against 0.7. As any Gaussian approximation, it slightly overestimates
+the correlation energy at low temperatures.
 
 Correlations of the environment
 -------------------------------

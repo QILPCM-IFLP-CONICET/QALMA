@@ -77,10 +77,13 @@ Mean-field and RPA
   (:func:`~qalma.meanfield.rpa.rpa_free_energy`): estimate of
   :math:`-\ln Z` as the mean-field free energy plus the Gaussian fluctuations
   around it (the free energy of the bosonized system minus that of the
-  bosonized mean field, and the static fluctuations), plus :math:`-\ln g` for
-  the discrete symmetries declared in ``symmetry_projections`` that the mean
-  field breaks. The restoration of broken continuous symmetries is not
-  implemented yet. The property ``free_energy`` of an
+  bosonized mean field, and the static fluctuations), plus the restoration of
+  the symmetries declared in ``symmetry_projections`` that the mean field
+  breaks: :math:`-\ln 2` for each broken parity or time reversal, and, for a
+  broken U(1) symmetry, the zero mode replaced by the length of the orbit of
+  the mean-field state, :math:`-\tfrac12\ln(2\pi\langle\delta P^2\rangle)`.
+  The result reports the stability margin of the RPA, and warns when it is
+  small. The property ``free_energy`` of an
   :class:`~qalma.meanfield.rpa.RPAGibbsDensityOperator` returns this estimate
   (read-only), instead of the exact normalization of the base class. The
   quadratic bosonic form of the RPA is built by the new
