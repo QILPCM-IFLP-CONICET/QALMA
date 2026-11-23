@@ -80,7 +80,10 @@ Mean-field and RPA
   bosonized mean field, and the static fluctuations), plus :math:`-\ln g` for
   the discrete symmetries declared in ``symmetry_projections`` that the mean
   field breaks. The restoration of broken continuous symmetries is not
-  implemented yet. The quadratic bosonic form of the RPA is built by the new
+  implemented yet. The property ``free_energy`` of an
+  :class:`~qalma.meanfield.rpa.RPAGibbsDensityOperator` returns this estimate
+  (read-only), instead of the exact normalization of the base class. The
+  quadratic bosonic form of the RPA is built by the new
   :func:`~qalma.meanfield.rpa.rpa_quadratic_form`.
 * New module ``qalma.meanfield.rpa``: RPA reduction of Gibbs states. The
   reduced generator is the mean-field one plus the contribution of the

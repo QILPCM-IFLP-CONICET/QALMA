@@ -152,3 +152,26 @@ def test_broken_continuous_symmetry_is_not_implemented():
     )
     with pytest.raises(NotImplementedError, match="continuous symmetr|zero mode"):
         state.rpa_free_energy()
+
+
+def test_free_energy_property_is_the_rpa_estimate():
+    """The free_energy of an RPA state is the RPA estimate, and is read-only."""
+    system, ham = ising_chain(5, 3.0)
+    k = (1.0 * ham).simplify()
+    state = RPAGibbsDensityOperator(k, system)
+    assert state.free_energy == pytest.approx(state.rpa_free_energy().total)
+    assert state.rpa_free_energy() is state.rpa_free_energy()  # cached
+    with pytest.raises(AttributeError, match="cannot be set"):
+        state.free_energy = 0.0
+
+
+def test_estimate_does_not_depend_on_normalization():
+    """Normalizing the state (K -> K + ln Z) does not change the estimate."""
+    system, ham = ising_chain(5, 3.0)
+    k = (1.0 * ham).simplify()
+    reference = RPAGibbsDensityOperator(k, system).free_energy
+    normalized = RPAGibbsDensityOperator(k, system)
+    normalized.normalize()
+    assert normalized.normalized
+    assert normalized.free_energy == pytest.approx(reference, abs=1e-10)
+    assert abs(reference - exact_free_energy(k)) < 0.1

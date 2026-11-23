@@ -443,7 +443,8 @@ class RPAGibbsDensityOperator(GibbsDensityOperator):
     def rpa_free_energy(self):
         r"""Estimate the free energy :math:`F=-\ln Z` in the RPA.
 
-        See :func:`~qalma.meanfield.rpa.rpa_free_energy`.
+        See :func:`~qalma.meanfield.rpa.rpa_free_energy`. The result is
+        cached while the RPA structure does not change.
 
         Returns
         -------
@@ -452,7 +453,38 @@ class RPAGibbsDensityOperator(GibbsDensityOperator):
         """
         from .free_energy import rpa_free_energy
 
-        return rpa_free_energy(self)
+        structure = self.rpa_structure
+        cached = getattr(self, "_rpa_free_energy_cache", None)
+        if cached is None or cached[0] is not structure:
+            cached = (structure, rpa_free_energy(self))
+            self._rpa_free_energy_cache = cached
+        return cached[1]
+
+    @property
+    def free_energy(self) -> float:
+        r"""RPA estimate of the free energy :math:`F=-\ln Z`.
+
+        Unlike :attr:`GibbsDensityOperator.free_energy
+        <qalma.operators.states.gibbs.GibbsDensityOperator.free_energy>`,
+        which normalizes the state exactly, this is
+        ``self.rpa_free_energy().total`` (:meth:`rpa_free_energy`). The exact
+        value, for systems small enough, is
+        ``GibbsDensityOperator(k).free_energy``.
+
+        Returns
+        -------
+        float
+            The estimated free energy.
+        """
+        return self.rpa_free_energy().total
+
+    @free_energy.setter
+    def free_energy(self, value):
+        """Reject assignments: the free energy of an RPA state is an estimate."""
+        raise AttributeError(
+            "The free energy of an RPAGibbsDensityOperator is the RPA estimate "
+            "and cannot be set."
+        )
 
     def rpa_entropy(self, sites: frozenset) -> float:
         """Bosonic RPA entropy of the subsystem ``sites``, in bits.
