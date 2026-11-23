@@ -1,0 +1,280 @@
+r"""Free energy of a Gibbs state in the RPA.
+
+For :math:`\rho = e^{-K}/Z`, the free energy :math:`F=-\ln Z` (in units of
+the generator, :math:`K=\beta H`) is estimated as
+
+.. math::
+
+    F_\mathrm{RPA} = F_\mathrm{MF} + \Delta F_\mathrm{dyn}
+    + \Delta F_\mathrm{static} + \Delta F_\mathrm{sym},
+
+following :cite:t:`MateraThesis`, :cite:t:`Canosa2010SPA` and
+:cite:t:`Matera2010RPA`:
+
+* :math:`F_\mathrm{MF}=\mathrm{Tr}\,\sigma(\ln\sigma+K)` is the variational
+  free energy of the mean-field state :math:`\sigma`;
+* :math:`\Delta F_\mathrm{dyn}=\sum_k\ln\sinh(\Omega_k/2)-\sum_k\ln\sinh(\Lambda_k/2)`
+  is the free energy of the bosonized system minus that of the bosonized
+  mean field: :math:`\Lambda_k` are the frequencies of the uncoupled local
+  bosons and :math:`\Omega_k` the normal-mode frequencies of the RPA
+  (:func:`~qalma.meanfield.rpa.rpa_quadratic_form`);
+* :math:`\Delta F_\mathrm{static}=\tfrac12\ln\det(1+\chi^0M)
+  -\tfrac12\ln\det(1+\chi^0_\mathrm{dyn}M)` is the Gaussian integral over
+  the static fluctuations that the bosons do not describe: :math:`\chi^0` is
+  the static (Kubo-Mori) susceptibility of the mean-field state and
+  :math:`\chi^0_\mathrm{dyn}` its part reproduced by the dynamic bosons;
+* :math:`\Delta F_\mathrm{sym}=-\ln g` restores the symmetries that the mean
+  field breaks: when the mean-field state breaks a discrete symmetry, the
+  partition function sums over the :math:`g` equivalent mean-field solutions.
+  Each declared ``symmetry_projections`` of the state that the mean-field
+  state breaks contributes :math:`\ln 2`.
+
+The broken symmetries are found from the ``symmetry_projections`` of the
+state: parity-like projections (:func:`~qalma.projections.symmetries.project_parity_like`)
+and time reversal (:func:`~qalma.projections.symmetries.project_time_reversal`)
+are :math:`\mathbb{Z}_2` symmetries; a conserved quantity
+(:func:`~qalma.projections.symmetries.project_conserved_quantity`) is a
+continuous symmetry, whose breaking produces zero modes. The restoration of
+continuous symmetries is not implemented yet.
+
+The estimate is a Gaussian (second-order) approximation around the mean
+field: it fails close to the instabilities of the mean field (where the
+fluctuations diverge), and overestimates the correlation energy where the
+quartic terms of the bosonization matter.
+"""
+
+from __future__ import annotations
+
+import logging
+import warnings
+from dataclasses import dataclass, field
+from typing import Callable, List, Tuple
+
+import numpy as np
+
+from qalma.gaussian.bogoliubov import bogoliubov_reduced
+from qalma.meanfield.variational import compute_free_energy
+
+from .rpa_structure import RPAStructure, _is_dynamic, rpa_quadratic_form
+
+logger = logging.getLogger(__name__)
+
+__all__ = ["RPAFreeEnergy", "broken_symmetries", "rpa_free_energy"]
+
+
+@dataclass
+class RPAFreeEnergy:
+    r"""Terms of the RPA estimate of :math:`F=-\ln Z`; ``total`` is their sum."""
+
+    #: Variational free energy of the mean-field state.
+    mean_field: float
+    #: Free energy of the bosonized system minus that of the bosonized mean field.
+    dynamic: float
+    #: Gaussian integral over the static fluctuations.
+    static: float
+    #: :math:`-\ln g`, from the discrete symmetries broken by the mean field.
+    symmetry: float
+    #: Description of the broken symmetries.
+    broken: List[str] = field(default_factory=list)
+
+    @property
+    def total(self) -> float:
+        """Return the RPA estimate of the free energy."""
+        return self.mean_field + self.dynamic + self.static + self.symmetry
+
+
+def _log_sinh_half(values: np.ndarray) -> np.ndarray:
+    """Return ``ln sinh(x/2)``, stable for large ``x``."""
+    values = np.asarray(values, dtype=float)
+    return values / 2 + np.log1p(-np.exp(-values)) - np.log(2.0)
+
+
+def _local_factors(sigma_mf) -> dict:
+    """Dense single-site factors of a product state."""
+    factors = getattr(sigma_mf, "site_factors_qutip", None)
+    if factors is None and hasattr(sigma_mf, "to_product_state"):
+        factors = sigma_mf.to_product_state().site_factors_qutip
+    return {site: np.asarray(op.full()) for site, op in (factors or {}).items()}
+
+
+def _projection_kind(projection: Callable) -> Tuple[str, dict]:
+    """Return the name of a symmetry projection and its keyword arguments."""
+    func = getattr(projection, "func", projection)
+    keywords = dict(getattr(projection, "keywords", None) or {})
+    args = getattr(projection, "args", ())
+    if args and "op_name" not in keywords:
+        keywords["op_name"] = args[0]
+    return getattr(func, "__name__", repr(func)), keywords
+
+
+def broken_symmetries(
+    sigma_mf, projections, system, atol: float = 1e-8
+) -> Tuple[List[str], List[str], List[str]]:
+    r"""Classify the symmetry projections that a product state breaks.
+
+    Since ``sigma_mf`` is a product state, each symmetry is checked site by
+    site: a parity-like symmetry generated by local involutions :math:`u_i`
+    is broken if some factor :math:`\sigma_i\ne u_i\sigma_iu_i^\dagger`;
+    time reversal (complex conjugation in the computational basis) if some
+    :math:`\sigma_i\ne\sigma_i^*`; and a conserved additive quantity
+    :math:`\sum_iq_i` if some :math:`[\sigma_i,q_i]\ne0`.
+
+    Parameters
+    ----------
+    sigma_mf : ProductDensityOperator
+        The mean-field state.
+    projections : iterable of callable
+        The ``symmetry_projections`` of the state.
+    system : SystemDescriptor
+        The system, to build the local operators.
+    atol : float
+        Tolerance of the comparisons.
+
+    Returns
+    -------
+    discrete : list of str
+        Broken discrete symmetries.
+    continuous : list of str
+        Broken continuous symmetries.
+    unknown : list of str
+        Projections that could not be classified.
+    """
+    factors = _local_factors(sigma_mf)
+    discrete: List[str] = []
+    continuous: List[str] = []
+    unknown: List[str] = []
+    for projection in projections:
+        name, keywords = _projection_kind(projection)
+        op_name = keywords.get("op_name")
+        if name == "project_parity_like" and op_name:
+            broken = False
+            involution = True
+            for site, rho in factors.items():
+                u_loc = system.site_operator(op_name, site).to_qutip((site,)).full()
+                if not np.allclose(u_loc @ u_loc, np.eye(len(u_loc)), atol=atol):
+                    involution = False
+                    break
+                broken |= not np.allclose(u_loc @ rho @ u_loc.conj().T, rho, atol=atol)
+            if not involution:
+                unknown.append(f"{name}({op_name}): {op_name} is not an involution")
+            elif broken:
+                discrete.append(f"parity generated by {op_name}")
+        elif name == "project_time_reversal":
+            if any(
+                not np.allclose(rho, rho.conj(), atol=atol) for rho in factors.values()
+            ):
+                discrete.append("time reversal")
+        elif name == "project_conserved_quantity" and op_name:
+            broken = False
+            for site, rho in factors.items():
+                q_loc = system.site_operator(op_name, site).to_qutip((site,)).full()
+                broken |= not np.allclose(q_loc @ rho, rho @ q_loc, atol=atol)
+            if broken:
+                continuous.append(f"U(1) generated by {op_name}")
+        else:
+            unknown.append(name)
+    return discrete, continuous, unknown
+
+
+def _static_term(structure: RPAStructure) -> float:
+    """Gaussian integral over the static fluctuations not described by bosons."""
+    chi_total, chi_dyn = [], []
+    for site in structure.positions:
+        chi_total.append(np.real(np.asarray(structure.static_chi0(site))))
+        freqs, coup = structure.boson_modes(site)
+        dynamic = _is_dynamic(freqs, structure.static_gap)
+        g_dyn = coup[:, dynamic]
+        weighted = g_dyn @ np.diag(1.0 / freqs[dynamic]) @ g_dyn.conj().T
+        chi_dyn.append(np.real(weighted + weighted.conj()))
+
+    def block_diag(blocks):
+        size = sum(block.shape[0] for block in blocks)
+        out = np.zeros((size, size))
+        pos = 0
+        for block in blocks:
+            out[pos : pos + block.shape[0], pos : pos + block.shape[0]] = block
+            pos += block.shape[0]
+        return out
+
+    m_full = np.real(np.asarray(structure.m_full))
+    eye = np.eye(m_full.shape[0])
+    sign_t, log_t = np.linalg.slogdet(eye + block_diag(chi_total) @ m_full)
+    sign_d, log_d = np.linalg.slogdet(eye + block_diag(chi_dyn) @ m_full)
+    if sign_t <= 0 or sign_d <= 0:
+        raise ValueError(
+            "The static RPA is unstable: the mean-field state is not a minimum "
+            "of the free energy."
+        )
+    return float(0.5 * (log_t - log_d))
+
+
+def rpa_free_energy(state) -> RPAFreeEnergy:
+    r"""Estimate :math:`F=-\ln Z` of a Gibbs state in the RPA.
+
+    Parameters
+    ----------
+    state : RPAGibbsDensityOperator
+        The Gibbs state, with its mean field and, optionally, the
+        ``symmetry_projections`` of the generator.
+
+    Returns
+    -------
+    RPAFreeEnergy
+        The terms of the estimate; ``.total`` is the free energy.
+
+    Raises
+    ------
+    NotImplementedError
+        If the mean field breaks a continuous symmetry (the RPA has zero
+        modes).
+    ValueError
+        If the RPA is unstable around the mean-field state.
+
+    Notes
+    -----
+    A ``UserWarning`` is issued for symmetry projections whose kind is not
+    known: whether the mean field breaks them cannot be decided, and no
+    restoration term is added for them.
+    """
+    structure: RPAStructure = state.rpa_structure
+    sigma_mf = structure.sigma_mf
+    mean_field = float(np.real(compute_free_energy(sigma_mf, structure.generator)))
+
+    h_mat, lam, _ = rpa_quadratic_form(structure)
+    dynamic = 0.0
+    if len(lam):
+        signed, _, n_zero, _ = bogoliubov_reduced(h_mat, zero_rtol=structure.zero_rtol)
+        if n_zero:
+            raise NotImplementedError(
+                f"The RPA has {n_zero} zero mode(s): the mean field breaks a "
+                "continuous symmetry, whose restoration in the free energy is "
+                "not implemented yet."
+            )
+        omega = np.sort(np.real(signed))[len(signed) // 2 :]
+        dynamic = float(np.sum(_log_sinh_half(omega)) - np.sum(_log_sinh_half(lam)))
+
+    static = _static_term(structure)
+
+    discrete, continuous, unknown = broken_symmetries(
+        sigma_mf, getattr(state, "symmetry_projections", ()), state.system
+    )
+    if unknown:
+        warnings.warn(
+            f"Cannot decide whether the mean field breaks the symmetries {unknown}; "
+            "no restoration term is added for them.",
+            UserWarning,
+            stacklevel=2,
+        )
+    if continuous:
+        raise NotImplementedError(
+            f"The mean field breaks {continuous}: the restoration of continuous "
+            "symmetries in the free energy is not implemented yet."
+        )
+    symmetry = -len(discrete) * float(np.log(2.0))
+    return RPAFreeEnergy(
+        mean_field=mean_field,
+        dynamic=dynamic,
+        static=static,
+        symmetry=symmetry,
+        broken=discrete,
+    )
