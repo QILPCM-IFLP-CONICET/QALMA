@@ -81,7 +81,9 @@ Mean-field and RPA
   the symmetries declared in ``symmetry_projections`` that the mean field
   breaks: :math:`-\ln 2` for each broken parity or time reversal, and, for a
   broken U(1) symmetry, the zero mode replaced by the length of the orbit of
-  the mean-field state, :math:`-\tfrac12\ln(2\pi\langle\delta P^2\rangle)`.
+  the mean-field state in the Bures metric,
+  :math:`-\ln\max(1,\sqrt{2\pi F_Q/4})`, with :math:`F_Q` its quantum
+  Fisher information for the conserved charge.
   The result reports the stability margin of the RPA, and warns when it is
   small. The property ``free_energy`` of an
   :class:`~qalma.meanfield.rpa.RPAGibbsDensityOperator` returns this estimate

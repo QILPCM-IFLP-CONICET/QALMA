@@ -251,24 +251,36 @@ declared, the estimate misses the corresponding term. Projections that cannot
 be classified issue a warning.
 
 A broken continuous symmetry, declared with
-:func:`~qalma.projections.symmetries.project_conserved_quantity`, produces a
-zero mode in the RPA. The zero mode is removed from the dynamic and static
-terms and replaced by the length of the orbit of the mean-field state under
-the rotations :math:`e^{i\theta P}`, :math:`P=\sum_iq_i`, measured with
-the variance of the charge in the mean-field state::
+:func:`~qalma.projections.project_conserved_quantity` for a conserved
+quantity :math:`P=\sum_iq_i`, produces a zero mode of the RPA. The zero mode
+is removed from the dynamic and static terms, and replaced by the number of
+distinguishable mean-field states along the orbit :math:`e^{i\theta P}`,
+estimated by its length in the Bures metric:
+
+.. math::
+
+    \Delta F_\mathrm{sym} = -\ln\max\!\left(1,\sqrt{2\pi F_Q/4}\right),\qquad
+    F_Q=\sum_iF_Q(\sigma_i,q_i),
+
+where :math:`F_Q` is the quantum Fisher information of the mean-field state
+for :math:`P` (for pure local states :math:`F_Q/4` is the variance of
+:math:`P`, and it vanishes for a state that commutes with :math:`P`), for
+local charges with integer-spaced spectra (period :math:`2\pi`)::
+
+    from qalma.projections import project_conserved_quantity
 
     u1 = (partial(project_conserved_quantity, op_name="Sz"),)
     state = RPAGibbsDensityOperator(k, system, meanfield=meanfield,
                                     symmetry_projections=u1)
-    state.rpa_free_energy().symmetry   # -1/2 ln(2 pi <dP^2>_sigma)
+    state.free_energy
 
-This classical estimate assumes local charges with integer-spaced spectra and
-holds while many charge sectors are populated. In a finite system at low
-temperature, where the charge sectors are resolved, it overestimates the
-correction: for the fully connected XX model with eight spins, the error is
--0.05 at :math:`\beta=4` (1.49 for the mean field) and -0.27 at
-:math:`\beta=8`. Zero modes that do not correspond to a declared broken
-continuous symmetry raise an error.
+The Fisher information makes the term robust: a mean field that breaks the
+symmetry only slightly (for instance, a spurious solution of the
+symmetry-breaking search) adds almost nothing. This classical estimate holds
+while many charge sectors are populated; in finite systems at low
+temperatures, where the charge sectors are resolved, it overestimates the
+correction. Zero modes without a declared broken continuous symmetry raise a
+``ValueError``.
 
 The result also reports the stability margin of the RPA, the smallest
 eigenvalue of :math:`1+\chi^0M` without the zero modes
