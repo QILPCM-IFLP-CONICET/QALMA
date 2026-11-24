@@ -1,7 +1,7 @@
 What is QALMA?
 ~~~~~~~~~~~~~~
 
-QALMA (*Quantum Algebra for Lattice Models and Applications*) is a Python
+QALMA (*Quantum Algebras for Lattice Models and Applications*) is a Python
 library for representing and manipulating operators and states of quantum
 lattice systems, and for approximating their equilibrium and dynamical
 properties through maximum-entropy (Max-Ent) projections.
