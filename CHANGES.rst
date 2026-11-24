@@ -5,8 +5,10 @@ All notable changes to QALMA are documented in this file. Version numbers
 follow `Semantic Versioning <https://semver.org>`_.
 
 
-0.9.0 (unreleased)
+0.9.0
 ------------------
+
+November 24, 2026.
 
 First public pre-release. The interface of the modules marked as
 *experimental* may change before the 1.0.0 release.
