@@ -197,7 +197,7 @@ they come from someone else. The layout is described in :doc:`hdf5_format`.
 Some things cannot be stored that way:
 
 * The ``symmetry_projections`` of a
-  :class:`~qalma.operators.states.GibbsDensityOperator` are functions. The
+  :class:`~qalma.operators.states.gibbs.GibbsDensityOperator` are functions. The
   state is stored without them, with a
   :class:`qalma.io.IncompleteStateWarning`.
 * Arbitrary Python objects in ``parameters``, ``stats`` or ``expect_ops``

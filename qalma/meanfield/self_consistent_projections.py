@@ -35,7 +35,7 @@ def self_consistent_project_meanfield(
     ----------
     k_op : Operator
         The operator to be projected.
-    sigma : Optional[ProductDensityOperator or GibbsProductDensityOperator], optional
+    sigma : ProductDensityOperator or GibbsProductDensityOperator, optional
         Initial guess for the density operator.
     max_it : int, optional
         Maximum number of iterations.

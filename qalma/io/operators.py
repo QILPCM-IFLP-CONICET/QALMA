@@ -81,7 +81,7 @@ class IncompleteStateWarning(UserWarning):
     """A state was stored without some of its attributes.
 
     Functions cannot be stored without pickle, so the symmetry projections
-    of a :class:`~qalma.operators.states.GibbsDensityOperator` are not
+    of a :class:`~qalma.operators.states.gibbs.GibbsDensityOperator` are not
     stored. The group of the state has the attribute ``dropped`` with the
     names of the missing attributes.
     """
