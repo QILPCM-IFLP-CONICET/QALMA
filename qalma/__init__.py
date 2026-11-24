@@ -8,6 +8,7 @@
 import logging as _logging
 
 from . import (
+    correlations,
     evolution,
     geometry,
     io,
@@ -42,6 +43,7 @@ __all__ = [
     "model",
     "model_from_alps_xml",
     # Core subpackages
+    "correlations",
     "evolution",
     "io",
     "meanfield",

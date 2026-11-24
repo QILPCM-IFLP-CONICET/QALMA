@@ -28,6 +28,7 @@ Subpackage reference
 
    operators
    states
+   correlations
    evolution
    io
    scalarprod
