@@ -42,7 +42,7 @@ references:
       - {family-names: Pérez, given-names: F. T. B.}
       - {family-names: Bartolomé, given-names: I. L.}
       - {family-names: Lamas, given-names: C. A.}
-    title: "QALMA: Quantum Algebra for Lattice Models and Applications. A Python library for Max-Ent projections, self-consistent mean field, and projected dynamics of quantum many-body systems"
+    title: "QALMA: Quantum Algebras for Lattice Models and Applications. A Python library for Max-Ent projections, self-consistent mean field, and projected dynamics of quantum many-body systems"
     year: 2026
   # Method implemented by the Max-Ent projections and restricted dynamics.
   - type: article
