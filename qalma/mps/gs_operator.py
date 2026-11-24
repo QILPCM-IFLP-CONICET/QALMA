@@ -410,7 +410,7 @@ class MPSGSOperator(DensityOperatorMixin, Operator):
         """Reduced state of ``sites`` as a :class:`BlockDensityOperator`.
 
         Extra keyword arguments (``rpa``, ``dynamic``, ``exact``, ...) of the
-        interface of :class:`GibbsDensityOperator` are accepted and ignored.
+        interface of :class:`~qalma.operators.states.gibbs.GibbsDensityOperator` are accepted and ignored.
         The cost grows exponentially with the number of sites kept, and
         linearly with the distance between the first and last of them along
         the chain.
@@ -448,7 +448,7 @@ class MPSGSOperator(DensityOperatorMixin, Operator):
     def to_qutip(self, block: Optional[Tuple[str, ...]] = None):
         """Return the dense matrix of the state restricted to ``block``.
 
-        As for :class:`GibbsDensityOperator`, ``block`` lists the sites that
+        As for :class:`~qalma.operators.states.gibbs.GibbsDensityOperator`, ``block`` lists the sites that
         are kept, in the order of the tensor factors of the result; the
         default is all the sites in lexicographic order. The prefactor is not
         included.
@@ -512,7 +512,7 @@ class MPSGSOperator(DensityOperatorMixin, Operator):
 def _register_arithmetic() -> None:
     """Register the arithmetic of :class:`MPSGSOperator`.
 
-    The handlers of :class:`GibbsDensityOperator` are inherited (they convert
+    The handlers of :class:`~qalma.operators.states.gibbs.GibbsDensityOperator` are inherited (they convert
     the state to a dense operator, so they are meant for small systems). The
     ones that would rebuild a ``GibbsDensityOperator`` from the generator ``k``
     are replaced by handlers that preserve the type.

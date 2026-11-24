@@ -59,20 +59,14 @@ class GibbsDensityOperator(DensityOperatorMixin, Operator):
         Sequence of projection functions to enforce symmetries after
         normalization. Default is an empty tuple (no projections).
 
-    Attributes
-    ----------
-    k : Operator
-        The generator :math:`K`. May be shifted during normalization.
-    prefactor : complex
-        Scalar weight :math:`\lambda`.
-    normalized : bool
-        Whether the generator has been normalized.
-
     """
 
     _free_energy: float
+    #: Whether the generator has been normalized.
     normalized: bool
+    #: Scalar weight :math:`\lambda`.
     prefactor: complex
+    #: The generator :math:`K`. May be shifted during normalization.
     k: Operator
 
     def __init__(
@@ -418,23 +412,16 @@ class GibbsProductDensityOperator(DensityOperatorMixin, Operator):
         If ``True``, assumes each local :math:`K_i` is already normalized.
         Default is ``False``.
 
-    Attributes
-    ----------
-    k_by_site : dict[str, Qobj]
-        Local generators :math:`K_i` stored as :class:`qutip.Qobj`, one
-        per site, normalized so that :math:`\mathrm{Tr}(e^{-K_i}) = 1`.
-    prefactor : complex
-        Scalar weight :math:`\lambda`.
-    free_energies : dict[str, float]
-        Local free energies :math:`F_i = -\log Z_i` for each site.
-    isherm : bool
-        Always ``True`` — Gibbs states are Hermitian by construction.
-
     """
 
+    #: Local generators :math:`K_i` stored as :class:`qutip.Qobj`, one per
+    #: site, normalized so that :math:`\mathrm{Tr}(e^{-K_i}) = 1`.
     k_by_site: Dict[str, Operator]
+    #: Scalar weight :math:`\lambda`.
     prefactor: complex
+    #: Local free energies :math:`F_i = -\log Z_i` for each site.
     free_energies: Dict[str, float]
+    #: Always ``True``, since Gibbs states are Hermitian by construction.
     isherm: bool = True
 
     def __init__(
@@ -524,9 +511,10 @@ class GibbsProductDensityOperator(DensityOperatorMixin, Operator):
     ) -> Union[np.ndarray, dict, complex]:
         r"""Compute the expectation value :math:`\langle O \rangle_\rho`.
 
-        Delegates to the :class:`ProductDensityOperator` representation,
-        which computes expectation values efficiently using the product
-        structure.
+        Delegates to the
+        :class:`~qalma.operators.states.product.ProductDensityOperator`
+        representation, which computes expectation values efficiently using
+        the product structure.
 
         Parameters
         ----------
@@ -636,10 +624,11 @@ class GibbsProductDensityOperator(DensityOperatorMixin, Operator):
         return self.partial_trace(sites)
 
     def to_product_state(self):
-        r"""Convert to an explicit :class:`ProductDensityOperator`.
+        r"""Convert to an explicit :class:`~qalma.operators.states.product.ProductDensityOperator`.
 
         Computes each local density matrix :math:`\rho_i = e^{-K_i}` and
-        assembles them into a :class:`ProductDensityOperator`.
+        assembles them into a
+        :class:`~qalma.operators.states.product.ProductDensityOperator`.
 
         Returns
         -------
