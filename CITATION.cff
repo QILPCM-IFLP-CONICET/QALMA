@@ -22,12 +22,6 @@ authors:
     given-names: Federico Tomás Benito
     email: federico.perez@uni-ulm.de
     affiliation: "IFLP - CONICET, Departamento de Física, Facultad de Ciencias Exactas, Universidad Nacional de La Plata"
-  - family-names: Bartolomé
-    given-names: I. L.            # TODO: full given names
-    affiliation: "Departamento de Física, Facultad de Ciencias Exactas, Universidad Nacional de La Plata"
-  - family-names: Lamas
-    given-names: C. A.            # TODO: full given names
-    affiliation: "IFLP - CONICET, Departamento de Física, Facultad de Ciencias Exactas, Universidad Nacional de La Plata"
 repository-code: "https://github.com/QILPCM-IFLP-CONICET/QALMA"
 url: "https://qalma.readthedocs.io"
 license: LGPL-3.0-only
