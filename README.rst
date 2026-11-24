@@ -27,6 +27,8 @@ between the `ALPS <https://alpscore.org>`_ XML model and lattice libraries and
    :target: https://qalma.readthedocs.io/en/latest/
    :alt: Documentation on Read the Docs
 
+.. image:: https://zenodo.org/badge/DOI/10.5281/zenodo.24508535.svg
+   :target: https://doi.org/10.5281/zenodo.24508535
 
 Features
 --------
