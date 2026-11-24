@@ -113,7 +113,9 @@ def matrix_to_wolfram(matr: np.ndarray):
             .replace("j", "I")
         )
 
-    rows = [
-        "{" + (", ".join(process_number(elem) for elem in row)) + "}" for row in matr
-    ]
-    return "{\n" + ",\n".join(rows) + "\n}"
+    if isinstance(matr, np.ndarray):
+        rows = []
+        for row in matr:
+            rows.append("{" + (", ".join(process_number(elem) for elem in row)) + "}")
+            return "{\n" + ",\n".join(rows) + "\n}"
+    return f"{matr}"

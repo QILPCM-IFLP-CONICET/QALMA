@@ -4,4 +4,4 @@ This is the single source of truth for the version number: ``pyproject.toml``
 and the Sphinx configuration read it from here.
 """
 
-__version__ = "1.0.0.dev0"
+__version__ = "0.9.0"
