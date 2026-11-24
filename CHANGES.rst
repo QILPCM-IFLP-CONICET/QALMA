@@ -150,6 +150,20 @@ Gaussian bosonic states
   uncertainty relations). The full bosonization of the RPA
   (``build_rpa_boson_system``) uses it.
 
+Quantum correlations
+++++++++++++++++++++
+
+* New subpackage ``qalma.correlations`` with estimators of quantum
+  correlations between two subsystems of a state: ``negativity`` and
+  ``log_negativity`` for any bipartition, ``concurrence`` and
+  ``entanglement_of_formation`` for pairs of two-level sites,
+  ``entanglement_entropy`` and ``mutual_information``. ``pairwise``
+  evaluates a two-site estimator on the bonds of the lattice or on every pair
+  of sites. They accept QALMA states and ``qutip.Qobj`` objects, use bits,
+  and follow the negativity convention of ``qalma.gaussian``. A Gibbs state
+  that cannot be reduced exactly raises an error unless
+  ``allow_approximate=True`` is passed. See :ref:`correlations`.
+
 Matrix product states (experimental)
 ++++++++++++++++++++++++++++++++++++
 
