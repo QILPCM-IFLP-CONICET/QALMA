@@ -1,4 +1,4 @@
-Quantum Algebra for Lattice Models and Applications (QALMA)
+Quantum Algebras for Lattice Models and Applications (QALMA)
 ===========================================================
 
 .. image:: logo.svg
