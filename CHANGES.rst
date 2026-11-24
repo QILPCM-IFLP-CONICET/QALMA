@@ -73,6 +73,23 @@ Covariance scalar product
 Mean-field and RPA
 ++++++++++++++++++
 
+* New :meth:`~qalma.meanfield.rpa.RPAGibbsDensityOperator.rpa_free_energy`
+  (:func:`~qalma.meanfield.rpa.rpa_free_energy`): estimate of
+  :math:`-\ln Z` as the mean-field free energy plus the Gaussian fluctuations
+  around it (the free energy of the bosonized system minus that of the
+  bosonized mean field, and the static fluctuations), plus the restoration of
+  the symmetries declared in ``symmetry_projections`` that the mean field
+  breaks: :math:`-\ln 2` for each broken parity or time reversal, and, for a
+  broken U(1) symmetry, the zero mode replaced by the length of the orbit of
+  the mean-field state in the Bures metric,
+  :math:`-\ln\max(1,\sqrt{2\pi F_Q/4})`, with :math:`F_Q` its quantum
+  Fisher information for the conserved charge.
+  The result reports the stability margin of the RPA, and warns when it is
+  small. The property ``free_energy`` of an
+  :class:`~qalma.meanfield.rpa.RPAGibbsDensityOperator` returns this estimate
+  (read-only), instead of the exact normalization of the base class. The
+  quadratic bosonic form of the RPA is built by the new
+  :func:`~qalma.meanfield.rpa.rpa_quadratic_form`.
 * New module ``qalma.meanfield.rpa``: RPA reduction of Gibbs states. The
   reduced generator is the mean-field one plus the contribution of the
   Gaussian fluctuations of the environment, with a static or a dynamical
@@ -132,6 +149,20 @@ Gaussian bosonic states
   (``build_boson_system_from_correlations``, which checks the commutation and
   uncertainty relations). The full bosonization of the RPA
   (``build_rpa_boson_system``) uses it.
+
+Quantum correlations
+++++++++++++++++++++
+
+* New subpackage ``qalma.correlations`` with estimators of quantum
+  correlations between two subsystems of a state: ``negativity`` and
+  ``log_negativity`` for any bipartition, ``concurrence`` and
+  ``entanglement_of_formation`` for pairs of two-level sites,
+  ``entanglement_entropy`` and ``mutual_information``. ``pairwise``
+  evaluates a two-site estimator on the bonds of the lattice or on every pair
+  of sites. They accept QALMA states and ``qutip.Qobj`` objects, use bits,
+  and follow the negativity convention of ``qalma.gaussian``. A Gibbs state
+  that cannot be reduced exactly raises an error unless
+  ``allow_approximate=True`` is passed. See :ref:`correlations`.
 
 Matrix product states (experimental)
 ++++++++++++++++++++++++++++++++++++

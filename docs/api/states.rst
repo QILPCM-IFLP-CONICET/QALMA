@@ -25,8 +25,6 @@ qalma.operators.states.gibbs
    :members:
    :undoc-members:
    :show-inheritance:
-   :no-index:
-      
 
 qalma.operators.states.arithmetic
 ----------------------------------

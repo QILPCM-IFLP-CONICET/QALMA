@@ -83,6 +83,18 @@ napoleon_numpy_docstring = True
 napoleon_use_param = True
 napoleon_use_rtype = True
 napoleon_preprocess_types = True
+# Bare class names used as parameter types in NumPy docstrings. Without an
+# alias they are resolved relative to the documented module and the link is
+# lost when the class is defined in another module.
+napoleon_type_aliases = {
+    "GibbsDensityOperator": "~qalma.operators.states.gibbs.GibbsDensityOperator",
+    "GibbsProductDensityOperator": (
+        "~qalma.operators.states.gibbs.GibbsProductDensityOperator"
+    ),
+    "ProductDensityOperator": (
+        "~qalma.operators.states.product.ProductDensityOperator"
+    ),
+}
 
 # -- Autosummary -------------------------------------------------------------
 

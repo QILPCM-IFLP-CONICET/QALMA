@@ -12,6 +12,7 @@ to build and simulate many-body quantum systems.
    loop_operators
    operators
    states
+   correlations
    evolution
    hdf5_format
    meanfield_variational

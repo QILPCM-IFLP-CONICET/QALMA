@@ -85,7 +85,7 @@ def compute_t_score(
 
     Parameters
     ----------
-    sigma : GibbsProductDensityOperator | ProductDensityOperator
+    sigma : GibbsProductDensityOperator or ProductDensityOperator
         The trial (approximate) state.
     k : Operator
         The target generator: the exact state is :math:`\rho = e^{-k}/Z`.
