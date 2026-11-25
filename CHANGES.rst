@@ -5,6 +5,26 @@ All notable changes to QALMA are documented in this file. Version numbers
 follow `Semantic Versioning <https://semver.org>`_.
 
 
+Unreleased
+------------------
+
+Bug fixes
++++++++++
+
+* The local basis of quadratic forms (``orthonormal_hs_local_basis``, used by
+  :func:`~qalma.operators.quadratic.build_quadratic_form_from_operator`, the
+  variational mean field and the RPA) could contain non-Hermitian elements,
+  which made ``QuadraticFormOperator`` fail with "Basis operator ... is not
+  Hermitian" when evaluating expectation values of correlated Gibbs states
+  with more than eight sites. Gram-Schmidt used the complex round-off of the
+  Hilbert-Schmidt products, and normalizing nearly dependent residuals turned
+  that round-off into spurious, non-Hermitian directions (61 basis elements
+  for a chain of ten spins 1/2, which admits at most 30); in addition,
+  ``Qobj.dag()`` trusts a possibly stale ``isherm`` flag. The basis is now
+  built with dense arrays, with real Gram-Schmidt coefficients, Hermitian
+  residuals and a relative tolerance for linear dependence.
+
+
 0.9.0
 ------------------
 

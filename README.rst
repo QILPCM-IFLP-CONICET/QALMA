@@ -1,5 +1,5 @@
 Quantum Algebras for Lattice Models and Applications (QALMA)
-===========================================================
+============================================================
 
 .. image:: logo.svg
    :alt: QALMA logo
