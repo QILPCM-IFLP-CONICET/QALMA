@@ -11,6 +11,12 @@ Unreleased
 Bug fixes
 +++++++++
 
+* The RPA failed with ``IndexError: too many indices for array`` when a site
+  of the mean-field structure had an empty local basis, which happens when the
+  generator reaches the site only through terms below the tolerance (for
+  instance, the far end of a chain at the end of an evolution that started
+  from a local perturbation). ``local_boson_modes`` now returns no bosons for
+  a site without fluctuation operators.
 * The local basis of quadratic forms (``orthonormal_hs_local_basis``, used by
   :func:`~qalma.operators.quadratic.build_quadratic_form_from_operator`, the
   variational mean field and the RPA) could contain non-Hermitian elements,

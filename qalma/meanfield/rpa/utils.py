@@ -157,6 +157,11 @@ def local_boson_modes(
     couplings : numpy.ndarray
         Complex couplings :math:`g_{\mu k}`, shape ``(len(basis), K)``.
     """
+    if len(basis) == 0:
+        # A site whose fluctuation operators were all discarded (for instance,
+        # because the generator reaches it only through terms below the
+        # tolerance) has no fluctuations to bosonize.
+        return np.zeros(0), np.zeros((0, 0), dtype=complex)
     if spectrum is None:
         populations, eigenvectors = np.linalg.eigh(sigma_loc)
         spectrum = (populations, eigenvectors)
