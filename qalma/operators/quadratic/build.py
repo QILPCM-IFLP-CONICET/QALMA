@@ -142,35 +142,40 @@ def orthonormal_hs_local_basis(local_generators_dict: LocalBasisDict) -> LocalBa
     """
     basis_dict: Dict[str, List[Qobj]] = {}
     for site, generators in local_generators_dict.items():
-        basis: List[Qobj] = []
-        # Now, go over each local basis:
+        # Work with dense arrays: Qobj.dag() and the arithmetic of Qobj trust
+        # the isherm flag, which may be stale.
+        mats: List[np.ndarray] = []
+        dims = None
         for generator in generators:
-            # Split in hermitian and antihermitian parts:
-            components = (
-                (generator,)
-                if generator.isherm
-                else (
-                    generator + generator.dag(),
-                    generator * 1j - generator.dag() * 1j,
-                )
-            )
-            # GS orthogonalization of each component regarding the existent base.
-            # If the norm is under the tolerance, discard the element.
-            for hcomponent in components:
-                # Ensure that components are tagged as hermitian.
-                hcomponent = hcomponent - np.real(
-                    hcomponent.tr() / hcomponent.dims[0][0]
-                )
-                hcomponent = hcomponent - sum(
-                    (hcomponent * b_op).tr() * b_op for b_op in basis
-                )
-                normsq = abs((hcomponent * hcomponent).tr())
-                if normsq <= 0 or normsq < QALMA_TOLERANCE:
+            if dims is None:
+                dims = generator.dims
+            gen = np.asarray(generator.full())
+            # Always split into Hermitian and anti-Hermitian parts; for a
+            # Hermitian generator the second one vanishes and is discarded.
+            for component in (gen + gen.conj().T, 1j * (gen - gen.conj().T)):
+                dim = component.shape[0]
+                component = component - np.real(np.trace(component)) / dim * np.eye(dim)
+                norm0_sq = float(np.real(np.trace(component @ component)))
+                if norm0_sq < QALMA_TOLERANCE:
                     continue
-                hcomponent = hcomponent * abs(normsq ** (-0.5))
-                hcomponent.isherm = True
-                basis.append(hcomponent)
-        #
+                # Gram-Schmidt: for Hermitian operators the HS products are
+                # real; dropping their round-off imaginary parts, and making
+                # the residual Hermitian again, keeps the basis Hermitian.
+                for b_mat in mats:
+                    component = component - np.real(np.trace(component @ b_mat)) * b_mat
+                component = 0.5 * (component + component.conj().T)
+                normsq = float(np.real(np.trace(component @ component)))
+                # Discard components that are linearly dependent, also in
+                # relative terms: normalizing a residual made of round-off
+                # would add a spurious direction to the basis.
+                if normsq < QALMA_TOLERANCE or normsq < 1e-10 * norm0_sq:
+                    continue
+                mats.append(component / np.sqrt(normsq))
+        basis: List[Qobj] = []
+        for mat in mats:
+            b_op = Qobj(mat, dims=dims)
+            b_op.isherm = True
+            basis.append(b_op)
         basis_dict[site] = basis
     return basis_dict
 
