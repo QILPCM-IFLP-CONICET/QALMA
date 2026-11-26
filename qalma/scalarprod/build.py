@@ -20,6 +20,28 @@ __all__ = [
 ]
 
 
+# Gauss-Legendre nodes and weights for the integral over tau in [0, 1].
+_TAU_NODES, _TAU_WEIGHTS = np.polynomial.legendre.leggauss(32)
+_TAU_NODES = 0.5 * (_TAU_NODES + 1.0)
+_TAU_WEIGHTS = 0.5 * _TAU_WEIGHTS
+
+
+def _to_qutip(op):
+    """Return the ``qutip.Qobj`` representation of ``op`` (an Operator or a Qobj)."""
+    return op.to_qutip() if hasattr(op, "to_qutip") else op
+
+
+def _log_mean(p1: float, p2: float) -> float:
+    """Logarithmic mean ``(p1 - p2) / log(p1 / p2)`` of two positive numbers.
+
+    Written with ``log1p`` so it stays accurate for almost degenerate values,
+    where ``log(p1 / p2)`` loses all its significant digits.
+    """
+    if p1 == p2:
+        return p1
+    return (p1 - p2) / np.log1p((p1 - p2) / p2)
+
+
 def fetch_kubo_scalar_product(sigma: Operator, threshold=0) -> Callable:
     """
     Fetch a KMB scalar product callable. Spectral implementation.
@@ -38,12 +60,9 @@ def fetch_kubo_scalar_product(sigma: Operator, threshold=0) -> Callable:
 
     def ksp(op1, op2):
         """Spectral KMB scalar product of ``op1`` and ``op2``."""
+        q1, q2 = _to_qutip(op1), _to_qutip(op2)
         result = sum(
-            (
-                np.conj((v2.dag() * op1 * v1).tr())
-                * ((v2.dag() * op2 * v1).tr())
-                * (p1 if p1 == p2 else (p1 - p2) / np.log(p1 / p2))
-            )
+            (np.conj(v2.dag() * q1 * v1) * (v2.dag() * q2 * v1) * _log_mean(p1, p2))
             for p1, v1 in evals_evecs
             for p2, v2 in evals_evecs
             if (p1 > 0 and p2 > 0)
@@ -67,16 +86,16 @@ def fetch_kubo_integral_representation_scalar_product(sigma: Operator) -> Callab
 
     def return_func(op1, op2):
         """Integral-form KMB scalar product of ``op1`` and ``op2``."""
-        return 0.01 * sum(
-            (
-                np.conj((v2.dag() * op1 * v1).tr())
-                * ((v2.dag() * op2 * v1).tr())
-                * ((p1) ** (1.0 - tau))
-                * ((p1) ** (tau))
+        q1, q2 = _to_qutip(op1), _to_qutip(op2)
+        return sum(
+            np.conj(v2.dag() * q1 * v1)
+            * (v2.dag() * q2 * v1)
+            * sum(
+                w * p1 ** (1.0 - tau) * p2**tau
+                for tau, w in zip(_TAU_NODES, _TAU_WEIGHTS)
             )
             for p1, v1 in zip(evals, evecs)
             for p2, v2 in zip(evals, evecs)
-            for tau in np.linspace(0.0, 1.0, 100)
             if (p1 > 0.0 and p2 > 0.0)
         )
 

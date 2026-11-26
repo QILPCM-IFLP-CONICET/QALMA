@@ -95,7 +95,7 @@ def draw_operator(op, axis: "_PLTAxes") -> "_PLTAxes":
         coords = [(x[0], 0) if len(x) == 1 else x for x in coords]
         if len(coords) == 1:
             axis.add_artist(_import_patches().Circle(coords[0], 0.1))
-        if len(coords) == 2:
+        elif len(coords) == 2:
             draw_ellipse_around_points(coords[0], coords[1], axis)
         else:
             axis.plot(
