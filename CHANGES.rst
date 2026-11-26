@@ -11,6 +11,14 @@ Unreleased
 Bug fixes
 +++++++++
 
+* The RPA failed with ``KeyError`` (a site name) when a site of the structure
+  had no local mean-field generator: all the terms of the generator that reach
+  it project to zero with the mean-field state, as for the sites at the end of
+  the support of an evolved generator in models with a symmetry that makes the
+  mean values vanish (for instance, a local ``Sz`` perturbation of an XX
+  chain). Its local state is maximally mixed, and that is the spectrum that
+  :meth:`~qalma.meanfield.rpa.rpa_structure.RPAStructure.local_spectrum` now
+  returns.
 * The RPA failed with ``IndexError: too many indices for array`` when a site
   of the mean-field structure had an empty local basis, which happens when the
   generator reaches the site only through terms below the tolerance (for

@@ -156,6 +156,12 @@ class RPAStructure:
         """
         if self._spectra is None:
             self._spectra = _local_spectra(self.generator, self.sigma_mf)
+        if site not in self._spectra:
+            # No term of the generator contributes to the local mean-field
+            # generator of this site (the boundary terms project to zero): its
+            # local state is maximally mixed.
+            dim = int(self.generator.system.dimensions[site])
+            return np.full(dim, 1.0 / dim), np.eye(dim, dtype=complex)
         return self._spectra[site]
 
     def static_chi0(self, site: str) -> np.ndarray:
