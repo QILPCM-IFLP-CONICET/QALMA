@@ -106,11 +106,17 @@ def _number_to_wolfram(num) -> str:
         return str(int(num))
     if isinstance(num, numbers.Real):
         return str(num).replace("e", "*^")
-    if num.imag == 0:
-        return str(num.real).replace("e", "*^")
-    return (
-        str(num).replace("(", "").replace(")", "").replace("e", "*^").replace("j", "I")
-    )
+    if isinstance(num, complex):
+        if num.imag == 0:
+            return str(num.real).replace("e", "*^")
+        return (
+            str(num)
+            .replace("(", "")
+            .replace(")", "")
+            .replace("e", "*^")
+            .replace("j", "I")
+        )
+    return str(num).replace("(", "").replace(")", "").replace("e", "*^")
 
 
 def matrix_to_wolfram(matr: Union[np.ndarray, numbers.Number]) -> str:
