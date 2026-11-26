@@ -1,7 +1,7 @@
 """Utility functions for export objects into different formats."""
 
 import numbers
-from typing import Union
+from typing import Union, cast
 
 import numpy as np
 import qutip  # type: ignore[import-untyped]
@@ -106,17 +106,13 @@ def _number_to_wolfram(num) -> str:
         return str(int(num))
     if isinstance(num, numbers.Real):
         return str(num).replace("e", "*^")
-    if isinstance(num, complex):
-        if num.imag == 0:
-            return str(num.real).replace("e", "*^")
-        return (
-            str(num)
-            .replace("(", "")
-            .replace(")", "")
-            .replace("e", "*^")
-            .replace("j", "I")
-        )
-    return str(num).replace("(", "").replace(")", "").replace("e", "*^")
+    # At this point ``num`` is a complex number.
+    cnum = cast(numbers.Complex, num)
+    if cnum.imag == 0:
+        return str(cnum.real).replace("e", "*^")
+    return (
+        str(cnum).replace("(", "").replace(")", "").replace("e", "*^").replace("j", "I")
+    )
 
 
 def matrix_to_wolfram(matr: Union[np.ndarray, numbers.Number]) -> str:

@@ -501,7 +501,7 @@ def _project_dense_block(
         if coefficient == 0:
             continue
         for kept in combinations(range(k), size):
-            reduced = tensor
+            reduced: np.ndarray = tensor
             current = list(range(k))
             for pos in reversed(range(k)):
                 if pos in kept:
