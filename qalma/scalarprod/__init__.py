@@ -18,9 +18,6 @@ from qalma.scalarprod.orthogonalize import (
     build_hermitian_basis,
     operator_components,
     orthogonalize_basis,
-    orthogonalize_basis_cholesky,
-    orthogonalize_basis_gs,
-    orthogonalize_basis_svd,
 )
 
 __all__ = [
@@ -34,8 +31,5 @@ __all__ = [
     "gram_matrix",
     "operator_components",
     "orthogonalize_basis",
-    "orthogonalize_basis_cholesky",
-    "orthogonalize_basis_gs",
-    "orthogonalize_basis_svd",
     "trim_terms_by_tolerance",
 ]

@@ -26,6 +26,8 @@ from qalma.scalarprod import (
     gram_matrix,
     operator_components,
     orthogonalize_basis,
+)
+from qalma.scalarprod.orthogonalize import (
     orthogonalize_basis_cholesky,
     orthogonalize_basis_gs,
     orthogonalize_basis_svd,
