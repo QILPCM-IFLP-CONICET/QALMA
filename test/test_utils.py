@@ -47,15 +47,61 @@ def test_matrix_to_wolfram_number_of_rows(n_rows):
     assert all(line.startswith("{") for line in lines[1:-1])
 
 
-def test_matrix_to_wolfram_number():
-    """Scalars are just converted to strings."""
-    assert matrix_to_wolfram(2.5) == "2.5"
+@pytest.mark.parametrize("dtype", [int, np.int32, np.uint8])
+def test_matrix_to_wolfram_integers(dtype):
+    """Integer matrices are exported with WL integers."""
+    matrix = np.array([[1, 0], [3, 2]], dtype=dtype)
+    assert matrix_to_wolfram(matrix) == "{\n{1, 0},\n{3, 2}\n}"
 
 
-def test_matrix_to_wolfram_rejects_other_types():
-    """Only arrays and numbers are accepted."""
+def test_matrix_to_wolfram_negative_integers():
+    """The sign of the integers is kept."""
+    assert matrix_to_wolfram(np.array([[-1, 2]])) == "{\n{-1, 2}\n}"
+
+
+def test_matrix_to_wolfram_mixed_entries():
+    """Integers, reals and complex numbers can be mixed in an object array."""
+    matrix = np.array([[1, 0.5], [2j, 1 + 0j]], dtype=object)
+    assert matrix_to_wolfram(matrix) == "{\n{1, 0.5},\n{2I, 1.0}\n}"
+
+
+def test_matrix_to_wolfram_single_precision():
+    """Other floating point types are accepted."""
+    matrix = np.array([[0.5]], dtype=np.float32)
+    assert matrix_to_wolfram(matrix) == "{\n{0.5}\n}"
+
+
+@pytest.mark.parametrize(
+    ["number", "expected"],
+    [
+        (3, "3"),
+        (-3, "-3"),
+        (2.5, "2.5"),
+        (1.0e-10, "1*^-10"),
+        (1 + 2j, "1+2I"),
+        (2 + 0j, "2.0"),
+    ],
+)
+def test_matrix_to_wolfram_number(number, expected):
+    """Scalars are exported using the same conventions as the entries."""
+    assert matrix_to_wolfram(number) == expected
+
+
+@pytest.mark.parametrize(
+    "wrong_input",
+    [
+        "not a matrix",
+        None,
+        np.array([1.0, 2.0]),  # vector, not matrix
+        np.array([[True, False]]),
+        np.array([["a", "b"]]),
+    ],
+    ids=["string", "None", "vector", "booleans", "strings"],
+)
+def test_matrix_to_wolfram_rejects_wrong_inputs(wrong_input):
+    """Inputs that are not numeric matrices are rejected."""
     with pytest.raises(AssertionError):
-        matrix_to_wolfram("not a matrix")  # type: ignore[arg-type]
+        matrix_to_wolfram(wrong_input)
 
 
 def test_operator_to_wolfram_qobj():

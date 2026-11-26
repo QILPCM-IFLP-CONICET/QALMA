@@ -1,5 +1,8 @@
 """Utility functions for export objects into different formats."""
 
+import numbers
+from typing import Union
+
 import numpy as np
 import qutip  # type: ignore[import-untyped]
 
@@ -88,34 +91,54 @@ def operator_to_wolfram(operator) -> str:
     return operator_to_wolfram(operator.to_qutip())
 
 
-def matrix_to_wolfram(matr: np.ndarray):
-    """Produce a string representing the data in the matrix."""
+def _number_to_wolfram(num) -> str:
+    """WL representation of an integer, real or complex number.
+
+    Integers are exported as WL integers (``3``), reals as machine reals
+    (``3.0``, ``1.5*^-10``) and complex numbers using ``I`` for the imaginary
+    unit.
+    """
+    assert isinstance(num, numbers.Number) and not isinstance(
+        num, (bool, np.bool_)
+    ), f"{type(num)} {num} is not an integer, float or complex."
+
+    if isinstance(num, numbers.Integral):
+        return str(int(num))
+    if isinstance(num, numbers.Real):
+        return str(num).replace("e", "*^")
+    if num.imag == 0:
+        return str(num.real).replace("e", "*^")
+    return (
+        str(num).replace("(", "").replace(")", "").replace("e", "*^").replace("j", "I")
+    )
+
+
+def matrix_to_wolfram(matr: Union[np.ndarray, numbers.Number]) -> str:
+    """Produce a string representing the data in the matrix.
+
+    Parameters
+    ----------
+    matr: numpy.ndarray or number
+        A two-dimensional array of integer, real or complex numbers, or a
+        single number.
+
+    Returns
+    -------
+    str
+        A WL expression: a list of lists for an array, or the number.
+        Integer entries are exported as WL integers, and the remaining real
+        entries as machine reals.
+
+    """
     assert isinstance(
-        matr, (np.ndarray, complex, float)
+        matr, (np.ndarray, numbers.Number)
     ), f"{type(matr)} is not ndarray or number"
 
-    def process_number(num):
-        """evaluate a number."""
-        assert isinstance(
-            num, (float, complex)
-        ), f"{type(num)} {num} is not float or complex."
-        if isinstance(num, np.ndarray) and len(num) == 1:
-            num = num[0]
-
-        if isinstance(num, complex):
-            if num.imag == 0:
-                return str(num.real).replace("e", "*^")
-        return (
-            str(num)
-            .replace("(", "")
-            .replace(")", "")
-            .replace("e", "*^")
-            .replace("j", "I")
-        )
-
     if isinstance(matr, np.ndarray):
-        rows = []
-        for row in matr:
-            rows.append("{" + (", ".join(process_number(elem) for elem in row)) + "}")
+        assert matr.ndim == 2, f"the shape {matr.shape} is not a matrix"
+        rows = [
+            "{" + (", ".join(_number_to_wolfram(elem) for elem in row)) + "}"
+            for row in matr
+        ]
         return "{\n" + ",\n".join(rows) + "\n}"
-    return f"{matr}"
+    return _number_to_wolfram(matr)
