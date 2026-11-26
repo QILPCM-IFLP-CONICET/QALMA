@@ -218,10 +218,15 @@ def test_convex_fit_derivative_enforces_convexity(convexity):
     assert np.all(convexity * np.diff(result) > -1.0e-6)
 
 
-def test_convex_fit_derivative_sorts_the_data():
-    """The input does not need to be sorted; the output follows sorted ``x``."""
+def test_convex_fit_derivative_keeps_the_order_of_the_data():
+    """The input does not need to be sorted, and the output follows its order."""
     rng = np.random.default_rng(1234)
     permutation = rng.permutation(len(X_DATA))
-    data = [(X_DATA[i], -(X_DATA[i] ** 2)) for i in permutation]
-    result = convex_fit_derivative(data)
-    assert np.abs(np.array(result) + 2 * X_DATA).max() < 5.0e-2
+    x_shuffled = X_DATA[permutation]
+    data = list(zip(x_shuffled, -(x_shuffled**2)))
+    result = np.array(convex_fit_derivative(data))
+    # Each derivative corresponds to its own x...
+    assert np.abs(result + 2 * x_shuffled).max() < 5.0e-2
+    # ...and the fit does not depend on the order of the data.
+    sorted_result = np.array(convex_fit_derivative(list(zip(X_DATA, -(X_DATA**2)))))
+    assert np.allclose(result, sorted_result[permutation], rtol=0.0, atol=1.0e-10)
