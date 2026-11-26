@@ -15,7 +15,6 @@ from scipy.linalg import sqrtm as _sqrtm
 
 from qalma.operators import Operator
 from qalma.scalarprod.gram import gram_matrix
-from qalma.scalarprod.utils import find_linearly_independent_rows
 
 __all__ = ["build_hermitian_basis", "orthogonalize_basis", "operator_components"]
 
@@ -26,6 +25,27 @@ def build_hermitian_basis(basis, sp=lambda x, y: ((x.dag() * y).tr())):
     Build a basis of independent hermitian operators from a set of
     operators, and the coefficients for the expansion of basis in terms of the
     new orthogonal basis.
+
+    Null operators, and the null hermitian or anti-hermitian parts of the
+    operators, do not contribute to the new basis.
+
+    Parameters
+    ----------
+    basis: List[Operator]
+        The operators to be expanded.
+    sp: Callable
+        The scalar product used to orthonormalize the new basis.
+
+    Returns
+    -------
+    new_basis: List[Operator]
+        An orthonormal basis of hermitian operators that spans the hermitian
+        and anti-hermitian parts of the elements of ``basis``.
+    coeffs: numpy.ndarray
+        An array of shape ``(len(basis), len(new_basis))``, such that
+        ``basis[i] = sum(coeffs[i, j] * new_basis[j] for j)``. The row of a
+        null operator is zero.
+
     """
     # First, find a basis of hermitian operators that generates
     # basis.
@@ -68,6 +88,10 @@ def build_hermitian_basis(basis, sp=lambda x, y: ((x.dag() * y).tr())):
                 )
                 indx += 1
 
+    if not new_basis:
+        # All the operators are null.
+        return [], np.zeros((len(basis), 0))
+
     # Now, we work with the hermitian basis.
     # The first step is to build the Gram's matrix
     gram_mat = gram_matrix(new_basis, sp)
@@ -84,9 +108,15 @@ def build_hermitian_basis(basis, sp=lambda x, y: ((x.dag() * y).tr())):
     q = np.array([row * s ** (0.5) for row, s in zip(u_mat.T, s_mat) if s > 1e-10]).T
     # Finally, we apply the change of basis to the original (non-hermitian)
     # basis
-    q = np.array([sum(spec[1] * q[spec[0]] for spec in row) for row in indices])
+    # (null operators have no entries in ``row``, and give a zero row).
+    coeffs = np.array(
+        [
+            sum((factor * q[idx] for idx, factor in row), np.zeros(q.shape[1]))
+            for row in indices
+        ]
+    )
 
-    return new_basis, q
+    return new_basis, coeffs
 
 
 def operator_components(op: Operator, orthogonal_basis: List[Operator], sp: Callable):
@@ -226,6 +256,8 @@ def orthogonalize_basis_cholesky(basis, sp: Callable, tol: float = 1.0e-5):
 
     Raises
     ------
+    numpy.linalg.LinAlgError:
+        If the operators in ``basis`` are linearly dependent.
     AssertionError:
         If the orthogonalized basis does not satisfy
         orthonormality within the specified tolerance.
@@ -233,20 +265,21 @@ def orthogonalize_basis_cholesky(basis, sp: Callable, tol: float = 1.0e-5):
     """
     local_basis = basis
 
-    # Compute the inverse Gram matrix for the given basis
+    # Compute the Gram matrix for the given basis
     gram = gram_matrix(basis=local_basis, sp=sp)
 
     try:
         l_gram = _cholesky(gram)
-        for i, c in enumerate(l_gram):
-            if abs(c[i]) < tol:
-                raise _LinAlgError
-    except _LinAlgError:
-        li_indices = find_linearly_independent_rows(gram, tol)
-        if len(li_indices) == 1:
-            idx = li_indices[0]
-            return [local_basis[idx] / abs(gram[idx, idx]) ** 0.5]
-        return []
+    except _LinAlgError as exc:
+        raise _LinAlgError(
+            "The Gram matrix is not positive definite: the basis is "
+            "linearly dependent."
+        ) from exc
+    if np.abs(np.diag(l_gram)).min(initial=np.inf) < tol:
+        raise _LinAlgError(
+            "The Gram matrix is singular within the tolerance: the basis is "
+            "linearly dependent."
+        )
 
     l_inv = _inv(l_gram)
 
@@ -290,6 +323,8 @@ def orthogonalize_basis_svd(basis, sp: Callable, tol: float = 1.0e-5):
 
     Raises
     ------
+    numpy.linalg.LinAlgError:
+        If the operators in ``basis`` are linearly dependent.
     AssertionError:
         If the orthogonalized basis does not satisfy
         orthonormality within the specified tolerance.

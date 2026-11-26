@@ -37,6 +37,32 @@ Bug fixes
   ``Qobj.dag()`` trusts a possibly stale ``isherm`` flag. The basis is now
   built with dense arrays, with real Gram-Schmidt coefficients, Hermitian
   residuals and a relative tolerance for linear dependence.
+* ``matrix_to_wolfram`` (and ``operator_to_wolfram`` for matrices) exported
+  only the first row of the matrix.
+* ``fetch_kubo_scalar_product`` and
+  ``fetch_kubo_integral_representation_scalar_product`` failed for every
+  input. In addition, the spectral version lost precision for almost
+  degenerate eigenvalues, and the integral version used ``p1`` where it
+  should have used ``p2`` in the integrand, so it did not compute the
+  Kubo-Mori-Bogoliubov scalar product.
+* ``draw_operator`` also drew a spurious line for operators acting on a single
+  site.
+* ``build_hermitian_basis`` failed with ``ValueError`` when the basis contained
+  null operators. They are now filtered out.
+
+Changes
++++++++
+
+* ``orthogonalize_basis_cholesky`` raises ``numpy.linalg.LinAlgError`` if the
+  operators are linearly dependent, as ``orthogonalize_basis_svd`` does. It
+  used to return an empty list or a single operator.
+* ``orthogonalize_basis_gs``, ``orthogonalize_basis_cholesky`` and
+  ``orthogonalize_basis_svd`` are no longer exported by ``qalma.scalarprod``.
+  They remain available in ``qalma.scalarprod.orthogonalize``.
+* ``matrix_to_wolfram`` exports integers as WL integers, and complex scalars
+  with ``I``.
+* ``convex_fit_derivative`` returns the derivatives in the order of the input
+  data, instead of sorted by ``x``.
 
 
 0.9.0

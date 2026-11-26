@@ -18,20 +18,28 @@ logger = logging.getLogger(__name__)
 def convex_fit_derivative(
     data: List[Tuple[float, float]], convexity: float = -1.0
 ) -> List[float]:
-    """
-    Fits a strictly convex spline to the given data points and returns its
-    first derivative evaluated at the original x-coordinates.
+    """Fit a convex (or concave) spline and return its first derivative.
 
-    Args:
-        data: A list of (x, y) tuples representing the data points.
+    Fits a cubic spline with a constraint on the sign of its second
+    derivative to the given data points, and evaluates its first derivative
+    at the x-coordinates of the data.
 
-        convexity: float (optional)
-           the sign of convexity:``1.`` assumes a convex function.
-           ``-1`` assumes a concave function. ``1.`` by default.
+    Parameters
+    ----------
+    data: List[Tuple[float, float]]
+        The ``(x, y)`` data points. They do not need to be sorted.
+    convexity: float, optional
+        The sign of the convexity. ``1.`` assumes a convex function (the
+        second derivative is non-negative), and ``-1.`` assumes a concave
+        function (the second derivative is non-positive). By default,
+        ``-1.``.
 
-    Returns:
-        A list of float values, representing the first derivative of the
-        fitted convex spline evaluated at the x-coordinates from the input data.
+    Returns
+    -------
+    List[float]
+        The first derivative of the fitted spline, evaluated at the
+        x-coordinates of ``data``, in the same order as ``data``.
+
     """
     # 1. Parse and sort data
     x_data_raw, y_data_raw = [np.array(lst) for lst in zip(*data)]
@@ -107,4 +115,7 @@ def convex_fit_derivative(
     spline_deriv1_func = convex_spline_func.derivative(nu=1)
     deriv_values_at_original_x = spline_deriv1_func(x)
 
-    return deriv_values_at_original_x.tolist()
+    # The spline was evaluated over the sorted x. Restore the order of the input.
+    result = np.empty_like(deriv_values_at_original_x)
+    result[sort_idx] = deriv_values_at_original_x
+    return result.tolist()

@@ -47,15 +47,61 @@ def test_matrix_to_wolfram_number_of_rows(n_rows):
     assert all(line.startswith("{") for line in lines[1:-1])
 
 
-def test_matrix_to_wolfram_number():
-    """Scalars are just converted to strings."""
-    assert matrix_to_wolfram(2.5) == "2.5"
+@pytest.mark.parametrize("dtype", [int, np.int32, np.uint8])
+def test_matrix_to_wolfram_integers(dtype):
+    """Integer matrices are exported with WL integers."""
+    matrix = np.array([[1, 0], [3, 2]], dtype=dtype)
+    assert matrix_to_wolfram(matrix) == "{\n{1, 0},\n{3, 2}\n}"
 
 
-def test_matrix_to_wolfram_rejects_other_types():
-    """Only arrays and numbers are accepted."""
+def test_matrix_to_wolfram_negative_integers():
+    """The sign of the integers is kept."""
+    assert matrix_to_wolfram(np.array([[-1, 2]])) == "{\n{-1, 2}\n}"
+
+
+def test_matrix_to_wolfram_mixed_entries():
+    """Integers, reals and complex numbers can be mixed in an object array."""
+    matrix = np.array([[1, 0.5], [2j, 1 + 0j]], dtype=object)
+    assert matrix_to_wolfram(matrix) == "{\n{1, 0.5},\n{2I, 1.0}\n}"
+
+
+def test_matrix_to_wolfram_single_precision():
+    """Other floating point types are accepted."""
+    matrix = np.array([[0.5]], dtype=np.float32)
+    assert matrix_to_wolfram(matrix) == "{\n{0.5}\n}"
+
+
+@pytest.mark.parametrize(
+    ["number", "expected"],
+    [
+        (3, "3"),
+        (-3, "-3"),
+        (2.5, "2.5"),
+        (1.0e-10, "1*^-10"),
+        (1 + 2j, "1+2I"),
+        (2 + 0j, "2.0"),
+    ],
+)
+def test_matrix_to_wolfram_number(number, expected):
+    """Scalars are exported using the same conventions as the entries."""
+    assert matrix_to_wolfram(number) == expected
+
+
+@pytest.mark.parametrize(
+    "wrong_input",
+    [
+        "not a matrix",
+        None,
+        np.array([1.0, 2.0]),  # vector, not matrix
+        np.array([[True, False]]),
+        np.array([["a", "b"]]),
+    ],
+    ids=["string", "None", "vector", "booleans", "strings"],
+)
+def test_matrix_to_wolfram_rejects_wrong_inputs(wrong_input):
+    """Inputs that are not numeric matrices are rejected."""
     with pytest.raises(AssertionError):
-        matrix_to_wolfram("not a matrix")  # type: ignore[arg-type]
+        matrix_to_wolfram(wrong_input)
 
 
 def test_operator_to_wolfram_qobj():
@@ -172,10 +218,15 @@ def test_convex_fit_derivative_enforces_convexity(convexity):
     assert np.all(convexity * np.diff(result) > -1.0e-6)
 
 
-def test_convex_fit_derivative_sorts_the_data():
-    """The input does not need to be sorted; the output follows sorted ``x``."""
+def test_convex_fit_derivative_keeps_the_order_of_the_data():
+    """The input does not need to be sorted, and the output follows its order."""
     rng = np.random.default_rng(1234)
     permutation = rng.permutation(len(X_DATA))
-    data = [(X_DATA[i], -(X_DATA[i] ** 2)) for i in permutation]
-    result = convex_fit_derivative(data)
-    assert np.abs(np.array(result) + 2 * X_DATA).max() < 5.0e-2
+    x_shuffled = X_DATA[permutation]
+    data = list(zip(x_shuffled, -(x_shuffled**2)))
+    result = np.array(convex_fit_derivative(data))
+    # Each derivative corresponds to its own x...
+    assert np.abs(result + 2 * x_shuffled).max() < 5.0e-2
+    # ...and the fit does not depend on the order of the data.
+    sorted_result = np.array(convex_fit_derivative(list(zip(X_DATA, -(X_DATA**2)))))
+    assert np.allclose(result, sorted_result[permutation], rtol=0.0, atol=1.0e-10)
