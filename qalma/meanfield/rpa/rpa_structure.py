@@ -58,8 +58,14 @@ def _check_stability(chi0_static: np.ndarray, m_ee: np.ndarray) -> None:
 
 def _local_spectra(
     generator: Operator, sigma_mf
-) -> Dict[str, Tuple[np.ndarray, np.ndarray]]:
-    """Return the populations and eigenvectors of the local mean-field generators."""
+) -> Dict[str, Tuple[np.ndarray, np.ndarray, np.ndarray]]:
+    """Return the spectra of the local mean-field generators.
+
+    For every site, the populations, the eigenvectors and the logarithms of the
+    populations of the local mean-field state. The logarithms are computed from
+    the eigenvalues of the generator, so they remain exact when a population
+    underflows (a gap ``beta * Delta`` above ``~745``).
+    """
     system = generator.system
     terms = generator.terms if isinstance(generator, SumOperator) else [generator]
     contributions: Dict[str, List[Operator]] = {}
@@ -77,8 +83,9 @@ def _local_spectra(
         k_loc = iterable_to_operator(local_terms, system, isherm=True)
         k_mat = k_loc.to_qutip((site,)).full()
         eps, vecs = np.linalg.eigh(0.5 * (k_mat + k_mat.conj().T))
-        weights = np.exp(-(eps - eps.min()))
-        spectra[site] = (weights / weights.sum(), vecs)
+        log_weights = -(eps - eps.min())
+        log_populations = log_weights - np.log(np.sum(np.exp(log_weights)))
+        spectra[site] = (np.exp(log_populations), vecs, log_populations)
     return spectra
 
 
@@ -129,7 +136,7 @@ class RPAStructure:
     )
     _boson_system: Optional[BosonicGaussianSystem] = field(default=None, repr=False)
     _global_modes: Optional[Any] = field(default=None, repr=False)
-    _spectra: Optional[Dict[str, Tuple[np.ndarray, np.ndarray]]] = field(
+    _spectra: Optional[Dict[str, Tuple[np.ndarray, np.ndarray, np.ndarray]]] = field(
         default=None, repr=False
     )
 
@@ -146,14 +153,8 @@ class RPAStructure:
             self._local_data[site] = (sigma_loc, basis)
         return self._local_data[site]
 
-    def local_spectrum(self, site: str) -> Tuple[np.ndarray, np.ndarray]:
-        """Return the populations and eigenvectors of the local mean-field state.
-
-        They are obtained from the local mean-field generator of the site
-        (the terms of ``K`` over the site plus the boundary terms projected
-        with the mean-field state), so very small populations keep their
-        accuracy even if they cannot be resolved in a density matrix.
-        """
+    def _site_spectrum(self, site: str) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
+        """Populations, eigenvectors and log-populations of the local state."""
         if self._spectra is None:
             self._spectra = _local_spectra(self.generator, self.sigma_mf)
         if site not in self._spectra:
@@ -161,14 +162,41 @@ class RPAStructure:
             # generator of this site (the boundary terms project to zero): its
             # local state is maximally mixed.
             dim = int(self.generator.system.dimensions[site])
-            return np.full(dim, 1.0 / dim), np.eye(dim, dtype=complex)
+            return (
+                np.full(dim, 1.0 / dim),
+                np.eye(dim, dtype=complex),
+                np.full(dim, -np.log(dim)),
+            )
         return self._spectra[site]
+
+    def local_spectrum(self, site: str) -> Tuple[np.ndarray, np.ndarray]:
+        """Return the populations and eigenvectors of the local mean-field state.
+
+        They are obtained from the local mean-field generator of the site
+        (the terms of ``K`` over the site plus the boundary terms projected
+        with the mean-field state), so very small populations keep their
+        accuracy even if they cannot be resolved in a density matrix. A
+        population below ``~1e-308`` underflows to zero: use
+        :meth:`local_log_populations` for the gaps.
+        """
+        populations, eigenvectors, _ = self._site_spectrum(site)
+        return populations, eigenvectors
+
+    def local_log_populations(self, site: str) -> np.ndarray:
+        """Return the logarithms of the populations of :meth:`local_spectrum`.
+
+        Unlike the populations, they do not underflow: the gaps
+        ``ln(p_i/p_j)`` between populations are exact however large they are.
+        """
+        return self._site_spectrum(site)[2]
 
     def static_chi0(self, site: str) -> np.ndarray:
         r"""Return the static susceptibility :math:`\chi^0` of ``site``."""
         if site not in self._chi0:
             self._chi0[site] = kubo_mori_susceptibility(
-                *self.local_data(site), spectrum=self.local_spectrum(site)
+                *self.local_data(site),
+                spectrum=self.local_spectrum(site),
+                log_populations=self.local_log_populations(site),
             )
         return self._chi0[site]
 
@@ -179,6 +207,7 @@ class RPAStructure:
                 *self.local_data(site),
                 self.static_gap,
                 spectrum=self.local_spectrum(site),
+                log_populations=self.local_log_populations(site),
             )
         return self._modes[site]
 

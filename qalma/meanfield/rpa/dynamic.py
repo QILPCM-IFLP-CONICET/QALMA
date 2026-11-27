@@ -1,6 +1,7 @@
 """Dynamical RPA: imaginary-time kernel and generator correction."""
 
 import logging
+import math
 from typing import Dict, List, Optional, Tuple
 
 import numpy as np
@@ -28,6 +29,14 @@ TAU_RTOL = 1e-6
 MAX_N_TAU = 1024
 """Maximum number of nodes of the adaptive imaginary-time quadrature."""
 
+_NODES_PER_SQRT_OMEGA = 3.0
+"""Nodes per ``sqrt(omega)`` needed to resolve ``exp(-omega u)`` on ``(0, 1)``.
+
+The nodes of a Gauss-Legendre rule cluster at the ends of the interval, with a
+spacing of order ``1/n**2``: ``n = 3 sqrt(omega)`` integrates ``exp(-omega u)``
+with a relative error below ``1e-7`` for ``omega`` up to ``1e6``.
+"""
+
 # Smallest population (relative to the largest one) kept when the corrected
 # reduced state is converted back into a generator.
 _POPULATION_FLOOR = 1e-14
@@ -49,7 +58,10 @@ def _dynamic_correction(
     The imaginary-time quadrature starts with ``n_tau`` nodes, which are
     doubled until the correction converges (see :data:`TAU_RTOL` and
     :data:`MAX_N_TAU`): at low temperature the kernel varies on scales
-    :math:`1/\omega` much shorter than the imaginary-time interval.
+    :math:`1/\omega` much shorter than the imaginary-time interval. The
+    initial number of nodes is raised to resolve the largest frequency of the
+    environment, since two coarse quadratures can agree on missing the same
+    sharp features of the kernel.
     """
     system = structure.system
     modes = environment_modes(structure, sites, environment)
@@ -72,7 +84,9 @@ def _dynamic_correction(
             return None
         return dynamic_generator_correction(k0, d_ops, sigma_tau, nodes, weights)
 
-    n_nodes = max(int(n_tau), 1)
+    omega_max = float(np.max(np.abs(modes.lam))) if len(modes.lam) else 0.0
+    n_resolve = math.ceil(_NODES_PER_SQRT_OMEGA * math.sqrt(omega_max))
+    n_nodes = max(int(n_tau), 1, min(n_resolve, MAX_N_TAU))
     d_k = correction(n_nodes)
     if d_k is None:
         return None
