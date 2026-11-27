@@ -411,34 +411,60 @@ def self_consistent_mf(
         that approximates :math:`e^{-H}`, and ``rel_entropy`` is the
         corresponding free energy.
 
+    Notes
+    -----
+    The loop stops when the free energy changes by less than
+    ``QALMA_TOLERANCE * max(1, |F|)``. The tolerance is relative because the
+    rounding noise of the free energy grows with its magnitude (about one unit
+    in the last place of ``F``, ``~1e-12`` for ``|F| ~ 5000``, as in a low
+    temperature state of a few dozen sites), and an absolute tolerance could
+    then never be met. A warning is logged if the loop ends because of
+    ``max_steps`` or because the free energy increases (beyond ten times the
+    tolerance); in the latter case the last state that did not worsen it is
+    returned.
     """
     if sigma_ref is None:
         sigma_ref = ProductDensityOperator({}, system=ham.system)
 
     rel_entropy = compute_free_energy(sigma_ref, ham)
     converged = False
+    increased = False
+    n_steps = 0
+    delta = 0.0
+    tolerance = QALMA_TOLERANCE * max(1.0, abs(float(np.real(rel_entropy))))
     for curr_step in range(max_steps):
         gen_sc = n_body_projection(ham, n_max=1, sigma=sigma_ref).hermitian_part()
         sigma_sc = GibbsProductDensityOperator(gen_sc).to_product_state()
         new_rel_entropy = compute_free_energy(sigma_sc, ham)
+        n_steps = curr_step + 1
         if callback is not None:
             callback(sigma_ref, rel_entropy, curr_step)
 
-        if abs(new_rel_entropy - rel_entropy) < QALMA_TOLERANCE:
+        delta = float(np.real(new_rel_entropy - rel_entropy))
+        tolerance = QALMA_TOLERANCE * max(1.0, abs(float(np.real(rel_entropy))))
+        if abs(delta) < tolerance:
             converged = True
             break
-        if np.real(new_rel_entropy - rel_entropy) > 10 * QALMA_TOLERANCE:
+        if delta > 10 * tolerance:
+            increased = True
             break
         rel_entropy = new_rel_entropy
         sigma_ref = sigma_sc
 
-    if converged is False:
-        msg = (
-            "self consistent mean field failed to converge after "
-            f"{curr_step} iterations. "
-            f"Last Delta S_rel= {np.real(new_rel_entropy - rel_entropy)}."
+    if not converged:
+        if n_steps == 0:
+            reason = "no step was performed"
+        elif increased:
+            reason = f"the free energy increased by {delta:.3e}"
+        else:
+            reason = f"the last change of the free energy was {delta:.3e}"
+        logger.warning(
+            "self consistent mean field failed to converge after %d steps: %s "
+            "(tolerance %.3e).",
+            n_steps,
+            reason,
+            tolerance,
         )
-        logger.warning(msg)
     return cast(ProductDensityOperator, sigma_ref), rel_entropy
 
 
