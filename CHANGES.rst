@@ -90,6 +90,14 @@ Bug fixes
   dynamical RPA now starts with enough nodes to resolve the largest
   frequency, since two coarse quadratures can agree on missing the same
   sharp features of the kernel.
+* The reduced state of the dynamical RPA drifted with the temperature even
+  for a gapped state (``~7e-4`` between ``beta = 1000`` and ``2000`` in a
+  3x3 ladder, growing as ``beta``). The populations that the coupling with the
+  environment admixes into the excited levels were dressed with the diagonal
+  of the secular generator, while its exponential uses its eigenvalues; the
+  level repulsion that separates them is of fourth order in the coupling but
+  grows as ``beta``. They are now dressed with the eigenvalues, and the
+  low-temperature limit is reached (and stays) as the state becomes gapped.
 
 Changes
 +++++++

@@ -109,3 +109,19 @@ def test_rpa_is_not_unstable_at_very_low_temperature(dynamic):
     system, state = _paramagnetic_state("open ladder", 2000.0, L=3, W=3)
     rho = _pair_state(system, state, dynamic)
     assert rho.tr() == pytest.approx(1.0, abs=1e-9)
+
+
+def test_dynamic_rpa_converges_in_the_temperature_of_a_gapped_state():
+    """The dynamical RPA does not depend on ``beta`` once the state is gapped.
+
+    The populations of the excited levels that the coupling with the
+    environment admixes are dressed with the eigenvalues of the secular
+    generator, not with its diagonal: the difference is the level repulsion,
+    which grows as ``beta`` and made the reduced state drift (``~7e-4`` between
+    ``beta = 1000`` and ``2000``).
+    """
+    results = []
+    for beta in (1000.0, 2000.0):
+        system, state = _paramagnetic_state("open ladder", beta, L=3, W=3)
+        results.append(_pair_state(system, state, dynamic=True))
+    assert (results[0] - results[1]).norm("tr") < 1e-6
