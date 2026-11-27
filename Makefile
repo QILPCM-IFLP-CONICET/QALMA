@@ -88,7 +88,7 @@ docs-clean:
 	rm -rf $(BUILDDIR)
 
 
-benchmark: benchmark-expect benchmark-commutators benchmark-gram benchmark-projections
+benchmark: benchmark-expect benchmark-commutators benchmark-gram benchmark-projections benchmark-dense
 
 benchmark-expect:
 	PYTHONOPTIMIZE=TRUE BENCHMARKS=1 QALMA_ALLTESTS=1 CHAIN_SIZE=20 pytest -x --benchmark-enable --profile-svg --benchmark-save="expect_$(BENCHMARK_FILE)" --benchmark-columns=min test/states/test_expect_benchmark.py
