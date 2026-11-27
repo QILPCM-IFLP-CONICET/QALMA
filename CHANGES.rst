@@ -11,6 +11,16 @@ Unreleased
 Bug fixes
 +++++++++
 
+* The RPA correction was silently skipped when the mean field of the
+  environment makes the boundary terms project to zero (for instance, an
+  exactly vanishing magnetization in the saturated paramagnetic phase of the
+  transverse-field Ising model): ``gibbs_meanfield_generator`` reported
+  ``has_boundary=False`` after discarding the projected terms, although the
+  subsystem is still coupled to the environment through the fluctuations. The
+  reduced state was then the mean-field one, and the result jumped to the RPA
+  one as soon as the magnetization was above the tolerance (about
+  ``1e-15``). ``has_boundary`` now refers to the terms of the generator before
+  the projection.
 * The RPA failed with ``KeyError`` (a site name) when a site of the structure
   had no local mean-field generator: all the terms of the generator that reach
   it project to zero with the mean-field state, as for the sites at the end of
