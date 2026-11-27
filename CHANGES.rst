@@ -11,6 +11,16 @@ Unreleased
 Bug fixes
 +++++++++
 
+* The RPA correction was silently skipped when the mean field of the
+  environment makes the boundary terms project to zero (for instance, an
+  exactly vanishing magnetization in the saturated paramagnetic phase of the
+  transverse-field Ising model): ``gibbs_meanfield_generator`` reported
+  ``has_boundary=False`` after discarding the projected terms, although the
+  subsystem is still coupled to the environment through the fluctuations. The
+  reduced state was then the mean-field one, and the result jumped to the RPA
+  one as soon as the magnetization was above the tolerance (about
+  ``1e-15``). ``has_boundary`` now refers to the terms of the generator before
+  the projection.
 * The RPA failed with ``KeyError`` (a site name) when a site of the structure
   had no local mean-field generator: all the terms of the generator that reach
   it project to zero with the mean-field state, as for the sites at the end of
@@ -61,6 +71,12 @@ Bug fixes
   last change of the free energy, and tells apart the case in which the free
   energy increases. ``max_steps=0`` raised ``UnboundLocalError`` and now
   returns the initial state.
+* ``operator_to_wolfram`` exported the local and product operators of systems
+  with more than 10 sites with the factors of the ``KroneckerProduct`` sorted
+  alphabetically by site name (``1[10]`` before ``1[2]``), instead of in the
+  order of the sites of the system.
+* ``draw_operator`` failed with ``IndexError`` for operators that act on no
+  site, like scalars.
 
 Changes
 +++++++
@@ -75,6 +91,19 @@ Changes
   with ``I``.
 * ``convex_fit_derivative`` returns the derivatives in the order of the input
   data, instead of sorted by ``x``.
+
+Documentation
++++++++++++++
+
+* New pages of the user guide: *Scalar products and operator bases*, and
+  *Utilities: export, drawing and fits*.
+* The docstrings of the Kubo-Mori-Bogoliubov and Hilbert-Schmidt scalar
+  products, of ``orthogonalize_basis`` and the functions of its module, and of
+  the functions of ``qalma.utils`` document their parameters, return values
+  and exceptions. The docstring of the Gram-Schmidt orthogonalization
+  described a check of the orthogonality and an ``AssertionError`` that it
+  does not perform; ``tol`` is the threshold to discard null and dependent
+  operators.
 
 
 0.9.0

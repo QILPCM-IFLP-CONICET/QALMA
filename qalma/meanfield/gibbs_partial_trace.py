@@ -249,6 +249,12 @@ def gibbs_meanfield_generator(state: GibbsDensityOperator, sites: frozenset):
         else:
             terms_boundary.append(term)
 
+    # Whether A is coupled to the environment is a property of the generator,
+    # not of its mean-field projection: a boundary term projects to zero when
+    # the mean field of the environment vanishes (for instance, in a symmetric
+    # phase), but the fluctuations still couple A with the environment.
+    has_boundary = bool(terms_boundary)
+
     if terms_boundary:
         # If there are boundary terms, project them
         if sigma_mf is None:
@@ -265,7 +271,7 @@ def gibbs_meanfield_generator(state: GibbsDensityOperator, sites: frozenset):
         terms_in.extend(terms_boundary)
 
     k_in = iterable_to_operator(terms_in, system, isherm=True)
-    return k_in, bool(terms_boundary)
+    return k_in, has_boundary
 
 
 def gibbs_meanfield_partial_trace(

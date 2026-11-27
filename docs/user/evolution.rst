@@ -224,5 +224,5 @@ and pickles of ``Simulation`` objects, to the current format; so does
 
 .. seealso::
 
-   :doc:`hdf5_format`, :doc:`/api/evolution`, :doc:`/api/io`,
-   :doc:`/api/scalarprod`
+   :doc:`hdf5_format`, :doc:`scalar_products`, :doc:`/api/evolution`,
+   :doc:`/api/io`, :doc:`/api/scalarprod`

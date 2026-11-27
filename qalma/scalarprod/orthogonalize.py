@@ -1,4 +1,10 @@
-"""Generalized scalar products over the algebra of operators."""
+"""Orthogonalization of bases of operators.
+
+Routines to orthogonalize sets of operators with respect to a scalar product
+(see :mod:`qalma.scalarprod.build`), to build bases of hermitian operators,
+and to compute the components of an operator in an orthonormal basis.
+
+"""
 
 # from datetime import datetime
 from typing import Callable, List
@@ -20,21 +26,26 @@ __all__ = ["build_hermitian_basis", "orthogonalize_basis", "operator_components"
 
 
 def build_hermitian_basis(basis, sp=lambda x, y: ((x.dag() * y).tr())):
-    """Build a basis of of hermitian operators.
+    r"""Build a basis of hermitian operators.
 
-    Build a basis of independent hermitian operators from a set of
-    operators, and the coefficients for the expansion of basis in terms of the
-    new orthogonal basis.
+    Build an orthonormal basis of hermitian operators that generates a set of
+    operators, and the coefficients for the expansion of the original operators
+    in terms of the new basis.
 
-    Null operators, and the null hermitian or anti-hermitian parts of the
-    operators, do not contribute to the new basis.
+    Each hermitian operator of ``basis`` contributes with itself. A non-hermitian
+    operator :math:`b` contributes with its hermitian and anti-hermitian parts,
+    :math:`b+b^\dagger` and :math:`i(b-b^\dagger)`. The hermitian operators
+    obtained in this way are then orthonormalized with respect to ``sp``,
+    dropping the linearly dependent ones. Null operators, and the null hermitian
+    or anti-hermitian parts of the operators, do not contribute to the new basis.
 
     Parameters
     ----------
     basis: List[Operator]
         The operators to be expanded.
-    sp: Callable
-        The scalar product used to orthonormalize the new basis.
+    sp: Callable, optional
+        The scalar product used to orthonormalize the new basis. By default, the
+        Hilbert-Schmidt scalar product :math:`\mathrm{Tr}(x^\dagger y)`.
 
     Returns
     -------
@@ -120,31 +131,37 @@ def build_hermitian_basis(basis, sp=lambda x, y: ((x.dag() * y).tr())):
 
 
 def operator_components(op: Operator, orthogonal_basis: List[Operator], sp: Callable):
-    """Compute the projection components of ``op`` relative to an orthogonal basis.
+    r"""Compute the components of ``op`` in an orthonormal basis.
 
-    Get the components of the projection of an operator onto an orthogonal
-    basis using a scalar product.
+    Get the components of the orthogonal projection of an operator onto the span
+    of an orthonormal basis, with respect to a scalar product:
 
-    This computes the components of the orthogonal projection of `op`
-    over the basis `orthogonal_basis` with respect to the scalar product `sp`.
+    .. math::
+
+        c_i = \langle e_i, \mathrm{op}\rangle,
+
+    so that :math:`\sum_i c_i e_i` is the projection of ``op``. If ``op`` is in
+    the span of the basis, the projection is ``op`` itself.
 
     Parameters
     ----------
     op: Operator
-        The operator to be projected (e.g., a matrix or quantum operator).
+        The operator to be projected.
     orthogonal_basis: List[Operator]
-        A list of orthogonalized operators to serve as the
-        projection basis.
+        A list of operators :math:`e_i`, orthonormal with respect to ``sp``,
+        like the ones returned by :func:`~qalma.scalarprod.orthogonalize.orthogonalize_basis`. If the elements
+        are orthogonal but not normalized, the results are the components
+        multiplied by the norm of each element.
     sp: Callable
         A callable that defines the scalar product function between
-        two operators.
+        two operators. It must be antilinear in the first argument.
 
     Returns
     -------
-    NDArray:
-        A NumPy array containing the projection coefficients, where the i-th
-        coefficient represents the projection of `op` onto the i-th element
-        of `orthogonal_basis`.
+    numpy.ndarray
+        A NumPy array with the projection coefficients, where the i-th
+        coefficient is the component of ``op`` along the i-th element of
+        ``orthogonal_basis``.
 
     """
     return np.array([sp(op2, op) for op2 in orthogonal_basis])
@@ -153,28 +170,37 @@ def operator_components(op: Operator, orthogonal_basis: List[Operator], sp: Call
 def orthogonalize_basis(basis, sp: Callable, tol: float = 1.0e-5):
     """Orthogonalize a given basis of operators using the default method.
 
+    The default method is Gram-Schmidt: the operators are processed in order.
+    Each one is normalized, the projections over the previous elements of the
+    result are subtracted, and the remainder is normalized again. The k-th
+    element of the result is a linear combination of the first operators of
+    ``basis``.
+
+    The alternatives, based on the Cholesky decomposition and on the symmetric
+    orthogonalization, are available as ``orthogonalize_basis_cholesky`` and
+    ``orthogonalize_basis_svd`` in this module. Unlike Gram-Schmidt, they raise a
+    ``LinAlgError`` if the basis is linearly dependent.
+
     Parameters
     ----------
     basis: List[Operator]
-        A list of operators (or matrices) to be orthogonalized.
+        A list of operators to be orthogonalized.
     sp: Callable
         A callable that defines the scalar product function between two
         operators.
     tol: float
-        A tolerance value (default: 1e-5) for verifying the orthogonality
-        of the resulting basis.
+        A tolerance value (default: 1e-5). An operator is discarded if its norm
+        is below ``tol``, either initially (it is null) or after subtracting the
+        projections over the previous operators (it is linearly dependent on
+        them). Overlaps below ``tol`` are neglected.
 
     Returns
     -------
     orth_basis: List[Operator]
         A list of orthogonalized operators, normalized with respect
-        to the scalar product `sp`.
-
-    Raises
-    ------
-    AssertionError:
-        If the orthogonalized basis does not satisfy
-        orthonormality within the specified tolerance.
+        to the scalar product `sp`. Null operators and operators that are linear
+        combinations of the previous ones are discarded, so it can be
+        shorter than ``basis``.
 
     """
     return orthogonalize_basis_gs(basis, sp, tol)
@@ -186,6 +212,11 @@ def orthogonalize_basis_gs(basis, sp: Callable, tol: float = 1.0e-5):
     Orthogonalizes a given basis of operators using a scalar product and the
     Gram-Schmidt method.
 
+    The operators are processed in order. Each one is normalized, the projections
+    over the previous elements of the result are subtracted, and the remainder is
+    normalized again. The k-th element of the result is a linear combination of
+    the first operators of ``basis``.
+
     Parameters
     ----------
     basis: List[Operator]
@@ -194,20 +225,17 @@ def orthogonalize_basis_gs(basis, sp: Callable, tol: float = 1.0e-5):
         A callable that defines the scalar product function between two
         operators.
     tol: float
-        A tolerance value (default: 1e-5) for verifying the orthogonality
-        of the resulting basis.
+        A tolerance value (default: 1e-5). An operator is discarded if its norm
+        is below ``tol``, either initially (it is null) or after subtracting the
+        projections over the previous operators (it is linearly dependent on
+        them). Overlaps below ``tol`` are neglected.
 
     Returns
     -------
     orth_basis: List[Operator]
         A list of orthogonalized operators, normalized with respect
-        to the scalar product `sp`.
-
-    Raises
-    ------
-    AssertionError:
-        If the orthogonalized basis does not satisfy
-        orthonormality within the specified tolerance.
+        to the scalar product `sp`. It is shorter than ``basis`` if some
+        operators were discarded.
 
     """
     orth_basis: list = []
@@ -232,10 +260,13 @@ def orthogonalize_basis_gs(basis, sp: Callable, tol: float = 1.0e-5):
 
 
 def orthogonalize_basis_cholesky(basis, sp: Callable, tol: float = 1.0e-5):
-    """Orthogonalize an operator basis using the Cholesky method.
+    r"""Orthogonalize an operator basis using the Cholesky method.
 
     Orthogonalizes a given basis of operators using a scalar product and the
-    Cholesky decomposition method.
+    Cholesky decomposition of the Gram matrix :math:`G=LL^T`. The operators of
+    the result are
+    :math:`e_i=\sum_{s\le i} (L^{-1})_{is}\, b_s`: as in Gram-Schmidt, each
+    one is a linear combination of the first operators of ``basis``.
 
     Parameters
     ----------
@@ -245,14 +276,15 @@ def orthogonalize_basis_cholesky(basis, sp: Callable, tol: float = 1.0e-5):
         A callable that defines the scalar product function between two
         operators.
     tol: float
-        A tolerance value (default: 1e-5) for verifying the orthogonality
-        of the resulting basis.
+        A tolerance value (default: 1e-5). It is used to detect linearly
+        dependent operators (diagonal elements of :math:`L` below ``tol``), and
+        to verify the orthonormality of the resulting basis.
 
     Returns
     -------
     orth_basis: List[Operator]
         A list of orthogonalized operators, normalized with respect
-        to the scalar product `sp`.
+        to the scalar product `sp`. It has the same length as ``basis``.
 
     Raises
     ------
@@ -299,10 +331,15 @@ def orthogonalize_basis_cholesky(basis, sp: Callable, tol: float = 1.0e-5):
 
 
 def orthogonalize_basis_svd(basis, sp: Callable, tol: float = 1.0e-5):
-    """Orthogonalize an operator basis using the svd method.
+    r"""Orthogonalize an operator basis using the symmetric method.
 
     Orthogonalizes a given basis of operators using a scalar product and the
-    svd decomposition method.
+    symmetric (Löwdin) orthogonalization. The operators of the result are
+    :math:`e_i=\sum_j (G^{-1/2})_{ji}\, b_j`, where :math:`G` is the Gram matrix.
+    Among the orthonormal bases that can be built from linear combinations of
+    ``basis``, it is the closest to the original one, in the least-squares
+    sense. The matrix
+    :math:`G^{-1/2}` is computed with :func:`scipy.linalg.sqrtm`.
 
     Parameters
     ----------
@@ -312,14 +349,14 @@ def orthogonalize_basis_svd(basis, sp: Callable, tol: float = 1.0e-5):
         A callable that defines the scalar product function between two
         operators.
     tol: float
-        A tolerance value (default: 1e-5) for verifying the orthogonality
-        of the resulting basis.
+        A tolerance value (default: 1e-5) to verify the orthonormality of the
+        resulting basis.
 
     Returns
     -------
     orth_basis: List[Operator]
         A list of orthogonalized operators, normalized with respect
-        to the scalar product `sp`.
+        to the scalar product `sp`. It has the same length as ``basis``.
 
     Raises
     ------

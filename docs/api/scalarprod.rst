@@ -1,6 +1,10 @@
 qalma.scalarprod
 ================
 
+.. seealso::
+
+   The user guide: :doc:`/user/scalar_products`.
+
 .. automodule:: qalma.scalarprod
    :members:
    :show-inheritance:

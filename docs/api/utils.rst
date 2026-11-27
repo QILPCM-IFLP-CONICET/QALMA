@@ -1,6 +1,10 @@
 qalma.utils
 ===========
 
+.. seealso::
+
+   The user guide: :doc:`/user/utilities`.
+
 .. automodule:: qalma.utils
    :members:
    :undoc-members:
