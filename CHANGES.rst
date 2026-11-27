@@ -77,6 +77,19 @@ Bug fixes
   order of the sites of the system.
 * ``draw_operator`` failed with ``IndexError`` for operators that act on no
   site, like scalars.
+* The RPA was wrong for states with a local gap ``beta * Delta`` above
+  ``~690``, and became unstable (``Unstable RPA``) at low enough temperature.
+  The local populations, ``exp(-beta * Delta)``, were clipped at ``1e-300`` and
+  the gaps ``ln(p_i/p_j)`` that give the frequencies of the bosonic modes and
+  the Kubo-Mori susceptibilities saturated at ``ln(1e300)``: the static
+  susceptibility stopped decreasing as ``1/beta`` and ``1 + chi0 M`` lost its
+  positivity. The gaps are now computed from the logarithms of the
+  populations (``RPAStructure.local_log_populations``, and the optional
+  ``log_populations`` of ``local_boson_modes`` and
+  ``kubo_mori_susceptibility``). The adaptive imaginary-time quadrature of the
+  dynamical RPA now starts with enough nodes to resolve the largest
+  frequency, since two coarse quadratures can agree on missing the same
+  sharp features of the kernel.
 
 Changes
 +++++++

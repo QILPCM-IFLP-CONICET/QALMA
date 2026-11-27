@@ -31,26 +31,36 @@ def _spectral_data(
     sigma_loc: np.ndarray,
     basis: List[np.ndarray],
     spectrum: Optional[Tuple[np.ndarray, np.ndarray]] = None,
+    log_populations: Optional[np.ndarray] = None,
 ):
     """Return populations, ``-log`` populations and the basis in the eigenbasis.
 
     If ``spectrum = (populations, eigenvectors)`` is given, it is used
     instead of diagonalizing ``sigma_loc``. This allows to keep the accuracy
     of very small populations, which are lost in a density matrix.
+
+    ``log_populations`` are the logarithms of the populations of ``spectrum``.
+    A population below ``~1e-308`` underflows, but its logarithm does not, so
+    the gaps ``ln(p_i/p_j)`` are exact even if the populations are not. If it
+    is not given, the logarithms are computed from the populations, which are
+    clipped at ``1e-300`` (and then no gap exceeds ``ln(1e300) ~ 690.8``).
     """
     if spectrum is None:
         p, vecs = np.linalg.eigh(sigma_loc)
+        log_populations = None
     else:
         p, vecs = spectrum
     p = np.clip(p, 1e-300, None)
+    eps = -np.log(p) if log_populations is None else -np.asarray(log_populations)
     ops = np.array([vecs.conj().T @ np.asarray(e) @ vecs for e in basis])
-    return p, -np.log(p), ops
+    return p, eps, ops
 
 
 def kubo_mori_susceptibility(
     sigma_loc: np.ndarray,
     basis: List[np.ndarray],
     spectrum: Optional[Tuple[np.ndarray, np.ndarray]] = None,
+    log_populations: Optional[np.ndarray] = None,
 ):
     r"""Return the connected Kubo-Mori susceptibility of a local state.
 
@@ -69,13 +79,17 @@ def kubo_mori_susceptibility(
         Hermitian local operators :math:`e_\mu`.
     spectrum : tuple of numpy.ndarray, optional
         Populations and eigenvectors of ``sigma_loc``, if known accurately.
+    log_populations : numpy.ndarray, optional
+        Logarithms of the populations of ``spectrum``. They are needed for
+        gaps ``ln(p_m/p_n)`` above ``~690``, where the populations underflow
+        (they are clipped at ``1e-300``) and the gaps would saturate.
 
     Returns
     -------
     numpy.ndarray
         Real symmetric matrix :math:`\chi^0_{\mu\nu}`.
     """
-    p, eps, ops = _spectral_data(sigma_loc, basis, spectrum)
+    p, eps, ops = _spectral_data(sigma_loc, basis, spectrum, log_populations)
     delta = eps[:, None] - eps[None, :]
     small = np.abs(delta) < _DEGENERACY_TOL
     w = np.where(
@@ -90,20 +104,40 @@ def kubo_mori_susceptibility(
 
 def _ordered_spectrum(
     spectrum: Tuple[np.ndarray, np.ndarray],
-) -> Tuple[np.ndarray, np.ndarray]:
-    """Sort populations (decreasing) and eigenvectors of a local state."""
+    log_populations: Optional[np.ndarray] = None,
+) -> Tuple[np.ndarray, np.ndarray, Optional[np.ndarray]]:
+    """Sort populations (decreasing) and eigenvectors of a local state.
+
+    Returns the populations (clipped at ``1e-300``), the eigenvectors and the
+    logarithms of the populations (``None`` if they were not given), all in
+    the same order.
+    """
     p, vecs = spectrum
-    order = np.argsort(-p)
-    return np.clip(p[order], 1e-300, None), vecs[:, order]
+    if log_populations is None:
+        order = np.argsort(-p)
+        return np.clip(p[order], 1e-300, None), vecs[:, order], None
+    log_populations = np.asarray(log_populations)
+    order = np.argsort(-log_populations, kind="stable")
+    return np.clip(p[order], 1e-300, None), vecs[:, order], log_populations[order]
 
 
-def _boson_pairs(p: np.ndarray) -> List[Tuple[int, int, float]]:
+def _boson_pairs(
+    p: np.ndarray, log_p: Optional[np.ndarray] = None
+) -> List[Tuple[int, int, float]]:
     """Pairs ``(i, j, ln(p_i/p_j))``, ``i < j``, of the local bosons.
 
-    This is the order of the modes of :func:`local_boson_modes`.
+    This is the order of the modes of :func:`local_boson_modes`. If ``log_p``
+    (the logarithms of the populations) is given, the gaps are computed from
+    it, which is exact even if the populations underflow.
     """
+    if log_p is None:
+        return [
+            (i, j, float(np.log(p[i] / p[j])))
+            for i in range(len(p))
+            for j in range(i + 1, len(p))
+        ]
     return [
-        (i, j, float(np.log(p[i] / p[j])))
+        (i, j, float(log_p[i] - log_p[j]))
         for i in range(len(p))
         for j in range(i + 1, len(p))
     ]
@@ -119,6 +153,7 @@ def local_boson_modes(
     basis: List[np.ndarray],
     static_gap: float = _STATIC_GAP,
     spectrum: Optional[Tuple[np.ndarray, np.ndarray]] = None,
+    log_populations: Optional[np.ndarray] = None,
 ) -> Tuple[np.ndarray, np.ndarray]:
     r"""Bosonize the fluctuation operators of a single site.
 
@@ -149,6 +184,11 @@ def local_boson_modes(
         Populations and eigenvectors of ``sigma_loc``, if known accurately
         (for instance, from the local generator). Needed when some
         populations are below the numerical precision of a density matrix.
+    log_populations : numpy.ndarray, optional
+        Logarithms of the populations of ``spectrum``. Needed when the gap
+        between populations exceeds ``~690``: the populations underflow
+        (they are clipped at ``1e-300``) and the frequencies would saturate
+        at ``ln(1e300)``.
 
     Returns
     -------
@@ -165,11 +205,11 @@ def local_boson_modes(
     if spectrum is None:
         populations, eigenvectors = np.linalg.eigh(sigma_loc)
         spectrum = (populations, eigenvectors)
-    p, vecs = _ordered_spectrum(spectrum)
+    p, vecs, log_p = _ordered_spectrum(spectrum, log_populations)
     ops = np.array([vecs.conj().T @ np.asarray(e) @ vecs for e in basis])
     freqs: List[float] = []
     couplings: List[np.ndarray] = []
-    for i, j, gap in _boson_pairs(p):
+    for i, j, gap in _boson_pairs(p, log_p):
         if gap >= static_gap:
             weight = p[i] - p[j]
         else:

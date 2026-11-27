@@ -62,11 +62,13 @@ def _site_map(
     of the centred occupations of the ``m`` modes of the site.
     """
     n_all = contractions.shape[0] // 2
-    p, vecs = _ordered_spectrum(structure.local_spectrum(site))
+    p, vecs, log_p = _ordered_spectrum(
+        structure.local_spectrum(site), structure.local_log_populations(site)
+    )
     dim = len(p)
     pairs = [
         (i, j)
-        for i, j, gap in _boson_pairs(p)
+        for i, j, gap in _boson_pairs(p, log_p)
         if gap >= structure.static_gap and _is_dynamic(gap, structure.static_gap)
     ]
     if len(pairs) != len(modes):
