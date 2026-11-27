@@ -13,10 +13,12 @@ to build and simulate many-body quantum systems.
    operators
    states
    correlations
+   scalar_products
    evolution
    hdf5_format
    meanfield_variational
    rpa
    mps_ground_state
+   utilities
    configuration
    examples

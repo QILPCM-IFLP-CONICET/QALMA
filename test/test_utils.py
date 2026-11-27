@@ -6,7 +6,8 @@ import numpy as np
 import pytest
 import qutip
 
-from qalma.operators import ProductOperator
+from qalma.model import build_spin_chain
+from qalma.operators import ProductOperator, ScalarOperator
 from qalma.utils import (
     convex_fit_derivative,
     draw_operator,
@@ -118,6 +119,21 @@ def test_operator_to_wolfram_local_operator():
     assert result.count("{0.0, 0.5}") == 1
 
 
+@pytest.mark.parametrize("site_index", [0, 1, 2, 10, 11])
+def test_operator_to_wolfram_site_order(site_index):
+    """The factors follow the order of the sites of the system.
+
+    In a chain with more than 10 sites, the alphabetical order of the names
+    of the sites (``1[10]`` < ``1[2]``) differs from the order of the system.
+    """
+    system = build_spin_chain(12)
+    site = list(system.dimensions)[site_index]
+    result = operator_to_wolfram(system.site_operator("Sx", site))
+    factors = result[len("KroneckerProduct[") : -1].split("}, {")
+    assert len(factors) == 12
+    assert [i for i, factor in enumerate(factors) if "0.5" in factor] == [site_index]
+
+
 def test_operator_to_wolfram_sum_operator():
     """A sum of operators is exported as a sum of Kronecker products."""
     result = operator_to_wolfram(SX_A + SZ_B)
@@ -168,6 +184,13 @@ def test_draw_operator_many_sites(axis):
     assert len(axis.patches) == 0
     assert len(axis.lines) == 1
     assert len(axis.lines[0].get_xdata()) == 4  # three sites + closing point
+
+
+def test_draw_operator_scalar(axis):
+    """A scalar does not act on any site, and there is nothing to draw."""
+    assert draw_operator(ScalarOperator(2.0, SYSTEM), axis) is axis
+    assert len(axis.patches) == 0
+    assert len(axis.lines) == 0
 
 
 def test_draw_operator_sum(axis):
