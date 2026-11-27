@@ -59,6 +59,18 @@ Bug fixes
   site.
 * ``build_hermitian_basis`` failed with ``ValueError`` when the basis contained
   null operators. They are now filtered out.
+* ``self_consistent_mf`` (and the variational mean field that uses it)
+  logged spurious convergence failures and reported wrong diagnostics. The
+  convergence criterion was an absolute tolerance on the free energy
+  (``QALMA_TOLERANCE``), which cannot be met when ``|F|`` is large (the
+  rounding noise is one unit in the last place, ``~1e-12`` for
+  ``|F| ~ 5000``, as in a low temperature state of a few dozen sites): it is
+  now relative, ``QALMA_TOLERANCE * max(1, |F|)``. The warning printed
+  ``Last Delta S_rel= 0.0`` whenever ``max_steps`` was exhausted and counted
+  one step less than the done ones; it now gives the number of steps and the
+  last change of the free energy, and tells apart the case in which the free
+  energy increases. ``max_steps=0`` raised ``UnboundLocalError`` and now
+  returns the initial state.
 * ``operator_to_wolfram`` exported the local and product operators of systems
   with more than 10 sites with the factors of the ``KroneckerProduct`` sorted
   alphabetically by site name (``1[10]`` before ``1[2]``), instead of in the
