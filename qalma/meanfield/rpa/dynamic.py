@@ -234,9 +234,17 @@ def dynamic_generator_correction(
 
         e^{-K_A'} = e^{-(K_0+\delta K)} + \sum_k e^{-\epsilon'_k} R_k ,
         \qquad R_k = e^{\epsilon_k} Y^{adm,k},
-        \qquad \epsilon'_k = \epsilon_k + \delta K_{kk}.
+        \qquad \epsilon'_k = \lambda_k ,
 
-    Both forms coincide at second order in the coupling. At high
+    where :math:`\lambda_k` is the :math:`k`-th eigenvalue (in increasing
+    order) of :math:`\mathrm{diag}(\epsilon) + \delta K^{sec}`, the dressed
+    level that corresponds to :math:`\epsilon_k`. Both forms coincide at
+    second order in the coupling (the diagonal element
+    :math:`\epsilon_k+\delta K_{kk}` is not used because it differs from
+    :math:`\lambda_k` by the level repulsion due to the off-diagonal part of
+    :math:`\delta K^{sec}`: fourth order in the coupling, but it grows with
+    :math:`\beta`, and the admixture populations would drift with the
+    temperature). At high
     temperature the admixture is negligible and this is the first-order
     (Kubo-Mori) correction of the generator; at low temperature the
     admixture gives the populations of the excited states, which a
@@ -294,7 +302,7 @@ def dynamic_generator_correction(
 
     k_sec = np.diag(eps) + d_sec
     lam_sec, u_sec = np.linalg.eigh(k_sec)
-    eps_dressed = np.real(np.diag(k_sec))
+    eps_dressed = lam_sec
     shift = min(lam_sec.min(), eps_dressed.min())
     rho = (u_sec * np.exp(-(lam_sec - shift))) @ u_sec.conj().T
     rho += np.einsum("k,kij->ij", np.exp(-(eps_dressed - shift)), r_adm)
