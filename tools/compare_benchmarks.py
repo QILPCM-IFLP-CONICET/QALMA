@@ -106,6 +106,7 @@ if __name__ == "__main__":
             "commutators",
             "projections",
             "expect",
+            "dense",
         ):
             print("\n", 60 * "-")
             ref_file = get_latest_bench_file(master_hash, bench_set)

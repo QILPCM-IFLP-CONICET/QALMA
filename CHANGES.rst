@@ -8,6 +8,14 @@ follow `Semantic Versioning <https://semver.org>`_.
 Unreleased
 ------------------
 
+Benchmarks
+++++++++++
+
+* New ``make benchmark-dense`` target, with benchmarks of dense linear algebra
+  (raw ``matmul``/``eigh``/``expm``, exact Gibbs states, RPA, symmetry-breaking
+  mean field and DMRG). Each benchmark stores the active BLAS thread pools
+  in ``extra_info``.
+
 Bug fixes
 +++++++++
 

@@ -22,7 +22,11 @@ Running the tests
     QALMA_ALLTESTS=1 python -m pytest test   # full suite, as run by the CI
 
 The benchmarks need the ``bench`` extra and are run through the
-``make benchmark-*`` targets.
+``make benchmark-*`` targets. ``make benchmark-dense`` (not part of
+``make benchmark``) covers the code paths that use dense linear algebra, and
+it is the one sensitive to the number of BLAS threads. See the docstring of
+``test/dense/test_dense_benchmarks.py`` to compare runs with and without
+``OPENBLAS_NUM_THREADS=1``.
 
 Code conventions
 ----------------

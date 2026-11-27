@@ -29,6 +29,7 @@ CURRENT_GIT_BRANCH := $(shell git rev-parse --abbrev-ref HEAD)
     benchmark-clean\
     benchmark-expect \
     benchmark-commutators \
+    benchmark-dense \
     benchmark-gram \
     benchmark-projections \
     benchmark-show \
@@ -117,6 +118,9 @@ benchmark-projections:
 	-mv prof/*.svg  "prof/$(CURRENT_GIT_BRANCH)"
 	-mv prof/*.png  "prof/$(CURRENT_GIT_BRANCH)"
 
+
+benchmark-dense:
+	PYTHONOPTIMIZE=TRUE BENCHMARKS=1 pytest -x --benchmark-enable --benchmark-save="dense_$(BENCHMARK_FILE)" --benchmark-columns=min,median,mean test/dense/test_dense_benchmarks.py
 
 benchmark-set-reference:
 	$(PYTHON) tools/set_benchmark_reference.py
