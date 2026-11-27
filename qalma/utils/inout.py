@@ -8,10 +8,56 @@ import qutip  # type: ignore[import-untyped]
 
 
 def operator_to_wolfram(operator) -> str:
-    """WL representation of the operator.
+    """Wolfram Language (WL) representation of an operator.
 
     Produce a string with a Wolfram Mathematica expression representing the
-    operator.
+    operator. The expression depends on the type of ``operator``:
+
+    * If it has a ``to_wolfram`` method, that method is used.
+    * A ``qutip.Qobj`` is exported as a matrix, as
+      :func:`~qalma.utils.matrix_to_wolfram` does.
+    * A sum operator is exported as the sum of its terms. Null terms are skipped.
+    * A local operator or a product operator is exported as a
+      ``KroneckerProduct`` with one factor for each site of the system, in the
+      order of the sites of the system. The sites on which the operator does not
+      act contribute with the identity. A prefactor different from 1 multiplies
+      the product.
+    * Any other operator is converted to a ``Qobj`` and exported as a matrix.
+
+    Parameters
+    ----------
+    operator: Operator or qutip.Qobj
+        The operator to be exported.
+
+    Returns
+    -------
+    str
+        A WL expression that can be pasted into a Mathematica notebook.
+
+    Examples
+    --------
+    >>> import qutip
+    >>> print(operator_to_wolfram(qutip.sigmax()))
+    {
+    {0.0, 1.0},
+    {1.0, 0.0}
+    }
+
+    For a system of two spins 1/2 (:func:`~qalma.model.build_spin_chain`), the
+    operator :math:`S^x_0` is exported as a Kronecker product with the identity
+    on the second site:
+
+    >>> from qalma.model import build_spin_chain
+    >>> system = build_spin_chain(2)
+    >>> print(operator_to_wolfram(system.site_operator("Sx", "1[0]")))
+    KroneckerProduct[{
+    {0.0, 0.5},
+    {0.5, 0.0}
+    }, {
+    {1.0, 0.0},
+    {0.0, 1.0}
+    }]
+
     """
     # pylint: disable=import-outside-toplevel
     from qutip import Qobj
@@ -65,7 +111,7 @@ def operator_to_wolfram(operator) -> str:
         local_site = operator.site
         factors = [
             operator.operator_qutip if site == local_site else get_site_identity(site)
-            for site in sorted(dimensions)
+            for site in dimensions
         ]
         factors_str = [operator_to_wolfram(factor) for factor in factors]
 
@@ -74,7 +120,7 @@ def operator_to_wolfram(operator) -> str:
     if isinstance(operator, ProductOperator):
         factors = [
             operator.site_factors_qutip.get(site, get_site_identity(site))
-            for site in sorted(dimensions)
+            for site in dimensions
         ]
         factors_str = [operator_to_wolfram(factor) for factor in factors]
 
@@ -129,7 +175,26 @@ def matrix_to_wolfram(matr: Union[np.ndarray, numbers.Number]) -> str:
     str
         A WL expression: a list of lists for an array, or the number.
         Integer entries are exported as WL integers, and the remaining real
-        entries as machine reals.
+        entries as machine reals. Complex numbers are written with ``I`` as the
+        imaginary unit, and ``e`` in the exponent is replaced by ``*^``.
+
+    Raises
+    ------
+    AssertionError
+        If ``matr`` is not a number or a two-dimensional array of numbers.
+
+    Examples
+    --------
+    >>> import numpy as np
+    >>> print(matrix_to_wolfram(np.array([[1, 0], [0, -2]])))
+    {
+    {1, 0},
+    {0, -2}
+    }
+    >>> print(matrix_to_wolfram(np.array([[1.5, 2j]])))
+    {
+    {1.5, 2I}
+    }
 
     """
     assert isinstance(

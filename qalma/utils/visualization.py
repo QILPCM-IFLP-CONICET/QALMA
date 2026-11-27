@@ -25,10 +25,23 @@ def _import_patches():
 
 
 def draw_ellipse_around_points(p1, p2, ax, b_ratio=0.15):
-    """Draw an ellipse around the specified points.
+    """Draw an ellipse around two points.
 
-    Draw an ellipse containing p1 and p2 located over the main axis,
-    symmetrically around the center.
+    Draw over ``ax`` a semi-transparent ellipse centered at the middle point
+    between ``p1`` and ``p2``, with its major axis along the line that joins
+    them. The major axis is 1.5 times the distance between the points, so both
+    points are inside the ellipse.
+
+    Parameters
+    ----------
+    p1, p2: Tuple[float, float]
+        The ``(x, y)`` coordinates of the points.
+    ax: matplotlib.axes.Axes
+        The axis over which the ellipse is drawn.
+    b_ratio: float, optional
+        Controls the width of the ellipse: the minor axis is ``0.7 * b_ratio``
+        times the major axis. By default, ``0.15``.
+
     """
     # Compute center
     x1, y1 = p1
@@ -58,21 +71,50 @@ def draw_ellipse_around_points(p1, p2, ax, b_ratio=0.15):
 
 
 def draw_operator(op, axis: "_PLTAxes") -> "_PLTAxes":
-    """Draw the operator op over the axis.
+    """Draw the operator ``op`` over the axis.
+
+    The operator is drawn over the graph of its system, using the coordinates
+    of the nodes (see :meth:`~qalma.geometry.GraphDescriptor.complete_coordinates`).
+    Each term is drawn according to the number of sites over which it acts:
+
+    * one site: a disk centered at the site.
+    * two sites: an ellipse around both sites
+      (:func:`~qalma.utils.draw_ellipse_around_points`).
+    * three or more sites: a closed red line through the sites.
+
+    Operators that do not act on any site, like scalars, are not drawn. Graphs
+    of dimension one are drawn along the horizontal axis.
+
+    This function needs `matplotlib`, which is an optional dependency
+    (``pip install qalma[plot]``).
 
     Parameters
     ----------
     op: Operator
-      If the operator acts on a single site, draws a disk on its coordinates.
-      If is a SumOperator, flatten it and draw each term.
-      For many-body operators, a line is drawn.
-    axis: mpl.Axis
-      the axis over which the operator is going to be drawn.
+        The operator to be drawn. It is flattened, and each term of a sum
+        operator is drawn separately.
+    axis: matplotlib.axes.Axes
+        The axis over which the operator is going to be drawn.
 
-    Return
-    ------
-    mpl.Axis
-      the axis over which the operator was drawn.
+    Returns
+    -------
+    matplotlib.axes.Axes
+        The axis over which the operator was drawn.
+
+    Notes
+    -----
+    The coordinates of the nodes of the graph of the system are completed, if
+    they were not defined, and stored in the graph. Three-dimensional graphs are
+    not supported.
+
+    Examples
+    --------
+    >>> from matplotlib.figure import Figure
+    >>> from qalma.model import build_spin_chain
+    >>> axis = Figure().add_subplot()
+    >>> system = build_spin_chain(4)
+    >>> op = system.site_operator("Sx", "1[0]") * system.site_operator("Sx", "1[1]")
+    >>> axis = draw_operator(op, axis)
 
     """
     # TODO: handle 3D graphs
@@ -87,7 +129,7 @@ def draw_operator(op, axis: "_PLTAxes") -> "_PLTAxes":
             draw_operator(term, axis)
         return axis
     acts_over = op.acts_over()
-    if acts_over is not None:
+    if acts_over:
         # With the qubit representation, sites are qubits of the graph nodes.
         qubit_parent = getattr(system, "qubit_parent", {})
         nodes = {qubit_parent.get(site, site) for site in acts_over}

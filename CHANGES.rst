@@ -49,6 +49,12 @@ Bug fixes
   site.
 * ``build_hermitian_basis`` failed with ``ValueError`` when the basis contained
   null operators. They are now filtered out.
+* ``operator_to_wolfram`` exported the local and product operators of systems
+  with more than 10 sites with the factors of the ``KroneckerProduct`` sorted
+  alphabetically by site name (``1[10]`` before ``1[2]``), instead of in the
+  order of the sites of the system.
+* ``draw_operator`` failed with ``IndexError`` for operators that act on no
+  site, like scalars.
 
 Changes
 +++++++
@@ -63,6 +69,19 @@ Changes
   with ``I``.
 * ``convex_fit_derivative`` returns the derivatives in the order of the input
   data, instead of sorted by ``x``.
+
+Documentation
++++++++++++++
+
+* New pages of the user guide: *Scalar products and operator bases*, and
+  *Utilities: export, drawing and fits*.
+* The docstrings of the Kubo-Mori-Bogoliubov and Hilbert-Schmidt scalar
+  products, of ``orthogonalize_basis`` and the functions of its module, and of
+  the functions of ``qalma.utils`` document their parameters, return values
+  and exceptions. The docstring of the Gram-Schmidt orthogonalization
+  described a check of the orthogonality and an ``AssertionError`` that it
+  does not perform; ``tol`` is the threshold to discard null and dependent
+  operators.
 
 
 0.9.0

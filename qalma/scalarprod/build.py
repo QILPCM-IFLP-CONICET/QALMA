@@ -1,4 +1,14 @@
-"""Functions to fetch specific scalar product functions."""
+"""Scalar products between operators.
+
+Functions that build scalar product functions ``sp(op1, op2)``: the
+Hilbert-Schmidt scalar product, the covariance scalar product associated to a
+state, and the Kubo-Mori-Bogoliubov (KMB) scalar product. All of them are
+antilinear in the first argument and linear in the second one, and can be
+used to build Gram matrices (:func:`~qalma.scalarprod.gram.gram_matrix`) and to
+orthogonalize bases of operators
+(:func:`~qalma.scalarprod.orthogonalize.orthogonalize_basis`).
+
+"""
 
 # from datetime import datetime
 from typing import Callable
@@ -43,11 +53,49 @@ def _log_mean(p1: float, p2: float) -> float:
 
 
 def fetch_kubo_scalar_product(sigma: Operator, threshold=0) -> Callable:
-    """
-    Fetch a KMB scalar product callable. Spectral implementation.
+    r"""Fetch a KMB scalar product callable. Spectral implementation.
 
     Build a Kubo-Mori-Bogoliubov (KMB) scalar product function associated
-    to the state ``sigma`` :cite:p:`Kubo1957,PetzToth1993`.
+    to the state ``sigma`` :cite:p:`Kubo1957,PetzToth1993`:
+
+    .. math::
+
+        \langle A, B\rangle_\sigma
+        = \int_0^1 \mathrm{Tr}\left(\sigma^{1-\tau} A^\dagger \sigma^\tau B\right)
+          d\tau
+        = \sum_{i,j} \overline{\langle j|A|i\rangle}\,\langle j|B|i\rangle\,
+          \frac{p_i-p_j}{\ln p_i-\ln p_j},
+
+    where :math:`\sigma|i\rangle=p_i|i\rangle`, and the fraction is
+    replaced by :math:`p_i` when :math:`p_i=p_j`. The sum runs over the
+    eigenvalues :math:`p_i>0`, and it is evaluated from the spectral decomposition
+    of ``sigma``. The integral form is implemented in
+    :func:`~qalma.scalarprod.build.fetch_kubo_integral_representation_scalar_product`.
+
+    Parameters
+    ----------
+    sigma: Operator
+        The reference state: a positive semidefinite operator with unit trace.
+        Its spectral decomposition is obtained from ``sigma.eigenstates()``, so
+        the cost of building the function is that of a dense diagonalization.
+    threshold: float, optional
+        The eigenvalues of ``sigma`` are sorted from the largest to the smallest,
+        and the sum is truncated as soon as the weight of the remaining ones is
+        below ``threshold``. With the default, ``0``, only the eigenvalues that
+        are zero (or negative by round-off) are dropped.
+
+    Returns
+    -------
+    Callable
+        A function ``f(op1, op2) -> complex`` that computes the scalar product of
+        two operators. The operators can be qalma operators or ``qutip.Qobj``.
+
+    See Also
+    --------
+    qalma.scalarprod.build.fetch_kubo_integral_representation_scalar_product
+    qalma.scalarprod.build.fetch_covar_scalar_product
+    qalma.scalarprod.build.fetch_hs_scalar_product
+
     """
     evals_evecs = sorted(zip(*sigma.eigenstates()), key=lambda x: -x[0])
     w = 1
@@ -75,12 +123,42 @@ def fetch_kubo_scalar_product(sigma: Operator, threshold=0) -> Callable:
 
 
 def fetch_kubo_integral_representation_scalar_product(sigma: Operator) -> Callable:
-    """
-    Fetch a KMB scalar product callable. Integral implementation.
+    r"""Fetch a KMB scalar product callable. Integral implementation.
 
     Build a Kubo-Mori-Bogoliubov (KMB) scalar product function associated
     to the state ``sigma`` :cite:p:`Kubo1957,PetzToth1993`, from its integral
-    form.
+    form:
+
+    .. math::
+
+        \langle A, B\rangle_\sigma
+        = \int_0^1 \mathrm{Tr}\left(\sigma^{1-\tau} A^\dagger \sigma^\tau B\right)
+          d\tau
+        = \sum_{i,j} \overline{\langle j|A|i\rangle}\,\langle j|B|i\rangle\,
+          \int_0^1 p_i^{1-\tau} p_j^\tau d\tau,
+
+    where :math:`\sigma|i\rangle=p_i|i\rangle`. The integral over :math:`\tau`
+    is computed with a 32-point Gauss-Legendre rule, and the sum runs over the
+    eigenvalues :math:`p_i>0`. It gives the same result as
+    :func:`~qalma.scalarprod.build.fetch_kubo_scalar_product`, and is slower. It is useful to check the
+    spectral implementation.
+
+    Parameters
+    ----------
+    sigma: Operator
+        The reference state: a positive semidefinite operator with unit trace.
+        Its spectral decomposition is obtained from ``sigma.eigenstates()``.
+
+    Returns
+    -------
+    Callable
+        A function ``f(op1, op2) -> complex`` that computes the scalar product of
+        two operators. The operators can be qalma operators or ``qutip.Qobj``.
+
+    See Also
+    --------
+    qalma.scalarprod.build.fetch_kubo_scalar_product
+
     """
     evals, evecs = sigma.eigenstates()
 
@@ -133,5 +211,17 @@ def fetch_covar_scalar_product(sigma: DensityOperatorProtocol) -> Callable:
 
 
 def fetch_hs_scalar_product() -> Callable:
-    """Fetch a HS scalar product function."""
+    r"""Fetch a HS scalar product function.
+
+    The Hilbert-Schmidt scalar product of two operators is
+    :math:`\langle A, B\rangle=\mathrm{Tr}(A^\dagger B)`. It is not normalized by
+    the dimension of the Hilbert space.
+
+    Returns
+    -------
+    Callable
+        A function ``f(op1, op2) -> complex`` that computes the scalar product of
+        two operators.
+
+    """
     return lambda op1, op2: (op1.dag() * op2).tr()

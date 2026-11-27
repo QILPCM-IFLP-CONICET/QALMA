@@ -40,6 +40,26 @@ def convex_fit_derivative(
         The first derivative of the fitted spline, evaluated at the
         x-coordinates of ``data``, in the same order as ``data``.
 
+    Notes
+    -----
+    The spline is a cubic B-spline with ``max(4, N // 3)`` internal knots
+    placed at quantiles of the x-coordinates, where ``N`` is the number of
+    points. Its coefficients minimize the sum of squared residuals, using the
+    SLSQP algorithm of :func:`scipy.optimize.minimize`, with the constraint on
+    the sign of the second derivative imposed over 100 equally spaced points in
+    the range of the data. If the optimization does not converge, a warning is
+    logged, and the result of the last iteration is used.
+
+    Examples
+    --------
+    The derivative of a concave function, ``-x**2``:
+
+    >>> import numpy as np
+    >>> x = np.linspace(0.0, 2.0, 30)
+    >>> derivative = convex_fit_derivative(list(zip(x, -(x**2))))
+    >>> bool(np.allclose(derivative, -2 * x, atol=0.05))
+    True
+
     """
     # 1. Parse and sort data
     x_data_raw, y_data_raw = [np.array(lst) for lst in zip(*data)]
